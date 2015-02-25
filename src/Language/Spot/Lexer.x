@@ -1,5 +1,5 @@
 {
-  module Parsing.Lexer where
+  module Language.Spot.Lexer where
 }
 
 %wrapper "basic"
