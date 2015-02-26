@@ -22,46 +22,46 @@ tokens :-
   "/--" (. | \n)* "--/"
                   ;
   "--" .*         ;
-  $newl+          { \s -> EOL }
-  "("             { \s -> Open_Par }
-  ")"             { \s -> Close_Par }
-  "val"           { \s -> Val }
-  "module"        { \s -> Module }
-  "match"         { \s -> Match }
-  "do"            { \s -> Do }
-  ":" @ident      { \s -> Symbol (tail s) }
-  "="             { \s -> Equal }
-  "->"            { \s -> Arrow_R }
-  "<-"            { \s -> Arrow_L }
-  "with"          { \s -> With }
-  @integer        { \s -> Int (read s) }
-  @ident          { \s -> Id s }
+  $newl+          { \s -> TEOL }
+  "("             { \s -> TOpen_Par }
+  ")"             { \s -> TClose_Par }
+  "val"           { \s -> TVal }
+  "module"        { \s -> TModule }
+  "match"         { \s -> TMatch }
+  "do"            { \s -> TDo }
+  ":" @ident      { \s -> TSymbol (tail s) }
+  "="             { \s -> TEqual }
+  "->"            { \s -> TArrow_R }
+  "<-"            { \s -> TArrow_L }
+  "with"          { \s -> TWith }
+  @integer        { \s -> TInt (read s) }
+  @ident          { \s -> TId s }
 
 
 
 
 {
 
-data Token  = EOL
-            | EOF
-            | Open_Par
-            | Close_Par
-            | Val
-            | Module
-            | With
-            | Equal
-            | Symbol String
-            | Id String
-            | QId ([String], String)
-            | String String
-            | Int Int
-            | Semicolon
-            | Match
-            | Do
-            | Arrow_R
-            | Arrow_L
-            | Indent
-            | Outdent
+data Token  = TEOL
+            | TEOF
+            | TOpen_Par
+            | TClose_Par
+            | TVal
+            | TModule
+            | TWith
+            | TEqual
+            | TSymbol String
+            | TId String
+            | TQId ([String], String)
+            | TString String
+            | TInt Int
+            | TSemicolon
+            | TMatch
+            | TDo
+            | TArrow_R
+            | TArrow_L
+            | TIndent
+            | TOutdent
   deriving (Show, Eq)
 
 

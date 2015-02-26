@@ -10,19 +10,19 @@ spec = do
   describe "Lexer" $ do
 
     it "lexes a single newline" $ do
-      L.lex "\n" `shouldBe` [EOL]
+      L.lex "\n" `shouldBe` [TEOL]
 
     it "combines several newlines into one token" $ do
-      L.lex "\n\r\r\n\n\n\r\n" `shouldBe` [EOL]
+      L.lex "\n\r\r\n\n\n\r\n" `shouldBe` [TEOL]
 
     it "lexes a symbol" $ do
-      L.lex " :spot " `shouldBe` [Symbol "spot"]
+      L.lex " :spot " `shouldBe` [TSymbol "spot"]
 
     it "lexes an end-of-line comment" $ do
-      L.lex ":a -- :ignored \n :b " `shouldBe` [Symbol "a", EOL, Symbol "b"]
+      L.lex ":a -- :ignored \n :b " `shouldBe` [TSymbol "a", TEOL, TSymbol "b"]
 
     it "lexes an identifier" $ do
-      L.lex " id " `shouldBe` [Id "id"]
+      L.lex " id " `shouldBe` [TId "id"]
 
 --    it "ignores whitespace before EOF" $ do
 --      (Lexer.lex "  \n \n      \n  \n") `shouldBe` [EOL, EOF]

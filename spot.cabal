@@ -20,6 +20,7 @@ library
   default-language:   Haskell2010
   build-tools:        alex, happy
   exposed-modules:    Language.Spot.Lexer
+                    , Language.Spot.Parser
   build-depends:      base, array, containers
 
 executable spot
