@@ -32,7 +32,18 @@ import Language.Spot.Ast
 
 %%
 
-Val   : val     { Var "a" }
+opt(p):
+    p                   { Just $1 }
+  |                     { Nothing }
+
+Prog:
+    opt(eol) Expr opt(eol)  { $2 }
+
+Expr:
+    Symbol  { $1 }
+
+Symbol:
+    symbol  { LitSymbol $1 }
 
 
 

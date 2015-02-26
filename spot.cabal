@@ -21,6 +21,7 @@ library
   build-tools:        alex, happy
   exposed-modules:    Language.Spot.Lexer
                     , Language.Spot.Parser
+                    , Language.Spot.Ast
   build-depends:      base, array, containers
 
 executable spot
