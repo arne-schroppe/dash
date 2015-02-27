@@ -52,9 +52,6 @@ plus(p):
 Prog:
     opt(eol) Expr opt(eol)  { $2 }
 
-
-
-
 Expr:
     Local_binding      { $1 }
   | Anon_fun           { $1 }
@@ -62,8 +59,8 @@ Expr:
   | Fun_call           { $1 }
   | Match_expr         { $1 }
   | Do_expr            { $1 }
-  | Symbol             { $1 }
-  | Non_symbol_literal  { $1 }
+  | Complex_symbol     { $1 }
+  | Non_symbol_literal { $1 }
   | Qid_or_parenthesis_expr { $1 }
 
 Simple_expr:
@@ -118,8 +115,8 @@ Non_symbol_literal:
     Number_literal   { $1  }
   | String_literal  { $1 }
 
-Symbol:
-    symbol plus(Simple_expr) { LitSymbol $1 $2 }
+Complex_symbol:
+    symbol star(Simple_expr) { LitSymbol $1 $2 }
 
 Symbol_literal:
     symbol                   { LitSymbol $1 [] }
@@ -155,7 +152,7 @@ Do_line_expr:
     Fun_call            { $1 }
   | Qid                 { $1 }
   | Non_symbol_literal  { $1 }
-  | Symbol              { $1 }
+  | Complex_symbol      { $1 }
 
 Match_expr:
     match Simple_expr with Match_body { FunCall (Var "$match") [$4, $2] }
@@ -206,7 +203,7 @@ make_monad monad lines =
 
 
 parseError :: [Token] -> a
-parseError _ = error "Parse error"
+parseError ts = error $ "Parse error " ++ (show ts)
 
 
 }
