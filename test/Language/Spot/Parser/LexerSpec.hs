@@ -54,7 +54,13 @@ spec = do
     it "lexes a symbol" $ do
       L.lex " :spot " `shouldBe` [TSymbol "spot", TEOL]
 
+    it "lexes a symbol containing hyphens" $ do
+      L.lex " :finn-and-jake " `shouldBe` [TSymbol "finn-and-jake", TEOL]
+
     it "lexes an identifier" $ do
       L.lex " id " `shouldBe` [TId "id", TEOL]
+
+    it "lexes an identifier containing hyphens" $ do
+      L.lex "finn-and-jake" `shouldBe` [TId "finn-and-jake", TEOL]
 
 

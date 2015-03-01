@@ -31,7 +31,7 @@ executable spot
   hs-source-dirs:     src
   default-language:   Haskell2010
 
-test-suite test-fl1
+test-suite test-spot
   type:               exitcode-stdio-1.0
   main-is:            SpecMain.hs
   hs-source-dirs:     test
@@ -40,6 +40,7 @@ test-suite test-fl1
   build-depends:      spot >=0.1
                     , base
                     , hspec
+                    , hspec-core
                     , containers
 
 
