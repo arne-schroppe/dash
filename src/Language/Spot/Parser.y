@@ -139,7 +139,7 @@ Fun_args:
 
 Do_expr:
   {- TODO id should be a qid -}
-    do id with Do_body  { make_monad $2 $4 }
+    do id with Do_body  { makeMonad $2 $4 }
 
 Do_body:
     Block_start plus(Do_line) Block_end  { $2 }
@@ -190,7 +190,7 @@ Qid:
 
 {
 
-make_monad monad lines =
+makeMonad monad lines =
   case (reverse lines) of
     (_, call) : []     -> call
     ("_", call) : rest -> foldl (\acc (nid, ncall) ->

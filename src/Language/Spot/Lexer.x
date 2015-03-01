@@ -25,7 +25,8 @@ tokens :-
    (. | \n)*
    "--/"        ;
   "--" .*       ;
-  $newl+        { mkTok TEOL }
+  ($space* $newl $space*)+
+                { mkTok TEOL }
   "("           { mkTok TOpen_Par }
   ")"           { mkTok TClose_Par }
   "val"         { mkTok TVal }
@@ -106,17 +107,28 @@ data Token  = TEOL
 
 loop = do
   t <- alexMonadScan
-  if (t == TEOF)
-      then do
+  case t of
+    TEOF -> checkFinalEol
+    TEOL -> do lt <- getLastToken
+               if lt == TEOL      -- we never insert two EOL after another
+                  then skipToken
+                  else next t
+    _    -> next t
+
+next t = do setLastToken t
+            toks <- loop
+            return (t : toks)
+
+skipToken = do toks <- loop
+               return toks
+
+checkFinalEol = do
         e <- getHasEmittedEol
         lt <- getLastToken
         if (e || lt == TEOL) then do setHasEmittedEol True
                                      return []
         else do setHasEmittedEol True
                 return [TEOL]
-      else do setLastToken t
-              toks <- loop
-              return (t : toks)
 
 
 lex :: String -> [Token]
