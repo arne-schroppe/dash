@@ -1,6 +1,6 @@
-module Language.Spot.LexerSpec where
+module Language.Spot.Parser.LexerSpec where
 
-import Language.Spot.Lexer as L
+import Language.Spot.Parser.Lexer as L
 
 import Test.Hspec
 

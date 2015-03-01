@@ -1,8 +1,8 @@
 {
-module Language.Spot.Parser where
+module Language.Spot.Parser.Parser where
 
-import Language.Spot.Lexer
-import Language.Spot.Ast
+import Language.Spot.Parser.Lexer
+import Language.Spot.Parser.Ast
 
 
 }

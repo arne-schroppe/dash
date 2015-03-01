@@ -1,4 +1,4 @@
-module Language.Spot.Ast where
+module Language.Spot.Parser.Ast where
 
 data Pattern
     = PatNumber Int

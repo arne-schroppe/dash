@@ -1,5 +1,5 @@
 {
-module Language.Spot.Lexer where
+module Language.Spot.Parser.Lexer where
 
 import Debug.Trace
 }
