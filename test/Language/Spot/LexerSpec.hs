@@ -16,13 +16,13 @@ spec = do
       L.lex "\n\r\r\n\n\n\r\n" `shouldBe` [TEOL]
 
     it "lexes a symbol" $ do
-      L.lex " :spot " `shouldBe` [TSymbol "spot"]
+      L.lex " :spot " `shouldBe` [TSymbol "spot", TEOL]
 
     it "lexes an end-of-line comment" $ do
-      L.lex ":a -- :ignored \n :b " `shouldBe` [TSymbol "a", TEOL, TSymbol "b"]
+      L.lex ":a -- :ignored \n :b " `shouldBe` [TSymbol "a", TEOL, TSymbol "b", TEOL]
 
     it "lexes an identifier" $ do
-      L.lex " id " `shouldBe` [TId "id"]
+      L.lex " id " `shouldBe` [TId "id", TEOL]
 
 
     it "always inserts an eol at the end" $ do

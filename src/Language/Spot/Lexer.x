@@ -1,5 +1,7 @@
 {
-  module Language.Spot.Lexer where
+module Language.Spot.Lexer where
+
+import Debug.Trace
 }
 
 %wrapper "monadUserState"
@@ -18,26 +20,26 @@ $space      = [\ \t]
 
 
 tokens :-
-<0>  $space+       ;
-<0>  "/--"
-      (. | \n)*
-      "--/"        ;
-<0>  "--" .*       ;
-<0>  $newl+        { mkTok TEOL }
-<0>  "("           { mkTok TOpen_Par }
-<0>  ")"           { mkTok TClose_Par }
-<0>  "val"         { mkTok TVal }
-<0>  "module"      { mkTok TModule }
-<0>  "match"       { mkTok TMatch }
-<0>  "do"          { mkTok TDo }
-<0>  ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
-<0>  "="           { mkTok TEqual }
-<0>  "->"          { mkTok TArrow_R }
-<0>  "<-"          { mkTok TArrow_L }
-<0>  "with"        { mkTok TWith }
-<0>  @integer      { mkTokS (\s -> TInt (read s)) }
-<0>  @ident        { mkTokS (\s -> TId s) }
-<0>  eof           { mkTok TEOF }
+  $space+       ;
+  "/--"
+   (. | \n)*
+   "--/"        ;
+  "--" .*       ;
+  $newl+        { mkTok TEOL }
+  "("           { mkTok TOpen_Par }
+  ")"           { mkTok TClose_Par }
+  "val"         { mkTok TVal }
+  "module"      { mkTok TModule }
+  "match"       { mkTok TMatch }
+  "do"          { mkTok TDo }
+  ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
+  "="           { mkTok TEqual }
+  "->"          { mkTok TArrow_R }
+  "<-"          { mkTok TArrow_L }
+  "with"        { mkTok TWith }
+  @integer      { mkTokS (\s -> TInt (read s)) }
+  @ident        { mkTokS (\s -> TId s) }
+  eof           { mkTok TEOF }
 
 
 
@@ -53,11 +55,31 @@ mkTokS f (_, _, _, str) len = return $ f (take len str)
 alexEOF :: Alex Token
 alexEOF = return TEOF
 
+
+
 data AlexUserState = AlexUserState {
+  last_token :: Token,
   has_emitted_final_eol :: Bool
 }
 
-alexInitUserState = AlexUserState { has_emitted_final_eol = False }
+getHasEmittedEol :: Alex Bool
+getHasEmittedEol = Alex $ \st@AlexState{alex_ust = ust} -> Right (st, has_emitted_final_eol ust)
+
+setHasEmittedEol :: Bool -> Alex ()
+setHasEmittedEol b = Alex $ \st -> Right (st{alex_ust = (alex_ust st){has_emitted_final_eol = b}}, ())
+
+
+getLastToken :: Alex Token
+getLastToken = Alex $ \st@AlexState{alex_ust = ust} -> Right (st, last_token ust)
+
+setLastToken :: Token -> Alex ()
+setLastToken t = Alex $ \st -> Right (st{alex_ust = (alex_ust st){last_token = t}}, ())
+
+
+alexInitUserState = AlexUserState {
+  has_emitted_final_eol = False,
+  last_token = TEOF
+}
 
 data Token  = TEOL
             | TEOF
@@ -85,8 +107,15 @@ data Token  = TEOL
 loop = do
   t <- alexMonadScan
   if (t == TEOF)
-      then return []
-      else do toks <- loop
+      then do
+        e <- getHasEmittedEol
+        lt <- getLastToken
+        if (e || lt == TEOL) then do setHasEmittedEol True
+                                     return []
+        else do setHasEmittedEol True
+                return [TEOL]
+      else do setLastToken t
+              toks <- loop
               return (t : toks)
 
 

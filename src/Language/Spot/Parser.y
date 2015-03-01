@@ -50,7 +50,7 @@ plus(p):
 
 
 Prog:
-    opt(eol) Expr  { $2 }
+    opt(eol) Expr opt(eol)  { $2 }
 
 Expr:
     Local_binding      { $1 }
