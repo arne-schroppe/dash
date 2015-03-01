@@ -17,3 +17,9 @@ spec = do
     it "parses a symbol" $ do
       parse_string ":spot" `shouldBe` LitSymbol "spot" []
 
+
+    it "parses an anonymous function" $ do
+      parse_string "val (a) = add a 1" `shouldBe`
+        (FunDef ["a"] $
+          FunCall (Var "add") [Var "a", LitNumber 1])
+

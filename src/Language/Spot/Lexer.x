@@ -2,7 +2,7 @@
   module Language.Spot.Lexer where
 }
 
-%wrapper "basic"
+%wrapper "monadUserState"
 
 $newl       = [\n\r]
 $alphanum   = [a-zA-Z0-9]
@@ -18,29 +18,46 @@ $space      = [\ \t]
 
 
 tokens :-
-  $space+         ;
-  "/--" (. | \n)* "--/"
-                  ;
-  "--" .*         ;
-  $newl+          { \s -> TEOL }
-  "("             { \s -> TOpen_Par }
-  ")"             { \s -> TClose_Par }
-  "val"           { \s -> TVal }
-  "module"        { \s -> TModule }
-  "match"         { \s -> TMatch }
-  "do"            { \s -> TDo }
-  ":" @ident      { \s -> TSymbol (tail s) }
-  "="             { \s -> TEqual }
-  "->"            { \s -> TArrow_R }
-  "<-"            { \s -> TArrow_L }
-  "with"          { \s -> TWith }
-  @integer        { \s -> TInt (read s) }
-  @ident          { \s -> TId s }
+<0>  $space+       ;
+<0>  "/--"
+      (. | \n)*
+      "--/"        ;
+<0>  "--" .*       ;
+<0>  $newl+        { mkTok TEOL }
+<0>  "("           { mkTok TOpen_Par }
+<0>  ")"           { mkTok TClose_Par }
+<0>  "val"         { mkTok TVal }
+<0>  "module"      { mkTok TModule }
+<0>  "match"       { mkTok TMatch }
+<0>  "do"          { mkTok TDo }
+<0>  ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
+<0>  "="           { mkTok TEqual }
+<0>  "->"          { mkTok TArrow_R }
+<0>  "<-"          { mkTok TArrow_L }
+<0>  "with"        { mkTok TWith }
+<0>  @integer      { mkTokS (\s -> TInt (read s)) }
+<0>  @ident        { mkTokS (\s -> TId s) }
+<0>  eof           { mkTok TEOF }
 
 
 
 
 {
+
+mkTok :: Token -> AlexInput -> Int -> Alex Token
+mkTok t _ _ = return t
+
+mkTokS :: (String -> Token) -> AlexInput -> Int -> Alex Token
+mkTokS f (_, _, _, str) len = return $ f (take len str)
+
+alexEOF :: Alex Token
+alexEOF = return TEOF
+
+data AlexUserState = AlexUserState {
+  has_emitted_final_eol :: Bool
+}
+
+alexInitUserState = AlexUserState { has_emitted_final_eol = False }
 
 data Token  = TEOL
             | TEOF
@@ -65,8 +82,18 @@ data Token  = TEOL
   deriving (Show, Eq)
 
 
+loop = do
+  t <- alexMonadScan
+  if (t == TEOF)
+      then return []
+      else do toks <- loop
+              return (t : toks)
+
+
 lex :: String -> [Token]
-lex = alexScanTokens
+lex input = case (runAlex input loop) of
+              Right a -> a
+              Left s -> error s
 
 
 }
