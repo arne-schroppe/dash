@@ -4,15 +4,15 @@
 name:                 spot
 version:              0.1.0.0
 synopsis:             A dynamically typed, purely functional programming language
--- description:         
+-- description:
 license:              MIT
 license-file:         LICENSE
 author:               Arne Schroppe
 maintainer:           arne.schroppe@gmx.de
--- copyright:           
+-- copyright:
 category:             Language
 build-type:           Simple
--- extra-source-files:  
+-- extra-source-files:
 cabal-version:        >=1.10
 
 library
@@ -22,6 +22,7 @@ library
   exposed-modules:    Language.Spot.Parser.Lexer
                     , Language.Spot.Parser.Parser
                     , Language.Spot.Parser.Ast
+                    , Language.Spot.CodeGen.CodeGen
   build-depends:      base, array, containers
 
 executable spot

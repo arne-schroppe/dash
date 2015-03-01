@@ -50,6 +50,7 @@ spec = do
       it "doesn't insert EOL if a delimited comment spans several lines but isn't surrounded by EOL" $ do
         L.lex ":a /-- \n --/ :b" `shouldBe` [TSymbol "a", TSymbol "b", TEOL]
 
+
     it "lexes a symbol" $ do
       L.lex " :spot " `shouldBe` [TSymbol "spot", TEOL]
 

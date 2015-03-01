@@ -108,11 +108,11 @@ Anon_module:
     module Block_start star(Definition) Block_end  { Module $3 }
 
 Literal:
-    Symbol_literal       { $1 }
+    Symbol_literal      { $1 }
   | Non_symbol_literal  { $1 }
 
 Non_symbol_literal:
-    Number_literal   { $1  }
+    Number_literal  { $1  }
   | String_literal  { $1 }
 
 Complex_symbol:
@@ -122,7 +122,7 @@ Symbol_literal:
     symbol                   { LitSymbol $1 [] }
 
 Number_literal:
-    int              { LitNumber $1 }
+    int             { LitNumber $1 }
 
 String_literal:
     string          { LitString $1 }
@@ -135,7 +135,7 @@ Fun_call:
                                                             FunCall $1 ($2 ++ af') }
 
 Fun_args:
-    Simple_expr          { $1 }
+    Simple_expr         { $1 }
 
 Do_expr:
   {- TODO id should be a qid -}
@@ -164,7 +164,7 @@ Match_line:
     Pattern '->' Expr Line_end { ($1, $3) }
 
 Line_end:
-    eol  { }
+    eol  {}
   | ';'  {}
 
 Pattern:
@@ -180,10 +180,10 @@ Symbol_pattern:
     symbol star(Simple_pattern) { PatSymbol $1 $2 }
 
 Qid:
-    id   { Var $1 }
+    id  { Var $1 }
   | qid { let (nss, id) = $1 in
           foldl (\ e ns -> Namespace ns e) (Var id) (reverse nss)
-            }
+        }
 
 
 

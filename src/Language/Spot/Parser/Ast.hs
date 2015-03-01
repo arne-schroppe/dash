@@ -7,8 +7,8 @@ data Pattern
     deriving (Show, Eq)
 
 
-data Binding 
-    = Binding String Expr
+data Binding
+    = Binding String Expr        -- name, body
     deriving (Show, Eq)
 
 
@@ -18,7 +18,7 @@ data Expr
     | LitSymbol String [Expr]
     | Var String
     | Namespace String Expr
-    | FunDef [String] Expr          -- arguments, body
+    | FunDef [String] Expr       -- arguments, body
     | FunCall Expr [Expr]
     | LocalBinding Binding Expr  -- binding, body
     | Module [Binding]
