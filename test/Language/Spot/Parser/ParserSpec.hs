@@ -2,7 +2,7 @@ module Language.Spot.Parser.ParserSpec where
 
 import Language.Spot.Parser.Parser
 import Language.Spot.Parser.Lexer as L
-import Language.Spot.Parser.Ast
+import Language.Spot.IR.Ast
 
 import Test.Hspec
 import Debug.Trace

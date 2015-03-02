@@ -1,6 +1,6 @@
 module Language.Spot.CodeGen.CodeGen where
 
-import Language.Spot.Parser.Ast
+import Language.Spot.IR.Ast
 
 
 data Opcode = Opcode ()

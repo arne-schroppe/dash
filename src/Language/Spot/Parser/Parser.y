@@ -2,7 +2,7 @@
 module Language.Spot.Parser.Parser where
 
 import Language.Spot.Parser.Lexer
-import Language.Spot.Parser.Ast
+import Language.Spot.IR.Ast
 
 
 }
