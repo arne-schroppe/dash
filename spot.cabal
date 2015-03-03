@@ -26,7 +26,11 @@ library
                     , Language.Spot.IR.Opcode
                     , Language.Spot.VM.OpcodeAsm
                     , Language.Spot.VM.VM
+                    , Language.Spot.VM.VMRaw
   build-depends:      base, array, containers
+  include-dirs:       vm
+  c-sources:          vm/vm.c
+                    , vm/heap.c
 
 executable spot
   main-is:            Main.hs
