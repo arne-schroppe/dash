@@ -7,7 +7,7 @@ import Data.Word
 data Opcode =
     Op_halt
   | Op_load_i Word32 Word32
-  | Op_load_f Word32 Word32
+  | Op_load_f Word32 Int
   | Op_load_s Word32 Word32
   | Op_load_sd Word32 Word32
   | Op_load_c Word32 Word32
