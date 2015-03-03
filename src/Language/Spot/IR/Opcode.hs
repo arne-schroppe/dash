@@ -1,20 +1,24 @@
 module Language.Spot.IR.Opcode where
 
+import Data.Word
+
+-- TODO make this more type-safe, newtype that word32
+
 data Opcode =
     Op_halt
-  | Op_load_i Int Int
-  | Op_load_f Int Int
-  | Op_load_s Int Int
-  | Op_load_sd Int Int
-  | Op_load_c Int Int
-  | Op_add Int Int Int
-  | Op_sub Int Int Int
-  | Op_move Int Int
-  | Op_call Int Int Int
-  | Op_call_cl Int Int Int
+  | Op_load_i Word32 Word32
+  | Op_load_f Word32 Word32
+  | Op_load_s Word32 Word32
+  | Op_load_sd Word32 Word32
+  | Op_load_c Word32 Word32
+  | Op_add Word32 Word32 Word32
+  | Op_sub Word32 Word32 Word32
+  | Op_move Word32 Word32
+  | Op_call Word32 Word32 Word32
+  | Op_call_cl Word32 Word32 Word32
   | Op_ret
-  | Op_make_cl Int Int Int
-  | Op_jmp Int
-  | Op_match Int Int Int
+  | Op_make_cl Word32 Word32 Word32
+  | Op_jmp Word32
+  | Op_match Word32 Word32 Word32
   deriving (Show)
 
