@@ -9,6 +9,8 @@ import Foreign.Ptr
 import Foreign.C
 
 executeVMProgram :: [Word32] -> [Word32] -> IO Word32
-executeVMProgram prog ctable = withArray (map CUInt prog) (\p -> vmExecuteForeign p nullPtr) >>= return
+executeVMProgram prog ctable = withArray (map CUInt prog) (\progPtr ->
+                               withArray (map CUInt ctable) (\ctablePtr ->
+                               vmExecuteForeign progPtr ctablePtr)) >>= return
 
 

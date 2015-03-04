@@ -110,10 +110,10 @@ spec = do
       (runProg prog) `shouldReturn` (vmEncode $ VMSymbol 12)
 
     it "loads a constant" $ do
-      let ctable = [[ vmEncode $ VMNumber 33 ]]
+      let ctable = [ vmEncode $ VMNumber 33 ]
       let prog = [[ Op_load_c 0 0,
                     Op_halt ]]
-      (runProg prog) `shouldReturn` (vmEncode $ VMSymbol 33)
+      (runProgTbl ctable prog) `shouldReturn` (33)
 
     it "loads a data symbol" $ do
       let prog = [[ Op_load_sd 0 1,
