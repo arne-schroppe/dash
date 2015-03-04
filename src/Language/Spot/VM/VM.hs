@@ -1,6 +1,7 @@
 module Language.Spot.VM.VM where
 
 import Language.Spot.VM.VMRaw
+import Language.Spot.VM.VMBits
 import Data.Word
 
 import Foreign.Marshal.Array

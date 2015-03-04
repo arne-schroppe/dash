@@ -1,4 +1,7 @@
-module Language.Spot.VM.OpcodeAsm where
+module Language.Spot.VM.OpcodeAsm (
+  assemble
+
+) where
 
 -- Translates [[Opcode]] to data for the virtual machine
 
