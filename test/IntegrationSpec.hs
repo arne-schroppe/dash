@@ -6,7 +6,7 @@ import Test.Hspec
 -- we don't care about the opcodes it churns out, as long as everything behaves as expected.
 
 import Language.Spot.API
-import Language.Spot.VM.VMBits
+import Language.Spot.VM.Bits
 
 
 spec :: Spec

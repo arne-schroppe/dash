@@ -8,7 +8,7 @@ import Data.Word
 import Language.Spot.IR.Opcode
 import Language.Spot.VM.OpcodeAsm
 import Language.Spot.VM.VM
-import Language.Spot.VM.VMBits
+import Language.Spot.VM.Bits
 
 runProg :: [[Opcode]] -> IO Word32
 runProg = runProgTbl []
@@ -131,7 +131,7 @@ spec = do
       (runProg prog) `shouldReturn` 70
 
     it "matches a number" $ do
-      let ctable = [ vmMatchHeader 2,
+      let ctable = [ mkMatchHeader 2,
                      encode $ VMNumber 11,
                      encode $ VMNumber 22 ]
       let prog = [[ Op_load_i 0 600,
@@ -147,7 +147,7 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a symbol" $ do
-      let ctable = [ vmMatchHeader 2,
+      let ctable = [ mkMatchHeader 2,
                      encode $ VMSymbol 11,
                      encode $ VMSymbol 22 ]
       let prog = [[ Op_load_i 0 600,
@@ -163,16 +163,16 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a data symbol" $ do
-      let ctable = [ vmMatchHeader 2,
+      let ctable = [ mkMatchHeader 2,
                      encode $ VMDataSymbol 3,
                      encode $ VMDataSymbol 6,
-                     vmDataSymbolHeader 1 2,
+                     mkDataSymbolHeader 1 2,
                      encode $ VMNumber 55,
                      encode $ VMNumber 66,
-                     vmDataSymbolHeader 1 2,
+                     mkDataSymbolHeader 1 2,
                      encode $ VMNumber 55,
                      encode $ VMNumber 77,
-                     vmDataSymbolHeader 1 2,
+                     mkDataSymbolHeader 1 2,
                      encode $ VMNumber 55,
                      encode $ VMNumber 77 ]
       let prog = [[ Op_load_i 0 600,
@@ -188,16 +188,16 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "binds a value in a match" $ do
-      let ctable = [ vmMatchHeader 2,
+      let ctable = [ mkMatchHeader 2,
                      encode $ VMDataSymbol 3,
                      encode $ VMDataSymbol 6,
-                     vmDataSymbolHeader 1 2,
+                     mkDataSymbolHeader 1 2,
                      encode $ VMNumber 55,
                      encode $ VMNumber 66,
-                     vmDataSymbolHeader 1 2,
+                     mkDataSymbolHeader 1 2,
                      encode $ VMNumber 55,
-                     vmMatchVar 1,
-                     vmDataSymbolHeader 1 2,
+                     mkMatchVar 1,
+                     mkDataSymbolHeader 1 2,
                      encode $ VMNumber 55,
                      encode $ VMNumber 77 ]
       let prog = [[ Op_load_i 0 600,

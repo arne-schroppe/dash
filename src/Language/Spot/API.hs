@@ -4,7 +4,8 @@ import Language.Spot.Parser.Lexer as L
 import Language.Spot.Parser.Parser
 import Language.Spot.CodeGen.CodeGen
 import Language.Spot.VM.OpcodeAsm
-import Language.Spot.VM.VMBits
+import Language.Spot.VM.Types
+import Language.Spot.VM.Bits
 import Language.Spot.VM.VM
 
 (|>) = flip ($)

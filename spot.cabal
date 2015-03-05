@@ -26,8 +26,8 @@ library
                     , Language.Spot.IR.Opcode
                     , Language.Spot.VM.OpcodeAsm
                     , Language.Spot.VM.VM
-                    , Language.Spot.VM.VMRaw
-                    , Language.Spot.VM.VMBits
+                    , Language.Spot.VM.Bits
+                    , Language.Spot.VM.Types
                     , Language.Spot.API
   build-depends:      base, array, containers
   include-dirs:       vm

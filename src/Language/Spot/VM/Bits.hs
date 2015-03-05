@@ -1,21 +1,18 @@
-module Language.Spot.VM.VMBits (
+module Language.Spot.VM.Bits (
   VMValue(..)
 , encode
 , decode
-, vmMatchHeader
-, vmMatchVar
-, vmDataSymbolHeader
+, mkMatchHeader
+, mkMatchVar
+, mkDataSymbolHeader
 
 ) where
 
 import Data.Word
 import Data.Bits
 
-data VMValue =
-    VMNumber Word32 -- Number
-  | VMSymbol Word32 -- symbolId
-  | VMDataSymbol Word32 -- address
-  deriving (Show, Eq)
+import Language.Spot.VM.Types
+
 
 encode :: VMValue -> Word32
 encode v =
@@ -35,19 +32,19 @@ decode w =
                     | t==tagDataSymbol = VMDataSymbol v
                     | otherwise    = error $ "Unknown tag " ++ (show t)
 
-vmMatchHeader :: Word32 -> Word32
-vmMatchHeader n = matchData 1 n
+mkMatchHeader :: Word32 -> Word32
+mkMatchHeader n = matchData 1 n
 
-vmMatchVar :: Word32 -> Word32
-vmMatchVar n = matchData 0 n
+mkMatchVar :: Word32 -> Word32
+mkMatchVar n = matchData 0 n
 
 matchData mtag n =
   let cropped = n .&. 0x7FFFFFF in
   let mtagVal = mtag `shiftL` (32 - 5) in
   makeVMValue tagMatchData (cropped .|. mtagVal)
 
-vmDataSymbolHeader :: Word32 -> Word32 -> Word32
-vmDataSymbolHeader symId n = (symId `shiftL` 16) .|. n
+mkDataSymbolHeader :: Word32 -> Word32 -> Word32
+mkDataSymbolHeader symId n = (symId `shiftL` 16) .|. n
 
 
 makeVMValue :: Word32 -> Word32 -> Word32
