@@ -1,4 +1,4 @@
-module Language.Spot.Integration.IntegrationSpec where
+module IntegrationSpec where
 
 import Test.Hspec
 

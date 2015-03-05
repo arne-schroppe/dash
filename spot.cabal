@@ -51,5 +51,6 @@ test-suite test-spot
                     , hspec
                     , hspec-core
                     , containers
+                    , QuickCheck
 
 

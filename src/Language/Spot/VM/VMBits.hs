@@ -18,13 +18,22 @@ data VMValue =
   deriving (Show, Eq)
 
 encode :: VMValue -> Word32
-encode v = case v of
-  VMNumber n -> makeVMValue tagNumber n
-  VMSymbol i -> makeVMValue tagSymbol i
-  VMDataSymbol a -> makeVMValue tagDataSymbol a
+encode v =
+  case v of
+  VMNumber n -> makeVMValue tagNumber $ ensureRange n
+  VMSymbol i -> makeVMValue tagSymbol $ ensureRange i
+  VMDataSymbol a -> makeVMValue tagDataSymbol $ ensureRange a
+  where ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
 
 decode :: Word32 -> VMValue
-decode w = VMNumber 0
+decode w =
+  let tag = getTag w in
+  let value = getValue w in
+  decode' tag value
+  where decode' t v | t==tagNumber = VMNumber v
+                    | t==tagSymbol = VMSymbol v
+                    | t==tagDataSymbol = VMDataSymbol v
+                    | otherwise    = error $ "Unknown tag " ++ (show t)
 
 vmMatchHeader :: Word32 -> Word32
 vmMatchHeader n = matchData 1 n
@@ -43,6 +52,10 @@ vmDataSymbolHeader symId n = (symId `shiftL` 16) .|. n
 
 makeVMValue :: Word32 -> Word32 -> Word32
 makeVMValue tag i = i .|. (tag `shiftL` (32 - 4))
+
+
+getTag v = (v .&. 0xF0000000) `rotateL` 4
+getValue v = v .&. 0x0FFFFFFF
 
 
 tagNumber = 0x0 :: Word32

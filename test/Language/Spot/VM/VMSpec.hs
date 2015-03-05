@@ -1,6 +1,7 @@
 module Language.Spot.VM.VMSpec where
 
 import Test.Hspec
+import Test.QuickCheck
 
 import Data.Word
 
@@ -212,4 +213,9 @@ spec = do
                     Op_halt ]]
       (runProgTbl ctable prog) `shouldReturn` 77
 
+    it "decodes a number" $ property $
+      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encode) (VMNumber x) == (VMNumber x)
+
+    it "decodes a symbol" $ property $
+      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encode) (VMSymbol x) == (VMSymbol x)
 

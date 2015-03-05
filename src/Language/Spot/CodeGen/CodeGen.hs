@@ -6,4 +6,4 @@ import Language.Spot.IR.Opcode
 
 
 generateCode :: Expr -> ([[Opcode]], ConstTable)
-generateCode = error "not implemented"
+generateCode ast = ([[Op_halt]], ConstTable [])
