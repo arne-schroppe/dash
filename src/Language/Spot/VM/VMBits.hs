@@ -1,4 +1,12 @@
-module Language.Spot.VM.VMBits where
+module Language.Spot.VM.VMBits (
+  VMValue(..)
+, encode
+, decode
+, vmMatchHeader
+, vmMatchVar
+, vmDataSymbolHeader
+
+) where
 
 import Data.Word
 import Data.Bits
@@ -7,12 +15,16 @@ data VMValue =
     VMNumber Word32 -- Number
   | VMSymbol Word32 -- symbolId
   | VMDataSymbol Word32 -- address
+  deriving (Show, Eq)
 
-vmEncode :: VMValue -> Word32
-vmEncode v = case v of
+encode :: VMValue -> Word32
+encode v = case v of
   VMNumber n -> makeVMValue tagNumber n
   VMSymbol i -> makeVMValue tagSymbol i
   VMDataSymbol a -> makeVMValue tagDataSymbol a
+
+decode :: Word32 -> VMValue
+decode w = VMNumber 0
 
 vmMatchHeader :: Word32 -> Word32
 vmMatchHeader n = matchData 1 n

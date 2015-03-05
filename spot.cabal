@@ -28,6 +28,7 @@ library
                     , Language.Spot.VM.VM
                     , Language.Spot.VM.VMRaw
                     , Language.Spot.VM.VMBits
+                    , Language.Spot.API
   build-depends:      base, array, containers
   include-dirs:       vm
   c-sources:          vm/vm.c

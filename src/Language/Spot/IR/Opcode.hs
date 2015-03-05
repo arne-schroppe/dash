@@ -4,6 +4,8 @@ import Data.Word
 
 -- TODO make this more type-safe, newtype that word32
 
+newtype ConstTable = ConstTable { unConstTable :: [Word32] }
+
 data Opcode =
     Op_halt
   | Op_load_i Word32 Word32

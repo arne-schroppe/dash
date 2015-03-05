@@ -11,8 +11,9 @@ import Data.Bits
 import Language.Spot.IR.Opcode
 
 
-assemble :: [[Opcode]] -> [Word32]
-assemble funcs = map (compileOpcode funcAddrs) opcodes
+assemble :: [[Opcode]] -> ConstTable -> ([Word32], [Word32])
+assemble funcs ctable =
+  (map (compileOpcode funcAddrs) opcodes, unConstTable ctable)
   where opcodes = fst combined
         funcAddrs = snd combined
         combined = combineFunctions funcs

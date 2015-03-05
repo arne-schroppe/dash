@@ -13,8 +13,8 @@ runProg :: [[Opcode]] -> IO Word32
 runProg = runProgTbl []
 
 runProgTbl :: [Word32] -> [[Opcode]] -> IO Word32
-runProgTbl tbl prog = executeVMProgram asm tbl
-  where asm = assemble prog
+runProgTbl tbl prog = execute asm tbl'
+  where (asm, tbl') = assemble prog $ ConstTable tbl
 
 
 spec :: Spec
@@ -107,10 +107,10 @@ spec = do
     it "loads a symbol into a register" $ do
       let prog = [[ Op_load_s 0 12,
                     Op_halt]]
-      (runProg prog) `shouldReturn` (vmEncode $ VMSymbol 12)
+      (runProg prog) `shouldReturn` (encode $ VMSymbol 12)
 
     it "loads a constant" $ do
-      let ctable = [ vmEncode $ VMNumber 33 ]
+      let ctable = [ encode $ VMNumber 33 ]
       let prog = [[ Op_load_c 0 0,
                     Op_halt ]]
       (runProgTbl ctable prog) `shouldReturn` (33)
@@ -118,7 +118,7 @@ spec = do
     it "loads a data symbol" $ do
       let prog = [[ Op_load_sd 0 1,
                     Op_halt ]]
-      (runProg prog) `shouldReturn` (vmEncode $ VMDataSymbol 1)
+      (runProg prog) `shouldReturn` (encode $ VMDataSymbol 1)
 
 
     it "jumps forward" $ do
@@ -131,8 +131,8 @@ spec = do
 
     it "matches a number" $ do
       let ctable = [ vmMatchHeader 2,
-                     vmEncode $ VMNumber 11,
-                     vmEncode $ VMNumber 22 ]
+                     encode $ VMNumber 11,
+                     encode $ VMNumber 22 ]
       let prog = [[ Op_load_i 0 600,
                     Op_load_i 1 22,
                     Op_load_i 2 0,
@@ -147,8 +147,8 @@ spec = do
 
     it "matches a symbol" $ do
       let ctable = [ vmMatchHeader 2,
-                     vmEncode $ VMSymbol 11,
-                     vmEncode $ VMSymbol 22 ]
+                     encode $ VMSymbol 11,
+                     encode $ VMSymbol 22 ]
       let prog = [[ Op_load_i 0 600,
                     Op_load_s 1 22,
                     Op_load_i 2 0,
@@ -163,17 +163,17 @@ spec = do
 
     it "matches a data symbol" $ do
       let ctable = [ vmMatchHeader 2,
-                     vmEncode $ VMDataSymbol 3,
-                     vmEncode $ VMDataSymbol 6,
+                     encode $ VMDataSymbol 3,
+                     encode $ VMDataSymbol 6,
                      vmDataSymbolHeader 1 2,
-                     vmEncode $ VMNumber 55,
-                     vmEncode $ VMNumber 66,
+                     encode $ VMNumber 55,
+                     encode $ VMNumber 66,
                      vmDataSymbolHeader 1 2,
-                     vmEncode $ VMNumber 55,
-                     vmEncode $ VMNumber 77,
+                     encode $ VMNumber 55,
+                     encode $ VMNumber 77,
                      vmDataSymbolHeader 1 2,
-                     vmEncode $ VMNumber 55,
-                     vmEncode $ VMNumber 77 ]
+                     encode $ VMNumber 55,
+                     encode $ VMNumber 77 ]
       let prog = [[ Op_load_i 0 600,
                     Op_load_sd 1 9,
                     Op_load_i 2 0,
@@ -188,17 +188,17 @@ spec = do
 
     it "binds a value in a match" $ do
       let ctable = [ vmMatchHeader 2,
-                     vmEncode $ VMDataSymbol 3,
-                     vmEncode $ VMDataSymbol 6,
+                     encode $ VMDataSymbol 3,
+                     encode $ VMDataSymbol 6,
                      vmDataSymbolHeader 1 2,
-                     vmEncode $ VMNumber 55,
-                     vmEncode $ VMNumber 66,
+                     encode $ VMNumber 55,
+                     encode $ VMNumber 66,
                      vmDataSymbolHeader 1 2,
-                     vmEncode $ VMNumber 55,
+                     encode $ VMNumber 55,
                      vmMatchVar 1,
                      vmDataSymbolHeader 1 2,
-                     vmEncode $ VMNumber 55,
-                     vmEncode $ VMNumber 77 ]
+                     encode $ VMNumber 55,
+                     encode $ VMNumber 77 ]
       let prog = [[ Op_load_i 0 600,
                     Op_load_i 4 66,
                     Op_load_sd 1 9,
