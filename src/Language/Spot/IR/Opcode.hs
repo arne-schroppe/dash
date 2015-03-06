@@ -2,9 +2,10 @@ module Language.Spot.IR.Opcode where
 
 import Data.Word
 
--- TODO make this more type-safe, newtype that word32
+-- TODO make this more type-safe, type that word32
 
-newtype ConstTable = ConstTable { unConstTable :: [Word32] }
+type ConstTable = [Word32]
+type SymbolNameList = [String]
 
 data Opcode =
     Op_halt

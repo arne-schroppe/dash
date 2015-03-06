@@ -14,6 +14,7 @@ import Data.Word
 import Data.Bits
 
 import Language.Spot.VM.Types
+import Language.Spot.IR.Opcode
 
 
 encNumber :: Word32 -> Word32
@@ -29,13 +30,13 @@ ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" e
 
 
 
-decode :: Word32 -> VMValue
-decode w =
+decode :: Word32 -> SymbolNameList -> VMValue
+decode w symNames =
   let tag = getTag w in
   let value = getValue w in
   decode' tag value
   where decode' t v | t==tagNumber = VMNumber v
-                    | t==tagSymbol = VMSymbol v []
+                    | t==tagSymbol = VMSymbol (symNames !! (fromIntegral v)) [] -- TODO use symbol-name-table to determine name
                  -- | t==tagDataSymbol = VMSymbol v [] -- TODO the value in a data symbol is an address, also add arguments
                     | otherwise    = error $ "Unknown tag " ++ (show t)
 

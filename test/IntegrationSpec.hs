@@ -16,3 +16,7 @@ spec = do
     it "evaluates an integer" $ do
       let result = run "4815"
       result `shouldReturn` VMNumber 4815
+
+    it "evaluates a symbol" $ do
+      let result = run ":spot"
+      result `shouldReturn` VMSymbol "spot" []
