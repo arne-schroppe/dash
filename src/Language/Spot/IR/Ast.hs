@@ -1,5 +1,6 @@
 module Language.Spot.IR.Ast where
 
+
 data Pattern
     = PatNumber Int
     | PatVar String

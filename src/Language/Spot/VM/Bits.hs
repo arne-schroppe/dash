@@ -1,10 +1,12 @@
 module Language.Spot.VM.Bits (
   VMValue(..)
-, encode
+, encNumber
+, encSymbol
+, encDataSymbol
 , decode
-, mkMatchHeader
-, mkMatchVar
-, mkDataSymbolHeader
+, encMatchHeader
+, encMatchVar
+, encDataSymbolHeader
 
 ) where
 
@@ -14,13 +16,18 @@ import Data.Bits
 import Language.Spot.VM.Types
 
 
-encode :: VMValue -> Word32
-encode v =
-  case v of
-  VMNumber n -> makeVMValue tagNumber $ ensureRange n
-  VMSymbol i -> makeVMValue tagSymbol $ ensureRange i
-  VMDataSymbol a -> makeVMValue tagDataSymbol $ ensureRange a
-  where ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
+encNumber :: Word32 -> Word32
+encNumber = makeVMValue tagNumber . ensureRange
+
+encSymbol :: Word32 -> Word32
+encSymbol = makeVMValue tagSymbol . ensureRange
+
+encDataSymbol :: Word32 -> Word32
+encDataSymbol = makeVMValue tagDataSymbol . ensureRange
+
+ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
+
+
 
 decode :: Word32 -> VMValue
 decode w =
@@ -28,23 +35,23 @@ decode w =
   let value = getValue w in
   decode' tag value
   where decode' t v | t==tagNumber = VMNumber v
-                    | t==tagSymbol = VMSymbol v
-                    | t==tagDataSymbol = VMDataSymbol v
+                    | t==tagSymbol = VMSymbol v []
+                 -- | t==tagDataSymbol = VMSymbol v [] -- TODO the value in a data symbol is an address, also add arguments
                     | otherwise    = error $ "Unknown tag " ++ (show t)
 
-mkMatchHeader :: Word32 -> Word32
-mkMatchHeader n = matchData 1 n
+encMatchHeader :: Word32 -> Word32
+encMatchHeader n = matchData 1 n
 
-mkMatchVar :: Word32 -> Word32
-mkMatchVar n = matchData 0 n
+encMatchVar :: Word32 -> Word32
+encMatchVar n = matchData 0 n
 
 matchData mtag n =
   let cropped = n .&. 0x7FFFFFF in
   let mtagVal = mtag `shiftL` (32 - 5) in
   makeVMValue tagMatchData (cropped .|. mtagVal)
 
-mkDataSymbolHeader :: Word32 -> Word32 -> Word32
-mkDataSymbolHeader symId n = (symId `shiftL` 16) .|. n
+encDataSymbolHeader :: Word32 -> Word32 -> Word32
+encDataSymbolHeader symId n = (symId `shiftL` 16) .|. n
 
 
 makeVMValue :: Word32 -> Word32 -> Word32

@@ -10,9 +10,12 @@ import Language.Spot.VM.VM
 
 (|>) = flip ($)
 
+(||>) a b = a |> (uncurry b)
+
+-- TODO have separate compile and run and add methods (add is for repl)
 
 run :: String -> IO VMValue
 run prog = do
-  result <- prog |> L.lex |> parse |> generateCode |> (uncurry assemble) |> (uncurry execute)
+  result <- prog |> L.lex |> parse |> generateCode ||> assemble ||> execute
   return $ decode result
 

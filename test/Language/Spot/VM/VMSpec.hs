@@ -108,10 +108,10 @@ spec = do
     it "loads a symbol into a register" $ do
       let prog = [[ Op_load_s 0 12,
                     Op_halt]]
-      (runProg prog) `shouldReturn` (encode $ VMSymbol 12)
+      (runProg prog) `shouldReturn` (encSymbol 12)
 
     it "loads a constant" $ do
-      let ctable = [ encode $ VMNumber 33 ]
+      let ctable = [ encNumber 33 ]
       let prog = [[ Op_load_c 0 0,
                     Op_halt ]]
       (runProgTbl ctable prog) `shouldReturn` (33)
@@ -119,7 +119,7 @@ spec = do
     it "loads a data symbol" $ do
       let prog = [[ Op_load_sd 0 1,
                     Op_halt ]]
-      (runProg prog) `shouldReturn` (encode $ VMDataSymbol 1)
+      (runProg prog) `shouldReturn` (encDataSymbol 1)
 
 
     it "jumps forward" $ do
@@ -131,9 +131,9 @@ spec = do
       (runProg prog) `shouldReturn` 70
 
     it "matches a number" $ do
-      let ctable = [ mkMatchHeader 2,
-                     encode $ VMNumber 11,
-                     encode $ VMNumber 22 ]
+      let ctable = [ encMatchHeader 2,
+                     encNumber 11,
+                     encNumber 22 ]
       let prog = [[ Op_load_i 0 600,
                     Op_load_i 1 22,
                     Op_load_i 2 0,
@@ -147,9 +147,9 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a symbol" $ do
-      let ctable = [ mkMatchHeader 2,
-                     encode $ VMSymbol 11,
-                     encode $ VMSymbol 22 ]
+      let ctable = [ encMatchHeader 2,
+                     encSymbol 11,
+                     encSymbol 22 ]
       let prog = [[ Op_load_i 0 600,
                     Op_load_s 1 22,
                     Op_load_i 2 0,
@@ -163,18 +163,18 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a data symbol" $ do
-      let ctable = [ mkMatchHeader 2,
-                     encode $ VMDataSymbol 3,
-                     encode $ VMDataSymbol 6,
-                     mkDataSymbolHeader 1 2,
-                     encode $ VMNumber 55,
-                     encode $ VMNumber 66,
-                     mkDataSymbolHeader 1 2,
-                     encode $ VMNumber 55,
-                     encode $ VMNumber 77,
-                     mkDataSymbolHeader 1 2,
-                     encode $ VMNumber 55,
-                     encode $ VMNumber 77 ]
+      let ctable = [ encMatchHeader 2,
+                     encDataSymbol 3,
+                     encDataSymbol 6,
+                     encDataSymbolHeader 1 2,
+                     encNumber 55,
+                     encNumber 66,
+                     encDataSymbolHeader 1 2,
+                     encNumber 55,
+                     encNumber 77,
+                     encDataSymbolHeader 1 2,
+                     encNumber 55,
+                     encNumber 77 ]
       let prog = [[ Op_load_i 0 600,
                     Op_load_sd 1 9,
                     Op_load_i 2 0,
@@ -188,18 +188,18 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "binds a value in a match" $ do
-      let ctable = [ mkMatchHeader 2,
-                     encode $ VMDataSymbol 3,
-                     encode $ VMDataSymbol 6,
-                     mkDataSymbolHeader 1 2,
-                     encode $ VMNumber 55,
-                     encode $ VMNumber 66,
-                     mkDataSymbolHeader 1 2,
-                     encode $ VMNumber 55,
-                     mkMatchVar 1,
-                     mkDataSymbolHeader 1 2,
-                     encode $ VMNumber 55,
-                     encode $ VMNumber 77 ]
+      let ctable = [ encMatchHeader 2,
+                     encDataSymbol 3,
+                     encDataSymbol 6,
+                     encDataSymbolHeader 1 2,
+                     encNumber 55,
+                     encNumber 66,
+                     encDataSymbolHeader 1 2,
+                     encNumber 55,
+                     encMatchVar 1,
+                     encDataSymbolHeader 1 2,
+                     encNumber 55,
+                     encNumber 77 ]
       let prog = [[ Op_load_i 0 600,
                     Op_load_i 4 66,
                     Op_load_sd 1 9,
@@ -214,8 +214,8 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` 77
 
     it "decodes a number" $ property $
-      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encode) (VMNumber x) == (VMNumber x)
+      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encNumber) x == (VMNumber x)
 
     it "decodes a symbol" $ property $
-      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encode) (VMSymbol x) == (VMSymbol x)
+      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encSymbol) x == (VMSymbol x [])
 
