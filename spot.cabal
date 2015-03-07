@@ -29,7 +29,7 @@ library
                     , Language.Spot.VM.Bits
                     , Language.Spot.VM.Types
                     , Language.Spot.API
-  build-depends:      base, array, containers
+  build-depends:      base, array, containers, mtl
   include-dirs:       vm
   c-sources:          vm/vm.c
                     , vm/heap.c
