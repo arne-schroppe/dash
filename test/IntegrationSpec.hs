@@ -20,3 +20,7 @@ spec = do
     it "evaluates a symbol" $ do
       let result = run ":spot"
       result `shouldReturn` VMSymbol "spot" []
+
+    it "applies built-in add function" $ do
+      let result = run "add 2 3"
+      result `shouldReturn` VMNumber 5

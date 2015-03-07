@@ -25,16 +25,26 @@ addFunction e = do
   compileExpression e
 
 compileExpression e = case e of
-  LitNumber n   -> make_lit_number n
-  LitSymbol s _ -> make_lit_symbol s
+  LitNumber n   -> makeLitNumber n
+  LitSymbol s _ -> makeLitSymbol s
+  FunCall name args -> makeFunCall name args
   _ -> error "Unknown expression"
 
-make_lit_number n =
+makeLitNumber n =
   addOpcodes [Op_load_i 0 (fromIntegral n)]
 
-make_lit_symbol s = do
+makeLitSymbol s = do
   addOpcodes [Op_load_s 0 0]
   addSymbolName s
+
+makeFunCall (Var "add") ((LitNumber a):(LitNumber b):[]) = 
+  addOpcodes [
+    Op_load_i 1 (fromIntegral a), -- TODO check range
+    Op_load_i 2 (fromIntegral b),
+    Op_add 0 1 2 
+  ]
+
+makeFunCall _ _ = error "unknown function"
 
 
 beginFunction = modifyOpcodes (\opcs -> [] : opcs)
