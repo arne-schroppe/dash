@@ -16,6 +16,6 @@ import Language.Spot.VM.VM
 
 run :: String -> IO VMValue
 run prog = do
-  result <- prog |> L.lex |> parse |> generateCode ||> assemble ||> execute
+  result <- prog |> L.lex |> parse |> compile ||> assemble ||> execute
   return $ (uncurry decode) result
 

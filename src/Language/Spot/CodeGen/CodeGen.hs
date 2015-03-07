@@ -1,4 +1,6 @@
-module Language.Spot.CodeGen.CodeGen where
+module Language.Spot.CodeGen.CodeGen (
+  compile
+) where
 
 import Language.Spot.IR.Ast
 import Language.Spot.IR.Opcode
@@ -13,8 +15,8 @@ data Code = Code {
 }
 
 
-generateCode :: Expr -> ([[Opcode]], ConstTable, SymbolNameList)
-generateCode ast = (opcodes result, ctable result, reverse $ symnames result) --todo reverse most of this
+compile :: Expr -> ([[Opcode]], ConstTable, SymbolNameList)
+compile ast = (opcodes result, ctable result, reverse $ symnames result) --todo reverse most of this
   where result = execState (addFunction ast) startState
 
 startState = Code { opcodes = [], ctable = [], symnames = [] }
