@@ -37,14 +37,23 @@ makeLitSymbol s = do
   addOpcodes [Op_load_s 0 0]
   addSymbolName s
 
-makeFunCall (Var "add") ((LitNumber a):(LitNumber b):[]) = 
-  addOpcodes [
-    Op_load_i 1 (fromIntegral a), -- TODO check range
-    Op_load_i 2 (fromIntegral b),
-    Op_add 0 1 2 
-  ]
+
+makeFunCall (Var "add") ((LitNumber op1):(LitNumber op2):[]) =
+  makeMathFunc Op_add op1 op2
+
+makeFunCall (Var "sub") ((LitNumber op1):(LitNumber op2):[]) =
+  makeMathFunc Op_sub op1 op2
 
 makeFunCall _ _ = error "unknown function"
+
+
+makeMathFunc mf op1 op2 =
+  addOpcodes [
+    Op_load_i 1 (fromIntegral op1), -- TODO check range
+    Op_load_i 2 (fromIntegral op2),
+    mf 0 1 2
+  ]
+
 
 
 beginFunction = modifyOpcodes (\opcs -> [] : opcs)

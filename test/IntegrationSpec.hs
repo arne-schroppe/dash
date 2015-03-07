@@ -24,3 +24,7 @@ spec = do
     it "applies built-in add function" $ do
       let result = run "add 2 3"
       result `shouldReturn` VMNumber 5
+
+    it "applies built-in subtract function" $ do
+      let result = run "sub 7 3"
+      result `shouldReturn` VMNumber 4
