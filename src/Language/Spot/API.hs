@@ -13,9 +13,10 @@ import Language.Spot.VM.VM
 (||>) (a, b, c) d = d a b c
 
 -- TODO have separate compile and run and add methods (add is for repl)
+-- TODO in cabal only export API module and reexport all relevant types and functions here (or rename this module)
 
 run :: String -> IO VMValue
 run prog = do
-  result <- prog |> L.lex |> parse |> compile ||> assemble ||> execute
-  return $ (uncurry decode) result
+  (value, ctable, symNames) <- prog |> L.lex |> parse |> compile ||> assemble ||> execute
+  return $ decode value ctable symNames
 

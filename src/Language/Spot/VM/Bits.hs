@@ -30,15 +30,23 @@ ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" e
 
 
 
-decode :: Word32 -> SymbolNameList -> VMValue
-decode w symNames =
+decode :: Word32 -> ConstTable -> SymbolNameList -> VMValue
+decode w ctable symNames =
   let tag = getTag w in
   let value = getValue w in
   decode' tag value
   where decode' t v | t==tagNumber = VMNumber v
-                    | t==tagSymbol = VMSymbol (symNames !! (fromIntegral v)) [] -- TODO use symbol-name-table to determine name
-                 -- | t==tagDataSymbol = VMSymbol v [] -- TODO the value in a data symbol is an address, also add arguments
+                    | t==tagSymbol = VMSymbol (symNames !! (fromIntegral v)) []
+                    | t==tagDataSymbol = decodeDataSymbol v ctable symNames 
                     | otherwise    = error $ "Unknown tag " ++ (show t)
+
+decodeDataSymbol addr ctable symNames =
+  let subCTable = drop (fromIntegral addr) ctable in
+  let (symId, nArgs) = decDataSymbolHeader (head subCTable) in
+  let decoded = map (\v -> decode v ctable symNames) (take (fromIntegral nArgs) $ tail subCTable) in
+  let symName = symNames !! (fromIntegral symId) in
+  VMSymbol symName decoded
+
 
 encMatchHeader :: Word32 -> Word32
 encMatchHeader n = matchData 1 n
@@ -53,6 +61,9 @@ matchData mtag n =
 
 encDataSymbolHeader :: Word32 -> Word32 -> Word32
 encDataSymbolHeader symId n = (symId `shiftL` 16) .|. n
+
+decDataSymbolHeader :: Word32 -> (Word32, Word32)
+decDataSymbolHeader v = ((v .&. 0xFFFF0000) `rotateL` 16, v .&. 0x0000FFFF)
 
 
 makeVMValue :: Word32 -> Word32 -> Word32

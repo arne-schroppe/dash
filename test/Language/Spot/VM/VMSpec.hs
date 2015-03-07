@@ -14,7 +14,9 @@ runProg :: [[Opcode]] -> IO Word32
 runProg = runProgTbl []
 
 runProgTbl :: [Word32] -> [[Opcode]] -> IO Word32
-runProgTbl tbl prog = execute asm tbl' [] >>= return . fst
+runProgTbl tbl prog = do
+  (value, _, _) <- execute asm tbl' []
+  return value
   where (asm, tbl', _) = assemble prog tbl []
 
 

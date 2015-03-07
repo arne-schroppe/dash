@@ -28,3 +28,7 @@ spec = do
     it "applies built-in subtract function" $ do
       let result = run "sub 7 3"
       result `shouldReturn` VMNumber 4
+
+    it "interprets a symbol with values" $ do
+      let result = run ":sym 2 3"
+      result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]

@@ -4,8 +4,10 @@ module Language.Spot.CodeGen.CodeGen (
 
 import Language.Spot.IR.Ast
 import Language.Spot.IR.Opcode
+import Language.Spot.VM.Bits
 
 import Control.Monad.State
+import Data.Word
 
 
 data Code = Code {
@@ -28,16 +30,24 @@ addFunction e = do
 
 compileExpression e = case e of
   LitNumber n   -> makeLitNumber n
-  LitSymbol s _ -> makeLitSymbol s
+  LitSymbol s vals -> makeLitSymbol s vals
   FunCall name args -> makeFunCall name args
   _ -> error "Unknown expression"
 
 makeLitNumber n =
   addOpcodes [Op_load_i 0 (fromIntegral n)]
 
-makeLitSymbol s = do
-  addOpcodes [Op_load_s 0 0]
-  addSymbolName s
+
+makeLitSymbol s [] = do
+  newId <- addSymbolName s
+  addOpcodes [Op_load_s 0 newId]
+
+makeLitSymbol s args = do
+  symId <- addSymbolName s
+  let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
+  let symEntry = symHeader : (map encodeAstValue args)
+  newAddr <- addConstants symEntry
+  addOpcodes [Op_load_sd 0 newAddr]
 
 
 makeFunCall (Var "add") ((LitNumber op1):(LitNumber op2):[]) =
@@ -58,11 +68,32 @@ makeMathFunc mf op1 op2 =
 
 
 
+encodeAstValue (LitNumber n) = encNumber $ fromIntegral n
+encodeAstValue _ = error "can't encode symbol"
+
 beginFunction = modifyOpcodes (\opcs -> [] : opcs)
 
 addOpcodes opcs = modifyOpcodes $ changeHead (++ opcs)
-addSymbolName s = modifySymNames (s :)
+
+addSymbolName :: String -> State Code Word32
+addSymbolName s = do
+  nextId <- getCodeFieldLength symnames
+  modifySymNames (s :)
+  return $ fromIntegral nextId
+
+addConstants :: [Word32] -> State Code Word32
+addConstants cs = do
+  nextAddr <- getCodeFieldLength ctable
+  modifyConsts (++ cs)
+  return $ fromIntegral nextAddr
+
+
+
+getCodeFieldLength field = do
+  st <- get
+  return $ length (field st)
 
 changeHead f l = (f $ head l) : tail l
 modifyOpcodes f = modify (\st -> st { opcodes = f (opcodes st) })
 modifySymNames f = modify (\st -> st { symnames = f (symnames st) })
+modifyConsts f = modify (\st -> st { ctable = f (ctable st) })
