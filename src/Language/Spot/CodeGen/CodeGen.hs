@@ -37,9 +37,11 @@ make_lit_symbol s = do
   addSymbolName s
 
 
-beginFunction = modify (\st -> st { opcodes = [] : (opcodes st) })
+beginFunction = modifyOpcodes (\opcs -> [] : opcs)
 
-addOpcodes opcs = modify (\st -> st { opcodes = modifyHead (++ opcs) (opcodes st) })
-addSymbolName s = modify (\st -> st { symnames = s : (symnames st) } )
+addOpcodes opcs = modifyOpcodes $ changeHead (++ opcs)
+addSymbolName s = modifySymNames (s :)
 
-modifyHead f l = (f $ head l) : tail l
+changeHead f l = (f $ head l) : tail l
+modifyOpcodes f = modify (\st -> st { opcodes = f (opcodes st) })
+modifySymNames f = modify (\st -> st { symnames = f (symnames st) })
