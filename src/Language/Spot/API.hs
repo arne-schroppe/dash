@@ -7,6 +7,7 @@ import Language.Spot.VM.OpcodeAsm
 import Language.Spot.VM.Types
 import Language.Spot.VM.Bits
 import Language.Spot.VM.VM
+import Language.Spot.IR.Opcode
 
 (|>) = flip ($)
 
@@ -14,6 +15,13 @@ import Language.Spot.VM.VM
 
 -- TODO have separate compile and run and add methods (add is for repl)
 -- TODO in cabal only export API module and reexport all relevant types and functions here (or rename this module)
+
+
+toAsm :: String -> [[Opcode]]
+toAsm prog =
+  let (asm, ctable, symNames) = prog |> L.lex |> parse |> compile in
+  asm
+
 
 run :: String -> IO VMValue
 run prog = do

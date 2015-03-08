@@ -37,3 +37,11 @@ spec = do
       let result = run " val a = 4\n\
                        \ a"
       result `shouldReturn` VMNumber 4
+
+    it "uses local bindings in function call" $ do
+      let code = " val a = 4 \n\
+                 \ val b = 7 \n\
+                 \ add a b"
+      let result = run code
+      result `shouldReturn` VMNumber 11
+

@@ -50,9 +50,9 @@ makeLitSymbol s args = do
   newAddr <- addConstants symEntry
   addOpcodes [Op_load_sd r newAddr]
 
-makeFunCall (Var "add") ((LitNumber op1):(LitNumber op2):[]) =
+makeFunCall (Var "add") (op1:op2:[]) =
   makeMathFunc Op_add op1 op2
-makeFunCall (Var "sub") ((LitNumber op1):(LitNumber op2):[]) =
+makeFunCall (Var "sub") (op1:op2:[]) =
   makeMathFunc Op_sub op1 op2
 makeFunCall _ _ = undefined
 
@@ -71,12 +71,17 @@ makeVar a = do
 
 makeMathFunc mf op1 op2 = do
   r <- resultReg
-  r1 <- reserveReg
-  r2 <- reserveReg
-  addOpcodes [ Op_load_i r1 (fromIntegral op1) -- TODO check range
-             , Op_load_i r2 (fromIntegral op2)
-             , mf r r1 r2
-             ]
+  r1 <- evalArgument op1
+  r2 <- evalArgument op2
+  addOpcodes [ mf r r1 r2 ]
+
+evalArgument (Var n) = registerContainingVar n
+evalArgument arg = do
+  r <- reserveReg
+  pushResultReg r
+  compileExpression arg
+  popResultReg
+  return r
 
 encodeAstValue (LitNumber n) = encNumber $ fromIntegral n
 encodeAstValue _ = error "can't encode symbol"
@@ -130,7 +135,6 @@ startState = Code {
 addVar n r = modify (\st -> st { bindings = Map.insert n r $ bindings st })
 
 registerContainingVar n = gets $ fromJust . Map.lookup n . bindings
-
 
 addOpcodes opcs = modifyOpcodes $ changeHead (++ opcs)
 
