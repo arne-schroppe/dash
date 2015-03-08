@@ -40,6 +40,8 @@ tokens :-
   "with"        { mkTok TWith }
   @integer      { mkTokS (\s -> TInt (read s)) }
   @ident        { mkTokS (\s -> TId s) }
+  "{"           { mkTok TIndent } -- Hack
+  "}"           { mkTok TOutdent } -- Hack
   eof           { mkTok TEOF }
 
 

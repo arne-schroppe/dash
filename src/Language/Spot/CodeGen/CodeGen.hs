@@ -17,7 +17,7 @@ import Debug.Trace
 
 compile :: Expr -> ([[Opcode]], ConstTable, SymbolNameList)
 compile ast = (opcodes result, ctable result, reverse $ symnames result) --todo reverse most of this
-  where result = execState (addFunction ast) startState
+  where result = execState (addFunction ast) emptyCode
 
 
 addFunction :: Expr -> State Code ()
@@ -54,7 +54,8 @@ makeFunCall (Var "add") (op1:op2:[]) =
   makeMathFunc Op_add op1 op2
 makeFunCall (Var "sub") (op1:op2:[]) =
   makeMathFunc Op_sub op1 op2
-makeFunCall _ _ = undefined
+makeFunCall (Var n) args = return ()
+makeFunCall _ _ = error "Unknown function"
 
 makeLocalBinding name expr body = do
   r <- reserveReg
@@ -88,11 +89,14 @@ encodeAstValue (LitNumber n) = encNumber $ fromIntegral n
 encodeAstValue _ = error "can't encode symbol"
 
 beginFunction = do
+  pushFuncContext
   r <- reserveReg
   pushResultReg r
   modifyOpcodes (\opcs -> [] : opcs)
 
-endFunction = popResultReg
+endFunction = do
+  popResultReg
+  popFuncContext
 
 
 
@@ -101,41 +105,51 @@ endFunction = popResultReg
 
 
 reserveReg = do
-  r <- gets reservedRegisters
-  modify (\st -> st { reservedRegisters = r + 1 })
-  return r
+  numRegs <- gets $ reservedRegisters . currentFuncCtx
+  modifyFuncCtx (\st -> st { reservedRegisters = numRegs + 1 })
+  return numRegs
 
-resultReg = gets $ head . resultRegStack
+resultReg = gets $ head . resultRegStack . currentFuncCtx
+
+currentFuncCtx :: Code -> FuncContext
+currentFuncCtx = head . funcContext
 
 pushResultReg r =
-  modify (\st -> st { resultRegStack = r : (resultRegStack st) })
+  modifyFuncCtx (\ctx -> ctx { resultRegStack = r : (resultRegStack ctx) })
 
 popResultReg =
-  modify (\st -> st { resultRegStack = tail $ resultRegStack st })
+  modifyFuncCtx (\ctx -> ctx { resultRegStack = tail $ resultRegStack ctx })
 
-data Code = Code {
-  opcodes :: [[Opcode]]
-, ctable :: ConstTable
-, symnames :: SymbolNameList
+data FuncContext = FuncContext { reservedRegisters :: Word32
+                               , resultRegStack :: [Word32]
+                               , bindings :: Map.Map String Word32
+                               }
 
--- for current function only (TODO add stack)
-, reservedRegisters :: Word32
-, resultRegStack :: [Word32]
-, bindings :: Map.Map String Word32
-}
+emptyFuncContext = FuncContext { reservedRegisters = 0
+                               , resultRegStack = []
+                               , bindings = Map.empty
+                               }
 
-startState = Code {
-  opcodes = []
-, ctable = []
-, symnames = []
-, reservedRegisters = 0
-, resultRegStack = []
-, bindings = Map.empty
-}
+data Code = Code { opcodes :: [[Opcode]]
+                 , ctable :: ConstTable
+                 , symnames :: SymbolNameList
+                 , funcContext :: [FuncContext]
+                 }
 
-addVar n r = modify (\st -> st { bindings = Map.insert n r $ bindings st })
+emptyCode = Code { opcodes = []
+                 , ctable = []
+                 , symnames = []
+                 , funcContext = []
+                 }
 
-registerContainingVar n = gets $ fromJust . Map.lookup n . bindings
+
+pushFuncContext = modify (\st -> st { funcContext = emptyFuncContext : (funcContext st) })
+
+popFuncContext = modify (\st -> st { funcContext = tail $ funcContext st })
+
+addVar n r = modifyFuncCtx (\st -> st { bindings = Map.insert n r $ bindings  st })
+
+registerContainingVar n = gets $ fromJust . Map.lookup n . bindings . currentFuncCtx
 
 addOpcodes opcs = modifyOpcodes $ changeHead (++ opcs)
 
@@ -160,3 +174,5 @@ modifyOpcodes f = modify (\st -> st { opcodes = f (opcodes st) })
 modifySymNames f = modify (\st -> st { symnames = f (symnames st) })
 
 modifyConsts f = modify (\st -> st { ctable = f (ctable st) })
+
+modifyFuncCtx f = modify (\st -> st { funcContext = changeHead f (funcContext st) })

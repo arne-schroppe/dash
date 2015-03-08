@@ -22,7 +22,10 @@ assemble funcs ctable symnames =
 combineFunctions :: [[Opcode]] -> ([Opcode], [Word32])
 combineFunctions funcs = (fst combined, reverse $ snd combined)
   where combined = foldl calcFuncAddr ([], []) funcs
-        calcFuncAddr acc l = ( fst acc ++ l, (fromIntegral $ length (fst acc)) : snd acc )
+        calcFuncAddr acc funcOpcodes =
+          let allOpcodes = fst acc in
+          let funcAddrs = snd acc in
+          ( allOpcodes ++ funcOpcodes, (fromIntegral $ length allOpcodes) : funcAddrs )
 
 
 compileOpcode :: [Word32] -> Opcode -> Word32

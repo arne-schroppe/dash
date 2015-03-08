@@ -93,16 +93,15 @@ Fun_rest:
     '(' opt(eol) plus(id) opt(eol) ')' Def_rest  { FunDef $3 $6 }
 
 
-
 Body:
     Block_start Expr Block_end { $2 }
   | Expr eol { $1 }
 
 Block_start:
-    opt(eol) indent { () }
+    opt(eol) indent opt(eol) { () }
 
 Block_end:
-    opt(eol) outdent { () }
+    opt(eol) outdent opt(eol) { () } -- the second opt(eol) creates shift/reduce conflict
 
 Anon_module:
     module Block_start star(Definition) Block_end  { Module $3 }

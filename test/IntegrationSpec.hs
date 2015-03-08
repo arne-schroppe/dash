@@ -46,8 +46,14 @@ spec = do
       result `shouldReturn` VMNumber 11
 
     it "applies a custom function" $ do
-      let result = run " val add-two (a) = \n\
-                       \   add 2 a\n\
+      let result = run " val add-two (a) = {\n\
+                       \   add 2 a \n\
+                       \ } \n\
                        \ add-two 5"
+      -- FunDef as expr of binding:
+      -- add the function
+      -- binding should compile to load_f resReg funAddr
+      -- For fun call:
+      -- op_call funReg ... etc
       result `shouldReturn` VMNumber 7
 
