@@ -53,3 +53,13 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 7
 
+    it "applies a local variable to a custom function" $ do
+      let code = " val add-two (a) = {\n\
+                 \   add 2 a \n\
+                 \ } \n\
+                 \ val x = 10 \n\
+                 \ val y = 5 \n\
+                 \ add-two y"
+      putStrLn $ show $ toAsm code
+      let result = run code
+      result `shouldReturn` VMNumber 7
