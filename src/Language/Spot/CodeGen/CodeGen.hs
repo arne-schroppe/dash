@@ -24,6 +24,7 @@ addFunction :: Expr -> State Code ()
 addFunction e = do
   beginFunction
   compileExpression e
+  addOpcodes [Op_halt] -- TODO get rid of this, use op_ret
   endFunction
 
 compileExpression e = case e of
@@ -54,9 +55,25 @@ makeFunCall (Var "add") (op1:op2:[]) =
   makeMathFunc Op_add op1 op2
 makeFunCall (Var "sub") (op1:op2:[]) =
   makeMathFunc Op_sub op1 op2
-makeFunCall (Var n) args = return ()
+makeFunCall (Var n) args = do
+  resReg <- resultReg
+  fr <- registerContainingVar n
+  -- TODO the registers for args must come immediately after the one for the
+  -- function address. Right now we're not making sure that that happens. Create
+  -- op_load_f in here and just store the function address for n
+  argRegs <- replicateM (length args) reserveReg
+  let regsAndArgs = zip argRegs args
+  forM_ regsAndArgs (\(aReg, arg) -> do
+    evalArgument arg aReg)
+  addOpcodes [ Op_call resReg fr (fromIntegral $ length args) ]
 makeFunCall _ _ = error "Unknown function"
 
+makeLocalBinding name (FunDef args expr) body = do
+  r <- reserveReg
+  funAddr <- makeFunction args expr
+  addOpcodes [Op_load_f r funAddr]
+  addVar name r
+  compileExpression body
 makeLocalBinding name expr body = do
   r <- reserveReg
   pushResultReg r
@@ -65,6 +82,15 @@ makeLocalBinding name expr body = do
   addVar name r
   compileExpression body
 
+makeFunction args expr = do
+  funAddr <- beginFunction
+  forM_ args (\arg -> do
+    r <- reserveReg
+    addVar arg r)
+  compileExpression expr
+  endFunction
+  return funAddr
+
 makeVar a = do
   r <- resultReg
   r1 <- registerContainingVar a
@@ -72,29 +98,34 @@ makeVar a = do
 
 makeMathFunc mf op1 op2 = do
   r <- resultReg
-  r1 <- evalArgument op1
-  r2 <- evalArgument op2
-  addOpcodes [ mf r r1 r2 ]
+  argRegs <- replicateM 2 reserveReg
+  let regsAndArgs = zip argRegs [op1, op2]
+  forM_ regsAndArgs (\(aReg, arg) -> do
+    evalArgument arg aReg)
+  addOpcodes [ mf r (argRegs !! 0) (argRegs !! 1) ]
 
-evalArgument (Var n) =
-  registerContainingVar n
-evalArgument arg     = do
-  r <- reserveReg
+evalArgument (Var n) r = do
+  vr <- registerContainingVar n
+  when (vr /= r) $ addOpcodes [ Op_move r vr ]
+
+evalArgument arg r   = do
   pushResultReg r
   compileExpression arg
   popResultReg
-  return r
 
 encodeAstValue (LitNumber n) = encNumber $ fromIntegral n
 encodeAstValue _ = error "can't encode symbol"
 
 beginFunction = do
   pushFuncContext
-  r <- reserveReg
+  r <- reserveReg -- TODO we should assert that this is always 0
   pushResultReg r
+  funAddr <- gets $ length . opcodes
   modifyOpcodes (\opcs -> [] : opcs)
+  return funAddr
 
 endFunction = do
+  addOpcodes [ Op_ret ]
   popResultReg
   popFuncContext
 
@@ -130,28 +161,37 @@ emptyFuncContext = FuncContext { reservedRegisters = 0
                                , bindings = Map.empty
                                }
 
+-- TODO "Code" is an utterly stupid name for this
 data Code = Code { opcodes :: [[Opcode]]
                  , ctable :: ConstTable
                  , symnames :: SymbolNameList
                  , funcContext :: [FuncContext]
+                 , currentFunc :: [Int]
                  }
 
 emptyCode = Code { opcodes = []
                  , ctable = []
                  , symnames = []
                  , funcContext = []
+                 , currentFunc = [0]
                  }
 
 
-pushFuncContext = modify (\st -> st { funcContext = emptyFuncContext : (funcContext st) })
+pushFuncContext =
+  modify (\st -> st {
+    funcContext = emptyFuncContext : (funcContext st),
+    currentFunc = (length $ funcContext st) : (currentFunc st) })
 
-popFuncContext = modify (\st -> st { funcContext = tail $ funcContext st })
+popFuncContext = 
+  modify (\st -> st { 
+    funcContext = tail $ funcContext st,
+    currentFunc = tail $ currentFunc st })
 
-addVar n r = modifyFuncCtx (\st -> st { bindings = Map.insert n r $ bindings  st })
+addVar n r = modifyFuncCtx (\st -> st { bindings = Map.insert n r $ bindings st })
 
 registerContainingVar n = gets $ fromJust . Map.lookup n . bindings . currentFuncCtx
 
-addOpcodes opcs = modifyOpcodes $ changeHead (++ opcs)
+addOpcodes opcs = modifyCurrentFunc (++ opcs)
 
 addSymbolName :: String -> State Code Word32
 addSymbolName s = do
@@ -170,6 +210,10 @@ getCodeFieldLength field = gets $ length . field
 changeHead f l = (f $ head l) : tail l
 
 modifyOpcodes f = modify (\st -> st { opcodes = f (opcodes st) })
+
+modifyCurrentFunc f = modify (\st ->
+  let (pre, post) = splitAt (head . currentFunc $ st) (opcodes st) in
+  st { opcodes = pre ++ [f (head post)] ++ (tail post) }) --TODO use a sequence!
 
 modifySymNames f = modify (\st -> st { symnames = f (symnames st) })
 
