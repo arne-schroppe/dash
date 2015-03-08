@@ -10,7 +10,9 @@ import Control.Monad.State
 import Control.Applicative
 import Data.Word
 import Data.Maybe
+import Control.Exception.Base
 import qualified Data.Map as Map
+import Debug.Trace
 
 
 compile :: Expr -> ([[Opcode]], ConstTable, SymbolNameList)
@@ -79,17 +81,13 @@ makeMathFunc mf op1 op2 = do
 encodeAstValue (LitNumber n) = encNumber $ fromIntegral n
 encodeAstValue _ = error "can't encode symbol"
 
--- TODO reserve and push 0 as result register
 beginFunction = do
   r <- reserveReg
-  -- assert (r == 0)
   pushResultReg r
   modifyOpcodes (\opcs -> [] : opcs)
 
 endFunction = popResultReg
 
-
--- beginBinding = 
 
 
 
