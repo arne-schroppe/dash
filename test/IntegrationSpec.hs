@@ -45,3 +45,9 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 11
 
+    it "applies a custom function" $ do
+      let result = run " val add-two (a) = \n\
+                       \   add 2 a\n\
+                       \ add-two 5"
+      result `shouldReturn` VMNumber 7
+

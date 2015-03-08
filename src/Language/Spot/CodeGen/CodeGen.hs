@@ -75,8 +75,9 @@ makeMathFunc mf op1 op2 = do
   r2 <- evalArgument op2
   addOpcodes [ mf r r1 r2 ]
 
-evalArgument (Var n) = registerContainingVar n
-evalArgument arg = do
+evalArgument (Var n) =
+  registerContainingVar n
+evalArgument arg     = do
   r <- reserveReg
   pushResultReg r
   compileExpression arg
