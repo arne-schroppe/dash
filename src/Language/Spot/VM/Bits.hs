@@ -35,10 +35,10 @@ decode w ctable symNames =
   let tag = getTag w in
   let value = getValue w in
   decode' tag value
-  where decode' t v | t==tagNumber = VMNumber v
-                    | t==tagSymbol = VMSymbol (symNames !! (fromIntegral v)) []
-                    | t==tagDataSymbol = decodeDataSymbol v ctable symNames 
-                    | otherwise    = error $ "Unknown tag " ++ (show t)
+  where decode' t v | t==tagNumber     = VMNumber v
+                    | t==tagSymbol     = VMSymbol (symNames !! (fromIntegral v)) []
+                    | t==tagDataSymbol = decodeDataSymbol v ctable symNames
+                    | otherwise        = error $ "Unknown tag " ++ (show t)
 
 decodeDataSymbol addr ctable symNames =
   let subCTable = drop (fromIntegral addr) ctable in

@@ -32,3 +32,8 @@ spec = do
     it "interprets a symbol with values" $ do
       let result = run ":sym 2 3"
       result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]
+
+    it "stores a value in a variable" $ do
+      let result = run " val a = 4\n\
+                       \ a"
+      result `shouldReturn` VMNumber 4
