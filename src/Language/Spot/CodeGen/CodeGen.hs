@@ -14,16 +14,14 @@ import Data.Maybe
 import Data.Monoid
 import Control.Exception.Base
 
-import Control.Lens -- TODO hide our usage of lenses in CodeGenState
 
 
 
 compile :: Expr -> ([[Opcode]], ConstTable, SymbolNameList)
-compile ast = (view opcodes result, view ctable result, reverse $ view symnames result) --todo reverse most of this
+compile ast = (getOpcodes result, getCTable result, reverse $ getSymNames result) --todo reverse most of this
   where result = execState (addFunction ast) emptyCode
 
 
-addFunction :: Expr -> State Code ()
 addFunction e = do
   beginFunction
   compileExpression e
@@ -60,7 +58,7 @@ makeFunCall (Var "sub") (op1:op2:[]) =
   makeMathFunc Op_sub op1 op2
 makeFunCall (Var n) args = do
   resReg <- resultReg
-  fr <- registerContainingVar n
+  fr <- regContainingVar n
   -- TODO the registers for args must come immediately after the one for the
   -- function address. Right now we're not making sure that that happens. Create
   -- op_load_f in here and just store the function address for n
@@ -96,7 +94,7 @@ makeFunction args expr = do
 
 makeVar a = do
   r <- resultReg
-  r1 <- registerContainingVar a
+  r1 <- regContainingVar a
   addOpcodes [ Op_move r r1 ]
 
 makeMathFunc mf op1 op2 = do
@@ -108,7 +106,7 @@ makeMathFunc mf op1 op2 = do
   addOpcodes [ mf r (argRegs !! 0) (argRegs !! 1) ]
 
 evalArgument (Var n) r = do
-  vr <- registerContainingVar n
+  vr <- regContainingVar n
   when (vr /= r) $ addOpcodes [ Op_move r vr ]
 
 evalArgument arg r   = do

@@ -1,6 +1,24 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Language.Spot.CodeGen.CodeGenState where
+module Language.Spot.CodeGen.CodeGenState (
+  addOpcodes
+, beginFunction
+, endFunction
+, reserveReg
+, resultReg
+, pushResultReg
+, popResultReg
+, addVar
+, regContainingVar
+, addSymbolName
+, addConstants
+
+-- TODO hide these too by moving execState in here
+, getOpcodes
+, getCTable
+, getSymNames
+, emptyCode
+) where
 
 
 import Language.Spot.IR.Opcode
@@ -48,6 +66,23 @@ emptyCode = Code { _opcodes = []
                  , _editedFunctionIndexStack = [0]
                  }
 
+-- Convenience getters
+
+getOpcodes :: Code -> [[Opcode]]
+getOpcodes = view opcodes
+
+getCTable :: Code -> ConstTable
+getCTable = view ctable
+
+getSymNames :: Code -> SymbolNameList
+getSymNames = view symnames
+
+
+-- Functions
+
+addOpcodes opcs = do
+  currentF <- fromJust <$> (preuse $ editedFunctionIndexStack._head)
+  opcodes.(element currentF) %= (++ opcs)
 
 
 beginFunction = do
@@ -64,24 +99,6 @@ endFunction = do
   popFuncContext
 
 
-
-reserveReg :: State Code Word32
-reserveReg = do
-  numRegs <- fromJust <$> (preuse $ funcContextStack._head.reservedRegisters)
-  funcContextStack._head.reservedRegisters += 1
-  return numRegs
-
-
-resultReg :: State Code Word32
-resultReg = fromJust <$> (preuse $ funcContextStack._head.resultRegStack._head)
-
-
-pushResultReg :: Word32 -> State Code ()
-pushResultReg r = (funcContextStack._head.resultRegStack) `addHead` r
-
-popResultReg :: State Code ()
-popResultReg = funcContextStack._head.resultRegStack %= tail
-
 pushFuncContext :: State Code ()
 pushFuncContext = do
   fcStack <- use funcContextStack
@@ -93,19 +110,37 @@ popFuncContext = do
   funcContextStack %= tail
   editedFunctionIndexStack %= tail
 
-addHead lens value = lens %= (value :)
+
+-- Registers
+
+reserveReg :: State Code Word32
+reserveReg = do
+  numRegs <- fromJust <$> (preuse $ funcContextStack._head.reservedRegisters)
+  funcContextStack._head.reservedRegisters += 1
+  return numRegs
+
+resultReg :: State Code Word32
+resultReg = fromJust <$> (preuse $ funcContextStack._head.resultRegStack._head)
+
+pushResultReg :: Word32 -> State Code ()
+pushResultReg r = (funcContextStack._head.resultRegStack) `addHead` r
+
+popResultReg :: State Code ()
+popResultReg = funcContextStack._head.resultRegStack %= tail
+
+
+-- Variables
 
 addVar n r = do
   funcContextStack._head.bindings %= (Map.insert n r)
 
-registerContainingVar n = do
+regContainingVar n = do
   binds <- use $ funcContextStack._head.bindings
   return $ fromJust (Map.lookup n binds)
 
-addOpcodes opcs = do
-  currentF <- fromJust <$> (preuse $ editedFunctionIndexStack._head)
-  opcodes.(element currentF) %= (++ opcs)
 
+
+-- Symbol names and constants
 
 addSymbolName :: String -> State Code Word32
 addSymbolName s = do
@@ -118,3 +153,6 @@ addConstants cs = do
   nextAddr <- length <$> use ctable
   ctable %= (++ cs)
   return $ fromIntegral nextAddr
+
+
+addHead lens value = lens %= (value :)
