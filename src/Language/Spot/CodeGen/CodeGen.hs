@@ -26,7 +26,7 @@ data Code = Code { _opcodes :: [[Opcode]]
                  , _ctable :: ConstTable
                  , _symnames :: SymbolNameList
                  , _funcContextStack :: [FuncContext]
-                 , _currentFuncStack :: [Int]
+                 , _editedFunctionIndexStack :: [Int]
                  }
 
 data FuncContext = FuncContext { _reservedRegisters :: Word32
@@ -146,7 +146,6 @@ beginFunction = do
   r <- reserveReg -- TODO we should assert that this is always 0
   pushResultReg r
   funAddr <- length <$> use opcodes
-  -- modifyOpcodes (\opcs -> [] : opcs)
   opcodes %= ([] :)
   return funAddr
 
@@ -172,81 +171,50 @@ emptyCode = Code { _opcodes = []
                  , _ctable = []
                  , _symnames = []
                  , _funcContextStack = []
-                 , _currentFuncStack = [0]
+                 , _editedFunctionIndexStack = [0]
                  }
 
 reserveReg :: State Code Word32
 reserveReg = do
-  numRegs <- preuse $ funcContextStack._head.reservedRegisters -- gets $ reservedRegisters . currentFuncCtx
+  numRegs <- fromJust <$> (preuse $ funcContextStack._head.reservedRegisters)
   funcContextStack._head.reservedRegisters += 1
-  -- modifyFuncCtx (\st -> st { reservedRegisters = numRegs + 1 })
-  return $ fromJust numRegs
+  return numRegs
 
 
-
-resultReg = do
-  r <- preuse $ funcContextStack._head.resultRegStack._head
-  return $ fromJust r
-  -- gets $ head . resultRegStack . currentFuncCtx
-
--- currentFuncCtx :: Code -> FuncContext
--- currentFuncCtx = head . funcContext
-
-pushResultReg r = do
-  -- modifyFuncCtx (\ctx -> ctx { resultRegStack = r : (resultRegStack ctx) })
-  funcContextStack._head.resultRegStack %= (r :)
-
-popResultReg = do
-  -- modifyFuncCtx (\ctx -> ctx { resultRegStack = tail $ resultRegStack ctx })
-  funcContextStack._head.resultRegStack %= tail
+resultReg = fromJust <$> (preuse $ funcContextStack._head.resultRegStack._head)
 
 
+pushResultReg r = (funcContextStack._head.resultRegStack) `addHead` r
 
+popResultReg = funcContextStack._head.resultRegStack %= tail
 
 pushFuncContext = do
   fcStack <- use funcContextStack
-  funcContextStack %= (emptyFuncContext :)
-  currentFuncStack %= ((length fcStack) :)
-  
-{-
-  modify (\st -> st {
-    funcContext = emptyFuncContext : (funcContext st),
-    currentFunc = (length $ funcContext st) : (currentFunc st) })
--}
+  funcContextStack `addHead` emptyFuncContext
+  editedFunctionIndexStack `addHead` length fcStack
 
 popFuncContext = do
   funcContextStack %= tail
-  currentFuncStack %= tail
-{-
-  modify (\st -> st { 
-    funcContext = tail $ funcContext st,
-    currentFunc = tail $ currentFunc st })
--}
+  editedFunctionIndexStack %= tail
+
+addHead lens value = lens %= (value :)
 
 addVar n r = do
   funcContextStack._head.bindings %= (Map.insert n r)
-  -- modifyFuncCtx (\st -> st { bindings = Map.insert n r $ bindings st })
 
 registerContainingVar n = do
   binds <- use $ funcContextStack._head.bindings
-  return $ fromJust ((Map.lookup n (binds :: Map.Map String Word32) ) :: Maybe Word32)
-  -- gets $ fromJust . Map.lookup n . bindings . currentFuncCtx
+  return $ fromJust (Map.lookup n binds)
 
 addOpcodes opcs = do
-  currentF <- preuse $ currentFuncStack._head
-  opcodes.(element $ fromJust currentF) %= (++ opcs)
-  -- modifyCurrentFunc (++ opcs)
+  currentF <- fromJust <$> (preuse $ editedFunctionIndexStack._head)
+  opcodes.(element currentF) %= (++ opcs)
 
-{-
-currentFunc c =
-  let currentF = (view (currentFuncStack._head) c) :: Sum Int in
-  opcodes . (element (getSum currentF))
--}
 
 addSymbolName :: String -> State Code Word32
 addSymbolName s = do
   nextId <- length <$> use symnames
-  symnames %= (s :)
+  symnames `addHead` s
   return $ fromIntegral nextId
 
 addConstants :: [Word32] -> State Code Word32
@@ -254,22 +222,3 @@ addConstants cs = do
   nextAddr <- length <$> use ctable
   ctable %= (++ cs)
   return $ fromIntegral nextAddr
-
-{-
-getCodeFieldLength field = gets $ length . field
-
-changeHead f l = (f $ head l) : tail l
-
-modifyOpcodes f = modify (\st -> st { opcodes = f (opcodes st) })
-
-modifyCurrentFunc f = modify (\st ->
-  let (pre, post) = splitAt (head . currentFunc $ st) (opcodes st) in
-  st { opcodes = pre ++ [f (head post)] ++ (tail post) }) --TODO use a sequence!
-
-modifySymNames f = modify (\st -> st { symnames = f (symnames st) })
-
-modifyConsts f = modify (\st -> st { ctable = f (ctable st) })
-
-modifyFuncCtx f = modify (\st -> st { funcContext = changeHead f (funcContext st) })
-
--}
