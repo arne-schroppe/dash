@@ -1,6 +1,7 @@
 module Language.Spot.API where
 
-import Language.Spot.Parser.Lexer as L
+import Prelude hiding (lex)
+import Language.Spot.Parser.Lexer
 import Language.Spot.Parser.Parser
 import Language.Spot.CodeGen.CodeGen
 import Language.Spot.VM.OpcodeAsm
@@ -19,12 +20,12 @@ import Language.Spot.IR.Opcode
 
 toAsm :: String -> [[Opcode]]
 toAsm prog =
-  let (asm, ctable, symNames) = prog |> L.lex |> parse |> compile in
+  let (asm, ctable, symNames) = prog |> lex |> parse |> compile in
   asm
 
 
 run :: String -> IO VMValue
 run prog = do
-  (value, ctable, symNames) <- prog |> L.lex |> parse |> compile ||> assemble ||> execute
+  (value, ctable, symNames) <- prog |> lex |> parse |> compile ||> assemble ||> execute
   return $ decode value ctable symNames
 

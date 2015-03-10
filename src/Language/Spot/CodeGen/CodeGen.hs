@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Language.Spot.CodeGen.CodeGen (
   compile
 ) where
@@ -8,15 +10,38 @@ import Language.Spot.VM.Bits
 
 import Control.Monad.State
 import Control.Applicative
+import Control.Lens
+import Control.Lens.Zoom
+import Data.List.Lens
 import Data.Word
 import Data.Maybe
+import Data.Monoid
 import Control.Exception.Base
 import qualified Data.Map as Map
 import Debug.Trace
 
 
+-- TODO "Code" is an utterly stupid name for this
+data Code = Code { _opcodes :: [[Opcode]]
+                 , _ctable :: ConstTable
+                 , _symnames :: SymbolNameList
+                 , _funcContextStack :: [FuncContext]
+                 , _currentFuncStack :: [Int]
+                 }
+
+data FuncContext = FuncContext { _reservedRegisters :: Word32
+                               , _resultRegStack :: [Word32]
+                               , _bindings :: Map.Map String Word32
+                               }
+
+makeLenses ''Code
+makeLenses ''FuncContext
+
+
+
+
 compile :: Expr -> ([[Opcode]], ConstTable, SymbolNameList)
-compile ast = (opcodes result, ctable result, reverse $ symnames result) --todo reverse most of this
+compile ast = (view opcodes result, view ctable result, reverse $ view symnames result) --todo reverse most of this
   where result = execState (addFunction ast) emptyCode
 
 
@@ -120,8 +145,9 @@ beginFunction = do
   pushFuncContext
   r <- reserveReg -- TODO we should assert that this is always 0
   pushResultReg r
-  funAddr <- gets $ length . opcodes
-  modifyOpcodes (\opcs -> [] : opcs)
+  funAddr <- length <$> use opcodes
+  -- modifyOpcodes (\opcs -> [] : opcs)
+  opcodes %= ([] :)
   return funAddr
 
 endFunction = do
@@ -135,76 +161,101 @@ endFunction = do
 ------- State
 
 
+
+emptyFuncContext = FuncContext { _reservedRegisters = 0
+                               , _resultRegStack = []
+                               , _bindings = Map.empty
+                               }
+
+
+emptyCode = Code { _opcodes = []
+                 , _ctable = []
+                 , _symnames = []
+                 , _funcContextStack = []
+                 , _currentFuncStack = [0]
+                 }
+
+reserveReg :: State Code Word32
 reserveReg = do
-  numRegs <- gets $ reservedRegisters . currentFuncCtx
-  modifyFuncCtx (\st -> st { reservedRegisters = numRegs + 1 })
-  return numRegs
-
-resultReg = gets $ head . resultRegStack . currentFuncCtx
-
-currentFuncCtx :: Code -> FuncContext
-currentFuncCtx = head . funcContext
-
-pushResultReg r =
-  modifyFuncCtx (\ctx -> ctx { resultRegStack = r : (resultRegStack ctx) })
-
-popResultReg =
-  modifyFuncCtx (\ctx -> ctx { resultRegStack = tail $ resultRegStack ctx })
-
-data FuncContext = FuncContext { reservedRegisters :: Word32
-                               , resultRegStack :: [Word32]
-                               , bindings :: Map.Map String Word32
-                               }
-
-emptyFuncContext = FuncContext { reservedRegisters = 0
-                               , resultRegStack = []
-                               , bindings = Map.empty
-                               }
-
--- TODO "Code" is an utterly stupid name for this
-data Code = Code { opcodes :: [[Opcode]]
-                 , ctable :: ConstTable
-                 , symnames :: SymbolNameList
-                 , funcContext :: [FuncContext]
-                 , currentFunc :: [Int]
-                 }
-
-emptyCode = Code { opcodes = []
-                 , ctable = []
-                 , symnames = []
-                 , funcContext = []
-                 , currentFunc = [0]
-                 }
+  numRegs <- preuse $ funcContextStack._head.reservedRegisters -- gets $ reservedRegisters . currentFuncCtx
+  funcContextStack._head.reservedRegisters += 1
+  -- modifyFuncCtx (\st -> st { reservedRegisters = numRegs + 1 })
+  return $ fromJust numRegs
 
 
-pushFuncContext =
+
+resultReg = do
+  r <- preuse $ funcContextStack._head.resultRegStack._head
+  return $ fromJust r
+  -- gets $ head . resultRegStack . currentFuncCtx
+
+-- currentFuncCtx :: Code -> FuncContext
+-- currentFuncCtx = head . funcContext
+
+pushResultReg r = do
+  -- modifyFuncCtx (\ctx -> ctx { resultRegStack = r : (resultRegStack ctx) })
+  funcContextStack._head.resultRegStack %= (r :)
+
+popResultReg = do
+  -- modifyFuncCtx (\ctx -> ctx { resultRegStack = tail $ resultRegStack ctx })
+  funcContextStack._head.resultRegStack %= tail
+
+
+
+
+pushFuncContext = do
+  fcStack <- use funcContextStack
+  funcContextStack %= (emptyFuncContext :)
+  currentFuncStack %= ((length fcStack) :)
+  
+{-
   modify (\st -> st {
     funcContext = emptyFuncContext : (funcContext st),
     currentFunc = (length $ funcContext st) : (currentFunc st) })
+-}
 
-popFuncContext = 
+popFuncContext = do
+  funcContextStack %= tail
+  currentFuncStack %= tail
+{-
   modify (\st -> st { 
     funcContext = tail $ funcContext st,
     currentFunc = tail $ currentFunc st })
+-}
 
-addVar n r = modifyFuncCtx (\st -> st { bindings = Map.insert n r $ bindings st })
+addVar n r = do
+  funcContextStack._head.bindings %= (Map.insert n r)
+  -- modifyFuncCtx (\st -> st { bindings = Map.insert n r $ bindings st })
 
-registerContainingVar n = gets $ fromJust . Map.lookup n . bindings . currentFuncCtx
+registerContainingVar n = do
+  binds <- use $ funcContextStack._head.bindings
+  return $ fromJust ((Map.lookup n (binds :: Map.Map String Word32) ) :: Maybe Word32)
+  -- gets $ fromJust . Map.lookup n . bindings . currentFuncCtx
 
-addOpcodes opcs = modifyCurrentFunc (++ opcs)
+addOpcodes opcs = do
+  currentF <- preuse $ currentFuncStack._head
+  opcodes.(element $ fromJust currentF) %= (++ opcs)
+  -- modifyCurrentFunc (++ opcs)
+
+{-
+currentFunc c =
+  let currentF = (view (currentFuncStack._head) c) :: Sum Int in
+  opcodes . (element (getSum currentF))
+-}
 
 addSymbolName :: String -> State Code Word32
 addSymbolName s = do
-  nextId <- getCodeFieldLength symnames
-  modifySymNames (s :)
+  nextId <- length <$> use symnames
+  symnames %= (s :)
   return $ fromIntegral nextId
 
 addConstants :: [Word32] -> State Code Word32
 addConstants cs = do
-  nextAddr <- getCodeFieldLength ctable
-  modifyConsts (++ cs)
+  nextAddr <- length <$> use ctable
+  ctable %= (++ cs)
   return $ fromIntegral nextAddr
 
+{-
 getCodeFieldLength field = gets $ length . field
 
 changeHead f l = (f $ head l) : tail l
@@ -220,3 +271,5 @@ modifySymNames f = modify (\st -> st { symnames = f (symnames st) })
 modifyConsts f = modify (\st -> st { ctable = f (ctable st) })
 
 modifyFuncCtx f = modify (\st -> st { funcContext = changeHead f (funcContext st) })
+
+-}
