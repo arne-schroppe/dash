@@ -82,7 +82,7 @@ getSymNames = view symnames
 
 addOpcodes opcs = do
   currentF <- fromJust <$> (preuse $ editedFunctionIndexStack._head)
-  opcodes.(element currentF) %= (++ opcs)
+  opcodes.(ix currentF) %= (++ opcs)
 
 
 beginFunction = do
@@ -90,7 +90,7 @@ beginFunction = do
   r <- reserveReg -- TODO we should assert that this is always 0
   pushResultReg r
   funAddr <- length <$> use opcodes
-  opcodes %= ([] :)
+  opcodes `addHead` []
   return funAddr
 
 endFunction = do
@@ -131,12 +131,12 @@ popResultReg = funcContextStack._head.resultRegStack %= tail
 
 -- Variables
 
+addVar :: String -> Word32 -> State Code ()
 addVar n r = do
-  funcContextStack._head.bindings %= (Map.insert n r)
+  funcContextStack._head.bindings.(at n) .= Just r
 
-regContainingVar n = do
-  binds <- use $ funcContextStack._head.bindings
-  return $ fromJust (Map.lookup n binds)
+regContainingVar :: String -> State Code Word32
+regContainingVar n = (fromJust . join) <$> (preuse $ funcContextStack._head.bindings.(at n))
 
 
 
