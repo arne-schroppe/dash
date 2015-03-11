@@ -34,6 +34,7 @@ compileExpression e = case e of
   FunCall name args -> makeFunCall name args
   LocalBinding (Binding name expr) body -> makeLocalBinding name expr body
   Var a             -> makeVar a
+  Match e pats      -> makeMatch e pats
   a -> error $ "Can't compile: " ++ show a
 
 makeLitNumber n = do
@@ -113,6 +114,9 @@ makeMathFunc mf op1 op2 = do
   forM_ regsAndArgs (\(aReg, arg) -> do
     evalArgument arg aReg)
   addOpcodes [ mf r (argRegs !! 0) (argRegs !! 1) ]
+
+makeMatch expr pats = do
+  return ()
 
 evalArgument (Var n) targetReg = do
   vr <- regContainingVar n
