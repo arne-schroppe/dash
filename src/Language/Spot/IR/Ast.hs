@@ -18,12 +18,12 @@ data Expr
     | LitString String
     | LitSymbol String [Expr]
     | Var String
-    | Namespace String Expr
+    | Namespace String Expr  -- TODO merge with var?
     | FunDef [String] Expr       -- arguments, body
     | FunCall Expr [Expr]
     | LocalBinding Binding Expr  -- binding, body
     | Module [Binding]
-    | PatternList [(Pattern, Expr)]
+    | PatternList [(Pattern, Expr)] -- TODO change to Match Expr [(Pattern, Expr)]
     deriving (Show, Eq)
 
 

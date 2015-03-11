@@ -5,6 +5,7 @@ module Language.Spot.CodeGen.CodeGenState (
 , beginFunction
 , endFunction
 , reserveReg
+, peekReg
 , resultReg
 , pushResultReg
 , popResultReg
@@ -36,11 +37,11 @@ import qualified Data.Map as Map
 
 
 -- TODO "Code" is an utterly stupid name for this
-data Code = Code { _opcodes :: [[Opcode]]
+data Code = Code { _opcodes :: [[Opcode]] -- TODO change to sequences
                  , _ctable :: ConstTable
                  , _symnames :: SymbolNameList
                  , _funcContextStack :: [FuncContext]
-                 , _editedFunctionIndexStack :: [Int]
+                 , _functionIndexStack :: [Int]
                  }
 
 data FuncContext = FuncContext { _reservedRegisters :: Word32
@@ -63,7 +64,7 @@ emptyCode = Code { _opcodes = []
                  , _ctable = []
                  , _symnames = []
                  , _funcContextStack = []
-                 , _editedFunctionIndexStack = [0]
+                 , _functionIndexStack = [0]
                  }
 
 -- Convenience getters
@@ -81,9 +82,8 @@ getSymNames = view symnames
 -- Functions
 
 addOpcodes opcs = do
-  currentF <- fromJust <$> (preuse $ editedFunctionIndexStack._head)
+  currentF <- fromJust <$> (preuse $ functionIndexStack._head)
   opcodes.(ix currentF) %= (++ opcs)
-
 
 beginFunction = do
   pushFuncContext
@@ -103,12 +103,12 @@ pushFuncContext :: State Code ()
 pushFuncContext = do
   fcStack <- use funcContextStack
   funcContextStack `addHead` emptyFuncContext
-  editedFunctionIndexStack `addHead` length fcStack
+  functionIndexStack `addHead` length fcStack
 
 popFuncContext :: State Code ()
 popFuncContext = do
   funcContextStack %= tail
-  editedFunctionIndexStack %= tail
+  functionIndexStack %= tail
 
 
 -- Registers
@@ -118,6 +118,9 @@ reserveReg = do
   numRegs <- fromJust <$> (preuse $ funcContextStack._head.reservedRegisters)
   funcContextStack._head.reservedRegisters += 1
   return numRegs
+
+peekReg :: State Code Word32
+peekReg = fromJust <$> (preuse $ funcContextStack._head.reservedRegisters) 
 
 resultReg :: State Code Word32
 resultReg = fromJust <$> (preuse $ funcContextStack._head.resultRegStack._head)
@@ -129,6 +132,7 @@ popResultReg :: State Code ()
 popResultReg = funcContextStack._head.resultRegStack %= tail
 
 
+
 -- Variables
 
 addVar :: String -> Word32 -> State Code ()
@@ -137,7 +141,6 @@ addVar n r = do
 
 regContainingVar :: String -> State Code Word32
 regContainingVar n = (fromJust . join) <$> (preuse $ funcContextStack._head.bindings.(at n))
-
 
 
 -- Symbol names and constants
