@@ -154,10 +154,10 @@ Do_line_expr:
   | Complex_symbol      { $1 }
 
 Match_expr:
-    match Simple_expr with Match_body { FunCall (Var "$match") [$4, $2] }
+    match Simple_expr with Match_body { Match $2 $4 }
 
 Match_body:
-    Block_start plus(Match_line) Block_end  { PatternList $2 }
+    Block_start plus(Match_line) Block_end  { $2 }
 
 Match_line:
     Pattern '->' Expr Line_end { ($1, $3) }

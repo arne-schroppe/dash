@@ -52,7 +52,7 @@ makeLitSymbol s args = do
   newAddr <- addConstants symEntry
   addOpcodes [Op_load_sd r newAddr]
 
-makeFunCall (Var "add") (op1:op2:[]) =
+makeFunCall (Var "add") (op1:op2:[]) = -- do we really need opcodes for math stuff? How about built-in functions?
   makeMathFunc Op_add op1 op2
 makeFunCall (Var "sub") (op1:op2:[]) =
   makeMathFunc Op_sub op1 op2

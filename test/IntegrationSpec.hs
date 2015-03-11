@@ -60,6 +60,15 @@ spec = do
                  \ val x = 10 \n\
                  \ val y = 5 \n\
                  \ add-two y"
-      putStrLn $ show $ toAsm code
       let result = run code
       result `shouldReturn` VMNumber 7
+
+
+    it "matches a value against numbers" $ do
+      let code = " match 2 with {\n\
+                 \   1 -> :one \n\
+                 \   2 -> :two \n\
+                 \ }"
+      let result = run code
+      result `shouldReturn` VMSymbol "two" []
+

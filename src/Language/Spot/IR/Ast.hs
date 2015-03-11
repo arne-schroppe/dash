@@ -23,7 +23,7 @@ data Expr
     | FunCall Expr [Expr]
     | LocalBinding Binding Expr  -- binding, body
     | Module [Binding]
-    | PatternList [(Pattern, Expr)] -- TODO change to Match Expr [(Pattern, Expr)]
+    | Match Expr [(Pattern, Expr)]
     deriving (Show, Eq)
 
 
