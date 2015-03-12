@@ -18,7 +18,7 @@ import Control.Exception.Base
 
 
 compile :: Expr -> ([[Opcode]], ConstTable, SymbolNameList)
-compile ast = (getOpcodes result, getCTable result, reverse $ getSymNames result) --todo reverse most of this
+compile ast = (getOpcodes result, getCTable result, getSymNames result) --todo reverse most of this
   where result = execState (addStartFunction ast) emptyCode
 
 

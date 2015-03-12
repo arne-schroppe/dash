@@ -72,3 +72,26 @@ spec = do
       let result = run code
       result `shouldReturn` VMSymbol "two" []
 
+{-
+
+    it "supports nested closures" $ do
+      let result = run "\
+      \ val outside = 16 \n\
+      \ val make-adder-maker (x) = {\n\
+      \   val (y) = {\n\
+      \     val (z) = {\n\
+      \       add (add x (add z y)) outside \n\
+      \ }\n\
+      \ }\n\
+      \ }\n\
+      \ ((make-adder-maker 4) 8) 15"
+      result `shouldReturn` VMNumber 43
+-}
+
+    {- TODO
+      val make-sym (i) = 
+        :sym i
+
+      make-sym 4
+    -}
+

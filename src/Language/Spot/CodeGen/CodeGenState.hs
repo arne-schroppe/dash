@@ -32,12 +32,14 @@ import Data.List.Lens
 import Data.Word
 import Data.Maybe
 import Data.Monoid
+import Data.Foldable
 import Control.Exception.Base
+import qualified Data.Sequence as Seq
 import qualified Data.Map as Map
 
 
 -- TODO "Code" is an utterly stupid name for this
-data Code = Code { _opcodes :: [[Opcode]] -- TODO change to sequences
+data Code = Code { _opcodes :: Seq.Seq [Opcode]
                  , _ctable :: ConstTable
                  , _symnames :: SymbolNameList
                  , _funcContextStack :: [FuncContext]
@@ -60,7 +62,7 @@ emptyFuncContext = FuncContext { _reservedRegisters = 0
                                }
 
 
-emptyCode = Code { _opcodes = []
+emptyCode = Code { _opcodes = Seq.fromList []
                  , _ctable = []
                  , _symnames = []
                  , _funcContextStack = []
@@ -70,13 +72,13 @@ emptyCode = Code { _opcodes = []
 -- Convenience getters
 
 getOpcodes :: Code -> [[Opcode]]
-getOpcodes = view opcodes
+getOpcodes = toList . view opcodes
 
 getCTable :: Code -> ConstTable
 getCTable = view ctable
 
 getSymNames :: Code -> SymbolNameList
-getSymNames = view symnames
+getSymNames = reverse . view symnames
 
 
 -- Functions
@@ -89,8 +91,8 @@ beginFunction = do
   pushFuncContext
   r <- reserveReg -- TODO we should assert that this is always 0
   pushResultReg r
-  funAddr <- length <$> use opcodes
-  opcodes `addHead` []
+  funAddr <- Seq.length <$> use opcodes
+  opcodes `addHeadS` []
   return funAddr
 
 endFunction = do
@@ -159,3 +161,4 @@ addConstants cs = do
 
 
 addHead lens value = lens %= (value :)
+addHeadS lens value = lens %= (value <|)
