@@ -38,6 +38,7 @@ import qualified Data.Sequence as Seq
 import qualified Data.Map as Map
 
 
+-- TODO don't use fromJust
 -- TODO "Code" is an utterly stupid name for this
 data Code = Code { _opcodes :: Seq.Seq [Opcode]
                  , _ctable :: ConstTable
@@ -83,9 +84,17 @@ getSymNames = reverse . view symnames
 
 -- Functions
 
+
+use' l = fromJust <$> (preuse l)
+
+addOpcodes :: [Opcode] -> State Code Int
 addOpcodes opcs = do
-  currentF <- fromJust <$> (preuse $ functionIndexStack._head)
-  opcodes.(ix currentF) %= (++ opcs)
+  curFunIdx <- use' $ functionIndexStack._head
+  let curFunLens = opcodes.(ix curFunIdx)
+  curFun <- use' curFunLens
+  let addr = length curFun
+  opcodes.(ix curFunIdx) %= (++ opcs)
+  return addr
 
 beginFunction = do
   pushFuncContext
@@ -117,15 +126,15 @@ popFuncContext = do
 
 reserveReg :: State Code Word32
 reserveReg = do
-  numRegs <- fromJust <$> (preuse $ funcContextStack._head.reservedRegisters)
+  numRegs <- use' $ funcContextStack._head.reservedRegisters
   funcContextStack._head.reservedRegisters += 1
   return numRegs
 
 peekReg :: State Code Word32
-peekReg = fromJust <$> (preuse $ funcContextStack._head.reservedRegisters) 
+peekReg = use' $ funcContextStack._head.reservedRegisters
 
 resultReg :: State Code Word32
-resultReg = fromJust <$> (preuse $ funcContextStack._head.resultRegStack._head)
+resultReg = use' $ funcContextStack._head.resultRegStack._head
 
 pushResultReg :: Word32 -> State Code ()
 pushResultReg r = (funcContextStack._head.resultRegStack) `addHead` r

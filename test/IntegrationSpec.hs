@@ -69,8 +69,22 @@ spec = do
                  \   1 -> :one \n\
                  \   2 -> :two \n\
                  \ }"
+      putStrLn $ show $ toAsm code
       let result = run code
       result `shouldReturn` VMSymbol "two" []
+
+
+{-
+What's missing:
+
+- Matching
+- Closures
+- Currying
+- Creating symbols
+
+TODO: Functions need a runtime tag!
+
+-}
 
 {-
 

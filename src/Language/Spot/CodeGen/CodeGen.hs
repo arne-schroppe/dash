@@ -59,7 +59,7 @@ makeFunCall (Var "sub") (op1:op2:[]) =
   makeMathFunc Op_sub op1 op2
 makeFunCall (Var funName) args = do
   resReg <- resultReg
-  fr <- regContainingVar funName
+  fr <- regContainingVar funName -- TODO it would be more efficient if we would simply load_f in here
   nfr <- ensureContinuousRegisters fr
   argRegs <- replicateM (length args) reserveReg
   let regsAndArgs = zip argRegs args
@@ -115,12 +115,29 @@ makeMathFunc mf op1 op2 = do
     evalArgument arg aReg)
   addOpcodes [ mf r (argRegs !! 0) (argRegs !! 1) ]
 
-makeMatch expr pats = do
-  return ()
+makeMatch expr pes = do
+  let numPats = length pes
+  let patterns = map fst pes
+  let expressions = map snd pes
+  let matchData = encMatchHeader (fromIntegral numPats) : map encodePattern patterns
+  matchDataAddr <- addConstants matchData
+  subjR <- reserveReg
+  evalArgument expr subjR
+  patR <- reserveReg
+  addOpcodes [Op_load_i patR matchDataAddr]
+  addOpcodes [Op_match subjR patR 0]
+  -- eval expressions
+  -- create jump table
+  -- add an op_jmp after every sub expression
+
+encodePattern pat =
+  case pat of
+    PatNumber n -> encNumber $ fromIntegral n
+    x -> error $ "Can't encode match pattern: " ++ (show x)
 
 evalArgument (Var n) targetReg = do
-  vr <- regContainingVar n
-  when (vr /= targetReg) $ addOpcodes [ Op_move targetReg vr ]
+  vr <- regContainingVar n -- This is also wasteful. In most cases, we'll just reserve two registers per var
+  when (vr /= targetReg) $ do addOpcodes [ Op_move targetReg vr ]; return ()
 evalArgument arg r   = do
   pushResultReg r
   compileExpression arg
