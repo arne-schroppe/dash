@@ -130,8 +130,7 @@ compileMatch expr patsAndExprs = do
   matchStartCode <- createMatchCall expr matchDataAddr
   exprCodes <- forM (map snd patsAndExprs) compileExpression
 
-  let range = [0..(numPats - 1)]
-  let (exprJmpTargets, contJmpTargets) = unzip $ map (calcJumpTargets numPats exprCodes) range
+  let (exprJmpTargets, contJmpTargets) = unzip $ map (calcJumpTargets numPats exprCodes) [0..(numPats - 1)]
   let jmpTableCodes = map (singleOp . Op_jmp) exprJmpTargets
   let bodyCodes = map (uncurry (++)) $ zip exprCodes $ map (singleOp . Op_jmp) contJmpTargets
 
