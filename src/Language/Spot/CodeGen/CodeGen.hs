@@ -24,8 +24,8 @@ compile ast = (getOpcodes result, getCTable result, getSymNames result) --todo r
 
 addStartFunction e = do
   beginFunction
-  compileExpression e
-  addOpcodes [Op_halt] -- TODO get rid of this, use op_ret
+  opcs <- compileExpression e
+  addOpcodes $ opcs ++ [Op_halt] -- TODO get rid of this, use op_ret
   endFunction
 
 compileExpression e = case e of
@@ -39,19 +39,19 @@ compileExpression e = case e of
 
 makeLitNumber n = do
   r <- resultReg
-  addOpcodes [Op_load_i r (fromIntegral n)]
+  return [Op_load_i r (fromIntegral n)]
 
 makeLitSymbol s []   = do
   newId <- addSymbolName s
   r <- resultReg
-  addOpcodes [Op_load_s r newId]
+  return [Op_load_s r newId]
 makeLitSymbol s args = do
   symId <- addSymbolName s
   r <- resultReg
   let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
   let symEntry = symHeader : (map encodeAstValue args)
   newAddr <- addConstants symEntry
-  addOpcodes [Op_load_sd r newAddr]
+  return [Op_load_sd r newAddr]
 
 makeFunCall (Var "add") (op1:op2:[]) = -- do we really need opcodes for math stuff? How about built-in functions?
   makeMathFunc Op_add op1 op2
@@ -60,12 +60,12 @@ makeFunCall (Var "sub") (op1:op2:[]) =
 makeFunCall (Var funName) args = do
   resReg <- resultReg
   fr <- regContainingVar funName -- TODO it would be more efficient if we would simply load_f in here
-  nfr <- ensureContinuousRegisters fr
+  (code, nfr) <- ensureContinuousRegisters fr
   argRegs <- replicateM (length args) reserveReg
   let regsAndArgs = zip argRegs args
-  forM_ regsAndArgs (\(aReg, arg) -> do
+  argCode <- forM regsAndArgs (\(aReg, arg) -> do
     evalArgument arg aReg)
-  addOpcodes [ Op_call resReg nfr (fromIntegral $ length args) ]
+  return $ code ++ (concat argCode) ++ [ Op_call resReg nfr (fromIntegral $ length args) ]
 makeFunCall _ _ = error "Unknown function"
 
 -- The registers for args must come immediately after the one for the
@@ -74,46 +74,49 @@ ensureContinuousRegisters funcReg = do
   nextRegister <- peekReg
   if (nextRegister /= (funcReg + 1)) then do
     newFr <- reserveReg
-    addOpcodes [ Op_move newFr funcReg ]
-    return newFr
+    let opcs = [ Op_move newFr funcReg ]
+    return (opcs, newFr)
   else
-    return funcReg
+    return ([], funcReg)
 
 makeLocalBinding name (FunDef args expr) body = do
   r <- reserveReg
   funAddr <- makeFunction args expr
-  addOpcodes [Op_load_f r funAddr]
   addVar name r
-  compileExpression body
+  let opcs = [Op_load_f r funAddr]
+  bodyOpcs <- compileExpression body
+  return $ opcs ++ bodyOpcs
 makeLocalBinding name expr body = do
   r <- reserveReg
   pushResultReg r
-  compileExpression expr
+  expOpcs <- compileExpression expr
   popResultReg
   addVar name r
-  compileExpression body
+  bodyOpcs <- compileExpression body
+  return $ expOpcs ++ bodyOpcs
 
 makeFunction args expr = do
   funAddr <- beginFunction
   forM_ args (\arg -> do
     r <- reserveReg
     addVar arg r)
-  compileExpression expr
+  opcs <- compileExpression expr
+  addOpcodes opcs
   endFunction
   return funAddr
 
 makeVar a = do
   r <- resultReg
   r1 <- regContainingVar a
-  addOpcodes [ Op_move r r1 ]
+  return [ Op_move r r1 ]
 
 makeMathFunc mf op1 op2 = do
   r <- resultReg
   argRegs <- replicateM 2 reserveReg
   let regsAndArgs = zip argRegs [op1, op2]
-  forM_ regsAndArgs (\(aReg, arg) -> do
+  varCode <- forM regsAndArgs (\(aReg, arg) -> do
     evalArgument arg aReg)
-  addOpcodes [ mf r (argRegs !! 0) (argRegs !! 1) ]
+  return $ (concat varCode) ++ [ mf r (argRegs !! 0) (argRegs !! 1) ]
 
 makeMatch expr pes = do
   let numPats = length pes
@@ -122,13 +125,25 @@ makeMatch expr pes = do
   let matchData = encMatchHeader (fromIntegral numPats) : map encodePattern patterns
   matchDataAddr <- addConstants matchData
   subjR <- reserveReg
-  evalArgument expr subjR
+  argCode <- evalArgument expr subjR
   patR <- reserveReg
-  addOpcodes [Op_load_i patR matchDataAddr]
-  addOpcodes [Op_match subjR patR 0]
-  -- eval expressions
-  -- create jump table
-  -- add an op_jmp after every sub expression
+  let matchStart = [ Op_load_i patR matchDataAddr
+                   , Op_match subjR patR 0 ]
+  resultCode <- forM expressions (\expr -> compileExpression expr)
+  let numCases = length expressions
+  let idxs = init [0..numCases]
+  jmpTargets <- forM idxs (\idx -> do
+    let jmpToFirstExpr = (numCases - idx - 1)
+    let jmpToActualExpr = foldl (\acc ls -> acc + 1 + length ls)  0 (take idx resultCode)
+    let exprJmpTarget = fromIntegral $ jmpToFirstExpr + jmpToActualExpr
+    let contJmpTarget = fromIntegral $ (foldl ( flip $ (+) . length) 0 (drop (idx + 1) resultCode)) + (numCases - idx) - 1
+    return (exprJmpTarget, contJmpTarget) )
+
+  jmpTableCode <- forM (map fst jmpTargets) (\exprJmpTarget -> return [ Op_jmp exprJmpTarget ])
+  exprCode <- forM (zip idxs (map snd jmpTargets)) $ uncurry (\idx contJmpTarget -> 
+                return $ (resultCode !! idx) ++ [ Op_jmp contJmpTarget] )
+
+  return $ argCode ++ matchStart ++ (concat jmpTableCode) ++ (concat exprCode)
 
 encodePattern pat =
   case pat of
@@ -137,11 +152,13 @@ encodePattern pat =
 
 evalArgument (Var n) targetReg = do
   vr <- regContainingVar n -- This is also wasteful. In most cases, we'll just reserve two registers per var
-  when (vr /= targetReg) $ do addOpcodes [ Op_move targetReg vr ]; return ()
+  if (vr /= targetReg) then do return [ Op_move targetReg vr ]
+  else return []
 evalArgument arg r   = do
   pushResultReg r
-  compileExpression arg
+  opcs <- compileExpression arg
   popResultReg
+  return opcs
 
 encodeAstValue (LitNumber n) = encNumber $ fromIntegral n
 encodeAstValue _ = error "can't encode symbol"
