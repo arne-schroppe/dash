@@ -29,6 +29,7 @@ static int program_pointer = 0;
 
 
 
+
 #define get_reg(i) stack[stack_pointer].reg[(i)]
 
 #define current_frame stack[stack_pointer]
@@ -40,7 +41,7 @@ void print_registers(stack_frame frame);
 bool does_value_match(vm_value pat, vm_value subject, int start_reg);
 
 
-void execute_instruction(vm_instruction instr) {
+bool execute_instruction(vm_instruction instr) {
   vm_opcode opcode = get_opcode(instr);
 
   switch (opcode) {
@@ -156,6 +157,9 @@ void execute_instruction(vm_instruction instr) {
     break;
 
     case OP_RET: {
+      if (stack_pointer == 0) {
+        return false;
+      }
       --stack_pointer;
       current_frame.reg[next_frame.result_register] = next_frame.reg[0];
       debug( printf("RET\n") );
@@ -199,9 +203,11 @@ void execute_instruction(vm_instruction instr) {
     default:
       printf("UNKNOWN OPCODE: %04x\n", opcode);
       exit(-1);
-    break;
+      break;
 
   }
+
+  return true;
 
 }
 
@@ -295,13 +301,14 @@ vm_value vm_execute(vm_instruction *program, vm_value *const_table_arg) {
   //print_program(program);
   reset();
   const_table = const_table_arg;
+  bool is_running = true;
 
-  while(get_opcode(program[program_pointer]) != OP_HALT) {
+  while(is_running) {
     debug( printf("-----\n") );
     debug( print_registers(current_frame) );
     int old_program_pointer = program_pointer;
     ++program_pointer;
-    execute_instruction(program[old_program_pointer]);
+    is_running = execute_instruction(program[old_program_pointer]);
     debug( print_registers(current_frame) );
   }
   vm_value result = stack[stack_pointer].reg[0];

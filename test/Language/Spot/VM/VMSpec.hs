@@ -26,7 +26,7 @@ spec = do
 
     it "loads a number into a register" $ do
       let prog = [[ Op_load_i 0 55,
-                    Op_halt ]]
+                    Op_ret ]]
       (runProg prog) `shouldReturn` 55
 
 
@@ -34,13 +34,13 @@ spec = do
       let prog = [[ Op_load_i 1 5,
                     Op_load_i 2 32,
                     Op_add 0 1 2,
-                    Op_halt ]]
+                    Op_ret ]]
       (runProg prog) `shouldReturn` 37
 
     it "moves a register" $ do
       let prog = [[ Op_load_i  2 37,
                     Op_move  0 2,
-                    Op_halt ]]
+                    Op_ret ]]
       (runProg prog) `shouldReturn` 37
 
     it "directly calls a function" $ do
@@ -49,7 +49,7 @@ spec = do
                     Op_add  4 1 2,
                     Op_load_f  3 1,
                     Op_call 0 3 1,
-                    Op_halt ], [
+                    Op_ret ], [
                     Op_load_i  2 100,
                     Op_add  0 1 2,
                     Op_ret]]
@@ -62,7 +62,7 @@ spec = do
                     Op_make_cl 2 2 1,
                     Op_load_f 1 1,
                     Op_call 0 1 1,
-                    Op_halt ], [
+                    Op_ret ], [
                     -- fun1
                     Op_load_i 2 115,
                     Op_load_i 3 23,
@@ -80,7 +80,7 @@ spec = do
                     Op_call 1 1 1,
                     Op_load_i 2 80,
                     Op_call_cl 0 1 1,
-                    Op_halt ], [
+                    Op_ret ], [
                     -- fun 1
                     Op_load_f 1 2,
                     Op_load_i 2 24,
@@ -109,27 +109,27 @@ spec = do
 -}
     it "loads a symbol into a register" $ do
       let prog = [[ Op_load_s 0 12,
-                    Op_halt]]
+                    Op_ret]]
       (runProg prog) `shouldReturn` (encSymbol 12)
 
     it "loads a constant" $ do
       let ctable = [ encNumber 33 ]
       let prog = [[ Op_load_c 0 0,
-                    Op_halt ]]
+                    Op_ret ]]
       (runProgTbl ctable prog) `shouldReturn` (33)
 
     it "loads a data symbol" $ do
       let prog = [[ Op_load_sd 0 1,
-                    Op_halt ]]
+                    Op_ret ]]
       (runProg prog) `shouldReturn` (encDataSymbol 1)
 
 
     it "jumps forward" $ do
       let prog = [[ Op_load_i 0 66,
                     Op_jmp 1,
-                    Op_halt,
+                    Op_ret,
                     Op_load_i 0 70,
-                    Op_halt ]]
+                    Op_ret ]]
       (runProg prog) `shouldReturn` 70
 
     it "matches a number" $ do
@@ -143,9 +143,9 @@ spec = do
                     Op_jmp 1,
                     Op_jmp 2,
                     Op_load_i 0 4,
-                    Op_halt,
+                    Op_ret,
                     Op_load_i 0 300,
-                    Op_halt ]]
+                    Op_ret ]]
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a symbol" $ do
@@ -159,9 +159,9 @@ spec = do
                     Op_jmp 1,
                     Op_jmp 2,
                     Op_load_i 0 4,
-                    Op_halt,
+                    Op_ret,
                     Op_load_i 0 300,
-                    Op_halt ]]
+                    Op_ret ]]
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a data symbol" $ do
@@ -184,9 +184,9 @@ spec = do
                     Op_jmp 1,
                     Op_jmp 2,
                     Op_load_i 0 4,
-                    Op_halt,
+                    Op_ret,
                     Op_load_i 0 300,
-                    Op_halt ]]
+                    Op_ret ]]
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "binds a value in a match" $ do
@@ -210,9 +210,9 @@ spec = do
                     Op_jmp 1,
                     Op_jmp 2,
                     Op_load_i 0 22,
-                    Op_halt,
+                    Op_ret,
                     Op_move 0 4,
-                    Op_halt ]]
+                    Op_ret ]]
       (runProgTbl ctable prog) `shouldReturn` 77
 
 {- TODO

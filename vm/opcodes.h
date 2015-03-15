@@ -4,7 +4,7 @@
 #include "vm.h"
 
 typedef enum {
-  OP_HALT = 0,
+  OP_RET = 0,
   OP_LOADi = 1,
   OP_LOADs = 2,
   OP_LOADsd = 3,
@@ -14,10 +14,9 @@ typedef enum {
   OP_MOVE = 7,
   OP_CALL = 8,
   OP_CALLCL = 9,
-  OP_RET = 10,
-  OP_MAKECL = 11,
-  OP_JMP = 12,
-  OP_MATCH = 13
+  OP_MAKECL = 10,
+  OP_JMP = 11,
+  OP_MATCH = 12
 } vm_opcode;
 
 #define instr_size (sizeof(vm_instruction) * 8)

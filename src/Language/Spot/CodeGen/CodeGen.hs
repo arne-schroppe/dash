@@ -25,7 +25,7 @@ compile ast = (getOpcodes result, getCTable result, getSymNames result) --todo r
 addStartFunction e = do
   beginFunction
   opcs <- compileExpression e
-  addOpcodes $ opcs ++ [Op_halt] -- TODO get rid of this, use op_ret
+  addOpcodes opcs
   endFunction
 
 compileExpression e = case e of
@@ -118,6 +118,7 @@ makeMathFunc mf op1 op2 = do
     evalArgument arg aReg)
   return $ (concat varCode) ++ [ mf r (argRegs !! 0) (argRegs !! 1) ]
 
+-- TODO refactor this or add lots of comments
 makeMatch expr pes = do
   let numPats = length pes
   let patterns = map fst pes

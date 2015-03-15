@@ -31,7 +31,7 @@ combineFunctions funcs = (fst combined, reverse $ snd combined)
 compileOpcode :: [Word32] -> Opcode -> Word32
 compileOpcode funcAddrs opc =
   case opc of
-    Op_halt            -> instructionRI   0 0 0
+    Op_ret             -> instructionRI   0 0 0
     Op_load_i r0 i     -> instructionRI   1 r0 i
     Op_load_f r0 fi    -> instructionRI   1 r0 (funcAddrs !! fi)
     Op_load_s r0 n     -> instructionRI   2 r0 n
@@ -42,10 +42,9 @@ compileOpcode funcAddrs opc =
     Op_move r0 r1      -> instructionRRR  7 r0 r1 0
     Op_call r0 fr n    -> instructionRRR  8 r0 fr n
     Op_call_cl r0 fr n -> instructionRRR  9 r0 fr n
-    Op_ret             -> instructionRI  10 0 0
-    Op_make_cl r0 fr n -> instructionRRR 11 r0 fr n
-    Op_jmp n           -> instructionRI  12 0 n
-    Op_match r0 r1 r2  -> instructionRRR 13 r0 r1 r2
+    Op_make_cl r0 fr n -> instructionRRR 10 r0 fr n
+    Op_jmp n           -> instructionRI  11 0 n
+    Op_match r0 r1 r2  -> instructionRRR 12 r0 r1 r2
 
 
 
