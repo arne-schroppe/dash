@@ -123,46 +123,63 @@ compileMathFunc mf op1 op2 = do
   return $ (concat varCode) ++
            [ mf r (argRegs !! 0) (argRegs !! 1) ]
 
--- TODO refactor this or add lots of comments
+
 compileMatch expr patsAndExprs = do
   let numPats = length patsAndExprs
-  let patterns = map fst patsAndExprs
-  let expressions = map snd patsAndExprs
-  encodedPatterns <- mapM encodePattern patterns
-  let encodedMatchPattern = encMatchHeader (fromIntegral numPats) : encodedPatterns
-  matchDataAddr <- addConstants encodedMatchPattern
-  subjReg <- reserveReg
-  argCode <- evalArgument expr subjReg
-  patReg <- reserveReg
-  let matchStart = [ Op_load_i patReg matchDataAddr
-                   , Op_match subjReg patReg 0 ]
-  resultCode <- forM expressions (\expr -> compileExpression expr)
-  let idxs = [0..(numPats - 1)]
-  jmpTargets <- forM idxs (\idx -> do
-    let jmpToFirstExpr = (numPats - idx - 1)
-    let jmpToActualExpr = foldl (\acc ls -> acc + 1 + length ls)  0 (take idx resultCode)
-    let exprJmpTarget = fromIntegral $ jmpToFirstExpr + jmpToActualExpr
-    -- contJmpTarget: relative address of code after the match body
-    let lenRemainingResultExprs = foldl ( flip $ (+) . length) 0 (drop (idx + 1) resultCode)
-    let lenExtraJmps = (numPats - idx) - 1 -- for every remaining result expr we need to add one jump expr
-    let contJmpTarget = fromIntegral $ lenRemainingResultExprs + lenExtraJmps
-    return (exprJmpTarget, contJmpTarget) )
+  matchDataAddr <- storeMatchPattern $ map fst patsAndExprs
+  matchStartCode <- createMatchCall expr matchDataAddr
+  exprCodes <- forM (map snd patsAndExprs) compileExpression
 
-  jmpTableCode <- forM (map fst jmpTargets) (\exprJmpTarget -> return [ Op_jmp exprJmpTarget ])
-  exprCode <- forM (zip idxs (map snd jmpTargets)) $ uncurry (\idx contJmpTarget ->
-                return $ (resultCode !! idx) ++ [ Op_jmp contJmpTarget])
+  let range = [0..(numPats - 1)]
+  let (exprJmpTargets, contJmpTargets) = unzip $ map (calcJumpTargets numPats exprCodes) range
+  let jmpTableCodes = map (singleOp . Op_jmp) exprJmpTargets
+  let bodyCodes = map (uncurry (++)) $ zip exprCodes $ map (singleOp . Op_jmp) contJmpTargets
 
-  return $ argCode ++
-           matchStart ++
-           (concat jmpTableCode) ++
-           (concat exprCode)
+  return $ matchStartCode ++
+           (concat jmpTableCodes) ++
+           (concat bodyCodes)
+  where
+    storeMatchPattern ps = do
+        encodedPatterns <- mapM encodePattern ps
+        let encoded = encMatchHeader (fromIntegral $ length ps) : encodedPatterns
+        addConstants encoded
+
+    createMatchCall expr matchDataAddr = do
+      subjReg <- reserveReg
+      argCode <- evalArgument expr subjReg
+      patReg <- reserveReg
+      return $ argCode ++
+               [ Op_load_i patReg matchDataAddr
+               , Op_match subjReg patReg 0 ]
+
+    calcJumpTargets numPats exprCodes idx =
+      let (pre, post) = splitAt idx exprCodes in
+      let jmpToFirstExpr = (numPats - idx - 1) in
+      let jmpToActualExpr = foldl (\acc ls -> acc + 1 + length ls) 0 pre in
+      let exprJmpTarget = fromIntegral $ jmpToFirstExpr + jmpToActualExpr in
+
+      -- contJmpTarget: relative address of code after the match body
+      let lenRemainingResultExprs = foldl ( flip $ (+) . length) 0 (tail post) in
+      let lenExtraJmps = (numPats - idx) - 1 in -- for every remaining result expr we need to add one jump expr
+      let contJmpTarget = fromIntegral $ lenRemainingResultExprs + lenExtraJmps in
+
+      (exprJmpTarget, contJmpTarget)
+
+    singleOp = (:[])
+
+
+
+-- for match vars:
+-- keep track of vars for each expression
+-- reserve maximum var number of registers
+-- when evaluating expr, do so in a local context with those registers
 
 encodePattern pat =
   case pat of
     PatNumber n -> return (encNumber $ fromIntegral n)
     PatSymbol s [] -> do sid <- addSymbolName s
                          return $ encSymbol sid
-    -- PatVar n -> return 0
+    PatVar n -> return $ encMatchVar 0
       -- reserve register, bind name to register, encode var
     x -> error $ "Can't encode match pattern: " ++ (show x)
 

@@ -211,7 +211,7 @@ spec = do
                     Op_jmp 2,
                     Op_load_i 0 22,
                     Op_ret,
-                    Op_move 0 4,
+                    Op_move 0 4, -- reg 4 contains match var 1 (see pattern in ctable)
                     Op_ret ]]
       (runProgTbl ctable prog) `shouldReturn` 77
 

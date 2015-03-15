@@ -26,7 +26,7 @@ import Language.Spot.IR.Opcode
 
 import Control.Monad.State
 import Control.Applicative
-import Control.Lens
+import Control.Lens hiding (Context)
 import Control.Lens.Zoom
 import Data.List
 import Data.List.Lens
@@ -42,30 +42,35 @@ import qualified Data.Map as Map
 -- TODO don't use fromJust
 -- TODO "Code" is an utterly stupid name for this
 data Code = Code { _opcodes :: Seq.Seq [Opcode]
-                 , _ctable :: ConstTable
-                 , _symnames :: Map.Map String Word32
-                 , _funcContextStack :: [FuncContext]
+                 , _constTable :: ConstTable
+                 , _symbolNames :: Map.Map String Word32
+                 , _funcRegDataStack :: [FunctionRegisterData]
+                 , _contextStack :: [Context]
                  }
 
-data FuncContext = FuncContext { _reservedRegisters :: Word32
-                               , _resultRegStack :: [Word32]
-                               , _bindings :: Map.Map String Word32
-                               }
+data FunctionRegisterData = FunctionRegisterData { _reservedRegisters :: Word32
+                                                 , _resultRegStack :: [Word32]
+                                                 }
+
+data Context = Context { _bindings :: Map.Map String Word32 }
 
 makeLenses ''Code
-makeLenses ''FuncContext
+makeLenses ''Context
+makeLenses ''FunctionRegisterData
 
 
-emptyFuncContext = FuncContext { _reservedRegisters = 0
-                               , _resultRegStack = []
-                               , _bindings = Map.empty
-                               }
+emptyFuncRegisterData = FunctionRegisterData { _reservedRegisters = 0
+                                             , _resultRegStack = []
+                                             }
+
+emptyContext = Context { _bindings = Map.empty }
 
 
 emptyCode = Code { _opcodes = Seq.fromList []
-                 , _ctable = []
-                 , _symnames = Map.empty
-                 , _funcContextStack = []
+                 , _constTable = []
+                 , _symbolNames = Map.empty
+                 , _funcRegDataStack = []
+                 , _contextStack = []
                  }
 
 -- Convenience getters
@@ -74,10 +79,10 @@ getOpcodes :: Code -> [[Opcode]]
 getOpcodes = toList . view opcodes
 
 getCTable :: Code -> ConstTable
-getCTable = view ctable
+getCTable = view constTable
 
 getSymNames :: Code -> SymbolNameList
-getSymNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . view symnames
+getSymNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . view symbolNames
 
 
 -- Functions
@@ -90,7 +95,8 @@ setFunctionCode funIndex code =
   opcodes.(ix funIndex) .= code
 
 beginFunction = do
-  pushFuncContext
+  pushFuncRegisters
+  pushContext
   r <- reserveReg -- TODO we should assert that this is always 0
   pushResultReg r
   funAddr <- Seq.length <$> use opcodes
@@ -99,38 +105,45 @@ beginFunction = do
 
 endFunction = do
   popResultReg
-  popFuncContext
+  popContext
+  popFuncRegisters
 
 
-pushFuncContext :: State Code ()
-pushFuncContext = do
-  fcStack <- use funcContextStack
-  funcContextStack `addHead` emptyFuncContext
+pushFuncRegisters :: State Code ()
+pushFuncRegisters =
+  funcRegDataStack `addHead` emptyFuncRegisterData
 
-popFuncContext :: State Code ()
-popFuncContext =
-  funcContextStack %= tail
+popFuncRegisters :: State Code ()
+popFuncRegisters =
+  funcRegDataStack %= tail
 
+pushContext :: State Code ()
+pushContext =
+  contextStack `addHead` emptyContext
+
+popContext :: State Code ()
+popContext =
+  contextStack %= tail
 
 -- Registers
 
 reserveReg :: State Code Word32
 reserveReg = do
-  numRegs <- use' $ funcContextStack._head.reservedRegisters
-  funcContextStack._head.reservedRegisters += 1
+  numRegs <- use' $ funcRegDataStack._head.reservedRegisters
+  funcRegDataStack._head.reservedRegisters += 1
   return numRegs
 
 peekReg :: State Code Word32
-peekReg = use' $ funcContextStack._head.reservedRegisters
+peekReg = use' $ funcRegDataStack._head.reservedRegisters
 
 resultReg :: State Code Word32
-resultReg = use' $ funcContextStack._head.resultRegStack._head
+resultReg = use' $ funcRegDataStack._head.resultRegStack._head
 
 pushResultReg :: Word32 -> State Code ()
-pushResultReg r = (funcContextStack._head.resultRegStack) `addHead` r
+pushResultReg r = (funcRegDataStack._head.resultRegStack) `addHead` r
 
 popResultReg :: State Code ()
-popResultReg = funcContextStack._head.resultRegStack %= tail
+popResultReg = funcRegDataStack._head.resultRegStack %= tail
 
 
 
@@ -138,30 +151,32 @@ popResultReg = funcContextStack._head.resultRegStack %= tail
 
 addVar :: String -> Word32 -> State Code ()
 addVar n r = do
-  funcContextStack._head.bindings.(at n) .= Just r
+  contextStack._head.bindings.(at n) .= Just r
 
 regContainingVar :: String -> State Code Word32
-regContainingVar n = (fromJust . join) <$> (preuse $ funcContextStack._head.bindings.(at n))
+regContainingVar n = (fromJust . join) <$> (preuse $ contextStack._head.bindings.(at n))
 
 
 -- Symbol names and constants
 
 addSymbolName :: String -> State Code Word32
 addSymbolName s = do
-  syms <- use symnames
+  syms <- use symbolNames
   if Map.member s syms then
     return $ syms Map.! s
   else do
-    nextId <- (fromIntegral . Map.size) <$> use symnames
-    symnames %= (Map.insert s nextId)
+    nextId <- (fromIntegral . Map.size) <$> use symbolNames
+    symbolNames %= (Map.insert s nextId)
     return nextId
 
 addConstants :: [Word32] -> State Code Word32
 addConstants cs = do
-  nextAddr <- length <$> use ctable
-  ctable %= (++ cs)
+  nextAddr <- length <$> use constTable
+  constTable %= (++ cs)
   return $ fromIntegral nextAddr
 
 
 addHead lens value = lens %= (value :)
 addHeadS lens value = lens %= (value <|)
+
+

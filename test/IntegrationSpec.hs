@@ -65,12 +65,14 @@ spec = do
 
 
     it "matches a value against numbers" $ do
-      let code = " match 2 with {\n\
+      let code = " match 3 with {\n\
                  \   1 -> :one \n\
                  \   2 -> :two \n\
+                 \   3 -> :three \n\
+                 \   4 -> :four \n\
                  \ }"
       let result = run code
-      result `shouldReturn` VMSymbol "two" []
+      result `shouldReturn` VMSymbol "three" []
 
     it "matches a value against symbols" $ do
       let code = " match :two with {\n\
