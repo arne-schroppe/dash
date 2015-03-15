@@ -21,31 +21,32 @@ compile :: Expr -> ([[Opcode]], ConstTable, SymbolNameList)
 compile ast = (getOpcodes result, getCTable result, getSymNames result) --todo reverse most of this
   where result = execState (addStartFunction ast) emptyCode
 
-
 addStartFunction e = do
   beginFunction
-  opcs <- compileExpression e
-  addOpcodes opcs
+  code <- compileExpression e
+  setFunctionCode 0 (code ++ [Op_ret])
   endFunction
 
+
+
 compileExpression e = case e of
-  LitNumber n       -> makeLitNumber n
-  LitSymbol s vals  -> makeLitSymbol s vals
-  FunCall name args -> makeFunCall name args
-  LocalBinding (Binding name expr) body -> makeLocalBinding name expr body
-  Var a             -> makeVar a
-  Match e pats      -> makeMatch e pats
+  LitNumber n       -> compileLitNumber n
+  LitSymbol s vals  -> compileLitSymbol s vals
+  FunCall name args -> compileFunCall name args
+  LocalBinding (Binding name expr) body -> compileLocalBinding name expr body
+  Var a             -> compileVar a
+  Match e pats      -> compileMatch e pats
   a -> error $ "Can't compile: " ++ show a
 
-makeLitNumber n = do
+compileLitNumber n = do
   r <- resultReg
   return [Op_load_i r (fromIntegral n)]
 
-makeLitSymbol s []   = do
+compileLitSymbol s []   = do
   newId <- addSymbolName s
   r <- resultReg
   return [Op_load_s r newId]
-makeLitSymbol s args = do
+compileLitSymbol s args = do
   symId <- addSymbolName s
   r <- resultReg
   let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
@@ -53,11 +54,11 @@ makeLitSymbol s args = do
   newAddr <- addConstants symEntry
   return [Op_load_sd r newAddr]
 
-makeFunCall (Var "add") (op1:op2:[]) = -- do we really need opcodes for math stuff? How about built-in functions?
-  makeMathFunc Op_add op1 op2
-makeFunCall (Var "sub") (op1:op2:[]) =
-  makeMathFunc Op_sub op1 op2
-makeFunCall (Var funName) args = do
+compileFunCall (Var "add") (op1:op2:[]) = -- do we really need opcodes for math stuff? How about built-in functions?
+  compileMathFunc Op_add op1 op2
+compileFunCall (Var "sub") (op1:op2:[]) =
+  compileMathFunc Op_sub op1 op2
+compileFunCall (Var funName) args = do
   resReg <- resultReg
   fr <- regContainingVar funName -- TODO it would be more efficient if we would simply load_f in here
   (code, nfr) <- ensureContinuousRegisters fr
@@ -66,7 +67,7 @@ makeFunCall (Var funName) args = do
   argCode <- forM regsAndArgs (\(aReg, arg) -> do
     evalArgument arg aReg)
   return $ code ++ (concat argCode) ++ [ Op_call resReg nfr (fromIntegral $ length args) ]
-makeFunCall _ _ = error "Unknown function"
+compileFunCall _ _ = error "Unknown function"
 
 -- The registers for args must come immediately after the one for the
 -- function address. Here we're making sure that that holds true.
@@ -74,43 +75,43 @@ ensureContinuousRegisters funcReg = do
   nextRegister <- peekReg
   if (nextRegister /= (funcReg + 1)) then do
     newFr <- reserveReg
-    let opcs = [ Op_move newFr funcReg ]
-    return (opcs, newFr)
+    let code = [ Op_move newFr funcReg ]
+    return (code, newFr)
   else
     return ([], funcReg)
 
-makeLocalBinding name (FunDef args expr) body = do
+compileLocalBinding name (FunDef args expr) body = do
   r <- reserveReg
-  funAddr <- makeFunction args expr
+  funAddr <- compileFunction args expr
   addVar name r
-  let opcs = [Op_load_f r funAddr]
-  bodyOpcs <- compileExpression body
-  return $ opcs ++ bodyOpcs
-makeLocalBinding name expr body = do
+  let code = [Op_load_f r funAddr]
+  bodyCode <- compileExpression body
+  return $ code ++ bodyCode
+compileLocalBinding name expr body = do
   r <- reserveReg
   pushResultReg r
-  expOpcs <- compileExpression expr
+  exprCode <- compileExpression expr
   popResultReg
   addVar name r
-  bodyOpcs <- compileExpression body
-  return $ expOpcs ++ bodyOpcs
+  bodyCode <- compileExpression body
+  return $ exprCode ++ bodyCode
 
-makeFunction args expr = do
+compileFunction args expr = do
   funAddr <- beginFunction
   forM_ args (\arg -> do
     r <- reserveReg
     addVar arg r)
-  opcs <- compileExpression expr
-  addOpcodes opcs
+  code <- compileExpression expr
+  setFunctionCode funAddr (code ++ [Op_ret])
   endFunction
   return funAddr
 
-makeVar a = do
+compileVar a = do
   r <- resultReg
   r1 <- regContainingVar a
   return [ Op_move r r1 ]
 
-makeMathFunc mf op1 op2 = do
+compileMathFunc mf op1 op2 = do
   r <- resultReg
   argRegs <- replicateM 2 reserveReg
   let regsAndArgs = zip argRegs [op1, op2]
@@ -119,7 +120,7 @@ makeMathFunc mf op1 op2 = do
   return $ (concat varCode) ++ [ mf r (argRegs !! 0) (argRegs !! 1) ]
 
 -- TODO refactor this or add lots of comments
-makeMatch expr pes = do
+compileMatch expr pes = do
   let numPats = length pes
   let patterns = map fst pes
   let expressions = map snd pes
@@ -157,9 +158,9 @@ evalArgument (Var n) targetReg = do
   else return []
 evalArgument arg r   = do
   pushResultReg r
-  opcs <- compileExpression arg
+  code <- compileExpression arg
   popResultReg
-  return opcs
+  return code
 
 encodeAstValue (LitNumber n) = encNumber $ fromIntegral n
 encodeAstValue _ = error "can't encode symbol"

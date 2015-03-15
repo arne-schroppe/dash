@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Language.Spot.CodeGen.CodeGenState (
-  addOpcodes
+  setFunctionCode
 , beginFunction
 , endFunction
 , reserveReg
@@ -44,7 +44,6 @@ data Code = Code { _opcodes :: Seq.Seq [Opcode]
                  , _ctable :: ConstTable
                  , _symnames :: SymbolNameList
                  , _funcContextStack :: [FuncContext]
-                 , _functionIndexStack :: [Int]
                  }
 
 data FuncContext = FuncContext { _reservedRegisters :: Word32
@@ -67,7 +66,6 @@ emptyCode = Code { _opcodes = Seq.fromList []
                  , _ctable = []
                  , _symnames = []
                  , _funcContextStack = []
-                 , _functionIndexStack = [0]
                  }
 
 -- Convenience getters
@@ -87,14 +85,9 @@ getSymNames = reverse . view symnames
 
 use' l = fromJust <$> (preuse l)
 
-addOpcodes :: [Opcode] -> State Code Int
-addOpcodes opcs = do
-  curFunIdx <- use' $ functionIndexStack._head
-  let curFunLens = opcodes.(ix curFunIdx)
-  curFun <- use' curFunLens
-  let addr = length curFun
-  opcodes.(ix curFunIdx) %= (++ opcs)
-  return addr
+setFunctionCode :: Int -> [Opcode] -> State Code ()
+setFunctionCode funIndex code = do
+  opcodes.(ix funIndex) .= code
 
 beginFunction = do
   pushFuncContext
@@ -105,7 +98,6 @@ beginFunction = do
   return funAddr
 
 endFunction = do
-  addOpcodes [ Op_ret ]
   popResultReg
   popFuncContext
 
@@ -114,12 +106,10 @@ pushFuncContext :: State Code ()
 pushFuncContext = do
   fcStack <- use funcContextStack
   funcContextStack `addHead` emptyFuncContext
-  functionIndexStack `addHead` length fcStack
 
 popFuncContext :: State Code ()
 popFuncContext = do
   funcContextStack %= tail
-  functionIndexStack %= tail
 
 
 -- Registers
