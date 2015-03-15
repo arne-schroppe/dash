@@ -66,7 +66,9 @@ compileFunCall (Var funName) args = do
   let regsAndArgs = zip argRegs args
   argCode <- forM regsAndArgs (\(aReg, arg) -> do
     evalArgument arg aReg)
-  return $ code ++ (concat argCode) ++ [ Op_call resReg nfr (fromIntegral $ length args) ]
+  return $ code ++
+           (concat argCode) ++
+           [ Op_call resReg nfr (fromIntegral $ length args) ]
 compileFunCall _ _ = error "Unknown function"
 
 -- The registers for args must come immediately after the one for the
@@ -94,7 +96,8 @@ compileLocalBinding name expr body = do
   popResultReg
   addVar name r
   bodyCode <- compileExpression body
-  return $ exprCode ++ bodyCode
+  return $ exprCode ++
+           bodyCode
 
 compileFunction args expr = do
   funAddr <- beginFunction
@@ -117,35 +120,41 @@ compileMathFunc mf op1 op2 = do
   let regsAndArgs = zip argRegs [op1, op2]
   varCode <- forM regsAndArgs (\(aReg, arg) -> do
     evalArgument arg aReg)
-  return $ (concat varCode) ++ [ mf r (argRegs !! 0) (argRegs !! 1) ]
+  return $ (concat varCode) ++
+           [ mf r (argRegs !! 0) (argRegs !! 1) ]
 
 -- TODO refactor this or add lots of comments
-compileMatch expr pes = do
-  let numPats = length pes
-  let patterns = map fst pes
-  let expressions = map snd pes
-  let matchData = encMatchHeader (fromIntegral numPats) : map encodePattern patterns
-  matchDataAddr <- addConstants matchData
-  subjR <- reserveReg
-  argCode <- evalArgument expr subjR
-  patR <- reserveReg
-  let matchStart = [ Op_load_i patR matchDataAddr
-                   , Op_match subjR patR 0 ]
+compileMatch expr patsAndExprs = do
+  let numPats = length patsAndExprs
+  let patterns = map fst patsAndExprs
+  let expressions = map snd patsAndExprs
+  let encodedMatchPattern = encMatchHeader (fromIntegral numPats) : map encodePattern patterns
+  matchDataAddr <- addConstants encodedMatchPattern
+  subjReg <- reserveReg
+  argCode <- evalArgument expr subjReg
+  patReg <- reserveReg
+  let matchStart = [ Op_load_i patReg matchDataAddr
+                   , Op_match subjReg patReg 0 ]
   resultCode <- forM expressions (\expr -> compileExpression expr)
-  let numCases = length expressions
-  let idxs = init [0..numCases]
+  let idxs = [0..(numPats - 1)]
   jmpTargets <- forM idxs (\idx -> do
-    let jmpToFirstExpr = (numCases - idx - 1)
+    let jmpToFirstExpr = (numPats - idx - 1)
     let jmpToActualExpr = foldl (\acc ls -> acc + 1 + length ls)  0 (take idx resultCode)
     let exprJmpTarget = fromIntegral $ jmpToFirstExpr + jmpToActualExpr
-    let contJmpTarget = fromIntegral $ (foldl ( flip $ (+) . length) 0 (drop (idx + 1) resultCode)) + (numCases - idx) - 1
+    -- contJmpTarget: relative address of code after the match body
+    let lenRemainingResultExprs = foldl ( flip $ (+) . length) 0 (drop (idx + 1) resultCode)
+    let lenExtraJmps = (numPats - idx) - 1 -- for every remaining result expr we need to add one jump expr
+    let contJmpTarget = fromIntegral $ lenRemainingResultExprs + lenExtraJmps
     return (exprJmpTarget, contJmpTarget) )
 
   jmpTableCode <- forM (map fst jmpTargets) (\exprJmpTarget -> return [ Op_jmp exprJmpTarget ])
-  exprCode <- forM (zip idxs (map snd jmpTargets)) $ uncurry (\idx contJmpTarget -> 
-                return $ (resultCode !! idx) ++ [ Op_jmp contJmpTarget] )
+  exprCode <- forM (zip idxs (map snd jmpTargets)) $ uncurry (\idx contJmpTarget ->
+                return $ (resultCode !! idx) ++ [ Op_jmp contJmpTarget])
 
-  return $ argCode ++ matchStart ++ (concat jmpTableCode) ++ (concat exprCode)
+  return $ argCode ++
+           matchStart ++
+           (concat jmpTableCode) ++
+           (concat exprCode)
 
 encodePattern pat =
   case pat of
