@@ -80,6 +80,26 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 2
 
+    it "matches a value against numbers inside a function" $ do
+      let code = " val check (n) = { \n\
+                 \   match n with { \n\
+                 \     1 -> :one \n\
+                 \     2 -> :two \n\
+                 \ } \n\
+                 \ } \n\
+                 \ check 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "two" []
+
+
+    it "binds an identifier in a match pattern" $ do
+      let code = " match 2 with { \n\
+                 \   1 -> :one \n\
+                 \   n -> add 5 n \n\
+                 \ }"
+      let result = run code
+      result `shouldReturn` VMNumber 7
+
 {-
 What's missing:
 
