@@ -128,7 +128,8 @@ compileMatch expr patsAndExprs = do
   let numPats = length patsAndExprs
   let patterns = map fst patsAndExprs
   let expressions = map snd patsAndExprs
-  let encodedMatchPattern = encMatchHeader (fromIntegral numPats) : map encodePattern patterns
+  encodesPatterns <- mapM encodePattern patterns
+  let encodedMatchPattern = encMatchHeader (fromIntegral numPats) : encodesPatterns
   matchDataAddr <- addConstants encodedMatchPattern
   subjReg <- reserveReg
   argCode <- evalArgument expr subjReg
@@ -158,7 +159,9 @@ compileMatch expr patsAndExprs = do
 
 encodePattern pat =
   case pat of
-    PatNumber n -> encNumber $ fromIntegral n
+    PatNumber n -> return (encNumber $ fromIntegral n)
+    PatSymbol s [] -> do sid <- addSymbolName s
+                         return $ encSymbol sid
     x -> error $ "Can't encode match pattern: " ++ (show x)
 
 evalArgument (Var n) targetReg = do

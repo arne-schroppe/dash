@@ -69,10 +69,16 @@ spec = do
                  \   1 -> :one \n\
                  \   2 -> :two \n\
                  \ }"
-      putStrLn $ show $ toAsm code
       let result = run code
       result `shouldReturn` VMSymbol "two" []
 
+    it "matches a value against symbols" $ do
+      let code = " match :two with {\n\
+                 \   :one -> 1 \n\
+                 \   :two -> 2 \n\
+                 \ }"
+      let result = run code
+      result `shouldReturn` VMNumber 2
 
 {-
 What's missing:

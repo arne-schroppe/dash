@@ -28,6 +28,7 @@ import Control.Monad.State
 import Control.Applicative
 import Control.Lens
 import Control.Lens.Zoom
+import Data.List
 import Data.List.Lens
 import Data.Word
 import Data.Maybe
@@ -42,7 +43,7 @@ import qualified Data.Map as Map
 -- TODO "Code" is an utterly stupid name for this
 data Code = Code { _opcodes :: Seq.Seq [Opcode]
                  , _ctable :: ConstTable
-                 , _symnames :: SymbolNameList
+                 , _symnames :: Map.Map String Word32
                  , _funcContextStack :: [FuncContext]
                  }
 
@@ -55,7 +56,6 @@ makeLenses ''Code
 makeLenses ''FuncContext
 
 
-
 emptyFuncContext = FuncContext { _reservedRegisters = 0
                                , _resultRegStack = []
                                , _bindings = Map.empty
@@ -64,7 +64,7 @@ emptyFuncContext = FuncContext { _reservedRegisters = 0
 
 emptyCode = Code { _opcodes = Seq.fromList []
                  , _ctable = []
-                 , _symnames = []
+                 , _symnames = Map.empty
                  , _funcContextStack = []
                  }
 
@@ -77,7 +77,7 @@ getCTable :: Code -> ConstTable
 getCTable = view ctable
 
 getSymNames :: Code -> SymbolNameList
-getSymNames = reverse . view symnames
+getSymNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . view symnames
 
 
 -- Functions
@@ -86,7 +86,7 @@ getSymNames = reverse . view symnames
 use' l = fromJust <$> (preuse l)
 
 setFunctionCode :: Int -> [Opcode] -> State Code ()
-setFunctionCode funIndex code = do
+setFunctionCode funIndex code =
   opcodes.(ix funIndex) .= code
 
 beginFunction = do
@@ -108,7 +108,7 @@ pushFuncContext = do
   funcContextStack `addHead` emptyFuncContext
 
 popFuncContext :: State Code ()
-popFuncContext = do
+popFuncContext =
   funcContextStack %= tail
 
 
@@ -148,9 +148,13 @@ regContainingVar n = (fromJust . join) <$> (preuse $ funcContextStack._head.bind
 
 addSymbolName :: String -> State Code Word32
 addSymbolName s = do
-  nextId <- length <$> use symnames
-  symnames `addHead` s
-  return $ fromIntegral nextId
+  syms <- use symnames
+  if Map.member s syms then
+    return $ syms Map.! s
+  else do
+    nextId <- (fromIntegral . Map.size) <$> use symnames
+    symnames %= (Map.insert s nextId)
+    return nextId
 
 addConstants :: [Word32] -> State Code Word32
 addConstants cs = do
