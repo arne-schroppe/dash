@@ -58,7 +58,7 @@ bool execute_instruction(vm_instruction instr) {
       int reg0 = get_arg_r0(instr);
       int value = get_arg_i(instr);
       get_reg(reg0) = val(value, vm_tag_symbol);
-      debug( printf("LOADs  r%02i #%i\n", reg0, val) );
+      debug( printf("LOADs  r%02i #%i\n", reg0, value) );
     }
     break;
 
@@ -66,7 +66,7 @@ bool execute_instruction(vm_instruction instr) {
       int reg0 = get_arg_r0(instr);
       int value = get_arg_i(instr);
       get_reg(reg0) = val(value, vm_tag_data_symbol);
-      debug( printf("LOADsd r%02i #%i\n", reg0, val) );
+      debug( printf("LOADsd r%02i #%i\n", reg0, value) );
     }
     break;
 
@@ -74,7 +74,7 @@ bool execute_instruction(vm_instruction instr) {
       int reg1 = get_arg_r0(instr);
       int table_index = get_arg_i(instr);
       get_reg(reg1) = const_table[table_index];
-      debug( printf("LOADc  r%02i #%i\n", reg1, val) );
+      debug( printf("LOADc  r%02i #%i\n", reg1, table_index) );
     }
     break;
 

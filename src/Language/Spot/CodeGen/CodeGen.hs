@@ -22,7 +22,7 @@ compile ast = (getOpcodes result, getCTable result, getSymNames result) --todo r
   where result = execState (addStartFunction ast) emptyCode
 
 addStartFunction e = do
-  beginFunction
+  beginFunction []
   code <- compileExpression e
   setFunctionCode 0 (code ++ [Op_ret])
   endFunction
@@ -100,10 +100,7 @@ compileLocalBinding name expr body = do
            bodyCode
 
 compileFunction args expr = do
-  funAddr <- beginFunction
-  forM_ args (\arg -> do
-    r <- reserveReg
-    addVar arg r)
+  funAddr <- beginFunction args
   code <- compileExpression expr
   setFunctionCode funAddr (code ++ [Op_ret])
   endFunction
@@ -126,22 +123,35 @@ compileMathFunc mf op1 op2 = do
 
 compileMatch expr patsAndExprs = do
   let numPats = length patsAndExprs
-  matchDataAddr <- storeMatchPattern $ map fst patsAndExprs
+  (matchVars, matchDataAddr) <- storeMatchPattern $ map fst patsAndExprs
   matchStartCode <- createMatchCall expr matchDataAddr
-  exprCodes <- forM (map snd patsAndExprs) compileExpression
+  exprCodes <- mapM (uncurry compileSubExpression) (zip matchVars $ map snd patsAndExprs)
 
   let (exprJmpTargets, contJmpTargets) = unzip $ map (calcJumpTargets numPats exprCodes) [0..(numPats - 1)]
-  let jmpTableCodes = map (singleOp . Op_jmp) exprJmpTargets
-  let bodyCodes = map (uncurry (++)) $ zip exprCodes $ map (singleOp . Op_jmp) contJmpTargets
+  let jmpTableCodes = map (singletonList . Op_jmp) exprJmpTargets
+  let bodyCodes = map (uncurry (++)) $ zip exprCodes $ map (singletonList . Op_jmp) contJmpTargets
+
+  let maxMatchVars = foldl (\a b -> max a (length b)) 0 matchVars
+  -- TODO reserve maxMatchVars registers, since we can't use them afterwards
 
   return $ matchStartCode ++
            (concat jmpTableCodes) ++
            (concat bodyCodes)
   where
+    compileSubExpression args expr = do
+      pushSubContext
+      addArguments args
+      code <- compileExpression expr
+      popSubContext
+      return code
+
     storeMatchPattern ps = do
-        encodedPatterns <- mapM encodePattern ps
-        let encoded = encMatchHeader (fromIntegral $ length ps) : encodedPatterns
-        addConstants encoded
+      matchVarsAndPatterns <- mapM encodePattern ps
+      let encodedPatterns = map snd matchVarsAndPatterns
+      let matchVars = map fst matchVarsAndPatterns
+      let encoded = encMatchHeader (fromIntegral $ length ps) : encodedPatterns
+      constAddr <- addConstants encoded
+      return (matchVars, constAddr)
 
     createMatchCall expr matchDataAddr = do
       subjReg <- reserveReg
@@ -149,22 +159,22 @@ compileMatch expr patsAndExprs = do
       patReg <- reserveReg
       return $ argCode ++
                [ Op_load_i patReg matchDataAddr
-               , Op_match subjReg patReg 0 ]
+               , Op_match subjReg patReg (patReg + 1) ]
 
     calcJumpTargets numPats exprCodes idx =
       let (pre, post) = splitAt idx exprCodes in
       let jmpToFirstExpr = (numPats - idx - 1) in
       let jmpToActualExpr = foldl (\acc ls -> acc + 1 + length ls) 0 pre in
-      let exprJmpTarget = fromIntegral $ jmpToFirstExpr + jmpToActualExpr in
+      let exprJmpTarget = jmpToFirstExpr + jmpToActualExpr in
 
       -- contJmpTarget: relative address of code after the match body
       let lenRemainingResultExprs = foldl ( flip $ (+) . length) 0 (tail post) in
       let lenExtraJmps = (numPats - idx) - 1 in -- for every remaining result expr we need to add one jump expr
-      let contJmpTarget = fromIntegral $ lenRemainingResultExprs + lenExtraJmps in
+      let contJmpTarget = lenRemainingResultExprs + lenExtraJmps in
 
-      (exprJmpTarget, contJmpTarget)
+      (fromIntegral exprJmpTarget, fromIntegral contJmpTarget)
 
-    singleOp = (:[])
+    singletonList = (:[])
 
 
 
@@ -175,10 +185,10 @@ compileMatch expr patsAndExprs = do
 
 encodePattern pat =
   case pat of
-    PatNumber n -> return (encNumber $ fromIntegral n)
+    PatNumber n -> return ([], (encNumber $ fromIntegral n))
     PatSymbol s [] -> do sid <- addSymbolName s
-                         return $ encSymbol sid
-    PatVar n -> return $ encMatchVar 0
+                         return $ ([], encSymbol sid)
+    PatVar n -> return $ ([n], encMatchVar 0)
       -- reserve register, bind name to register, encode var
     x -> error $ "Can't encode match pattern: " ++ (show x)
 

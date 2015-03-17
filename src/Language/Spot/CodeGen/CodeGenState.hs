@@ -10,9 +10,13 @@ module Language.Spot.CodeGen.CodeGenState (
 , pushResultReg
 , popResultReg
 , addVar
+, addArguments
 , regContainingVar
 , addSymbolName
 , addConstants
+
+, pushSubContext
+, popSubContext
 
 -- TODO hide these too by moving execState in here
 , getOpcodes
@@ -48,7 +52,8 @@ data Code = Code { _opcodes :: Seq.Seq [Opcode]
                  , _contextStack :: [Context]
                  }
 
-data FunctionRegisterData = FunctionRegisterData { _reservedRegisters :: Word32
+-- reservedRegisters is a stack because we can have sub-contexts inside a function
+data FunctionRegisterData = FunctionRegisterData { _reservedRegisters :: [Word32]
                                                  , _resultRegStack :: [Word32]
                                                  }
 
@@ -59,7 +64,7 @@ makeLenses ''Context
 makeLenses ''FunctionRegisterData
 
 
-emptyFuncRegisterData = FunctionRegisterData { _reservedRegisters = 0
+emptyFuncRegisterData = FunctionRegisterData { _reservedRegisters = [0]
                                              , _resultRegStack = []
                                              }
 
@@ -88,17 +93,20 @@ getSymNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . 
 -- Functions
 
 
+-- TODO use StateT in type declarations
 use' l = fromJust <$> (preuse l)
 
 setFunctionCode :: Int -> [Opcode] -> State Code ()
 setFunctionCode funIndex code =
   opcodes.(ix funIndex) .= code
 
-beginFunction = do
+beginFunction :: [String] -> State Code Int
+beginFunction args = do
   pushFuncRegisters
   pushContext
   r <- reserveReg -- TODO we should assert that this is always 0
   pushResultReg r
+  addArguments args
   funAddr <- Seq.length <$> use opcodes
   opcodes `addHeadS` []
   return funAddr
@@ -125,16 +133,28 @@ popContext :: State Code ()
 popContext =
   contextStack %= tail
 
+pushSubContext :: State Code ()
+pushSubContext = do
+  pushContext
+  reservedRegs <- use' $ funcRegDataStack._head.reservedRegisters._head
+  (funcRegDataStack._head.reservedRegisters) `addHead` reservedRegs
+
+popSubContext :: State Code ()
+popSubContext = do
+  contextStack %= tail
+  funcRegDataStack._head.reservedRegisters %= tail
+
+
 -- Registers
 
 reserveReg :: State Code Word32
 reserveReg = do
-  numRegs <- use' $ funcRegDataStack._head.reservedRegisters
-  funcRegDataStack._head.reservedRegisters += 1
+  numRegs <- use' $ funcRegDataStack._head.reservedRegisters._head
+  funcRegDataStack._head.reservedRegisters._head += 1
   return numRegs
 
 peekReg :: State Code Word32
-peekReg = use' $ funcRegDataStack._head.reservedRegisters
+peekReg = use' $ funcRegDataStack._head.reservedRegisters._head
 
 resultReg :: State Code Word32
 resultReg = use' $ funcRegDataStack._head.resultRegStack._head
@@ -152,6 +172,12 @@ popResultReg = funcRegDataStack._head.resultRegStack %= tail
 addVar :: String -> Word32 -> State Code ()
 addVar n r = do
   contextStack._head.bindings.(at n) .= Just r
+
+addArguments :: [String] -> State Code ()
+addArguments ns =
+  Control.Monad.State.forM_ ns (\n -> do
+    r <- reserveReg
+    addVar n r)
 
 regContainingVar :: String -> State Code Word32
 regContainingVar n = (fromJust . join) <$> (preuse $ contextStack._head.bindings.(at n))

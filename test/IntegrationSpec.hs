@@ -63,16 +63,26 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 7
 
+    it "matches a value against a single number" $ do
+      let code = " match 1 with {\n\
+                 \   1 -> :one \n\
+                 \ }"
+      let result = run code
+      result `shouldReturn` VMSymbol "one" []
 
     it "matches a value against numbers" $ do
-      let code = " match 3 with {\n\
+      let code = " match 7 with {\n\
                  \   1 -> :one \n\
                  \   2 -> :two \n\
                  \   3 -> :three \n\
                  \   4 -> :four \n\
+                 \   5 -> :five \n\
+                 \   6 -> :six \n\
+                 \   7 -> :seven \n\
+                 \   8 -> :eight \n\
                  \ }"
       let result = run code
-      result `shouldReturn` VMSymbol "three" []
+      result `shouldReturn` VMSymbol "seven" []
 
     it "matches a value against symbols" $ do
       let code = " match :two with {\n\
