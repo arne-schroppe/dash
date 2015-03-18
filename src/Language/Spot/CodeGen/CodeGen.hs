@@ -47,11 +47,8 @@ compileLitSymbol s []   = do
   r <- resultReg
   return [Op_load_s r newId]
 compileLitSymbol s args = do
-  symId <- addSymbolName s
+  newAddr <- encodeDataSymbol s args
   r <- resultReg
-  let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
-  let symEntry = symHeader : (map encodeAstValue args)
-  newAddr <- addConstants symEntry
   return [Op_load_sd r newAddr]
 
 compileFunCall (Var "add") (op1:op2:[]) = -- do we really need opcodes for math stuff? How about built-in functions?
@@ -188,12 +185,13 @@ encodePattern pat =
     PatNumber n -> return ([], (encNumber $ fromIntegral n))
     PatSymbol s [] -> do sid <- addSymbolName s
                          return $ ([], encSymbol sid)
+    PatSymbol s params -> do
+                  addr <- encodePatternDataSymbol s params
+                  return ([], encDataSymbol addr)
     PatVar n -> return $ ([n], encMatchVar 0)
-      -- reserve register, bind name to register, encode var
-    x -> error $ "Can't encode match pattern: " ++ (show x)
 
 evalArgument (Var n) targetReg = do
-  vr <- regContainingVar n -- This is also wasteful. In most cases, we'll just reserve two registers per var
+  vr <- regContainingVar n -- This is wasteful. In most cases, we'll just reserve two registers per var
   if (vr /= targetReg) then do return [ Op_move targetReg vr ]
   else return []
 evalArgument arg r   = do
@@ -202,10 +200,23 @@ evalArgument arg r   = do
   popResultReg
   return code
 
+
 encodeAstValue (LitNumber n) = encNumber $ fromIntegral n
 encodeAstValue _ = error "can't encode symbol"
 
+-- TODO unify these two functions!
+encodePatternDataSymbol s args = do
+  symId <- addSymbolName s
+  let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
+  entries <-  mapM (encodePattern) args
+  let symEntry = symHeader : (map snd entries)
+  addConstants symEntry
 
+encodeDataSymbol s args = do
+  symId <- addSymbolName s
+  let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
+  let symEntry = symHeader : (map encodeAstValue args)
+  addConstants symEntry
 
 
 

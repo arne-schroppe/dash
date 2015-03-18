@@ -112,6 +112,16 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 7
 
+
+    it "matches a symbol with data" $ do
+      let code =  " match (:test 4 8 15) with { \n\
+                  \ :test 1 2 3 -> 1 \n\
+                  \ :test 4 8 15 -> 2 \n\
+                  \ :test 99 100 101 -> 3 \n\
+                  \ }"
+      let result = run code
+      result `shouldReturn` VMNumber 2
+
 {-
 What's missing:
 
