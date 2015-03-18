@@ -94,6 +94,7 @@ getSymNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . 
 
 
 -- TODO use StateT in type declarations
+-- TODO do NOT use fromJust
 use' l = fromJust <$> (preuse l)
 
 setFunctionCode :: Int -> [Opcode] -> State Code ()
@@ -149,9 +150,9 @@ popSubContext = do
 
 reserveReg :: State Code Word32
 reserveReg = do
-  numRegs <- use' $ funcRegDataStack._head.reservedRegisters._head
+  nextRegister <- use' $ funcRegDataStack._head.reservedRegisters._head
   funcRegDataStack._head.reservedRegisters._head += 1
-  return numRegs
+  return nextRegister
 
 peekReg :: State Code Word32
 peekReg = use' $ funcRegDataStack._head.reservedRegisters._head
@@ -180,7 +181,11 @@ addArguments ns =
     addVar n r)
 
 regContainingVar :: String -> State Code Word32
-regContainingVar n = (fromJust . join) <$> (preuse $ contextStack._head.bindings.(at n))
+regContainingVar n = do
+  v <- join <$> (preuse $ contextStack._head.bindings.(at n))
+  case v of
+    Just r -> return r
+    Nothing -> error $ "No register for var " ++ n
 
 
 -- Symbol names and constants

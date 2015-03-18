@@ -122,6 +122,18 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 2
 
+
+    it "binds a value inside a symbol" $ do
+      let code =  " match (:test 4 8 15) with { \n\
+                  \ :test 1 2 3 -> 1 \n\
+                  \ :test 4 n m -> add n m \n\
+                  \ :test 99 100 101 -> 3 \n\
+                  \ }"
+      let result = run code
+      result `shouldReturn` VMNumber 23
+
+
+
 {-
 What's missing:
 

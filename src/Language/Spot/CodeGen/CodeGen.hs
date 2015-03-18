@@ -129,6 +129,7 @@ compileMatch expr patsAndExprs = do
   let bodyCodes = map (uncurry (++)) $ zip exprCodes $ map (singletonList . Op_jmp) contJmpTargets
 
   let maxMatchVars = foldl (\a b -> max a (length b)) 0 matchVars
+  mapM (const reserveReg) [1..maxMatchVars]
   -- TODO reserve maxMatchVars registers, since we can't use them afterwards
 
   return $ matchStartCode ++
@@ -143,9 +144,13 @@ compileMatch expr patsAndExprs = do
       return code
 
     storeMatchPattern ps = do
-      matchVarsAndPatterns <- mapM encodePattern ps
-      let encodedPatterns = map snd matchVarsAndPatterns
-      let matchVars = map fst matchVarsAndPatterns
+      -- matchVarsAndPatterns <- mapM encodePattern ps
+
+      -- TODO the following function is a complete train wreck
+      (_, matchVars, encodedPatterns) <- foldM (\(nextMV, accVars, accPats) p -> do
+        (vars, encoded) <- encodePattern p nextMV
+        return (nextMV + (fromIntegral $ length vars), accVars ++ [vars], accPats ++ [encoded])) (0, [], []) ps  -- TODO get that O(n*m) out and make it more clear what this does
+
       let encoded = encMatchHeader (fromIntegral $ length ps) : encodedPatterns
       constAddr <- addConstants encoded
       return (matchVars, constAddr)
@@ -180,15 +185,15 @@ compileMatch expr patsAndExprs = do
 -- reserve maximum var number of registers
 -- when evaluating expr, do so in a local context with those registers
 
-encodePattern pat =
+encodePattern pat nextMatchVar =
   case pat of
     PatNumber n -> return ([], (encNumber $ fromIntegral n))
     PatSymbol s [] -> do sid <- addSymbolName s
                          return $ ([], encSymbol sid)
     PatSymbol s params -> do
-                  addr <- encodePatternDataSymbol s params
-                  return ([], encDataSymbol addr)
-    PatVar n -> return $ ([n], encMatchVar 0)
+                  (vars, addr) <- encodePatternDataSymbol s params nextMatchVar
+                  return (vars, encDataSymbol addr)
+    PatVar n -> return $ ([n], encMatchVar nextMatchVar)
 
 evalArgument (Var n) targetReg = do
   vr <- regContainingVar n -- This is wasteful. In most cases, we'll just reserve two registers per var
@@ -205,12 +210,15 @@ encodeAstValue (LitNumber n) = encNumber $ fromIntegral n
 encodeAstValue _ = error "can't encode symbol"
 
 -- TODO unify these two functions!
-encodePatternDataSymbol s args = do
+encodePatternDataSymbol s args nextMatchVar = do
   symId <- addSymbolName s
   let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
-  entries <-  mapM (encodePattern) args
-  let symEntry = symHeader : (map snd entries)
-  addConstants symEntry
+  (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
+    (vars, encoded) <- encodePattern p nextMV
+    return (nextMV + (fromIntegral $ length vars), accVars ++ vars, pats ++ [encoded])) (nextMatchVar, [], []) args  -- TODO get that O(n*m) out and make it more clear what this does
+  let symEntry = symHeader : entries
+  addr <- addConstants symEntry
+  return (vars, addr)
 
 encodeDataSymbol s args = do
   symId <- addSymbolName s
