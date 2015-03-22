@@ -49,7 +49,7 @@ import Language.Spot.VM.Types
 -- TODO "Code" is an utterly stupid name for this
 data Code = Code { _instructions :: Seq.Seq [Tac]
                  , _constTable :: ConstTable
-                 , _symbolNames :: Map.Map String VMWord
+                 , _symbolNames :: Map.Map String Int
                  , _funcRegDataStack :: [FunctionRegisterData]
                  , _contextStack :: [Context]
                  }
@@ -192,17 +192,18 @@ regContainingVar n = do
 
 -- Symbol names and constants
 
-addSymbolName :: String -> State Code VMWord
+addSymbolName :: String -> State Code Int
 addSymbolName s = do
   syms <- use symbolNames
   if Map.member s syms then
     return $ syms Map.! s
   else do
-    nextId <- (fromIntegral . Map.size) <$> use symbolNames
+    nextId <- Map.size <$> use symbolNames
     symbolNames %= (Map.insert s nextId)
     return nextId
 
-addConstants :: [VMWord] -> State Code VMWord
+-- TODO we can probably change this to addConstant (singular)
+addConstants :: [Constant] -> State Code VMWord
 addConstants cs = do
   nextAddr <- length <$> use constTable
   constTable %= (++ cs)

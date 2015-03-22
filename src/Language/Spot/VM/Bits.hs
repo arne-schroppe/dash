@@ -31,7 +31,7 @@ ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" e
 
 
 
-decode :: VMWord -> ConstTable -> SymbolNameList -> VMValue
+decode :: VMWord -> [Word32] -> SymbolNameList -> VMValue
 decode w ctable symNames =
   let tag = getTag w in
   let value = getValue w in

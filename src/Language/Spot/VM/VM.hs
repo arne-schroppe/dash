@@ -13,7 +13,7 @@ import Foreign.C
 
 
 
-execute :: [VMWord] -> ConstTable -> SymbolNameList -> IO (VMWord, ConstTable, SymbolNameList)
+execute :: [VMWord] -> [VMWord] -> SymbolNameList -> IO (VMWord, [VMWord], SymbolNameList)
 execute prog ctable symNames = withArray (map CUInt prog) (\progPtr ->
                                withArray (map CUInt ctable) (\ctablePtr ->
                                vmExecuteForeign progPtr ctablePtr)) >>= \a -> return (a, ctable, symNames)

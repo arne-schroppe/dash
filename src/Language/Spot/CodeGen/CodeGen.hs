@@ -47,9 +47,10 @@ compileLitSymbol s []   = do
   r <- resultReg
   return [Tac_load_s r newId]
 compileLitSymbol s args = do
-  newAddr <- encodeDataSymbol s args
+  c <- createConstant $ LitSymbol s args
+  addr <- addConstants [c]
   r <- resultReg
-  return [Tac_load_sd r newAddr]
+  return [Tac_load_sd r addr]
 
 compileFunCall (Var "add") (op1:op2:[]) = -- do we really need opcodes for math stuff? How about built-in functions?
   compileMathFunc Tac_add op1 op2
@@ -118,7 +119,8 @@ compileMathFunc mf op1 op2 = do
       a -> do
         reg <- reserveReg
         code <- evalArgument arg reg
-        return (reg, code))
+        return (reg, code)
+    )
   let argRegs = map fst regsAndCode
   let varCode = map snd regsAndCode
   return $ (concat varCode) ++
@@ -128,20 +130,20 @@ compileMathFunc mf op1 op2 = do
 compileMatch expr patsAndExprs = do
   let numPats = length patsAndExprs
   (matchVars, matchDataAddr) <- storeMatchPattern $ map fst patsAndExprs
-  matchStartCode <- createMatchCall expr matchDataAddr
-  exprCodes <- mapM (uncurry compileSubExpression) (zip matchVars $ map snd patsAndExprs)
+  matchStartInstrs <- createMatchCall expr matchDataAddr
+  exprInstrs <- mapM (uncurry compileSubExpression) (zip matchVars $ map snd patsAndExprs)
 
-  let (exprJmpTargets, contJmpTargets) = unzip $ map (calcJumpTargets numPats exprCodes) [0..(numPats - 1)]
-  let jmpTableCodes = map (singletonList . Tac_jmp) exprJmpTargets
-  let bodyCodes = map (uncurry (++)) $ zip exprCodes $ map (singletonList . Tac_jmp) contJmpTargets
+  let (exprJmpTargets, contJmpTargets) = unzip $ map (calcJumpTargets numPats exprInstrs) [0..(numPats - 1)]
+  let jmpTableInstrs = map (singletonList . Tac_jmp) exprJmpTargets
+  let bodyInstrs = map (uncurry (++)) $ zip exprInstrs $ map (singletonList . Tac_jmp) contJmpTargets
 
   let maxMatchVars = foldl (\a b -> max a (length b)) 0 matchVars
   mapM (const reserveReg) [1..maxMatchVars]
   -- TODO reserve maxMatchVars registers, since we can't use them afterwards
 
-  return $ matchStartCode ++
-           (concat jmpTableCodes) ++
-           (concat bodyCodes)
+  return $ matchStartInstrs ++
+           (concat jmpTableInstrs) ++
+           (concat bodyInstrs)
   where
     compileSubExpression args expr = do
       pushSubContext
@@ -155,11 +157,13 @@ compileMatch expr patsAndExprs = do
 
       -- TODO the following function is a complete train wreck
       (_, matchVars, encodedPatterns) <- foldM (\(nextMV, accVars, accPats) p -> do
-        (vars, encoded) <- encodePattern p nextMV
-        return (nextMV + (fromIntegral $ length vars), accVars ++ [vars], accPats ++ [encoded])) (0, [], []) ps  -- TODO get that O(n*m) out and make it more clear what this does
+        (vars, encoded) <- createConstPattern p nextMV
+        return (nextMV + (fromIntegral $ length vars), accVars ++ [vars], accPats ++ [encoded])
+        ) (0, [], []) ps  -- TODO get that O(n*m) out and make it more clear what this does
 
-      let encoded = encMatchHeader (fromIntegral $ length ps) : encodedPatterns
-      constAddr <- addConstants encoded
+      -- let encoded = encMatchHeader (fromIntegral $ length ps) : encodedPatterns
+      let pattern = CMatchData encodedPatterns
+      constAddr <- addConstants [pattern]
       return (matchVars, constAddr)
 
     createMatchCall expr matchDataAddr = do
@@ -167,7 +171,7 @@ compileMatch expr patsAndExprs = do
       argCode <- evalArgument expr subjReg
       patReg <- reserveReg
       return $ argCode ++
-               [ Tac_load_i patReg matchDataAddr
+               [ Tac_load_c patReg matchDataAddr
                , Tac_match subjReg patReg (patReg + 1) ]
 
     calcJumpTargets numPats exprCodes idx =
@@ -192,15 +196,25 @@ compileMatch expr patsAndExprs = do
 -- reserve maximum var number of registers
 -- when evaluating expr, do so in a local context with those registers
 
-encodePattern pat nextMatchVar =
+createConstPattern pat nextMatchVar =
   case pat of
-    PatNumber n -> return ([], (encNumber $ fromIntegral n))
+    PatNumber n -> return ([], (PatCNumber n))
     PatSymbol s [] -> do sid <- addSymbolName s
-                         return $ ([], encSymbol sid)
+                         return $ ([], PatCSymbol sid)
     PatSymbol s params -> do
-                  (vars, addr) <- encodePatternDataSymbol s params nextMatchVar
-                  return (vars, encDataSymbol addr)
-    PatVar n -> return $ ([n], encMatchVar nextMatchVar)
+                  symId <- addSymbolName s
+                  (vars, pats) <- encodePatternDataSymbolArgs params nextMatchVar
+                  return (vars, PatCDataSymbol symId pats)
+    PatVar n -> return $ ([n], PatCVar nextMatchVar)
+
+
+encodePatternDataSymbolArgs args nextMatchVar = do
+  (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
+    (vars, encoded) <- createConstPattern p nextMV
+    return (nextMV + (fromIntegral $ length vars), accVars ++ vars, pats ++ [encoded])
+    ) (nextMatchVar, [], []) args  -- TODO get that O(n*m) out and make it more clear what this does
+  return (vars, entries)
+
 
 evalArgument (Var n) targetReg = do
   vr <- regContainingVar n -- This is wasteful. In most cases, we'll just reserve two registers per var
@@ -214,8 +228,8 @@ evalArgument arg r = do
 
 
 -- TODO unify these two functions!
-encodePatternDataSymbol s args nextMatchVar = do
-  symId <- addSymbolName s
+{-
+encodePatternDataSymbol args nextMatchVar = do
   let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
   (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
     (vars, encoded) <- encodePattern p nextMV
@@ -223,21 +237,19 @@ encodePatternDataSymbol s args nextMatchVar = do
   let symEntry = symHeader : entries
   addr <- addConstants symEntry
   return (vars, addr)
-
-encodeDataSymbol s args = do
-  symId <- addSymbolName s
-  let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
-  encodedArgs <- mapM encodeAstValue args
-  let symEntry = symHeader : encodedArgs
-  addConstants symEntry
+-}
 
 
--- TODO fix naming, we have too much encDataSymbol and encodeDataSymbol overlap
-encodeAstValue (LitNumber n) = return $ encNumber $ fromIntegral n
-encodeAstValue (LitSymbol s args) = do
-                          addr <- encodeDataSymbol s args
-                          return $ encDataSymbol addr
-encodeAstValue _ = error "can't encode symbol"
+createConstant v =
+  case v of
+    LitNumber n -> return $ CNumber n
+    LitSymbol s [] -> do
+                sid <- addSymbolName s
+                return $ CSymbol sid
+    LitSymbol s args -> do
+                symId <- addSymbolName s
+                encodedArgs <- mapM createConstant args
+                return $ CDataSymbol symId encodedArgs
 
 
 
