@@ -206,7 +206,7 @@ evalArgument (Var n) targetReg = do
   vr <- regContainingVar n -- This is wasteful. In most cases, we'll just reserve two registers per var
   if (vr /= targetReg) then do return [ Op_move targetReg vr ]
   else return []
-evalArgument arg r   = do
+evalArgument arg r = do
   pushResultReg r
   code <- compileExpression arg
   popResultReg
