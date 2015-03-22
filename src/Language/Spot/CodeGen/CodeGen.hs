@@ -16,6 +16,7 @@ import Control.Exception.Base
 
 
 
+-- TODO unify usage of "args" and "params" (and "values" ?)
 
 compile :: Expr -> ([[Tac]], ConstTable, SymbolNameList)
 compile ast = (getInstructions result, getCTable result, getSymNames result) --todo reverse most of this
@@ -48,7 +49,7 @@ compileLitSymbol s []   = do
   return [Tac_load_s r newId]
 compileLitSymbol s args = do
   c <- createConstant $ LitSymbol s args
-  addr <- addConstants [c]
+  addr <- addConstant c
   r <- resultReg
   return [Tac_load_sd r addr]
 
@@ -138,8 +139,7 @@ compileMatch expr patsAndExprs = do
   let bodyInstrs = map (uncurry (++)) $ zip exprInstrs $ map (singletonList . Tac_jmp) contJmpTargets
 
   let maxMatchVars = foldl (\a b -> max a (length b)) 0 matchVars
-  mapM (const reserveReg) [1..maxMatchVars]
-  -- TODO reserve maxMatchVars registers, since we can't use them afterwards
+  mapM (const reserveReg) [1..maxMatchVars] -- TODO use replicateM instead!
 
   return $ matchStartInstrs ++
            (concat jmpTableInstrs) ++
@@ -153,17 +153,14 @@ compileMatch expr patsAndExprs = do
       return code
 
     storeMatchPattern ps = do
-      -- matchVarsAndPatterns <- mapM encodePattern ps
-
-      -- TODO the following function is a complete train wreck
+      -- TODO the following function is a complete train wreck. Use an inner state monad instead
       (_, matchVars, encodedPatterns) <- foldM (\(nextMV, accVars, accPats) p -> do
         (vars, encoded) <- createConstPattern p nextMV
         return (nextMV + (fromIntegral $ length vars), accVars ++ [vars], accPats ++ [encoded])
         ) (0, [], []) ps  -- TODO get that O(n*m) out and make it more clear what this does
 
-      -- let encoded = encMatchHeader (fromIntegral $ length ps) : encodedPatterns
       let pattern = CMatchData encodedPatterns
-      constAddr <- addConstants [pattern]
+      constAddr <- addConstant pattern
       return (matchVars, constAddr)
 
     createMatchCall expr matchDataAddr = do
@@ -191,10 +188,6 @@ compileMatch expr patsAndExprs = do
 
 
 
--- for match vars:
--- keep track of vars for each expression
--- reserve maximum var number of registers
--- when evaluating expr, do so in a local context with those registers
 
 createConstPattern pat nextMatchVar =
   case pat of
@@ -207,7 +200,7 @@ createConstPattern pat nextMatchVar =
                   return (vars, PatCDataSymbol symId pats)
     PatVar n -> return $ ([n], PatCVar nextMatchVar)
 
-
+-- TODO use inner state
 encodePatternDataSymbolArgs args nextMatchVar = do
   (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
     (vars, encoded) <- createConstPattern p nextMV
@@ -225,19 +218,6 @@ evalArgument arg r = do
   code <- compileExpression arg
   popResultReg
   return code
-
-
--- TODO unify these two functions!
-{-
-encodePatternDataSymbol args nextMatchVar = do
-  let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
-  (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
-    (vars, encoded) <- encodePattern p nextMV
-    return (nextMV + (fromIntegral $ length vars), accVars ++ vars, pats ++ [encoded])) (nextMatchVar, [], []) args  -- TODO get that O(n*m) out and make it more clear what this does
-  let symEntry = symHeader : entries
-  addr <- addConstants symEntry
-  return (vars, addr)
--}
 
 
 createConstant v =

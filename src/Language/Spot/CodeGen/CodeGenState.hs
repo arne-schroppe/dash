@@ -13,7 +13,7 @@ module Language.Spot.CodeGen.CodeGenState (
 , addArguments
 , regContainingVar
 , addSymbolName
-, addConstants
+, addConstant
 
 , pushSubContext
 , popSubContext
@@ -202,11 +202,10 @@ addSymbolName s = do
     symbolNames %= (Map.insert s nextId)
     return nextId
 
--- TODO we can probably change this to addConstant (singular)
-addConstants :: [Constant] -> State Code VMWord
-addConstants cs = do
+addConstant :: Constant -> State Code VMWord
+addConstant c = do
   nextAddr <- length <$> use constTable
-  constTable %= (++ cs)
+  constTable %= (++ [c])
   return $ fromIntegral nextAddr
 
 

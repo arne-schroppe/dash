@@ -12,9 +12,6 @@ import Language.Spot.IR.Tac
 import Language.Spot.VM.Types
 
 
-encodeConstTable :: ConstTable -> [VMWord]
-encodeConstTable ctable = [0]
-
 
 assemble :: [[Tac]] -> [VMWord] -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
 assemble funcs ctable symnames =
@@ -67,4 +64,7 @@ instructionRRR opcId r0 r1 r2 =
       .|. (r2 `shiftL` (instSize - (4 + 3 * 5)))
 
 
+
+encodeConstTable :: ConstTable -> [VMWord]
+encodeConstTable ctable = [0]
 
