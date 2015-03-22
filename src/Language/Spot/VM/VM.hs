@@ -3,6 +3,7 @@ execute
 ) where
 
 import Language.Spot.VM.Bits
+import Language.Spot.VM.Types
 import Data.Word
 
 import Language.Spot.IR.Opcode
@@ -12,7 +13,7 @@ import Foreign.C
 
 
 
-execute :: [Word32] -> ConstTable -> SymbolNameList -> IO (Word32, ConstTable, SymbolNameList)
+execute :: [VMWord] -> ConstTable -> SymbolNameList -> IO (VMWord, ConstTable, SymbolNameList)
 execute prog ctable symNames = withArray (map CUInt prog) (\progPtr ->
                                withArray (map CUInt ctable) (\ctablePtr ->
                                vmExecuteForeign progPtr ctablePtr)) >>= \a -> return (a, ctable, symNames)

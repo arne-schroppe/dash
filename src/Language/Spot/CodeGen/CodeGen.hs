@@ -6,10 +6,10 @@ import Language.Spot.CodeGen.CodeGenState
 import Language.Spot.IR.Ast
 import Language.Spot.IR.Opcode
 import Language.Spot.VM.Bits
+import Language.Spot.VM.Types
 
 import Control.Monad.State
 import Control.Applicative
-import Data.Word
 import Data.Maybe
 import Data.Monoid
 import Control.Exception.Base
@@ -110,10 +110,17 @@ compileVar a = do
 
 compileMathFunc mf op1 op2 = do
   r <- resultReg
-  argRegs <- replicateM 2 reserveReg
-  let regsAndArgs = zip argRegs [op1, op2]
-  varCode <- forM regsAndArgs (\(aReg, arg) -> do
-    evalArgument arg aReg)
+  regsAndCode <- forM [op1, op2] (\arg ->
+    case arg of
+      Var n -> do
+        reg <- regContainingVar n
+        return (reg, [])
+      a -> do
+        reg <- reserveReg
+        code <- evalArgument arg reg
+        return (reg, code))
+  let argRegs = map fst regsAndCode
+  let varCode = map snd regsAndCode
   return $ (concat varCode) ++
            [ mf r (argRegs !! 0) (argRegs !! 1) ]
 
@@ -206,9 +213,6 @@ evalArgument arg r   = do
   return code
 
 
-encodeAstValue (LitNumber n) = encNumber $ fromIntegral n
-encodeAstValue _ = error "can't encode symbol"
-
 -- TODO unify these two functions!
 encodePatternDataSymbol s args nextMatchVar = do
   symId <- addSymbolName s
@@ -223,9 +227,17 @@ encodePatternDataSymbol s args nextMatchVar = do
 encodeDataSymbol s args = do
   symId <- addSymbolName s
   let symHeader = encDataSymbolHeader symId (fromIntegral $ length args)
-  let symEntry = symHeader : (map encodeAstValue args)
+  encodedArgs <- mapM encodeAstValue args
+  let symEntry = symHeader : encodedArgs
   addConstants symEntry
 
+
+-- TODO fix naming, we have too much encDataSymbol and encodeDataSymbol overlap
+encodeAstValue (LitNumber n) = return $ encNumber $ fromIntegral n
+encodeAstValue (LitSymbol s args) = do
+                          addr <- encodeDataSymbol s args
+                          return $ encDataSymbol addr
+encodeAstValue _ = error "can't encode symbol"
 
 
 

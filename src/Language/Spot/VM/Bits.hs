@@ -17,20 +17,21 @@ import Language.Spot.VM.Types
 import Language.Spot.IR.Opcode
 
 
-encNumber :: Word32 -> Word32
+
+encNumber :: VMWord -> VMWord
 encNumber = makeVMValue tagNumber . ensureRange
 
-encSymbol :: Word32 -> Word32
+encSymbol :: VMWord -> VMWord
 encSymbol = makeVMValue tagSymbol . ensureRange
 
-encDataSymbol :: Word32 -> Word32
+encDataSymbol :: VMWord -> VMWord
 encDataSymbol = makeVMValue tagDataSymbol . ensureRange
 
 ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
 
 
 
-decode :: Word32 -> ConstTable -> SymbolNameList -> VMValue
+decode :: VMWord -> ConstTable -> SymbolNameList -> VMValue
 decode w ctable symNames =
   let tag = getTag w in
   let value = getValue w in
@@ -48,10 +49,10 @@ decodeDataSymbol addr ctable symNames =
   VMSymbol symName decoded
 
 
-encMatchHeader :: Word32 -> Word32
+encMatchHeader :: VMWord -> VMWord
 encMatchHeader n = matchData 1 n
 
-encMatchVar :: Word32 -> Word32
+encMatchVar :: VMWord -> VMWord
 encMatchVar n = matchData 0 n
 
 matchData mtag n =
@@ -59,14 +60,14 @@ matchData mtag n =
   let mtagVal = mtag `shiftL` (32 - 5) in
   makeVMValue tagMatchData (cropped .|. mtagVal)
 
-encDataSymbolHeader :: Word32 -> Word32 -> Word32
+encDataSymbolHeader :: VMWord -> VMWord -> VMWord
 encDataSymbolHeader symId n = (symId `shiftL` 16) .|. n
 
-decDataSymbolHeader :: Word32 -> (Word32, Word32)
+decDataSymbolHeader :: VMWord -> (VMWord, VMWord)
 decDataSymbolHeader v = ((v .&. 0xFFFF0000) `rotateL` 16, v .&. 0x0000FFFF)
 
 
-makeVMValue :: Word32 -> Word32 -> Word32
+makeVMValue :: VMWord -> VMWord -> VMWord
 makeVMValue tag i = i .|. (tag `shiftL` (32 - 4))
 
 
@@ -74,9 +75,9 @@ getTag v = (v .&. 0xF0000000) `rotateL` 4
 getValue v = v .&. 0x0FFFFFFF
 
 
-tagNumber = 0x0 :: Word32
-tagSymbol = 0x4 :: Word32
-tagDataSymbol = 0x5 :: Word32
-tagMatchData = 0xF :: Word32
+tagNumber = 0x0 :: VMWord
+tagSymbol = 0x4 :: VMWord
+tagDataSymbol = 0x5 :: VMWord
+tagMatchData = 0xF :: VMWord
 
 

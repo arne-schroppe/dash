@@ -34,7 +34,6 @@ import Control.Lens hiding (Context)
 import Control.Lens.Zoom
 import Data.List
 import Data.List.Lens
-import Data.Word
 import Data.Maybe
 import Data.Monoid
 import Data.Foldable
@@ -42,22 +41,25 @@ import Control.Exception.Base
 import qualified Data.Sequence as Seq
 import qualified Data.Map as Map
 
+import Debug.Trace
+import Language.Spot.VM.Types
+
 
 -- TODO don't use fromJust
 -- TODO "Code" is an utterly stupid name for this
 data Code = Code { _opcodes :: Seq.Seq [Opcode]
                  , _constTable :: ConstTable
-                 , _symbolNames :: Map.Map String Word32
+                 , _symbolNames :: Map.Map String VMWord
                  , _funcRegDataStack :: [FunctionRegisterData]
                  , _contextStack :: [Context]
                  }
 
 -- reservedRegisters is a stack because we can have sub-contexts inside a function
-data FunctionRegisterData = FunctionRegisterData { _reservedRegisters :: [Word32]
-                                                 , _resultRegStack :: [Word32]
+data FunctionRegisterData = FunctionRegisterData { _reservedRegisters :: [Int]
+                                                 , _resultRegStack :: [VMReg]
                                                  }
 
-data Context = Context { _bindings :: Map.Map String Word32 }
+data Context = Context { _bindings :: Map.Map String VMReg }
 
 makeLenses ''Code
 makeLenses ''Context
@@ -148,19 +150,19 @@ popSubContext = do
 
 -- Registers
 
-reserveReg :: State Code Word32
+reserveReg :: State Code VMReg
 reserveReg = do
   nextRegister <- use' $ funcRegDataStack._head.reservedRegisters._head
   funcRegDataStack._head.reservedRegisters._head += 1
   return nextRegister
 
-peekReg :: State Code Word32
+peekReg :: State Code VMReg
 peekReg = use' $ funcRegDataStack._head.reservedRegisters._head
 
-resultReg :: State Code Word32
+resultReg :: State Code VMReg
 resultReg = use' $ funcRegDataStack._head.resultRegStack._head
 
-pushResultReg :: Word32 -> State Code ()
+pushResultReg :: VMReg -> State Code ()
 pushResultReg r = (funcRegDataStack._head.resultRegStack) `addHead` r
 
 popResultReg :: State Code ()
@@ -170,7 +172,7 @@ popResultReg = funcRegDataStack._head.resultRegStack %= tail
 
 -- Variables
 
-addVar :: String -> Word32 -> State Code ()
+addVar :: String -> VMReg -> State Code ()
 addVar n r = do
   contextStack._head.bindings.(at n) .= Just r
 
@@ -180,7 +182,7 @@ addArguments ns =
     r <- reserveReg
     addVar n r)
 
-regContainingVar :: String -> State Code Word32
+regContainingVar :: String -> State Code VMReg
 regContainingVar n = do
   v <- join <$> (preuse $ contextStack._head.bindings.(at n))
   case v of
@@ -190,7 +192,7 @@ regContainingVar n = do
 
 -- Symbol names and constants
 
-addSymbolName :: String -> State Code Word32
+addSymbolName :: String -> State Code VMWord
 addSymbolName s = do
   syms <- use symbolNames
   if Map.member s syms then
@@ -200,7 +202,7 @@ addSymbolName s = do
     symbolNames %= (Map.insert s nextId)
     return nextId
 
-addConstants :: [Word32] -> State Code Word32
+addConstants :: [VMWord] -> State Code VMWord
 addConstants cs = do
   nextAddr <- length <$> use constTable
   constTable %= (++ cs)
