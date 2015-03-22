@@ -24,8 +24,8 @@ library
                     , Language.Spot.IR.Ast
                     , Language.Spot.CodeGen.CodeGen
                     , Language.Spot.CodeGen.CodeGenState
-                    , Language.Spot.IR.Opcode
-                    , Language.Spot.VM.OpcodeAsm
+                    , Language.Spot.IR.Tac
+                    , Language.Spot.VM.TacAsm
                     , Language.Spot.VM.VM
                     , Language.Spot.VM.Bits
                     , Language.Spot.VM.Types

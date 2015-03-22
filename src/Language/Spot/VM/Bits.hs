@@ -14,7 +14,7 @@ import Data.Word
 import Data.Bits
 
 import Language.Spot.VM.Types
-import Language.Spot.IR.Opcode
+import Language.Spot.IR.Tac
 
 
 

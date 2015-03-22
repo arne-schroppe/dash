@@ -19,14 +19,14 @@ module Language.Spot.CodeGen.CodeGenState (
 , popSubContext
 
 -- TODO hide these too by moving execState in here
-, getOpcodes
+, getInstructions
 , getCTable
 , getSymNames
 , emptyCode
 ) where
 
 
-import Language.Spot.IR.Opcode
+import Language.Spot.IR.Tac
 
 import Control.Monad.State
 import Control.Applicative
@@ -47,7 +47,7 @@ import Language.Spot.VM.Types
 
 -- TODO don't use fromJust
 -- TODO "Code" is an utterly stupid name for this
-data Code = Code { _opcodes :: Seq.Seq [Opcode]
+data Code = Code { _instructions :: Seq.Seq [Tac]
                  , _constTable :: ConstTable
                  , _symbolNames :: Map.Map String VMWord
                  , _funcRegDataStack :: [FunctionRegisterData]
@@ -56,10 +56,10 @@ data Code = Code { _opcodes :: Seq.Seq [Opcode]
 
 -- reservedRegisters is a stack because we can have sub-contexts inside a function
 data FunctionRegisterData = FunctionRegisterData { _reservedRegisters :: [Int]
-                                                 , _resultRegStack :: [VMReg]
+                                                 , _resultRegStack :: [Reg]
                                                  }
 
-data Context = Context { _bindings :: Map.Map String VMReg }
+data Context = Context { _bindings :: Map.Map String Reg }
 
 makeLenses ''Code
 makeLenses ''Context
@@ -73,7 +73,7 @@ emptyFuncRegisterData = FunctionRegisterData { _reservedRegisters = [0]
 emptyContext = Context { _bindings = Map.empty }
 
 
-emptyCode = Code { _opcodes = Seq.fromList []
+emptyCode = Code { _instructions = Seq.fromList []
                  , _constTable = []
                  , _symbolNames = Map.empty
                  , _funcRegDataStack = []
@@ -82,8 +82,8 @@ emptyCode = Code { _opcodes = Seq.fromList []
 
 -- Convenience getters
 
-getOpcodes :: Code -> [[Opcode]]
-getOpcodes = toList . view opcodes
+getInstructions :: Code -> [[Tac]]
+getInstructions = toList . view instructions
 
 getCTable :: Code -> ConstTable
 getCTable = view constTable
@@ -99,9 +99,9 @@ getSymNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . 
 -- TODO do NOT use fromJust
 use' l = fromJust <$> (preuse l)
 
-setFunctionCode :: Int -> [Opcode] -> State Code ()
+setFunctionCode :: Int -> [Tac] -> State Code ()
 setFunctionCode funIndex code =
-  opcodes.(ix funIndex) .= code
+  instructions.(ix funIndex) .= code
 
 beginFunction :: [String] -> State Code Int
 beginFunction args = do
@@ -110,8 +110,8 @@ beginFunction args = do
   r <- reserveReg -- TODO we should assert that this is always 0
   pushResultReg r
   addArguments args
-  funAddr <- Seq.length <$> use opcodes
-  opcodes `addHeadS` []
+  funAddr <- Seq.length <$> use instructions
+  instructions `addHeadS` []
   return funAddr
 
 endFunction = do
@@ -150,19 +150,19 @@ popSubContext = do
 
 -- Registers
 
-reserveReg :: State Code VMReg
+reserveReg :: State Code Reg
 reserveReg = do
   nextRegister <- use' $ funcRegDataStack._head.reservedRegisters._head
   funcRegDataStack._head.reservedRegisters._head += 1
   return nextRegister
 
-peekReg :: State Code VMReg
+peekReg :: State Code Reg
 peekReg = use' $ funcRegDataStack._head.reservedRegisters._head
 
-resultReg :: State Code VMReg
+resultReg :: State Code Reg
 resultReg = use' $ funcRegDataStack._head.resultRegStack._head
 
-pushResultReg :: VMReg -> State Code ()
+pushResultReg :: Reg -> State Code ()
 pushResultReg r = (funcRegDataStack._head.resultRegStack) `addHead` r
 
 popResultReg :: State Code ()
@@ -172,7 +172,7 @@ popResultReg = funcRegDataStack._head.resultRegStack %= tail
 
 -- Variables
 
-addVar :: String -> VMReg -> State Code ()
+addVar :: String -> Reg -> State Code ()
 addVar n r = do
   contextStack._head.bindings.(at n) .= Just r
 
@@ -182,7 +182,7 @@ addArguments ns =
     r <- reserveReg
     addVar n r)
 
-regContainingVar :: String -> State Code VMReg
+regContainingVar :: String -> State Code Reg
 regContainingVar n = do
   v <- join <$> (preuse $ contextStack._head.bindings.(at n))
   case v of

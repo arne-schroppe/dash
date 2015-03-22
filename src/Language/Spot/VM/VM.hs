@@ -4,9 +4,9 @@ execute
 
 import Language.Spot.VM.Bits
 import Language.Spot.VM.Types
+import Language.Spot.IR.Tac
 import Data.Word
 
-import Language.Spot.IR.Opcode
 import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.C

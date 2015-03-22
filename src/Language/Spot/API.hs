@@ -4,11 +4,11 @@ import Prelude hiding (lex)
 import Language.Spot.Parser.Lexer
 import Language.Spot.Parser.Parser
 import Language.Spot.CodeGen.CodeGen
-import Language.Spot.VM.OpcodeAsm
+import Language.Spot.VM.TacAsm
 import Language.Spot.VM.Types
 import Language.Spot.VM.Bits
 import Language.Spot.VM.VM
-import Language.Spot.IR.Opcode
+import Language.Spot.IR.Tac
 
 import Data.Word
 
@@ -26,7 +26,7 @@ import Data.Word
 -- don't bleed Word32 (and fromIntegral) out into the rest. Type Consttable as [[Int]] or [ConstTableEntry] where ConstTableEntry = [Int]
 -- Add better typing for several things, also for uncompiled asm
 
-toAsm :: String -> [[Opcode]]
+toAsm :: String -> [[Tac]]
 toAsm prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> compile in
   asm
