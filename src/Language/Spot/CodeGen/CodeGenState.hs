@@ -49,13 +49,13 @@ import Language.Spot.VM.Types
 -- TODO "Code" is an utterly stupid name for this
 data Code = Code { _instructions :: Seq.Seq [Tac]
                  , _constTable :: ConstTable
-                 , _symbolNames :: Map.Map String Int
+                 , _symbolNames :: Map.Map String SymId
                  , _funcRegDataStack :: [FunctionRegisterData]
                  , _contextStack :: [Context]
                  }
 
--- reservedRegisters is a stack because we can have sub-contexts inside a function
-data FunctionRegisterData = FunctionRegisterData { _reservedRegisters :: [Int]
+-- numReservedRegisters is a stack because we can have sub-contexts inside a function
+data FunctionRegisterData = FunctionRegisterData { _numReservedRegisters :: [Int]
                                                  , _resultRegStack :: [Reg]
                                                  }
 
@@ -66,7 +66,7 @@ makeLenses ''Context
 makeLenses ''FunctionRegisterData
 
 
-emptyFuncRegisterData = FunctionRegisterData { _reservedRegisters = [0]
+emptyFuncRegisterData = FunctionRegisterData { _numReservedRegisters = [0]
                                              , _resultRegStack = []
                                              }
 
@@ -139,25 +139,25 @@ popContext =
 pushSubContext :: State Code ()
 pushSubContext = do
   pushContext
-  reservedRegs <- use' $ funcRegDataStack._head.reservedRegisters._head
-  (funcRegDataStack._head.reservedRegisters) `addHead` reservedRegs
+  reservedRegs <- use' $ funcRegDataStack._head.numReservedRegisters._head
+  (funcRegDataStack._head.numReservedRegisters) `addHead` reservedRegs
 
 popSubContext :: State Code ()
 popSubContext = do
   contextStack %= tail
-  funcRegDataStack._head.reservedRegisters %= tail
+  funcRegDataStack._head.numReservedRegisters %= tail
 
 
 -- Registers
 
 reserveReg :: State Code Reg
 reserveReg = do
-  nextRegister <- use' $ funcRegDataStack._head.reservedRegisters._head
-  funcRegDataStack._head.reservedRegisters._head += 1
+  nextRegister <- use' $ funcRegDataStack._head.numReservedRegisters._head
+  funcRegDataStack._head.numReservedRegisters._head += 1
   return nextRegister
 
 peekReg :: State Code Reg
-peekReg = use' $ funcRegDataStack._head.reservedRegisters._head
+peekReg = use' $ funcRegDataStack._head.numReservedRegisters._head
 
 resultReg :: State Code Reg
 resultReg = use' $ funcRegDataStack._head.resultRegStack._head
@@ -192,7 +192,7 @@ regContainingVar n = do
 
 -- Symbol names and constants
 
-addSymbolName :: String -> State Code Int
+addSymbolName :: String -> State Code SymId
 addSymbolName s = do
   syms <- use symbolNames
   if Map.member s syms then
@@ -202,7 +202,7 @@ addSymbolName s = do
     symbolNames %= (Map.insert s nextId)
     return nextId
 
-addConstant :: Constant -> State Code VMWord
+addConstant :: Constant -> State Code ConstAddr
 addConstant c = do
   nextAddr <- length <$> use constTable
   constTable %= (++ [c])

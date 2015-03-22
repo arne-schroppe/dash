@@ -13,13 +13,14 @@ import Language.Spot.VM.Types
 
 
 
+-- TODO instead of fromIntegral use something to convert constTable addresses
 assemble :: [[Tac]] -> ConstTable -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
-assemble funcs ctable symnames = assembleWithEncodedConstTable funcs (encodeConstTable ctable) symnames
+assemble funcs ctable symnames = assembleWithEncodedConstTable funcs (encodeConstTable ctable) fromIntegral symnames
 
 
-assembleWithEncodedConstTable :: [[Tac]] -> [VMWord] -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
-assembleWithEncodedConstTable funcs encCTable symnames =
-  (map (assembleTac funcAddrs) instructions, encCTable, symnames)
+assembleWithEncodedConstTable :: [[Tac]] -> [VMWord] -> (Int -> VMWord) -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
+assembleWithEncodedConstTable funcs encCTable cAddrConverter symnames =
+  (map (assembleTac funcAddrs cAddrConverter) instructions, encCTable, symnames)
   where instructions = fst combined
         funcAddrs = snd combined
         combined = combineFunctions funcs
@@ -35,8 +36,8 @@ combineFunctions funcs = (fst combined, reverse $ snd combined)
 
 
 -- TODO convert constant addresse
-assembleTac :: [VMWord] -> Tac -> Word32
-assembleTac funcAddrs opc =
+assembleTac :: [VMWord] -> (Int -> VMWord) -> Tac -> Word32
+assembleTac funcAddrs addrConv opc =
   let r = fromIntegral in
   let i = fromIntegral in
   case opc of
@@ -44,8 +45,8 @@ assembleTac funcAddrs opc =
     Tac_load_i r0 i     -> instructionRI   1 (r r0) i
     Tac_load_f r0 fi    -> instructionRI   1 (r r0) (funcAddrs !! fi)
     Tac_load_s r0 s     -> instructionRI   2 (r r0) (i s)
-    Tac_load_sd r0 a    -> instructionRI   3 (r r0) a
-    Tac_load_c r0 a     -> instructionRI   4 (r r0) a
+    Tac_load_sd r0 a    -> instructionRI   3 (r r0) (addrConv a)
+    Tac_load_c r0 a     -> instructionRI   4 (r r0) (addrConv a)
     Tac_add r0 r1 r2    -> instructionRRR  5 (r r0) (r r1) (r r2)
     Tac_sub r0 r1 r2    -> instructionRRR  6 (r r0) (r r1) (r r2)
     Tac_move r0 r1      -> instructionRRR  7 (r r0) (r r1) (i 0)

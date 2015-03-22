@@ -4,7 +4,7 @@ import Language.Spot.VM.Types
 
 type SymId = Int
 type FunAddr = Int
-type ConstAddr = VMWord
+type ConstAddr = Int
 
 data PatternConstant =
     PatCSymbol SymId
