@@ -34,8 +34,6 @@ toAsm prog =
 
 run :: String -> IO VMValue
 run prog = do
-  let (instrs, ctable, symNames) = prog |> lex |> parse |> compile
-  let encCTable = encodeConstTable ctable
-  (value, ctable', symNames') <- (instrs, encCTable, symNames) ||> assemble ||> execute
-  return $ decode value ctable' symNames'
+  (value, ctable, symNames) <-  prog |> lex |> parse |> compile||> assemble ||> execute
+  return $ decode value ctable symNames
 

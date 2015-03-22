@@ -17,7 +17,7 @@ runProgTbl :: [Word32] -> [[Tac]] -> IO Word32
 runProgTbl tbl prog = do
   (value, _, _) <- execute asm tbl' []
   return value
-  where (asm, tbl', _) = assemble prog tbl []
+  where (asm, tbl', _) = assembleWithEncodedConstTable prog tbl []
 
 
 spec :: Spec

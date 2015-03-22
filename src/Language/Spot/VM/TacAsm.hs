@@ -1,6 +1,6 @@
 module Language.Spot.VM.TacAsm (
   assemble
-, encodeConstTable
+, assembleWithEncodedConstTable
 ) where
 
 -- Translates [[Tac]] to data for the virtual machine
@@ -13,9 +13,13 @@ import Language.Spot.VM.Types
 
 
 
-assemble :: [[Tac]] -> [VMWord] -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
-assemble funcs ctable symnames =
-  (map (assembleTac funcAddrs) instructions, ctable, symnames)
+assemble :: [[Tac]] -> ConstTable -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
+assemble funcs ctable symnames = assembleWithEncodedConstTable funcs (encodeConstTable ctable) symnames
+
+
+assembleWithEncodedConstTable :: [[Tac]] -> [VMWord] -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
+assembleWithEncodedConstTable funcs encCTable symnames =
+  (map (assembleTac funcAddrs) instructions, encCTable, symnames)
   where instructions = fst combined
         funcAddrs = snd combined
         combined = combineFunctions funcs
@@ -30,6 +34,7 @@ combineFunctions funcs = (fst combined, reverse $ snd combined)
           ( allInstrs ++ funcInstrs, (fromIntegral $ length allInstrs) : funcAddrs )
 
 
+-- TODO convert constant addresse
 assembleTac :: [VMWord] -> Tac -> Word32
 assembleTac funcAddrs opc =
   let r = fromIntegral in
