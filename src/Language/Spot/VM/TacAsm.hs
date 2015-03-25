@@ -5,17 +5,39 @@ module Language.Spot.VM.TacAsm (
 
 -- Translates [[Tac]] to data for the virtual machine
 
+import Control.Monad.State
 import Data.Word
 import Data.List
 import Data.Bits
+import Data.Maybe
 import Language.Spot.IR.Tac
 import Language.Spot.VM.Types
+import Language.Spot.VM.Bits
+import qualified Data.IntMap as IntMap
+
+-- TODO do we encode nested symbols depth-first or breadth-first? Try both and measure performance!
+
+data AtomicConstant = 
+    ACNumber Int
+  | ACSymbol SymId
+  | ACDataSymbol SymId [AtomicConstant]
+  | ACMatchHeader Int
+  | ACMatchVar Int
+
+-- When encoding ACDataSymbol : Keep a "next free address" variable, which initially points
+-- to the space right after the current block. Create a symbolref with that address. Increment
+-- next-free-address with the length of the body. Add the body to a todo list. Decode rest of
+-- current block. Then continue with next item from todo list.
+-- Problem: On the 'top level', data symbols are expanded directly, influencing the position of
+-- the next free address. So take that into account when initially calculating the next free addr.
 
 
 
 -- TODO instead of fromIntegral use something to convert constTable addresses
 assemble :: [[Tac]] -> ConstTable -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
-assemble funcs ctable symnames = assembleWithEncodedConstTable funcs (encodeConstTable ctable) fromIntegral symnames
+assemble funcs ctable symnames = 
+  let (consts, addrConvert) = encodeConstTable ctable in
+  assembleWithEncodedConstTable funcs consts addrConvert symnames
 
 
 assembleWithEncodedConstTable :: [[Tac]] -> [VMWord] -> (Int -> VMWord) -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
@@ -64,13 +86,139 @@ instructionRI opcId register value =
   (opcId `shiftL` (instSize - 4)) .|. (register `shiftL` (instSize - (4 + 5))) .|. value
 
 instructionRRR opcId r0 r1 r2 =
-  (opcId `shiftL` (instSize - 4))
-      .|. (r0 `shiftL` (instSize - (4 + 5)))
-      .|. (r1 `shiftL` (instSize - (4 + 2 * 5)))
-      .|. (r2 `shiftL` (instSize - (4 + 3 * 5)))
+   (opcId `shiftL` (instSize - 4))
+  .|. (r0 `shiftL` (instSize - (4 + 5)))
+  .|. (r1 `shiftL` (instSize - (4 + 2 * 5)))
+  .|. (r2 `shiftL` (instSize - (4 + 3 * 5)))
+
+
+data ConstEncodingState = ConstEncodingState {
+  nextFreeAddress :: Int
+, addrMap :: IntMap.IntMap VMWord
+}
+
+-- TODO don't use fromJust
+encodeConstTable :: ConstTable -> ([VMWord], Int -> VMWord)
+encodeConstTable ctable =
+  let (encodedTable, finalState) = runState (encTable ctable) initState in
+  (encodedTable,  {- ( (addrMap finalState) IntMap.! ) -} const 0 )
+  where
+    initState = ConstEncodingState { nextFreeAddress = 0, addrMap = IntMap.empty }
+    encTable ctable = do
+      encoded <- mapM (encodeTopLevelConst True) ctable
+      return $ foldl (++) [] encoded
 
 
 
-encodeConstTable :: ConstTable -> [VMWord]
-encodeConstTable ctable = [0]
+
+encodeTopLevelConst noSpaceReserved c = case c of
+  CNumber n -> do reserveConstSpace 1; return $ [encNumber (fromIntegral n)]
+  CSymbol sid -> do reserveConstSpace 1; return $ [encSymbol (fromIntegral sid)]
+  CDataSymbol sid args -> encodeTopLevelDataSymbolConst noSpaceReserved sid args
+  CMatchData pats -> encodeMatchDataConst pats
+
+
+encodeTopLevelDataSymbolConst noSpaceReserved symId args = do
+  when noSpaceReserved (do
+    let headerSize = 1
+    reserveConstSpace $ headerSize + (length args)
+    )
+  let symbolHeader = encDataSymbolHeader (fromIntegral symId) (fromIntegral $ length args)
+  (body, todo) <- encodeSymbolBody args
+  let encodedSymbol = symbolHeader : body
+  encodedRest <- mapM (encodeTopLevelConst False) todo
+  let combinedRest = foldl (++) [] encodedRest
+  return $ encodedSymbol ++ combinedRest
+
+  where
+    encodeSymbolBody args = do
+      encoded <- mapM encodeConst args
+      let body = map fst encoded
+      let todo = catMaybes $ map snd encoded
+      return (body, todo)
+
+encodeConst c = case c of
+  CNumber n -> return (encNumber (fromIntegral n), Nothing)
+  CSymbol sid -> return (encSymbol (fromIntegral sid), Nothing)
+  sym @ (CDataSymbol sid args) -> do
+    addr <- gets nextFreeAddress
+    reserveConstSpace (1 + length args)
+    return (encDataSymbol (fromIntegral addr), Just sym)
+  x -> error $ "Can't encode " ++ (show x) ++ " at this level"
+
+
+-- TODO
+encodeMatchDataConst pats = return []
+
+reserveConstSpace len = do
+  state <- get
+  let addr = nextFreeAddress state
+  put $ state { nextFreeAddress = addr + len }
+
+
+
+
+
+{-
+  let (encTable, addrMap) = runState (encodeConstTableSt ctable) (IntMap.empty) in
+  (encTable, \a -> fromJust $ IntMap.lookup a addrMap)
+-}
+
+
+
+
+
+
+
+{-
+-- TODO this is all bad and too complicated
+encodeConstant :: Constant -> ([AtomicConstant], [AtomicConstant])
+encodeConstant c = case c of
+  CNumber n   -> ([], [ACNumber n])
+  CSymbol sid -> ([], [ACSymbol sid])
+  CDataSymbol sid params -> encodeDataSymbol sid params encodeDataSymbolParam
+  CMatchData patConsts -> 
+    let encoded = map encodePatternConstant patConsts in
+    let before = foldl (++) [] (map fst encoded) in
+    let body = map snd encoded in
+    let encodedMatchData = (ACMatchHeader (length body)) : body in
+    (before, encodedMatchData)
+
+encodeDataSymbol sid params encode = 
+    let encoded = map encode params in
+    let before = foldl (++) [] $ map fst encoded in
+    let body = map snd encoded in
+    let encodedSym = (ACDataSymbolHeader sid (length body)) : body in
+    (before, encodedSym)
+
+encodeDataSymbolParam :: Constant -> ([AtomicConstant], AtomicConstant)
+encodeDataSymbolParam c = case c of
+  CNumber _ | CSymbol _ -> 
+    let (before, body) = encodeConstant c in
+    (before, head body) -- TODO this is not good, we're using secret knowledge about the data we receive
+  CDataSymbol _ _ -> 
+    let (before, body) = encodeConstant c in
+    (before ++ body, ACSymbolRef 0) -- TODO add proper address
+  x -> error $ "Can't encode symbol parameter: " ++ (show x)
+
+
+encodePatternConstant c = case c of
+  PatCNumber n -> ACNumber n
+  PatCSymbol sid -> ACSymbol sid
+  PatCDataSymbol sid params -> encodeDataSymbolParam sid params encodePatternSymbolParam
+  PatCVar n -> ACMatchVar n
+
+-- TODO
+encodePatternSymbolParam c = case c of
+  _ -> ([], ACNumber 0)
+
+{ -
+encodeConstTableSt :: ConstTable -> State (IntMap.IntMap VMWord) [VMWord]
+encodeConstTableSt ctable = do
+  foldM  (\acc elem -> case elem of
+    CSymbol sid -> acc ++ [encSymbol sid]
+    
+  ) [] ctable
+
+-}
 

@@ -11,6 +11,7 @@ data PatternConstant =
   | PatCDataSymbol SymId [PatternConstant]
   | PatCNumber Int
   | PatCVar Int
+  deriving (Show, Eq)
 
 
 data Constant =
@@ -18,6 +19,7 @@ data Constant =
   | CDataSymbol SymId [Constant]
   | CNumber Int
   | CMatchData [PatternConstant]
+  deriving (Show, Eq)
 
 type ConstTable = [Constant]
 type SymbolNameList = [String]

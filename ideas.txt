@@ -1,0 +1,14 @@
+
+IDEAS
+
+
+
+Universal access with / operator. E.g.
+some-array/1/:birthdays//sort/:first
+// applies a function (Maybe use another, more universal operator for that)o
+
+
+
+When implementing a type class (Are we going to have those?), automatically run tests against it (the minimum that the type class needs
+to fulfill to behave as expected)
+

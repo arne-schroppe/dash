@@ -193,7 +193,7 @@ bool execute_instruction(vm_instruction instr) {
 
       if(i == number_of_patterns) {
         fprintf(stderr, "Pattern match failed!\n");
-        exit(-1); //TODO handle this more gracefuly
+        //exit(-1); //TODO handle this more gracefuly
       }
 
       program_pointer += i;

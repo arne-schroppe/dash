@@ -134,8 +134,7 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 23
 
-{- TODO fix this test
-    -- TODO add vm options and optionally print debug info
+
     it "binds a value inside a nested symbol" $ do
       let code =  " match (:test 4 (:inner 8) 15) with { \n\
                   \ :test 4 (:wrong n) m -> 1 \n\
@@ -143,12 +142,11 @@ spec = do
                   \ :test 5 (:inner n) m -> 3 \n\
                   \ }"
 
-      putStrLn $ show $ toAsm code
+      -- putStrLn $ show $ toAsm code
       -- let cTable = extractConstTable code
       -- putStrLn $ foldl (++) "" $ map (\n -> showHex n "\n") cTable
       let result = run code
       result `shouldReturn` VMNumber 23
--}
 
 
 {-
