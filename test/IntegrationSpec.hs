@@ -15,6 +15,8 @@ spec :: Spec
 spec = do
   describe "Spot" $ do
 
+{-
+
     it "evaluates an integer" $ do
       let result = run "4815"
       result `shouldReturn` VMNumber 4815
@@ -133,6 +135,8 @@ spec = do
                   \ }"
       let result = run code
       result `shouldReturn` VMNumber 23
+
+-}
 
 
     it "binds a value inside a nested symbol" $ do

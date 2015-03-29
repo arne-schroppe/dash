@@ -15,6 +15,7 @@ import Language.Spot.VM.Types
 import Language.Spot.VM.Bits
 import qualified Data.IntMap as IntMap
 
+
 -- TODO do we encode nested symbols depth-first or breadth-first? Try both and measure performance!
 
 data AtomicConstant = 
@@ -92,15 +93,24 @@ instructionRRR opcId r0 r1 r2 =
   .|. (r2 `shiftL` (instSize - (4 + 3 * 5)))
 
 
+
+
+
+
+
+------ CONST ENCODING -----------
+
+
+
 data ConstEncodingState = ConstEncodingState {
   constants :: [Constant]
 , workQueue :: [Constant]
 , addrMap :: IntMap.IntMap VMWord
 , encoded :: [VMWord] -- should be a Sequence
 , reservedSpace :: Int
+, numEncodedConsts :: Int
 }
 
--- TODO don't use fromJust
 encodeConstTable :: ConstTable -> ([VMWord], Int -> VMWord)
 encodeConstTable ctable =
   let state = execState (encTable ctable) initState in
@@ -112,6 +122,7 @@ encodeConstTable ctable =
                   , addrMap = IntMap.empty
                   , encoded = []
                   , reservedSpace = 0
+                  , numEncodedConsts = 0
                 }
     encTable ctable = whileJust encodeConst popWorkItem
 
@@ -129,11 +140,20 @@ popWorkItem = do
   case (workQueue state, constants state) of
     ([], []) -> return Nothing
     ([], cs) -> do
-          put (state { constants = tail cs })
+          numEncoded <- gets numEncodedConsts
+          let currentAddr = length $ encoded state
+          addAddrMapping numEncoded $ fromIntegral currentAddr
+          state' <- get
+          put $ state' { numEncodedConsts = numEncoded + 1, constants = tail cs }
           return $ Just $ head cs
     (ws, _) -> do
           put (state { workQueue = tail ws })
           return $ Just $ head ws
+
+addAddrMapping src dest = do
+  state <- get
+  let newMap = IntMap.insert src dest (addrMap state)
+  put $ state { addrMap = newMap }
 
 pushWorkItem c = do
   state <- get
