@@ -2,7 +2,7 @@ module Language.Spot.VM.Bits (
   VMValue(..)
 , encNumber
 , encSymbol
-, encDataSymbol
+, encDataSymbolRef
 , decode
 , encMatchHeader
 , encMatchVar
@@ -24,8 +24,8 @@ encNumber = makeVMValue tagNumber . ensureRange
 encSymbol :: VMWord -> VMWord
 encSymbol = makeVMValue tagSymbol . ensureRange
 
-encDataSymbol :: VMWord -> VMWord
-encDataSymbol = makeVMValue tagDataSymbol . ensureRange
+encDataSymbolRef :: VMWord -> VMWord
+encDataSymbolRef = makeVMValue tagDataSymbol . ensureRange
 
 ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
 

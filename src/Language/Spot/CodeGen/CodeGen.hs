@@ -191,14 +191,14 @@ compileMatch expr patsAndExprs = do
 
 createConstPattern pat nextMatchVar =
   case pat of
-    PatNumber n -> return ([], (PatCNumber n))
+    PatNumber n -> return ([], (CNumber n))
     PatSymbol s [] -> do sid <- addSymbolName s
-                         return $ ([], PatCSymbol sid)
+                         return $ ([], CSymbol sid)
     PatSymbol s params -> do
                   symId <- addSymbolName s
                   (vars, pats) <- encodePatternDataSymbolArgs params nextMatchVar
-                  return (vars, PatCDataSymbol symId pats)
-    PatVar n -> return $ ([n], PatCVar nextMatchVar)
+                  return (vars, CDataSymbol symId pats)
+    PatVar n -> return $ ([n], CMatchVar nextMatchVar)
 
 -- TODO use inner state
 encodePatternDataSymbolArgs args nextMatchVar = do

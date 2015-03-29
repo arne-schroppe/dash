@@ -49,3 +49,41 @@ let a = do-stuff :test $ add 1 a
 let a = do-stuff :test & add 1 a
 let a = do-stuff :test, add 1 a
 let a = do-stuff :test . add 1 a -- nope
+
+
+### Matching ordered data structures
+
+:list 1 (:list 2 (:list 3 :list/null)) -- module symbols can implement a null element. TODO does this even make sense?
+
+[ 1, 2, 3 | [] ]
+
+1 :: 2 :: 3 :: []
+
+val new-list = [1 | old-list]
+val new-list = 1 :: old-list
+val new-list = :list 1 old-list
+
+
+## mapping symbols
+
+You can do this
+
+map (:symbol _) some-list
+
+But can you also do this?
+
+map :symbol some-list
+
+would it make sense to treat symbols as functions?
+
+
+if they were, we could do interesting stuff like this:
+
+foldl :numbers (range 0 4)
+
+--> :numbers 0 1 2 3 4
+
+well, actually it's not that interesting
+
+
+

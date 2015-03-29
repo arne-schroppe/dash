@@ -93,23 +93,111 @@ instructionRRR opcId r0 r1 r2 =
 
 
 data ConstEncodingState = ConstEncodingState {
-  nextFreeAddress :: Int
+  constants :: [Constant]
+, workQueue :: [Constant]
 , addrMap :: IntMap.IntMap VMWord
+, encoded :: [VMWord] -- should be a Sequence
+, reservedSpace :: Int
 }
 
 -- TODO don't use fromJust
 encodeConstTable :: ConstTable -> ([VMWord], Int -> VMWord)
 encodeConstTable ctable =
-  let (encodedTable, finalState) = runState (encTable ctable) initState in
-  (encodedTable,  {- ( (addrMap finalState) IntMap.! ) -} const 0 )
+  let state = execState (encTable ctable) initState in
+  (encoded state,  ( (addrMap state) IntMap.! ) )
   where
-    initState = ConstEncodingState { nextFreeAddress = 0, addrMap = IntMap.empty }
-    encTable ctable = do
-      encoded <- mapM (encodeTopLevelConst True) ctable
-      return $ foldl (++) [] encoded
+    initState = ConstEncodingState { 
+                    constants = ctable
+                  , workQueue = []
+                  , addrMap = IntMap.empty
+                  , encoded = []
+                  , reservedSpace = 0
+                }
+    encTable ctable = whileJust encodeConst popWorkItem
+
+
+whileJust f source = do
+  next <- source
+  case next of
+    Nothing -> return ()
+    Just x -> do
+      f x
+      whileJust f source
+
+popWorkItem = do
+  state <- get
+  case (workQueue state, constants state) of
+    ([], []) -> return Nothing
+    ([], cs) -> do
+          put (state { constants = tail cs })
+          return $ Just $ head cs
+    (ws, _) -> do
+          put (state { workQueue = tail ws })
+          return $ Just $ head ws
+
+pushWorkItem c = do
+  state <- get
+  let workQ = workQueue state
+  put $ state { workQueue = workQ ++ [c] }
+
+nextFreeAddress = do
+  state <- get
+  let used = length $ encoded state
+  let reserved = reservedSpace state
+  let pendingItems = workQueue state
+  let pending = foldl (\acc c -> acc + (spaceNeededByConstant c)) 0 pendingItems
+  return $ used + reserved + pending
+
+spaceNeededByConstant c = case c of
+  CNumber _ -> 1
+  CSymbol _ -> 1
+  CMatchVar _ -> 1
+  CDataSymbol _ args -> 1 + length args
+  CMatchData args -> 1 + length args
+
+addEncoded enc = do
+  state <- get
+  put $ state { encoded = (encoded state) ++ enc }
+
+setReservedSpace n = do
+  state <- get
+  put $ state { reservedSpace = n }
+
+encodeConst c = case c of
+  CNumber n -> addEncoded [encNumber $ fromIntegral n]
+  CSymbol sid -> addEncoded [encSymbol $ fromIntegral sid]
+  CDataSymbol sid args -> encodeDataSymbol sid args
+  CMatchData args -> encodeMatchData args
+
+
+encodeDataSymbol sid args = do
+  setReservedSpace (1 + length args)
+  let symbolHeader = encDataSymbolHeader (fromIntegral sid) (fromIntegral $ length args)
+  encodedArgs <- mapM encodeConstArg args
+  addEncoded $ symbolHeader : encodedArgs
+  setReservedSpace 0
+
+encodeMatchData args = do
+  setReservedSpace (1 + length args)
+  let matchHeader = encMatchHeader (fromIntegral $ length args)
+  encodedArgs <- mapM encodeConstArg args
+  addEncoded $ matchHeader : encodedArgs
+  setReservedSpace 0
+
+
+encodeConstArg c = case c of
+  CNumber n -> return $ encNumber $ fromIntegral n
+  CSymbol sid -> return $ encSymbol $ fromIntegral sid
+  CMatchVar n -> return $ encMatchVar $ fromIntegral n
+  ds@(CDataSymbol _ _) -> do
+                addr <- nextFreeAddress
+                pushWorkItem ds
+                return $ encDataSymbolRef $ fromIntegral addr
 
 
 
+
+{-
 
 encodeTopLevelConst noSpaceReserved c = case c of
   CNumber n -> do reserveConstSpace 1; return $ [encNumber (fromIntegral n)]
@@ -147,7 +235,6 @@ encodeConst c = case c of
   x -> error $ "Can't encode " ++ (show x) ++ " at this level"
 
 
--- TODO
 encodeMatchDataConst pats = return []
 
 reserveConstSpace len = do
@@ -155,6 +242,7 @@ reserveConstSpace len = do
   let addr = nextFreeAddress state
   put $ state { nextFreeAddress = addr + len }
 
+-}
 
 
 {-

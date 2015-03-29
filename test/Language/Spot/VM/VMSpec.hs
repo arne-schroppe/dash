@@ -121,7 +121,7 @@ spec = do
     it "loads a data symbol" $ do
       let prog = [[ Tac_load_sd 0 1,
                     Tac_ret ]]
-      (runProg prog) `shouldReturn` (encDataSymbol 1)
+      (runProg prog) `shouldReturn` (encDataSymbolRef 1)
 
 
     it "jumps forward" $ do
@@ -166,8 +166,8 @@ spec = do
 
     it "matches a data symbol" $ do
       let ctable = [ encMatchHeader 2,
-                     encDataSymbol 3,
-                     encDataSymbol 6,
+                     encDataSymbolRef 3,
+                     encDataSymbolRef 6,
                      encDataSymbolHeader 1 2,
                      encNumber 55,
                      encNumber 66,
@@ -191,8 +191,8 @@ spec = do
 
     it "binds a value in a match" $ do
       let ctable = [ encMatchHeader 2,
-                     encDataSymbol 3,
-                     encDataSymbol 6,
+                     encDataSymbolRef 3,
+                     encDataSymbolRef 6,
                      encDataSymbolHeader 1 2,
                      encNumber 55,
                      encNumber 66,

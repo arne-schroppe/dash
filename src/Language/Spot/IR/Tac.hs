@@ -6,19 +6,13 @@ type SymId = Int
 type FunAddr = Int
 type ConstAddr = Int
 
-data PatternConstant =
-    PatCSymbol SymId
-  | PatCDataSymbol SymId [PatternConstant]
-  | PatCNumber Int
-  | PatCVar Int
-  deriving (Show, Eq)
-
 
 data Constant =
     CSymbol SymId
   | CDataSymbol SymId [Constant]
   | CNumber Int
-  | CMatchData [PatternConstant]
+  | CMatchData [Constant]
+  | CMatchVar Int -- Can only be used inside CMatchData
   deriving (Show, Eq)
 
 type ConstTable = [Constant]
