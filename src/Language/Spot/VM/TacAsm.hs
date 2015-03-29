@@ -157,6 +157,19 @@ reserveConstSpace len = do
 
 
 
+{-
+ - foldM? encodeTopLevel nextWorkItem
+ -
+ - nextWorkItem is either the next ctable entry or another thing pushed into a separate queue
+ -
+ - nextFreeAddress can calculate the next free address by looking at the work item queue and 
+ - the length of already encoded things (and a reservation for the current block)
+ -
+ -
+ -
+ -
+ -}
+
 
 
 {-
