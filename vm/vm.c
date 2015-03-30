@@ -19,6 +19,7 @@ const vm_value vm_tag_data_symbol = 0x5;
 const vm_value vm_tag_match_data = 0xF;
 
 static vm_value *const_table = 0;
+static int const_table_length = 0;
 
 
 #define STACK_SIZE 255
@@ -26,6 +27,10 @@ static stack_frame stack[STACK_SIZE];
 static int stack_pointer = 0;
 static int program_pointer = 0;
 
+
+#define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
+    printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
+    return false; }
 
 
 
@@ -73,8 +78,10 @@ bool execute_instruction(vm_instruction instr) {
     case OP_LOADc: {
       int reg1 = get_arg_r0(instr);
       int table_index = get_arg_i(instr);
+
+      check_ctable_index(table_index)
       get_reg(reg1) = const_table[table_index];
-      debug( printf("LOADc  r%02i #%i\n", reg1, table_index) );
+      debug( printf("LOADc  r%02i #%i value: %i\n", reg1, table_index, const_table[table_index]) );
     }
     break;
 
@@ -177,12 +184,17 @@ bool execute_instruction(vm_instruction instr) {
       int subject = get_reg(get_arg_r0(instr));
       int patterns_addr = get_reg(get_arg_r1(instr));
       int capture_reg = get_arg_r2(instr);
+
+      check_ctable_index(patterns_addr)
       vm_value match_header = const_table[patterns_addr];
       int number_of_patterns = from_match_value(match_header);
       int i = 0;
 
       for(i=0; i<number_of_patterns; ++i) {
-        vm_value pat = const_table[patterns_addr + 1 + i];
+        int rel_pat_addr = patterns_addr + 1 + i;
+
+        check_ctable_index(rel_pat_addr)
+        vm_value pat = const_table[rel_pat_addr];
         if(does_value_match(pat, subject, capture_reg)) {
           break;
         }
@@ -194,6 +206,7 @@ bool execute_instruction(vm_instruction instr) {
       if(i == number_of_patterns) {
         fprintf(stderr, "Pattern match failed!\n");
         //exit(-1); //TODO handle this more gracefuly
+        return false;
       }
 
       program_pointer += i;
@@ -235,10 +248,14 @@ bool does_value_match(vm_value pat, vm_value subject, int start_register) {
 
     case vm_tag_data_symbol: {
       vm_value pat_address = from_val(pat, vm_tag_data_symbol);
+
+      check_ctable_index(pat_address)
       vm_value pat_header = const_table[pat_address];
       vm_value pat_id = data_symbol_id(pat_header);
 
       vm_value subject_address = from_val(subject, vm_tag_data_symbol);
+
+      check_ctable_index(subject_address)
       vm_value subject_header = const_table[subject_address];
       vm_value subject_id = data_symbol_id(subject_header);
       if(pat_id != subject_id) {
@@ -254,7 +271,12 @@ bool does_value_match(vm_value pat, vm_value subject, int start_register) {
 
       int i=0;
       for(; i<pat_count; ++i) {
-        if( !does_value_match(const_table[pat_address + 1 + i], const_table[subject_address + 1 + i], start_register) ) {
+        int rel_pat_address = pat_address + 1 + i;
+        int rel_subject_address = subject_address + 1 + i;
+
+        check_ctable_index(rel_pat_address);
+        check_ctable_index(rel_subject_address);
+        if( !does_value_match(const_table[rel_pat_address], const_table[rel_subject_address], start_register) ) {
           return false;
         }
       }
@@ -284,6 +306,7 @@ void reset() {
   program_pointer = 0;
   stack_pointer = 0;
   const_table = 0;
+  const_table_length = 0;
   memset(stack, 0, sizeof(stack_frame) * STACK_SIZE);
 }
 
@@ -297,13 +320,14 @@ void print_program(vm_instruction *program) {
 }
 
 
-vm_value vm_execute(vm_instruction *program, vm_value *const_table_arg) {
+vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctable, int ctable_length) {
   //print_program(program);
   reset();
-  const_table = const_table_arg;
+  const_table = ctable;
+  const_table_length = ctable_length;
   bool is_running = true;
 
-  while(is_running) {
+  while(is_running && program_pointer < program_length) {
     debug( printf("-----\n") );
     debug( print_registers(current_frame) );
     int old_program_pointer = program_pointer;

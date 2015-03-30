@@ -15,7 +15,6 @@ spec :: Spec
 spec = do
   describe "Spot" $ do
 
-{-
 
     it "evaluates an integer" $ do
       let result = run "4815"
@@ -136,7 +135,6 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 23
 
--}
 
 
     it "binds a value inside a nested symbol" $ do
@@ -146,7 +144,7 @@ spec = do
                   \ :test 5 (:inner n) m -> 3 \n\
                   \ }"
 
-      -- putStrLn $ show $ toAsm code
+      --putStrLn $ show $ toAsm code
       -- let cTable = extractConstTable code
       -- putStrLn $ foldl (++) "" $ map (\n -> showHex n "\n") cTable
       let result = run code

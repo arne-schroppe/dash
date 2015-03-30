@@ -16,8 +16,8 @@ import Foreign.C
 execute :: [VMWord] -> [VMWord] -> SymbolNameList -> IO (VMWord, [VMWord], SymbolNameList)
 execute prog ctable symNames = withArray (map CUInt prog) (\progPtr ->
                                withArray (map CUInt ctable) (\ctablePtr ->
-                               vmExecuteForeign progPtr ctablePtr)) >>= \a -> return (a, ctable, symNames)
+                               vmExecuteForeign progPtr (fromIntegral $ length prog) ctablePtr (fromIntegral $ length ctable) )) >>= \a -> return (a, ctable, symNames)
 
 foreign import ccall unsafe "vm_execute" vmExecuteForeign
-    :: Ptr CUInt -> Ptr CUInt -> IO Word32
+    :: Ptr CUInt -> CInt -> Ptr CUInt -> CInt -> IO Word32
 

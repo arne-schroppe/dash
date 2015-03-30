@@ -15,6 +15,8 @@ import Language.Spot.VM.Types
 import Language.Spot.VM.Bits
 import qualified Data.IntMap as IntMap
 
+import Debug.Trace
+
 
 -- TODO do we encode nested symbols depth-first or breadth-first? Try both and measure performance!
 
@@ -66,6 +68,7 @@ assembleTac funcAddrs addrConv opc =
   case opc of
     Tac_ret             -> instructionRI   0 0 0
     Tac_load_i r0 i     -> instructionRI   1 (r r0) i
+    Tac_load_addr r0 a  -> instructionRI   1 (r r0) (addrConv a)
     Tac_load_f r0 fi    -> instructionRI   1 (r r0) (funcAddrs !! fi)
     Tac_load_s r0 s     -> instructionRI   2 (r r0) (i s)
     Tac_load_sd r0 a    -> instructionRI   3 (r r0) (addrConv a)
@@ -119,7 +122,7 @@ encodeConstTable ctable =
     initState = ConstEncodingState { 
                     constants = ctable
                   , workQueue = []
-                  , addrMap = IntMap.empty
+                  , addrMap = IntMap.fromList [(0, 0)]
                   , encoded = []
                   , reservedSpace = 0
                   , numEncodedConsts = 0
@@ -183,11 +186,15 @@ setReservedSpace n = do
   state <- get
   put $ state { reservedSpace = n }
 
+
+
+
 encodeConst c = case c of
   CNumber n -> addEncoded [encNumber $ fromIntegral n]
   CSymbol sid -> addEncoded [encSymbol $ fromIntegral sid]
   CDataSymbol sid args -> encodeDataSymbol sid args
   CMatchData args -> encodeMatchData args
+  x -> error $ "Unable to encode top-level constant " ++ show x
 
 
 encodeDataSymbol sid args = do
@@ -202,7 +209,7 @@ encodeMatchData args = do
   let matchHeader = encMatchHeader (fromIntegral $ length args)
   encodedArgs <- mapM encodeConstArg args
   addEncoded $ matchHeader : encodedArgs
-  setReservedSpace 0
+  setReservedSpace $ 0
 
 
 encodeConstArg c = case c of
@@ -213,6 +220,7 @@ encodeConstArg c = case c of
                 addr <- nextFreeAddress
                 pushWorkItem ds
                 return $ encDataSymbolRef $ fromIntegral addr
+  x -> error $ "Unable to encode constant as argument: " ++ show x
 
 
 

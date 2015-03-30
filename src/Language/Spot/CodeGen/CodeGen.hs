@@ -168,7 +168,7 @@ compileMatch expr patsAndExprs = do
       argCode <- evalArgument expr subjReg
       patReg <- reserveReg
       return $ argCode ++
-               [ Tac_load_c patReg matchDataAddr
+               [ Tac_load_addr patReg matchDataAddr
                , Tac_match subjReg patReg (patReg + 1) ]
 
     calcJumpTargets numPats exprCodes idx =

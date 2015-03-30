@@ -28,6 +28,7 @@ type Reg = Int
 data ThreeAddressCode =
     Tac_ret
   | Tac_load_i Reg VMWord
+  | Tac_load_addr Reg ConstAddr
   | Tac_load_f Reg FunAddr
   | Tac_load_s Reg SymId
   | Tac_load_sd Reg ConstAddr

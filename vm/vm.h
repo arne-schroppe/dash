@@ -20,7 +20,7 @@ typedef struct _stack_frame stack_frame;
 
 
 //TODO add size parameters
-vm_value vm_execute(vm_instruction *program, vm_value *const_table);
+vm_value vm_execute(vm_instruction *program, int program_length, vm_value *const_table, int const_table_length);
 
 
 typedef enum {

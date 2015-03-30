@@ -5,6 +5,7 @@ module Language.Spot.VM.Bits (
 , encDataSymbolRef
 , decode
 , encMatchHeader
+, decodeMatchHeader
 , encMatchVar
 , encDataSymbolHeader
 
@@ -51,6 +52,9 @@ decodeDataSymbol addr ctable symNames =
 
 encMatchHeader :: VMWord -> VMWord
 encMatchHeader n = matchData 1 n
+
+decodeMatchHeader :: VMWord -> VMWord
+decodeMatchHeader h = h .&. 0x7FFFFFF
 
 encMatchVar :: VMWord -> VMWord
 encMatchVar n = matchData 0 n
