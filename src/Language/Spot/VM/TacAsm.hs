@@ -1,6 +1,8 @@
 module Language.Spot.VM.TacAsm (
   assemble
 , assembleWithEncodedConstTable
+, encodeConstTableToBitC --test
+, BitConstant(..)
 ) where
 
 -- Translates [[Tac]] to data for the virtual machine
@@ -104,25 +106,48 @@ instructionRRR opcId r0 r1 r2 =
 ------ CONST ENCODING -----------
 
 
+data BitConstant =
+    BCSymbol SymId
+  | BCDataSymbolRef ConstAddr
+  | BCDataSymbolHeader SymId Int
+  | BCNumber Int
+  | BCMatchHeader Int
+  | BCMatchVar Int
+  deriving (Show, Eq)
+
+encodeConstantToBits c = case c of
+  BCSymbol sid -> encSymbol $ fromIntegral sid
+  BCDataSymbolRef addr -> encDataSymbolRef $ fromIntegral addr
+  BCDataSymbolHeader sid n -> encDataSymbolHeader (fromIntegral sid) (fromIntegral n)
+  BCNumber n -> encNumber $ fromIntegral n
+  BCMatchHeader n -> encMatchHeader $ fromIntegral n
+  BCMatchVar n -> encMatchVar $ fromIntegral n
+
 
 data ConstEncodingState = ConstEncodingState {
   constants :: [Constant]
 , workQueue :: [Constant]
 , addrMap :: IntMap.IntMap VMWord
-, encoded :: [VMWord] -- should be a Sequence
+, encoded :: [BitConstant] -- should be a Sequence
 , reservedSpace :: Int
 , numEncodedConsts :: Int
 }
 
 encodeConstTable :: ConstTable -> ([VMWord], Int -> VMWord)
 encodeConstTable ctable =
+  let (bitcs, mapping) = encodeConstTableToBitC ctable in
+  (map encodeConstantToBits bitcs, (mapping IntMap.!) )
+
+
+encodeConstTableToBitC :: ConstTable -> ([BitConstant], IntMap.IntMap VMWord)
+encodeConstTableToBitC ctable =
   let state = execState (encTable ctable) initState in
-  (encoded state,  ( (addrMap state) IntMap.! ) )
+  (encoded state, addrMap state)
   where
     initState = ConstEncodingState { 
                     constants = ctable
                   , workQueue = []
-                  , addrMap = IntMap.fromList [(0, 0)]
+                  , addrMap = IntMap.fromList []
                   , encoded = []
                   , reservedSpace = 0
                   , numEncodedConsts = 0
@@ -190,8 +215,8 @@ setReservedSpace n = do
 
 
 encodeConst c = case c of
-  CNumber n -> addEncoded [encNumber $ fromIntegral n]
-  CSymbol sid -> addEncoded [encSymbol $ fromIntegral sid]
+  CNumber n -> addEncoded [BCNumber n]
+  CSymbol sid -> addEncoded [BCSymbol sid]
   CDataSymbol sid args -> encodeDataSymbol sid args
   CMatchData args -> encodeMatchData args
   x -> error $ "Unable to encode top-level constant " ++ show x
@@ -199,27 +224,27 @@ encodeConst c = case c of
 
 encodeDataSymbol sid args = do
   setReservedSpace (1 + length args)
-  let symbolHeader = encDataSymbolHeader (fromIntegral sid) (fromIntegral $ length args)
+  let symbolHeader = BCDataSymbolHeader (fromIntegral sid) (fromIntegral $ length args)
   encodedArgs <- mapM encodeConstArg args
   addEncoded $ symbolHeader : encodedArgs
   setReservedSpace 0
 
 encodeMatchData args = do
   setReservedSpace (1 + length args)
-  let matchHeader = encMatchHeader (fromIntegral $ length args)
+  let matchHeader = BCMatchHeader (fromIntegral $ length args)
   encodedArgs <- mapM encodeConstArg args
   addEncoded $ matchHeader : encodedArgs
   setReservedSpace $ 0
 
 
 encodeConstArg c = case c of
-  CNumber n -> return $ encNumber $ fromIntegral n
-  CSymbol sid -> return $ encSymbol $ fromIntegral sid
-  CMatchVar n -> return $ encMatchVar $ fromIntegral n
+  CNumber n -> return $ BCNumber n
+  CSymbol sid -> return $ BCSymbol sid
+  CMatchVar n -> return $ BCMatchVar n
   ds@(CDataSymbol _ _) -> do
                 addr <- nextFreeAddress
                 pushWorkItem ds
-                return $ encDataSymbolRef $ fromIntegral addr
+                return $ BCDataSymbolRef addr
   x -> error $ "Unable to encode constant as argument: " ++ show x
 
 

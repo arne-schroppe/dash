@@ -156,7 +156,7 @@ compileMatch expr patsAndExprs = do
       -- TODO the following function is a complete train wreck. Use an inner state monad instead
       (_, matchVars, encodedPatterns) <- foldM (\(nextMV, accVars, accPats) p -> do
         (vars, encoded) <- createConstPattern p nextMV
-        return (nextMV + (fromIntegral $ length vars), accVars ++ [vars], accPats ++ [encoded])
+        return ( {- nextMV + (fromIntegral $ length vars) -} 0 , accVars ++ [vars], accPats ++ [encoded])
         ) (0, [], []) ps  -- TODO get that O(n*m) out and make it more clear what this does
 
       let pattern = CMatchData encodedPatterns

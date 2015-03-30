@@ -11,6 +11,7 @@ import Language.Spot.VM.VM
 import Language.Spot.IR.Tac
 
 import Data.Word
+import qualified Data.IntMap as IntMap
 
 (|>) = flip ($)
 
@@ -31,9 +32,14 @@ toAsm prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> compile in
   asm
 
+toRawCTable :: String -> ([BitConstant], IntMap.IntMap VMWord)
+toRawCTable prog =
+  let (asm, ctable, symNames) = prog |> lex |> parse |> compile in
+  encodeConstTableToBitC ctable
+
 
 run :: String -> IO VMValue
 run prog = do
-  (value, ctable, symNames) <-  prog |> lex |> parse |> compile||> assemble ||> execute
+  (value, ctable, symNames) <-  prog |> lex |> parse |> compile ||> assemble ||> execute
   return $ decode value ctable symNames
 
