@@ -4,13 +4,14 @@
 #include "../vm.h"
 #include "../opcodes.h"
 
+#define array_length(x) (sizeof(x) / sizeof(x[0]))
 
 it( loads_a_number_into_a_register ) {
   vm_instruction program[] = {
     op_loadi(0, 55),
     op_ret
   };
-  vm_value result = vm_execute(program, 0);
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, val(55, vm_tag_number));
   is_equal(type_of_value(result), vm_type_number);
 }
@@ -23,7 +24,7 @@ it( adds_two_numbers ) {
     op_add(0, 1, 2),
     op_ret
   };
-  vm_value result = vm_execute(program, 0);
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 37);
 }
 
@@ -34,7 +35,7 @@ it( moves_a_register ) {
     op_move(0, 2),
     op_ret
   };
-  vm_value result = vm_execute(program, 0);
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 37);
 }
 
@@ -52,7 +53,7 @@ it( directly_calls_a_function ) {
     op_add(0, 1, 2),
     op_ret
   };
-  vm_value result = vm_execute(program, 0);
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 138);
 }
 
@@ -80,7 +81,7 @@ it( calls_a_closure_downwards ) {
     op_sub(0, 1, 2), // addr 11 // reg1 holds the function argument, reg2 is the single env value
     op_ret
   };
-  vm_value result = vm_execute(program, 0);
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 58); //115 + 23 - 80
 }
 
@@ -105,7 +106,7 @@ it( calls_a_closure_upwards ) {
     op_sub(0, 1, 2),
     op_ret
   };
-  vm_value result = vm_execute(program, 0);
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 56); //80 - 24
 }
 
@@ -133,7 +134,7 @@ it( loads_a_symbol_into_a_register ) {
     op_loads(0, 12),
     op_ret
   };
-  vm_value result = vm_execute(program, 0);
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, val(12, vm_tag_symbol));
   is_equal(type_of_value(result), vm_type_symbol);
 }
@@ -148,7 +149,7 @@ it( loads_a_constant ) {
     op_loadc(0, 0),
     op_ret
   };
-  vm_value result = vm_execute(program, const_table);
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, val(33, vm_tag_symbol));
   is_equal(type_of_value(result), vm_type_symbol);
 }
@@ -163,7 +164,7 @@ it( loads_a_data_symbol ) {
     op_loadsd(0, 1),
     op_ret
   };
-  vm_value result = vm_execute(program, const_table);
+  vm_value result = vm_execute(program, array_length(program), const_table, 0);
   is_equal(result, val(1, vm_tag_data_symbol));
   is_equal(type_of_value(result), vm_type_data_symbol);
 }
@@ -177,7 +178,7 @@ it( jumps_forward ) {
     op_loadi(0, 70),
     op_ret
   };
-  vm_value result = vm_execute(program, 0);
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, val(70, vm_tag_number));
 }
 
@@ -201,7 +202,7 @@ it( matches_a_number ) {
     op_loadi(0, 300),
     op_ret
   };
-  vm_value result = vm_execute(program, const_table);
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, val(300, vm_tag_number));
 }
 
@@ -224,7 +225,7 @@ it( matches_a_symbol ) {
     op_loadi(0, 300),
     op_ret
   };
-  vm_value result = vm_execute(program, const_table);
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, val(300, vm_tag_number));
 }
 
@@ -258,7 +259,7 @@ it( matches_a_data_symbol ) {
     op_loadi(0, 300),
     op_ret
   };
-  vm_value result = vm_execute(program, const_table);
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, val(300, vm_tag_number));
 
 }
@@ -295,9 +296,56 @@ it( binds_a_value_in_a_match ) {
     op_ret
   };
 
-  vm_value result = vm_execute(program, const_table);
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, val(77, vm_tag_number));
 }
+
+
+it( binds_a_value_in_a_nested_symbol ) {
+
+  vm_value const_table[] = {
+    match_header(2),
+    val(3, vm_tag_data_symbol),
+    val(8, vm_tag_data_symbol),
+
+    data_symbol_header(1, 2),
+    val(6, vm_tag_data_symbol),
+    match_var(1),
+    data_symbol_header(3, 1),
+    match_var(0),
+
+    data_symbol_header(1, 2),
+    val(11, vm_tag_data_symbol),
+    match_var(1),
+    data_symbol_header(2, 1),
+    match_var(0),
+
+    data_symbol_header(1, 2), /* the subject */ //13
+    val(16, vm_tag_data_symbol),
+    val(55, vm_tag_number),
+    data_symbol_header(2, 1), //16
+    val(66, vm_tag_number),
+
+  };
+
+  vm_instruction program[] = {
+    op_loadi(0, 600), /* initial wrong value */
+
+    op_loadsd(1, 13), /* value to match */
+    op_loadi(2, 0), /* address of match pattern */
+    op_match(1, 2, 3), /* after matching, reg 3 + 1 should contain the matched value (77) */
+    op_jmp(1),
+    op_jmp(2),
+    op_loadi(0, 100),
+    op_ret,
+    op_sub(0, 3, 4), /* there is only one case */
+    op_ret
+  };
+
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, val(11, vm_tag_number));
+}
+
 
 //TODO
 //Fix heap/constant table loading
@@ -321,5 +369,6 @@ start_spec(vm_spec)
   example(matches_a_symbol)
   example(matches_a_data_symbol)
   example(binds_a_value_in_a_match)
+  example(binds_a_value_in_a_nested_symbol)
 end_spec
 
