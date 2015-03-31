@@ -18,20 +18,6 @@ import Language.Spot.VM.Types
 import Language.Spot.IR.Tac
 
 
-
-encodeNumber :: VMWord -> VMWord
-encodeNumber = makeVMValue tagNumber . ensureRange
-
-encodeSimpleSymbol :: VMWord -> VMWord
-encodeSimpleSymbol = makeVMValue tagSimpleSymbol . ensureRange
-
-encodeCompoundSymbolRef :: VMWord -> VMWord
-encodeCompoundSymbolRef = makeVMValue tagCompoundSymbol . ensureRange
-
-ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
-
-
-
 decode :: VMWord -> [Word32] -> SymbolNameList -> VMValue
 decode w ctable symNames =
   let tag = getTag w in
@@ -48,6 +34,20 @@ decodeCompoundSymbol addr ctable symNames =
   let decoded = map (\v -> decode v ctable symNames) (take (fromIntegral nArgs) $ tail subCTable) in
   let symName = symNames !! (fromIntegral symId) in
   VMSymbol symName decoded
+
+
+
+
+encodeNumber :: VMWord -> VMWord
+encodeNumber = makeVMValue tagNumber . ensureRange
+
+encodeSimpleSymbol :: VMWord -> VMWord
+encodeSimpleSymbol = makeVMValue tagSimpleSymbol . ensureRange
+
+encodeCompoundSymbolRef :: VMWord -> VMWord
+encodeCompoundSymbolRef = makeVMValue tagCompoundSymbol . ensureRange
+
+ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
 
 
 encodeMatchHeader :: VMWord -> VMWord

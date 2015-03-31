@@ -20,8 +20,6 @@ import qualified Data.IntMap as IntMap
 -- TODO have separate compile and run and add methods (add is for repl)
 -- TODO in cabal only export API module and reexport all relevant types and functions here (or rename this module)
 
--- TODO add showConstTable that translates a const table to something readable
--- TODO or better: Store const table in an intermediate format first! (this way we could even add other backends)
 -- TODO add showAsm
 -- also, optimize the const table (remove duplicates)
 -- don't bleed Word32 (and fromIntegral) out into the rest. Type Consttable as [[Int]] or [ConstTableEntry] where ConstTableEntry = [Int]
@@ -32,8 +30,8 @@ toAsm prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> compile in
   asm
 
-toRawCTable :: String -> ([AtomicConstant], IntMap.IntMap VMWord)
-toRawCTable prog =
+toAtomicConstants :: String -> ([AtomicConstant], IntMap.IntMap VMWord)
+toAtomicConstants prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> compile in
   atomizeConstTable ctable
 

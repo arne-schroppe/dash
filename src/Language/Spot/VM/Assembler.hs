@@ -45,7 +45,6 @@ combineFunctions funcs = (fst combined, reverse $ snd combined)
           ( allInstrs ++ funcInstrs, (fromIntegral $ length allInstrs) : funcAddrs )
 
 
--- TODO convert constant addresse
 assembleTac :: [VMWord] -> (Int -> VMWord) -> Tac -> Word32
 assembleTac funcAddrs addrConv opc =
   let r = fromIntegral in
@@ -199,7 +198,6 @@ setReservedSpace n = do
 
 
 
--- TODO don't use the term "encode" here
 
 atomizeConst c = case c of
   CNumber n -> addAtomized [ACNumber n]
