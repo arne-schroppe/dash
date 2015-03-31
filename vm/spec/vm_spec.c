@@ -131,7 +131,7 @@ it( applies_a_symbol_tag_to_a_value ) {
 
 it( load_as_a_symbol_into_a_register ) {
   vm_instruction program[] = {
-    op_loadas(0, 12),
+    op_loadss(0, 12),
     op_ret
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
@@ -215,7 +215,7 @@ it( matches_a_symbol ) {
 
   vm_instruction program[] = {
     op_loadi(0, 600),
-    op_loadas(1, 22), /* value to match */
+    op_loadss(1, 22), /* value to match */
     op_loadi(2, 0), /* address of match pattern */
     op_match(1, 2, 0),
     op_jmp(1),

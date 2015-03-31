@@ -2,7 +2,7 @@ module Language.Spot.VM.Bits (
   VMValue(..)
 , decode
 , encodeNumber
-, encodeAtomicSymbol
+, encodeSimpleSymbol
 , encodeCompoundSymbolRef
 , encodeCompoundSymbolHeader
 , encodeMatchHeader
@@ -22,8 +22,8 @@ import Language.Spot.IR.Tac
 encodeNumber :: VMWord -> VMWord
 encodeNumber = makeVMValue tagNumber . ensureRange
 
-encodeAtomicSymbol :: VMWord -> VMWord
-encodeAtomicSymbol = makeVMValue tagAtomicSymbol . ensureRange
+encodeSimpleSymbol :: VMWord -> VMWord
+encodeSimpleSymbol = makeVMValue tagSimpleSymbol . ensureRange
 
 encodeCompoundSymbolRef :: VMWord -> VMWord
 encodeCompoundSymbolRef = makeVMValue tagCompoundSymbol . ensureRange
@@ -38,7 +38,7 @@ decode w ctable symNames =
   let value = getValue w in
   decode' tag value
   where decode' t v | t==tagNumber     = VMNumber v
-                    | t==tagAtomicSymbol   = VMSymbol (symNames !! (fromIntegral v)) []
+                    | t==tagSimpleSymbol   = VMSymbol (symNames !! (fromIntegral v)) []
                     | t==tagCompoundSymbol = decodeCompoundSymbol v ctable symNames
                     | otherwise        = error $ "Unknown tag " ++ (show t)
 
@@ -80,7 +80,7 @@ getValue v = v .&. 0x0FFFFFFF
 
 
 tagNumber = 0x0 :: VMWord
-tagAtomicSymbol = 0x4 :: VMWord
+tagSimpleSymbol = 0x4 :: VMWord
 tagCompoundSymbol = 0x5 :: VMWord
 tagMatchData = 0xF :: VMWord
 

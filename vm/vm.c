@@ -14,7 +14,7 @@
 #endif
 
 const vm_value vm_tag_number = 0x0;
-const vm_value vm_tag_atomic_symbol = 0x4;
+const vm_value vm_tag_simple_symbol = 0x4;
 const vm_value vm_tag_compound_symbol = 0x5;
 const vm_value vm_tag_match_data = 0xF;
 
@@ -59,11 +59,11 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
-    case OP_LOADas: {
+    case OP_LOADss: {
       int reg0 = get_arg_r0(instr);
       int value = get_arg_i(instr);
-      get_reg(reg0) = val(value, vm_tag_atomic_symbol);
-      debug( printf("LOADas  r%02i #%i\n", reg0, value) );
+      get_reg(reg0) = val(value, vm_tag_simple_symbol);
+      debug( printf("LOADss  r%02i #%i\n", reg0, value) );
     }
     break;
 
@@ -243,7 +243,7 @@ bool does_value_match(vm_value pat, vm_value subject, int start_register) {
 
   switch(pat_tag) {
     case vm_tag_number:
-    case vm_tag_atomic_symbol:
+    case vm_tag_simple_symbol:
       return pat == subject;
 
     case vm_tag_compound_symbol: {
@@ -347,8 +347,8 @@ vm_type type_of_value(vm_value value) {
     case vm_tag_number:
       return vm_type_number;
 
-    case vm_tag_atomic_symbol:
-      return vm_type_atomic_symbol;
+    case vm_tag_simple_symbol:
+      return vm_type_simple_symbol;
 
     case vm_tag_compound_symbol:
       return vm_type_compound_symbol;

@@ -46,7 +46,7 @@ compileLitNumber n = do
 compileLitSymbol s []   = do
   newId <- addSymbolName s
   r <- resultReg
-  return [Tac_load_as r newId]
+  return [Tac_load_ss r newId]
 compileLitSymbol s args = do
   c <- createConstant $ LitSymbol s args
   addr <- addConstant c
@@ -193,7 +193,7 @@ createConstPattern pat nextMatchVar =
   case pat of
     PatNumber n -> return ([], (CNumber n))
     PatSymbol s [] -> do sid <- addSymbolName s
-                         return $ ([], CAtomicSymbol sid)
+                         return $ ([], CSimpleSymbol sid)
     PatSymbol s params -> do
                   symId <- addSymbolName s
                   (vars, pats) <- encodePatternCompoundSymbolArgs params nextMatchVar
@@ -225,7 +225,7 @@ createConstant v =
     LitNumber n -> return $ CNumber n
     LitSymbol s [] -> do
                 sid <- addSymbolName s
-                return $ CAtomicSymbol sid
+                return $ CSimpleSymbol sid
     LitSymbol s args -> do
                 symId <- addSymbolName s
                 encodedArgs <- mapM createConstant args

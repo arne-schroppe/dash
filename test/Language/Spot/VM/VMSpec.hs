@@ -108,9 +108,9 @@ spec = do
 
 -}
     it "loads a symbol into a register" $ do
-      let prog = [[ Tac_load_as 0 12,
+      let prog = [[ Tac_load_ss 0 12,
                     Tac_ret]]
-      (runProg prog) `shouldReturn` (encodeAtomicSymbol 12)
+      (runProg prog) `shouldReturn` (encodeSimpleSymbol 12)
 
     it "loads a constant" $ do
       let ctable = [ encodeNumber 33 ]
@@ -150,10 +150,10 @@ spec = do
 
     it "matches a symbol" $ do
       let ctable = [ encodeMatchHeader 2,
-                     encodeAtomicSymbol 11,
-                     encodeAtomicSymbol 22 ]
+                     encodeSimpleSymbol 11,
+                     encodeSimpleSymbol 22 ]
       let prog = [[ Tac_load_i 0 600,
-                    Tac_load_as 1 22,
+                    Tac_load_ss 1 22,
                     Tac_load_i 2 0,
                     Tac_match 1 2 0,
                     Tac_jmp 1,
@@ -221,7 +221,7 @@ spec = do
 
 
     it "decodes a symbol" $ property $
-      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encodeAtomicSymbol) x == (VMSymbol x [])
+      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encodeSimpleSymbol) x == (VMSymbol x [])
 -}
 
 
