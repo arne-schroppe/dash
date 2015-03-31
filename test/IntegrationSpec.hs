@@ -32,7 +32,7 @@ spec = do
       let result = run "sub 7 3"
       result `shouldReturn` VMNumber 4
 
-    it "interprets a symbol with values" $ do
+    it "interprets a compound symbol" $ do
       let result = run ":sym 2 3"
       result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]
 
@@ -116,7 +116,7 @@ spec = do
       result `shouldReturn` VMNumber 7
 
 
-    it "matches a symbol with data" $ do
+    it "matches a compound symbol" $ do
       let code =  " match (:test 4 8 15) with { \n\
                   \ :test 1 2 3 -> 1 \n\
                   \ :test 4 8 15 -> 2 \n\
@@ -137,7 +137,7 @@ spec = do
 
 
     it "binds a value inside a nested symbol" $ do
-      let code =  " match (:test 4 (:inner 8) 15) with { \n\
+      let code =  " match :test 4 (:inner 8) 15 with { \n\
                   \ :test 4 (:wrong n) m -> 1 \n\
                   \ :test 4 (:inner n) m -> add n m \n\
                   \ :test 4 (:wrong n) m -> 1 \n\
@@ -149,10 +149,12 @@ spec = do
 {-
 What's missing:
 
-- Matching
 - Closures
-- Currying
+- Currying (also with underscore)
 - Creating symbols
+- Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
+- Faster, optimized match patterns (reduce number of comparisons)
+- Modules
 
 TODO: Functions need a runtime tag!
 

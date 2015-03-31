@@ -154,7 +154,7 @@ Do_line_expr:
   | Complex_symbol      { $1 }
 
 Match_expr:
-    match Simple_expr with Match_body { Match $2 $4 }
+    match Expr with Match_body { Match $2 $4 }
 
 Match_body:
     Block_start plus(Match_line) Block_end  { $2 }

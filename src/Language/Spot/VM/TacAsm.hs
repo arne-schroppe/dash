@@ -1,8 +1,8 @@
 module Language.Spot.VM.TacAsm (
   assemble
 , assembleWithEncodedConstTable
-, encodeConstTableToBitC --test
-, BitConstant(..)
+, encodeConstTableToAtomicConsts
+, AtomicConstant(..)
 ) where
 
 -- Translates [[Tac]] to data for the virtual machine
@@ -19,22 +19,10 @@ import qualified Data.IntMap as IntMap
 
 import Debug.Trace
 
+-- TODO rename this module simply to Assembler
 
 -- TODO do we encode nested symbols depth-first or breadth-first? Try both and measure performance!
 
-data AtomicConstant = 
-    ACNumber Int
-  | ACSymbol SymId
-  | ACDataSymbol SymId [AtomicConstant]
-  | ACMatchHeader Int
-  | ACMatchVar Int
-
--- When encoding ACDataSymbol : Keep a "next free address" variable, which initially points
--- to the space right after the current block. Create a symbolref with that address. Increment
--- next-free-address with the length of the body. Add the body to a todo list. Decode rest of
--- current block. Then continue with next item from todo list.
--- Problem: On the 'top level', data symbols are expanded directly, influencing the position of
--- the next free address. So take that into account when initially calculating the next free addr.
 
 
 
@@ -72,8 +60,8 @@ assembleTac funcAddrs addrConv opc =
     Tac_load_i r0 i     -> instructionRI   1 (r r0) i
     Tac_load_addr r0 a  -> instructionRI   1 (r r0) (addrConv a)
     Tac_load_f r0 fi    -> instructionRI   1 (r r0) (funcAddrs !! fi)
-    Tac_load_s r0 s     -> instructionRI   2 (r r0) (i s)
-    Tac_load_sd r0 a    -> instructionRI   3 (r r0) (addrConv a)
+    Tac_load_as r0 s    -> instructionRI   2 (r r0) (i s)
+    Tac_load_cs r0 a    -> instructionRI   3 (r r0) (addrConv a)
     Tac_load_c r0 a     -> instructionRI   4 (r r0) (addrConv a)
     Tac_add r0 r1 r2    -> instructionRRR  5 (r r0) (r r1) (r r2)
     Tac_sub r0 r1 r2    -> instructionRRR  6 (r r0) (r r1) (r r2)
@@ -106,41 +94,44 @@ instructionRRR opcId r0 r1 r2 =
 ------ CONST ENCODING -----------
 
 
-data BitConstant =
-    BCSymbol SymId
-  | BCDataSymbolRef ConstAddr
-  | BCDataSymbolHeader SymId Int
-  | BCNumber Int
-  | BCMatchHeader Int
-  | BCMatchVar Int
+-- TODO explain the algorithm (here and elsewhere with complicated algorithms)
+
+
+data AtomicConstant = 
+    ACAtomicSymbol SymId
+  | ACCompoundSymbolRef ConstAddr
+  | ACCompoundSymbolHeader SymId Int
+  | ACNumber Int
+  | ACMatchHeader Int
+  | ACMatchVar Int
   deriving (Show, Eq)
 
 encodeConstantToBits c = case c of
-  BCSymbol sid -> encSymbol $ fromIntegral sid
-  BCDataSymbolRef addr -> encDataSymbolRef $ fromIntegral addr
-  BCDataSymbolHeader sid n -> encDataSymbolHeader (fromIntegral sid) (fromIntegral n)
-  BCNumber n -> encNumber $ fromIntegral n
-  BCMatchHeader n -> encMatchHeader $ fromIntegral n
-  BCMatchVar n -> encMatchVar $ fromIntegral n
+  ACAtomicSymbol sid -> encAtomicSymbol $ fromIntegral sid
+  ACCompoundSymbolRef addr -> encCompoundSymbolRef $ fromIntegral addr
+  ACCompoundSymbolHeader sid n -> encCompoundSymbolHeader (fromIntegral sid) (fromIntegral n)
+  ACNumber n -> encNumber $ fromIntegral n
+  ACMatchHeader n -> encMatchHeader $ fromIntegral n
+  ACMatchVar n -> encMatchVar $ fromIntegral n
 
 
 data ConstEncodingState = ConstEncodingState {
   constants :: [Constant]
 , workQueue :: [Constant]
 , addrMap :: IntMap.IntMap VMWord
-, encoded :: [BitConstant] -- should be a Sequence
+, encoded :: [AtomicConstant] -- should be a Sequence
 , reservedSpace :: Int
 , numEncodedConsts :: Int
 }
 
 encodeConstTable :: ConstTable -> ([VMWord], Int -> VMWord)
 encodeConstTable ctable =
-  let (bitcs, mapping) = encodeConstTableToBitC ctable in
+  let (bitcs, mapping) = encodeConstTableToAtomicConsts ctable in
   (map encodeConstantToBits bitcs, (mapping IntMap.!) )
 
 
-encodeConstTableToBitC :: ConstTable -> ([BitConstant], IntMap.IntMap VMWord)
-encodeConstTableToBitC ctable =
+encodeConstTableToAtomicConsts :: ConstTable -> ([AtomicConstant], IntMap.IntMap VMWord)
+encodeConstTableToAtomicConsts ctable =
   let state = execState (encTable ctable) initState in
   (encoded state, addrMap state)
   where
@@ -198,9 +189,9 @@ nextFreeAddress = do
 
 spaceNeededByConstant c = case c of
   CNumber _ -> 1
-  CSymbol _ -> 1
+  CAtomicSymbol _ -> 1
   CMatchVar _ -> 1
-  CDataSymbol _ args -> 1 + length args
+  CCompoundSymbol _ args -> 1 + length args
   CMatchData args -> 1 + length args
 
 addEncoded enc = do
@@ -215,164 +206,36 @@ setReservedSpace n = do
 
 
 encodeConst c = case c of
-  CNumber n -> addEncoded [BCNumber n]
-  CSymbol sid -> addEncoded [BCSymbol sid]
-  CDataSymbol sid args -> encodeDataSymbol sid args
+  CNumber n -> addEncoded [ACNumber n]
+  CAtomicSymbol sid -> addEncoded [ACAtomicSymbol sid]
+  CCompoundSymbol sid args -> encodeCompoundSymbol sid args
   CMatchData args -> encodeMatchData args
   x -> error $ "Unable to encode top-level constant " ++ show x
 
 
-encodeDataSymbol sid args = do
+encodeCompoundSymbol sid args = do
   setReservedSpace (1 + length args)
-  let symbolHeader = BCDataSymbolHeader (fromIntegral sid) (fromIntegral $ length args)
+  let symbolHeader = ACCompoundSymbolHeader (fromIntegral sid) (fromIntegral $ length args)
   encodedArgs <- mapM encodeConstArg args
   addEncoded $ symbolHeader : encodedArgs
   setReservedSpace 0
 
 encodeMatchData args = do
   setReservedSpace (1 + length args)
-  let matchHeader = BCMatchHeader (fromIntegral $ length args)
+  let matchHeader = ACMatchHeader (fromIntegral $ length args)
   encodedArgs <- mapM encodeConstArg args
   addEncoded $ matchHeader : encodedArgs
   setReservedSpace $ 0
 
 
 encodeConstArg c = case c of
-  CNumber n -> return $ BCNumber n
-  CSymbol sid -> return $ BCSymbol sid
-  CMatchVar n -> return $ BCMatchVar n
-  ds@(CDataSymbol _ _) -> do
+  CNumber n -> return $ ACNumber n
+  CAtomicSymbol sid -> return $ ACAtomicSymbol sid
+  CMatchVar n -> return $ ACMatchVar n
+  ds@(CCompoundSymbol _ _) -> do
                 addr <- nextFreeAddress
                 pushWorkItem ds
-                return $ BCDataSymbolRef addr
+                return $ ACCompoundSymbolRef addr
   x -> error $ "Unable to encode constant as argument: " ++ show x
 
-
-
-
-{-
-
-encodeTopLevelConst noSpaceReserved c = case c of
-  CNumber n -> do reserveConstSpace 1; return $ [encNumber (fromIntegral n)]
-  CSymbol sid -> do reserveConstSpace 1; return $ [encSymbol (fromIntegral sid)]
-  CDataSymbol sid args -> encodeTopLevelDataSymbolConst noSpaceReserved sid args
-  CMatchData pats -> encodeMatchDataConst pats
-
-
-encodeTopLevelDataSymbolConst noSpaceReserved symId args = do
-  when noSpaceReserved (do
-    let headerSize = 1
-    reserveConstSpace $ headerSize + (length args)
-    )
-  let symbolHeader = encDataSymbolHeader (fromIntegral symId) (fromIntegral $ length args)
-  (body, todo) <- encodeSymbolBody args
-  let encodedSymbol = symbolHeader : body
-  encodedRest <- mapM (encodeTopLevelConst False) todo
-  let combinedRest = foldl (++) [] encodedRest
-  return $ encodedSymbol ++ combinedRest
-
-  where
-    encodeSymbolBody args = do
-      encoded <- mapM encodeConst args
-      let body = map fst encoded
-      let todo = catMaybes $ map snd encoded
-      return (body, todo)
-
-encodeConst c = case c of
-  CNumber n -> return (encNumber (fromIntegral n), Nothing)
-  CSymbol sid -> return (encSymbol (fromIntegral sid), Nothing)
-  sym @ (CDataSymbol sid args) -> do
-    addr <- gets nextFreeAddress
-    reserveConstSpace (1 + length args)
-    return (encDataSymbol (fromIntegral addr), Just sym)
-  x -> error $ "Can't encode " ++ (show x) ++ " at this level"
-
-
-encodeMatchDataConst pats = return []
-
-reserveConstSpace len = do
-  state <- get
-  let addr = nextFreeAddress state
-  put $ state { nextFreeAddress = addr + len }
-
--}
-
-
-{-
- - foldM? encodeTopLevel nextWorkItem
- -
- - nextWorkItem is either the next ctable entry or another thing pushed into a separate queue
- -
- - nextFreeAddress can calculate the next free address by looking at the work item queue and 
- - the length of already encoded things (and a reservation for the current block)
- -
- -
- -
- -
- -}
-
-
-
-{-
-  let (encTable, addrMap) = runState (encodeConstTableSt ctable) (IntMap.empty) in
-  (encTable, \a -> fromJust $ IntMap.lookup a addrMap)
--}
-
-
-
-
-
-
-
-{-
--- TODO this is all bad and too complicated
-encodeConstant :: Constant -> ([AtomicConstant], [AtomicConstant])
-encodeConstant c = case c of
-  CNumber n   -> ([], [ACNumber n])
-  CSymbol sid -> ([], [ACSymbol sid])
-  CDataSymbol sid params -> encodeDataSymbol sid params encodeDataSymbolParam
-  CMatchData patConsts -> 
-    let encoded = map encodePatternConstant patConsts in
-    let before = foldl (++) [] (map fst encoded) in
-    let body = map snd encoded in
-    let encodedMatchData = (ACMatchHeader (length body)) : body in
-    (before, encodedMatchData)
-
-encodeDataSymbol sid params encode = 
-    let encoded = map encode params in
-    let before = foldl (++) [] $ map fst encoded in
-    let body = map snd encoded in
-    let encodedSym = (ACDataSymbolHeader sid (length body)) : body in
-    (before, encodedSym)
-
-encodeDataSymbolParam :: Constant -> ([AtomicConstant], AtomicConstant)
-encodeDataSymbolParam c = case c of
-  CNumber _ | CSymbol _ -> 
-    let (before, body) = encodeConstant c in
-    (before, head body) -- TODO this is not good, we're using secret knowledge about the data we receive
-  CDataSymbol _ _ -> 
-    let (before, body) = encodeConstant c in
-    (before ++ body, ACSymbolRef 0) -- TODO add proper address
-  x -> error $ "Can't encode symbol parameter: " ++ (show x)
-
-
-encodePatternConstant c = case c of
-  PatCNumber n -> ACNumber n
-  PatCSymbol sid -> ACSymbol sid
-  PatCDataSymbol sid params -> encodeDataSymbolParam sid params encodePatternSymbolParam
-  PatCVar n -> ACMatchVar n
-
--- TODO
-encodePatternSymbolParam c = case c of
-  _ -> ([], ACNumber 0)
-
-{ -
-encodeConstTableSt :: ConstTable -> State (IntMap.IntMap VMWord) [VMWord]
-encodeConstTableSt ctable = do
-  foldM  (\acc elem -> case elem of
-    CSymbol sid -> acc ++ [encSymbol sid]
-    
-  ) [] ctable
-
--}
 

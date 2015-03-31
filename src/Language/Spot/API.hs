@@ -32,10 +32,10 @@ toAsm prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> compile in
   asm
 
-toRawCTable :: String -> ([BitConstant], IntMap.IntMap VMWord)
+toRawCTable :: String -> ([AtomicConstant], IntMap.IntMap VMWord)
 toRawCTable prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> compile in
-  encodeConstTableToBitC ctable
+  encodeConstTableToAtomicConsts ctable
 
 
 run :: String -> IO VMValue

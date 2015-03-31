@@ -6,7 +6,7 @@
 
 #define array_length(x) (sizeof(x) / sizeof(x[0]))
 
-it( loads_a_number_into_a_register ) {
+it( load_as_a_number_into_a_register ) {
   vm_instruction program[] = {
     op_loadi(0, 55),
     op_ret
@@ -129,9 +129,9 @@ it( applies_a_symbol_tag_to_a_value ) {
 }
 
 
-it( loads_a_symbol_into_a_register ) {
+it( load_as_a_symbol_into_a_register ) {
   vm_instruction program[] = {
-    op_loads(0, 12),
+    op_loadas(0, 12),
     op_ret
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
@@ -140,7 +140,7 @@ it( loads_a_symbol_into_a_register ) {
 }
 
 
-it( loads_a_constant ) {
+it( load_as_a_constant ) {
   vm_value const_table[] = {
     val(33, vm_tag_symbol)
   };
@@ -155,17 +155,17 @@ it( loads_a_constant ) {
 }
 
 
-it( loads_a_data_symbol ) {
+it( load_as_a_data_symbol ) {
   vm_value const_table[] = {
     /* this would contain the data symbol */
   };
 
   vm_instruction program[] = {
-    op_loadsd(0, 1),
+    op_loadcs(0, 1),
     op_ret
   };
   vm_value result = vm_execute(program, array_length(program), const_table, 0);
-  is_equal(result, val(1, vm_tag_data_symbol));
+  is_equal(result, val(1, vm_tag_compound_symbol));
   is_equal(type_of_value(result), vm_type_data_symbol);
 }
 
@@ -215,7 +215,7 @@ it( matches_a_symbol ) {
 
   vm_instruction program[] = {
     op_loadi(0, 600),
-    op_loads(1, 22), /* value to match */
+    op_loadas(1, 22), /* value to match */
     op_loadi(2, 0), /* address of match pattern */
     op_match(1, 2, 0),
     op_jmp(1),
@@ -234,8 +234,8 @@ it( matches_a_data_symbol ) {
 
   vm_value const_table[] = {
     match_header(2),
-    val(3, vm_tag_data_symbol),
-    val(6, vm_tag_data_symbol),
+    val(3, vm_tag_compound_symbol),
+    val(6, vm_tag_compound_symbol),
     data_symbol_header(1, 2),
     val(55, vm_tag_number),
     val(66, vm_tag_number),
@@ -249,7 +249,7 @@ it( matches_a_data_symbol ) {
 
   vm_instruction program[] = {
     op_loadi(0, 600),
-    op_loadsd(1, 9), /* value to match */
+    op_load_cs(1, 9), /* value to match */
     op_loadi(2, 0), /* address of match pattern */
     op_match(1, 2, 0),
     op_jmp(1),
@@ -268,8 +268,8 @@ it( binds_a_value_in_a_match ) {
 
   vm_value const_table[] = {
     match_header(2),
-    val(3, vm_tag_data_symbol),
-    val(6, vm_tag_data_symbol),
+    val(3, vm_tag_compound_symbol),
+    val(6, vm_tag_compound_symbol),
     data_symbol_header(1, 2),
     val(55, vm_tag_number),
     val(66, vm_tag_number),
@@ -285,7 +285,7 @@ it( binds_a_value_in_a_match ) {
     op_loadi(0, 600), /* initial wrong value */
     op_loadi(4, 66), /* initial wrong value */
 
-    op_loadsd(1, 9), /* value to match */
+    op_load_cs(1, 9), /* value to match */
     op_loadi(2, 0), /* address of match pattern */
     op_match(1, 2, 3), /* after matching, reg 3 + 1 should contain the matched value (77) */
     op_jmp(1),
@@ -305,23 +305,23 @@ it( binds_a_value_in_a_nested_symbol ) {
 
   vm_value const_table[] = {
     match_header(2),
-    val(3, vm_tag_data_symbol),
-    val(8, vm_tag_data_symbol),
+    val(3, vm_tag_compound_symbol),
+    val(8, vm_tag_compound_symbol),
 
     data_symbol_header(1, 2),
-    val(6, vm_tag_data_symbol),
+    val(6, vm_tag_compound_symbol),
     match_var(1),
     data_symbol_header(3, 1),
     match_var(0),
 
     data_symbol_header(1, 2),
-    val(11, vm_tag_data_symbol),
+    val(11, vm_tag_compound_symbol),
     match_var(1),
     data_symbol_header(2, 1),
     match_var(0),
 
     data_symbol_header(1, 2), /* the subject */ //13
-    val(16, vm_tag_data_symbol),
+    val(16, vm_tag_compound_symbol),
     val(55, vm_tag_number),
     data_symbol_header(2, 1), //16
     val(66, vm_tag_number),
@@ -331,7 +331,7 @@ it( binds_a_value_in_a_nested_symbol ) {
   vm_instruction program[] = {
     op_loadi(0, 600), /* initial wrong value */
 
-    op_loadsd(1, 13), /* value to match */
+    op_load_cs(1, 13), /* value to match */
     op_loadi(2, 0), /* address of match pattern */
     op_match(1, 2, 3), /* after matching, reg 3 + 1 should contain the matched value (77) */
     op_jmp(1),
@@ -353,7 +353,7 @@ it( binds_a_value_in_a_nested_symbol ) {
 //integrate into ocaml part
 
 start_spec(vm_spec)
-	example(loads_a_number_into_a_register)
+	example(load_as_a_number_into_a_register)
 	example(adds_two_numbers)
   example(moves_a_register)
   example(directly_calls_a_function)
@@ -361,9 +361,9 @@ start_spec(vm_spec)
   example(calls_a_closure_upwards)
   example(applies_a_number_tag_to_a_value)
   example(applies_a_symbol_tag_to_a_value)
-  example(loads_a_symbol_into_a_register)
-  example(loads_a_constant)
-  example(loads_a_data_symbol)
+  example(load_as_a_symbol_into_a_register)
+  example(load_as_a_constant)
+  example(load_as_a_data_symbol)
   example(jumps_forward)
   example(matches_a_number)
   example(matches_a_symbol)

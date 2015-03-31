@@ -1,13 +1,13 @@
 module Language.Spot.VM.Bits (
   VMValue(..)
 , encNumber
-, encSymbol
-, encDataSymbolRef
+, encAtomicSymbol
+, encCompoundSymbolRef
 , decode
 , encMatchHeader
 , decodeMatchHeader
 , encMatchVar
-, encDataSymbolHeader
+, encCompoundSymbolHeader
 
 ) where
 
@@ -22,11 +22,11 @@ import Language.Spot.IR.Tac
 encNumber :: VMWord -> VMWord
 encNumber = makeVMValue tagNumber . ensureRange
 
-encSymbol :: VMWord -> VMWord
-encSymbol = makeVMValue tagSymbol . ensureRange
+encAtomicSymbol :: VMWord -> VMWord
+encAtomicSymbol = makeVMValue tagSymbol . ensureRange
 
-encDataSymbolRef :: VMWord -> VMWord
-encDataSymbolRef = makeVMValue tagDataSymbol . ensureRange
+encCompoundSymbolRef :: VMWord -> VMWord
+encCompoundSymbolRef = makeVMValue tagDataSymbol . ensureRange
 
 ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
 
@@ -39,12 +39,12 @@ decode w ctable symNames =
   decode' tag value
   where decode' t v | t==tagNumber     = VMNumber v
                     | t==tagSymbol     = VMSymbol (symNames !! (fromIntegral v)) []
-                    | t==tagDataSymbol = decodeDataSymbol v ctable symNames
+                    | t==tagDataSymbol = decodeCompoundSymbol v ctable symNames
                     | otherwise        = error $ "Unknown tag " ++ (show t)
 
-decodeDataSymbol addr ctable symNames =
+decodeCompoundSymbol addr ctable symNames =
   let subCTable = drop (fromIntegral addr) ctable in
-  let (symId, nArgs) = decDataSymbolHeader (head subCTable) in
+  let (symId, nArgs) = decCompoundSymbolHeader (head subCTable) in
   let decoded = map (\v -> decode v ctable symNames) (take (fromIntegral nArgs) $ tail subCTable) in
   let symName = symNames !! (fromIntegral symId) in
   VMSymbol symName decoded
@@ -64,11 +64,11 @@ matchData mtag n =
   let mtagVal = mtag `shiftL` (32 - 5) in
   makeVMValue tagMatchData (cropped .|. mtagVal)
 
-encDataSymbolHeader :: VMWord -> VMWord -> VMWord
-encDataSymbolHeader symId n = (symId `shiftL` 16) .|. n
+encCompoundSymbolHeader :: VMWord -> VMWord -> VMWord
+encCompoundSymbolHeader symId n = (symId `shiftL` 16) .|. n
 
-decDataSymbolHeader :: VMWord -> (VMWord, VMWord)
-decDataSymbolHeader v = ((v .&. 0xFFFF0000) `rotateL` 16, v .&. 0x0000FFFF)
+decCompoundSymbolHeader :: VMWord -> (VMWord, VMWord)
+decCompoundSymbolHeader v = ((v .&. 0xFFFF0000) `rotateL` 16, v .&. 0x0000FFFF)
 
 
 makeVMValue :: VMWord -> VMWord -> VMWord

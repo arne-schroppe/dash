@@ -46,12 +46,12 @@ compileLitNumber n = do
 compileLitSymbol s []   = do
   newId <- addSymbolName s
   r <- resultReg
-  return [Tac_load_s r newId]
+  return [Tac_load_as r newId]
 compileLitSymbol s args = do
   c <- createConstant $ LitSymbol s args
   addr <- addConstant c
   r <- resultReg
-  return [Tac_load_sd r addr]
+  return [Tac_load_cs r addr]
 
 compileFunCall (Var "add") (op1:op2:[]) = -- do we really need opcodes for math stuff? How about built-in functions?
   compileMathFunc Tac_add op1 op2
@@ -193,15 +193,15 @@ createConstPattern pat nextMatchVar =
   case pat of
     PatNumber n -> return ([], (CNumber n))
     PatSymbol s [] -> do sid <- addSymbolName s
-                         return $ ([], CSymbol sid)
+                         return $ ([], CAtomicSymbol sid)
     PatSymbol s params -> do
                   symId <- addSymbolName s
-                  (vars, pats) <- encodePatternDataSymbolArgs params nextMatchVar
-                  return (vars, CDataSymbol symId pats)
+                  (vars, pats) <- encodePatternCompoundSymbolArgs params nextMatchVar
+                  return (vars, CCompoundSymbol symId pats)
     PatVar n -> return $ ([n], CMatchVar nextMatchVar)
 
 -- TODO use inner state
-encodePatternDataSymbolArgs args nextMatchVar = do
+encodePatternCompoundSymbolArgs args nextMatchVar = do
   (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
     (vars, encoded) <- createConstPattern p nextMV
     return (nextMV + (fromIntegral $ length vars), accVars ++ vars, pats ++ [encoded])
@@ -225,11 +225,11 @@ createConstant v =
     LitNumber n -> return $ CNumber n
     LitSymbol s [] -> do
                 sid <- addSymbolName s
-                return $ CSymbol sid
+                return $ CAtomicSymbol sid
     LitSymbol s args -> do
                 symId <- addSymbolName s
                 encodedArgs <- mapM createConstant args
-                return $ CDataSymbol symId encodedArgs
+                return $ CCompoundSymbol symId encodedArgs
 
 
 

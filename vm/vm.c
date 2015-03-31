@@ -14,8 +14,8 @@
 #endif
 
 const vm_value vm_tag_number = 0x0;
-const vm_value vm_tag_symbol = 0x4;
-const vm_value vm_tag_data_symbol = 0x5;
+const vm_value vm_tag_atomic_symbol = 0x4;
+const vm_value vm_tag_compound_symbol = 0x5;
 const vm_value vm_tag_match_data = 0xF;
 
 static vm_value *const_table = 0;
@@ -59,19 +59,19 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
-    case OP_LOADs: {
+    case OP_LOADas: {
       int reg0 = get_arg_r0(instr);
       int value = get_arg_i(instr);
-      get_reg(reg0) = val(value, vm_tag_symbol);
-      debug( printf("LOADs  r%02i #%i\n", reg0, value) );
+      get_reg(reg0) = val(value, vm_tag_atomic_symbol);
+      debug( printf("LOADas  r%02i #%i\n", reg0, value) );
     }
     break;
 
-    case OP_LOADsd: {
+    case OP_LOADcs: {
       int reg0 = get_arg_r0(instr);
       int value = get_arg_i(instr);
-      get_reg(reg0) = val(value, vm_tag_data_symbol);
-      debug( printf("LOADsd r%02i #%i\n", reg0, value) );
+      get_reg(reg0) = val(value, vm_tag_compound_symbol);
+      debug( printf("LOADcs r%02i #%i\n", reg0, value) );
     }
     break;
 
@@ -243,27 +243,27 @@ bool does_value_match(vm_value pat, vm_value subject, int start_register) {
 
   switch(pat_tag) {
     case vm_tag_number:
-    case vm_tag_symbol:
+    case vm_tag_atomic_symbol:
       return pat == subject;
 
-    case vm_tag_data_symbol: {
-      vm_value pat_address = from_val(pat, vm_tag_data_symbol);
+    case vm_tag_compound_symbol: {
+      vm_value pat_address = from_val(pat, vm_tag_compound_symbol);
 
       check_ctable_index(pat_address)
       vm_value pat_header = const_table[pat_address];
-      vm_value pat_id = data_symbol_id(pat_header);
+      vm_value pat_id = compound_symbol_id(pat_header);
 
-      vm_value subject_address = from_val(subject, vm_tag_data_symbol);
+      vm_value subject_address = from_val(subject, vm_tag_compound_symbol);
 
       check_ctable_index(subject_address)
       vm_value subject_header = const_table[subject_address];
-      vm_value subject_id = data_symbol_id(subject_header);
+      vm_value subject_id = compound_symbol_id(subject_header);
       if(pat_id != subject_id) {
         return false;
       }
 
-      vm_value pat_count = data_symbol_count(pat_header);
-      vm_value subject_count = data_symbol_count(subject_header);
+      vm_value pat_count = compound_symbol_count(pat_header);
+      vm_value subject_count = compound_symbol_count(subject_header);
 
       if(pat_count != subject_count) {
         return false;
@@ -347,11 +347,11 @@ vm_type type_of_value(vm_value value) {
     case vm_tag_number:
       return vm_type_number;
 
-    case vm_tag_symbol:
-      return vm_type_symbol;
+    case vm_tag_atomic_symbol:
+      return vm_type_atomic_symbol;
 
-    case vm_tag_data_symbol:
-      return vm_type_data_symbol;
+    case vm_tag_compound_symbol:
+      return vm_type_compound_symbol;
 
     default:
       return vm_type_invalid;

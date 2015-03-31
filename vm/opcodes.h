@@ -6,8 +6,8 @@
 typedef enum {
   OP_RET = 0,
   OP_LOADi = 1,
-  OP_LOADs = 2,
-  OP_LOADsd = 3,
+  OP_LOADas = 2,
+  OP_LOADcs = 3,
   OP_LOADc = 4,
   OP_ADD = 5,
   OP_SUB = 6,
@@ -39,10 +39,10 @@ typedef enum {
                                             (reg1 << (instr_size - (__opcb + 2 * __regb))) + \
                                             (reg2 << (instr_size - (__opcb + 3 * __regb))))
 
-#define op_loadi(r0, i) (instr_ri(OP_LOADi, r0, i))
-#define op_loads(r0, i) (instr_ri(OP_LOADs, r0, i))
-#define op_loadsd(r0, i) (instr_ri(OP_LOADsd, r0, i))
-#define op_loadc(r0, i) (instr_ri(OP_LOADc, r0, i))
+#define op_load_i(r0, i) (instr_ri(OP_LOADi, r0, i))
+#define op_load_as(r0, i) (instr_ri(OP_LOADas, r0, i))
+#define op_load_cs(r0, i) (instr_ri(OP_LOADcs, r0, i))
+#define op_load_c(r0, i) (instr_ri(OP_LOADc, r0, i))
 #define op_add(r0, r1, r2) (instr_rrr(OP_ADD, r0, r1, r2))
 #define op_sub(r0, r1, r2) (instr_rrr(OP_SUB, r0, r1, r2))
 #define op_halt (instr_ri(OP_HALT, 0, 0))

@@ -5,6 +5,6 @@ import Data.Word
 type VMWord = Word32
 
 data VMValue =
-    VMNumber VMWord -- Number
-  | VMSymbol String [VMValue] -- symbolId
+    VMNumber VMWord
+  | VMSymbol String [VMValue]
   deriving (Show, Eq)

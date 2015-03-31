@@ -26,15 +26,15 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *const
 typedef enum {
   vm_type_invalid,
   vm_type_number,
-  vm_type_symbol,
-  vm_type_data_symbol,
+  vm_type_atomic_symbol,
+  vm_type_compound_symbol,
 } vm_type;
 
 vm_type type_of_value(vm_value value);
 
 extern const vm_value vm_tag_number;
-extern const vm_value vm_tag_symbol;
-extern const vm_value vm_tag_data_symbol;
+extern const vm_value vm_tag_atomic_symbol;
+extern const vm_value vm_tag_compound_symbol;
 
 extern const vm_value vm_tag_match_data;
 
@@ -43,12 +43,12 @@ extern const vm_value vm_tag_match_data;
 #define from_val(x, t) (x & ~__tag_mask(t)) //TODO mask instead
 
 #define number(x) val(x, vm_type_number)
-#define symbol(x) val(x, vm_type_symbol)
-#define data_symbol(x) val(x, vm_type_data_symbol)
+#define atomic_symbol(x) val(x, vm_type_atomic_symbol)
+#define compound_symbol(x) val(x, vm_type_compound_symbol)
 
-#define data_symbol_header(id, n) ((id << 16) | n)
-#define data_symbol_id(header) ((header & 0xFFFF0000) >> 16)
-#define data_symbol_count(header) (header & 0xFFFF)
+#define compound_symbol_header(id, n) ((id << 16) | n)
+#define compound_symbol_id(header) ((header & 0xFFFF0000) >> 16)
+#define compound_symbol_count(header) (header & 0xFFFF)
 
 
 #define __single_bit(v, n) ((v & 1) << (sizeof(vm_value) * 8 - n)) //this is super weird

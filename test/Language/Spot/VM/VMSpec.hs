@@ -108,9 +108,9 @@ spec = do
 
 -}
     it "loads a symbol into a register" $ do
-      let prog = [[ Tac_load_s 0 12,
+      let prog = [[ Tac_load_as 0 12,
                     Tac_ret]]
-      (runProg prog) `shouldReturn` (encSymbol 12)
+      (runProg prog) `shouldReturn` (encAtomicSymbol 12)
 
     it "loads a constant" $ do
       let ctable = [ encNumber 33 ]
@@ -119,9 +119,9 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` (33)
 
     it "loads a data symbol" $ do
-      let prog = [[ Tac_load_sd 0 1,
+      let prog = [[ Tac_load_cs 0 1,
                     Tac_ret ]]
-      (runProg prog) `shouldReturn` (encDataSymbolRef 1)
+      (runProg prog) `shouldReturn` (encCompoundSymbolRef 1)
 
 
     it "jumps forward" $ do
@@ -150,10 +150,10 @@ spec = do
 
     it "matches a symbol" $ do
       let ctable = [ encMatchHeader 2,
-                     encSymbol 11,
-                     encSymbol 22 ]
+                     encAtomicSymbol 11,
+                     encAtomicSymbol 22 ]
       let prog = [[ Tac_load_i 0 600,
-                    Tac_load_s 1 22,
+                    Tac_load_as 1 22,
                     Tac_load_i 2 0,
                     Tac_match 1 2 0,
                     Tac_jmp 1,
@@ -166,19 +166,19 @@ spec = do
 
     it "matches a data symbol" $ do
       let ctable = [ encMatchHeader 2,
-                     encDataSymbolRef 3,
-                     encDataSymbolRef 6,
-                     encDataSymbolHeader 1 2,
+                     encCompoundSymbolRef 3,
+                     encCompoundSymbolRef 6,
+                     encCompoundSymbolHeader 1 2,
                      encNumber 55,
                      encNumber 66,
-                     encDataSymbolHeader 1 2,
+                     encCompoundSymbolHeader 1 2,
                      encNumber 55,
                      encNumber 77,
-                     encDataSymbolHeader 1 2,
+                     encCompoundSymbolHeader 1 2,
                      encNumber 55,
                      encNumber 77 ]
       let prog = [[ Tac_load_i 0 600,
-                    Tac_load_sd 1 9,
+                    Tac_load_cs 1 9,
                     Tac_load_i 2 0,
                     Tac_match 1 2 0,
                     Tac_jmp 1,
@@ -191,20 +191,20 @@ spec = do
 
     it "binds a value in a match" $ do
       let ctable = [ encMatchHeader 2,
-                     encDataSymbolRef 3,
-                     encDataSymbolRef 6,
-                     encDataSymbolHeader 1 2,
+                     encCompoundSymbolRef 3,
+                     encCompoundSymbolRef 6,
+                     encCompoundSymbolHeader 1 2,
                      encNumber 55,
                      encNumber 66,
-                     encDataSymbolHeader 1 2,
+                     encCompoundSymbolHeader 1 2,
                      encNumber 55,
                      encMatchVar 1,
-                     encDataSymbolHeader 1 2,
+                     encCompoundSymbolHeader 1 2,
                      encNumber 55,
                      encNumber 77 ]
       let prog = [[ Tac_load_i 0 600,
                     Tac_load_i 4 66,
-                    Tac_load_sd 1 9,
+                    Tac_load_cs 1 9,
                     Tac_load_i 2 0,
                     Tac_match 1 2 3,
                     Tac_jmp 1,
@@ -221,7 +221,7 @@ spec = do
 
 
     it "decodes a symbol" $ property $
-      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encSymbol) x == (VMSymbol x [])
+      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encAtomicSymbol) x == (VMSymbol x [])
 -}
 
 
