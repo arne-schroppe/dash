@@ -4,7 +4,7 @@ import Prelude hiding (lex)
 import Language.Spot.Parser.Lexer
 import Language.Spot.Parser.Parser
 import Language.Spot.CodeGen.CodeGen
-import Language.Spot.VM.TacAsm
+import Language.Spot.VM.Assembler
 import Language.Spot.VM.Types
 import Language.Spot.VM.Bits
 import Language.Spot.VM.VM

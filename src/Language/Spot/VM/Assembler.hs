@@ -1,4 +1,4 @@
-module Language.Spot.VM.TacAsm (
+module Language.Spot.VM.Assembler (
   assemble
 , assembleWithEncodedConstTable
 , encodeConstTableToAtomicConsts
@@ -19,16 +19,11 @@ import qualified Data.IntMap as IntMap
 
 import Debug.Trace
 
--- TODO rename this module simply to Assembler
-
 -- TODO do we encode nested symbols depth-first or breadth-first? Try both and measure performance!
 
 
-
-
--- TODO instead of fromIntegral use something to convert constTable addresses
 assemble :: [[Tac]] -> ConstTable -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
-assemble funcs ctable symnames = 
+assemble funcs ctable symnames =
   let (consts, addrConvert) = encodeConstTable ctable in
   assembleWithEncodedConstTable funcs consts addrConvert symnames
 
@@ -107,12 +102,12 @@ data AtomicConstant =
   deriving (Show, Eq)
 
 encodeConstantToBits c = case c of
-  ACAtomicSymbol sid -> encAtomicSymbol $ fromIntegral sid
-  ACCompoundSymbolRef addr -> encCompoundSymbolRef $ fromIntegral addr
-  ACCompoundSymbolHeader sid n -> encCompoundSymbolHeader (fromIntegral sid) (fromIntegral n)
-  ACNumber n -> encNumber $ fromIntegral n
-  ACMatchHeader n -> encMatchHeader $ fromIntegral n
-  ACMatchVar n -> encMatchVar $ fromIntegral n
+  ACAtomicSymbol sid -> encodeAtomicSymbol $ fromIntegral sid
+  ACCompoundSymbolRef addr -> encodeCompoundSymbolRef $ fromIntegral addr
+  ACCompoundSymbolHeader sid n -> encodeCompoundSymbolHeader (fromIntegral sid) (fromIntegral n)
+  ACNumber n -> encodeNumber $ fromIntegral n
+  ACMatchHeader n -> encodeMatchHeader $ fromIntegral n
+  ACMatchVar n -> encodeMatchVar $ fromIntegral n
 
 
 data ConstEncodingState = ConstEncodingState {
@@ -204,6 +199,7 @@ setReservedSpace n = do
 
 
 
+-- TODO don't use the term "encode" here
 
 encodeConst c = case c of
   CNumber n -> addEncoded [ACNumber n]

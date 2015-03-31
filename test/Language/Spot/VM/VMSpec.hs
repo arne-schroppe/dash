@@ -6,7 +6,7 @@ import Test.QuickCheck
 import Data.Word
 
 import Language.Spot.IR.Tac
-import Language.Spot.VM.TacAsm
+import Language.Spot.VM.Assembler
 import Language.Spot.VM.VM
 import Language.Spot.VM.Bits
 
@@ -110,10 +110,10 @@ spec = do
     it "loads a symbol into a register" $ do
       let prog = [[ Tac_load_as 0 12,
                     Tac_ret]]
-      (runProg prog) `shouldReturn` (encAtomicSymbol 12)
+      (runProg prog) `shouldReturn` (encodeAtomicSymbol 12)
 
     it "loads a constant" $ do
-      let ctable = [ encNumber 33 ]
+      let ctable = [ encodeNumber 33 ]
       let prog = [[ Tac_load_c 0 0,
                     Tac_ret ]]
       (runProgTbl ctable prog) `shouldReturn` (33)
@@ -121,7 +121,7 @@ spec = do
     it "loads a data symbol" $ do
       let prog = [[ Tac_load_cs 0 1,
                     Tac_ret ]]
-      (runProg prog) `shouldReturn` (encCompoundSymbolRef 1)
+      (runProg prog) `shouldReturn` (encodeCompoundSymbolRef 1)
 
 
     it "jumps forward" $ do
@@ -133,9 +133,9 @@ spec = do
       (runProg prog) `shouldReturn` 70
 
     it "matches a number" $ do
-      let ctable = [ encMatchHeader 2,
-                     encNumber 11,
-                     encNumber 22 ]
+      let ctable = [ encodeMatchHeader 2,
+                     encodeNumber 11,
+                     encodeNumber 22 ]
       let prog = [[ Tac_load_i 0 600,
                     Tac_load_i 1 22,
                     Tac_load_i 2 0,
@@ -149,9 +149,9 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a symbol" $ do
-      let ctable = [ encMatchHeader 2,
-                     encAtomicSymbol 11,
-                     encAtomicSymbol 22 ]
+      let ctable = [ encodeMatchHeader 2,
+                     encodeAtomicSymbol 11,
+                     encodeAtomicSymbol 22 ]
       let prog = [[ Tac_load_i 0 600,
                     Tac_load_as 1 22,
                     Tac_load_i 2 0,
@@ -165,18 +165,18 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a data symbol" $ do
-      let ctable = [ encMatchHeader 2,
-                     encCompoundSymbolRef 3,
-                     encCompoundSymbolRef 6,
-                     encCompoundSymbolHeader 1 2,
-                     encNumber 55,
-                     encNumber 66,
-                     encCompoundSymbolHeader 1 2,
-                     encNumber 55,
-                     encNumber 77,
-                     encCompoundSymbolHeader 1 2,
-                     encNumber 55,
-                     encNumber 77 ]
+      let ctable = [ encodeMatchHeader 2,
+                     encodeCompoundSymbolRef 3,
+                     encodeCompoundSymbolRef 6,
+                     encodeCompoundSymbolHeader 1 2,
+                     encodeNumber 55,
+                     encodeNumber 66,
+                     encodeCompoundSymbolHeader 1 2,
+                     encodeNumber 55,
+                     encodeNumber 77,
+                     encodeCompoundSymbolHeader 1 2,
+                     encodeNumber 55,
+                     encodeNumber 77 ]
       let prog = [[ Tac_load_i 0 600,
                     Tac_load_cs 1 9,
                     Tac_load_i 2 0,
@@ -190,18 +190,18 @@ spec = do
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "binds a value in a match" $ do
-      let ctable = [ encMatchHeader 2,
-                     encCompoundSymbolRef 3,
-                     encCompoundSymbolRef 6,
-                     encCompoundSymbolHeader 1 2,
-                     encNumber 55,
-                     encNumber 66,
-                     encCompoundSymbolHeader 1 2,
-                     encNumber 55,
-                     encMatchVar 1,
-                     encCompoundSymbolHeader 1 2,
-                     encNumber 55,
-                     encNumber 77 ]
+      let ctable = [ encodeMatchHeader 2,
+                     encodeCompoundSymbolRef 3,
+                     encodeCompoundSymbolRef 6,
+                     encodeCompoundSymbolHeader 1 2,
+                     encodeNumber 55,
+                     encodeNumber 66,
+                     encodeCompoundSymbolHeader 1 2,
+                     encodeNumber 55,
+                     encodeMatchVar 1,
+                     encodeCompoundSymbolHeader 1 2,
+                     encodeNumber 55,
+                     encodeNumber 77 ]
       let prog = [[ Tac_load_i 0 600,
                     Tac_load_i 4 66,
                     Tac_load_cs 1 9,
@@ -217,11 +217,11 @@ spec = do
 
 {- TODO
     it "decodes a number" $ property $
-      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encNumber) x == (VMNumber x)
+      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encodeNumber) x == (VMNumber x)
 
 
     it "decodes a symbol" $ property $
-      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encAtomicSymbol) x == (VMSymbol x [])
+      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encodeAtomicSymbol) x == (VMSymbol x [])
 -}
 
 
