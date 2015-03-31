@@ -35,7 +35,7 @@ toAsm prog =
 toRawCTable :: String -> ([AtomicConstant], IntMap.IntMap VMWord)
 toRawCTable prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> compile in
-  encodeConstTableToAtomicConsts ctable
+  atomizeConstTable ctable
 
 
 run :: String -> IO VMValue

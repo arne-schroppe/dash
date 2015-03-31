@@ -1,7 +1,7 @@
 module Language.Spot.VM.Assembler (
   assemble
 , assembleWithEncodedConstTable
-, encodeConstTableToAtomicConsts
+, atomizeConstTable
 , AtomicConstant(..)
 ) where
 
@@ -101,7 +101,7 @@ data AtomicConstant =
   | ACMatchVar Int
   deriving (Show, Eq)
 
-encodeConstantToBits c = case c of
+encodeConstant c = case c of
   ACAtomicSymbol sid -> encodeAtomicSymbol $ fromIntegral sid
   ACCompoundSymbolRef addr -> encodeCompoundSymbolRef $ fromIntegral addr
   ACCompoundSymbolHeader sid n -> encodeCompoundSymbolHeader (fromIntegral sid) (fromIntegral n)
@@ -110,35 +110,35 @@ encodeConstantToBits c = case c of
   ACMatchVar n -> encodeMatchVar $ fromIntegral n
 
 
-data ConstEncodingState = ConstEncodingState {
+data ConstAtomizationState = ConstAtomizationState {
   constants :: [Constant]
 , workQueue :: [Constant]
 , addrMap :: IntMap.IntMap VMWord
-, encoded :: [AtomicConstant] -- should be a Sequence
+, atomized :: [AtomicConstant] -- should be a Sequence
 , reservedSpace :: Int
-, numEncodedConsts :: Int
+, numAtomizedConsts :: Int
 }
 
 encodeConstTable :: ConstTable -> ([VMWord], Int -> VMWord)
 encodeConstTable ctable =
-  let (bitcs, mapping) = encodeConstTableToAtomicConsts ctable in
-  (map encodeConstantToBits bitcs, (mapping IntMap.!) )
+  let (atoms, mapping) = atomizeConstTable ctable in
+  (map encodeConstant atoms, (mapping IntMap.!) )
 
 
-encodeConstTableToAtomicConsts :: ConstTable -> ([AtomicConstant], IntMap.IntMap VMWord)
-encodeConstTableToAtomicConsts ctable =
+atomizeConstTable :: ConstTable -> ([AtomicConstant], IntMap.IntMap VMWord)
+atomizeConstTable ctable =
   let state = execState (encTable ctable) initState in
-  (encoded state, addrMap state)
+  (atomized state, addrMap state)
   where
-    initState = ConstEncodingState { 
+    initState = ConstAtomizationState {
                     constants = ctable
                   , workQueue = []
                   , addrMap = IntMap.fromList []
-                  , encoded = []
+                  , atomized = []
                   , reservedSpace = 0
-                  , numEncodedConsts = 0
+                  , numAtomizedConsts = 0
                 }
-    encTable ctable = whileJust encodeConst popWorkItem
+    encTable ctable = whileJust atomizeConst popWorkItem
 
 
 whileJust f source = do
@@ -154,11 +154,11 @@ popWorkItem = do
   case (workQueue state, constants state) of
     ([], []) -> return Nothing
     ([], cs) -> do
-          numEncoded <- gets numEncodedConsts
-          let currentAddr = length $ encoded state
-          addAddrMapping numEncoded $ fromIntegral currentAddr
+          numAtomized <- gets numAtomizedConsts
+          let currentAddr = length $ atomized state
+          addAddrMapping numAtomized $ fromIntegral currentAddr
           state' <- get
-          put $ state' { numEncodedConsts = numEncoded + 1, constants = tail cs }
+          put $ state' { numAtomizedConsts = numAtomized + 1, constants = tail cs }
           return $ Just $ head cs
     (ws, _) -> do
           put (state { workQueue = tail ws })
@@ -176,7 +176,7 @@ pushWorkItem c = do
 
 nextFreeAddress = do
   state <- get
-  let used = length $ encoded state
+  let used = length $ atomized state
   let reserved = reservedSpace state
   let pendingItems = workQueue state
   let pending = foldl (\acc c -> acc + (spaceNeededByConstant c)) 0 pendingItems
@@ -189,9 +189,9 @@ spaceNeededByConstant c = case c of
   CCompoundSymbol _ args -> 1 + length args
   CMatchData args -> 1 + length args
 
-addEncoded enc = do
+addAtomized atoms = do
   state <- get
-  put $ state { encoded = (encoded state) ++ enc }
+  put $ state { atomized = (atomized state) ++ atoms }
 
 setReservedSpace n = do
   state <- get
@@ -201,30 +201,30 @@ setReservedSpace n = do
 
 -- TODO don't use the term "encode" here
 
-encodeConst c = case c of
-  CNumber n -> addEncoded [ACNumber n]
-  CAtomicSymbol sid -> addEncoded [ACAtomicSymbol sid]
-  CCompoundSymbol sid args -> encodeCompoundSymbol sid args
-  CMatchData args -> encodeMatchData args
+atomizeConst c = case c of
+  CNumber n -> addAtomized [ACNumber n]
+  CAtomicSymbol sid -> addAtomized [ACAtomicSymbol sid]
+  CCompoundSymbol sid args -> atomizeCompoundSymbol sid args
+  CMatchData args -> atomizeMatchData args
   x -> error $ "Unable to encode top-level constant " ++ show x
 
 
-encodeCompoundSymbol sid args = do
+atomizeCompoundSymbol sid args = do
   setReservedSpace (1 + length args)
   let symbolHeader = ACCompoundSymbolHeader (fromIntegral sid) (fromIntegral $ length args)
-  encodedArgs <- mapM encodeConstArg args
-  addEncoded $ symbolHeader : encodedArgs
+  atomizedArgs <- mapM atomizeConstArg args
+  addAtomized $ symbolHeader : atomizedArgs
   setReservedSpace 0
 
-encodeMatchData args = do
+atomizeMatchData args = do
   setReservedSpace (1 + length args)
   let matchHeader = ACMatchHeader (fromIntegral $ length args)
-  encodedArgs <- mapM encodeConstArg args
-  addEncoded $ matchHeader : encodedArgs
+  atomizedArgs <- mapM atomizeConstArg args
+  addAtomized $ matchHeader : atomizedArgs
   setReservedSpace $ 0
 
 
-encodeConstArg c = case c of
+atomizeConstArg c = case c of
   CNumber n -> return $ ACNumber n
   CAtomicSymbol sid -> return $ ACAtomicSymbol sid
   CMatchVar n -> return $ ACMatchVar n
