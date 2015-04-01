@@ -146,15 +146,24 @@ spec = do
       result `shouldReturn` VMNumber 23
 
 
+    it "returns a simple lambda" $ do
+      let code =  " val make-adder (x) = { \n\
+                  \   val (y) = add 22 y \n\
+                  \ } \n\
+                  \ val adder = make-adder :nil \n\
+                  \ adder 55"
+      let result = run code
+      result `shouldReturn` VMNumber 77
+
 {-
 What's missing:
 
 - Closures
 - Currying (also with underscore)
 - Creating symbols
+- Modules
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
 - Faster, optimized match patterns (reduce number of comparisons)
-- Modules
 
 TODO: Functions need a runtime tag!
 

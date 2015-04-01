@@ -37,6 +37,7 @@ compileExpression e = case e of
   LocalBinding (Binding name expr) body -> compileLocalBinding name expr body
   Var a             -> compileVar a
   Match e pats      -> compileMatch e pats
+  FunDef params expr -> compileLambda params expr
   a -> error $ "Can't compile: " ++ show a
 
 compileLitNumber n = do
@@ -97,6 +98,11 @@ compileLocalBinding name expr body = do
   bodyCode <- compileExpression body
   return $ exprCode ++
            bodyCode
+
+compileLambda params expr = do
+  funAddr <- compileFunction params expr
+  r <- resultReg
+  return [ Tac_load_f r funAddr ]
 
 compileFunction args expr = do
   funAddr <- beginFunction args
