@@ -8,7 +8,7 @@ type ConstAddr = Int
 
 
 data Constant =
-    CSimpleSymbol SymId
+    CPlainSymbol SymId
   | CCompoundSymbol SymId [Constant]
   | CNumber Int
   | CMatchData [Constant]
@@ -30,9 +30,9 @@ data ThreeAddressCode =
   | Tac_load_i Reg VMWord
   | Tac_load_addr Reg ConstAddr
   | Tac_load_f Reg FunAddr
-  | Tac_load_ss Reg SymId         -- load simple symbol
+  | Tac_load_ps Reg SymId         -- load plain symbol
   | Tac_load_cs Reg ConstAddr     -- load compound symbol
-  | Tac_load_c Reg ConstAddr
+  | Tac_load_c Reg ConstAddr      -- load constant
   | Tac_add Reg Reg Reg
   | Tac_sub Reg Reg Reg
   | Tac_move Reg Reg

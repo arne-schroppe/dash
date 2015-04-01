@@ -26,7 +26,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *const
 typedef enum {
   vm_type_invalid,
   vm_type_number,
-  vm_type_simple_symbol,
+  vm_type_plain_symbol,
   vm_type_compound_symbol,
 } vm_type;
 
@@ -43,7 +43,7 @@ extern const vm_value vm_tag_match_data;
 #define from_val(x, t) (x & ~__tag_mask(t)) //TODO mask instead
 
 #define number(x) val(x, vm_type_number)
-#define simple_symbol(x) val(x, vm_type_simple_symbol)
+#define plain_symbol(x) val(x, vm_type_plain_symbol)
 #define compound_symbol(x) val(x, vm_type_compound_symbol)
 
 #define compound_symbol_header(id, n) ((id << 16) | n)

@@ -54,7 +54,7 @@ assembleTac funcAddrs addrConv opc =
     Tac_load_i r0 i     -> instructionRI   1 (r r0) i
     Tac_load_addr r0 a  -> instructionRI   1 (r r0) (addrConv a)
     Tac_load_f r0 fi    -> instructionRI   1 (r r0) (funcAddrs !! fi)
-    Tac_load_ss r0 s    -> instructionRI   2 (r r0) (i s)
+    Tac_load_ps r0 s    -> instructionRI   2 (r r0) (i s)
     Tac_load_cs r0 a    -> instructionRI   3 (r r0) (addrConv a)
     Tac_load_c r0 a     -> instructionRI   4 (r r0) (addrConv a)
     Tac_add r0 r1 r2    -> instructionRRR  5 (r r0) (r r1) (r r2)
@@ -92,7 +92,7 @@ instructionRRR opcId r0 r1 r2 =
 
 
 data AtomicConstant =
-    ACSimpleSymbol SymId
+    ACPlainSymbol SymId
   | ACCompoundSymbolRef ConstAddr
   | ACCompoundSymbolHeader SymId Int
   | ACNumber Int
@@ -101,7 +101,7 @@ data AtomicConstant =
   deriving (Show, Eq)
 
 encodeConstant c = case c of
-  ACSimpleSymbol sid -> encodeSimpleSymbol $ fromIntegral sid
+  ACPlainSymbol sid -> encodePlainSymbol $ fromIntegral sid
   ACCompoundSymbolRef addr -> encodeCompoundSymbolRef $ fromIntegral addr
   ACCompoundSymbolHeader sid n -> encodeCompoundSymbolHeader (fromIntegral sid) (fromIntegral n)
   ACNumber n -> encodeNumber $ fromIntegral n
@@ -183,7 +183,7 @@ nextFreeAddress = do
 
 spaceNeededByConstant c = case c of
   CNumber _ -> 1
-  CSimpleSymbol _ -> 1
+  CPlainSymbol _ -> 1
   CMatchVar _ -> 1
   CCompoundSymbol _ args -> 1 + length args
   CMatchData args -> 1 + length args
@@ -201,7 +201,7 @@ setReservedSpace n = do
 
 atomizeConst c = case c of
   CNumber n -> addAtomized [ACNumber n]
-  CSimpleSymbol sid -> addAtomized [ACSimpleSymbol sid]
+  CPlainSymbol sid -> addAtomized [ACPlainSymbol sid]
   CCompoundSymbol sid args -> atomizeCompoundSymbol sid args
   CMatchData args -> atomizeMatchData args
   x -> error $ "Unable to encode top-level constant " ++ show x
@@ -224,7 +224,7 @@ atomizeMatchData args = do
 
 atomizeConstArg c = case c of
   CNumber n -> return $ ACNumber n
-  CSimpleSymbol sid -> return $ ACSimpleSymbol sid
+  CPlainSymbol sid -> return $ ACPlainSymbol sid
   CMatchVar n -> return $ ACMatchVar n
   ds@(CCompoundSymbol _ _) -> do
                 addr <- nextFreeAddress
