@@ -17,6 +17,8 @@ import Control.Exception.Base
 
 
 -- TODO unify usage of "args" and "params" (and "values" ?)
+-- TODO add type to all functions (also in other modules)
+-- TODO This module is becoming very difficult to understand. Refactor for ease of understanding
 
 compile :: Expr -> ([[Tac]], ConstTable, SymbolNameList)
 compile ast = (getInstructions result, getCTable result, getSymNames result) --todo reverse most of this
@@ -145,7 +147,7 @@ compileMatch expr patsAndExprs = do
   let bodyInstrs = map (uncurry (++)) $ zip exprInstrs $ map (singletonList . Tac_jmp) contJmpTargets
 
   let maxMatchVars = foldl (\a b -> max a (length b)) 0 matchVars
-  mapM (const reserveReg) [1..maxMatchVars] -- TODO use replicateM instead!
+  replicateM maxMatchVars reserveReg
 
   return $ matchStartInstrs ++
            (concat jmpTableInstrs) ++
