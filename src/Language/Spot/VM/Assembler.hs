@@ -22,13 +22,13 @@ import Debug.Trace
 -- TODO do we encode nested symbols depth-first or breadth-first? Try both and measure performance!
 
 
-assemble :: [[Tac]] -> ConstTable -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
+assemble :: [[Tac Reg]] -> ConstTable -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
 assemble funcs ctable symnames =
   let (consts, addrConvert) = encodeConstTable ctable in
   assembleWithEncodedConstTable funcs consts addrConvert symnames
 
 
-assembleWithEncodedConstTable :: [[Tac]] -> [VMWord] -> (Int -> VMWord) -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
+assembleWithEncodedConstTable :: [[Tac Reg]] -> [VMWord] -> (Int -> VMWord) -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
 assembleWithEncodedConstTable funcs encCTable cAddrConverter symnames =
   (map (assembleTac funcAddrs cAddrConverter) instructions, encCTable, symnames)
   where instructions = fst combined
@@ -36,7 +36,7 @@ assembleWithEncodedConstTable funcs encCTable cAddrConverter symnames =
         combined = combineFunctions funcs
 
 
-combineFunctions :: [[Tac]] -> ([Tac], [VMWord])
+combineFunctions :: [[Tac Reg]] -> ([Tac Reg], [VMWord])
 combineFunctions funcs = (fst combined, reverse $ snd combined)
   where combined = foldl calcFuncAddr ([], []) funcs
         calcFuncAddr acc funcInstrs =
@@ -45,7 +45,7 @@ combineFunctions funcs = (fst combined, reverse $ snd combined)
           ( allInstrs ++ funcInstrs, (fromIntegral $ length allInstrs) : funcAddrs )
 
 
-assembleTac :: [VMWord] -> (Int -> VMWord) -> Tac -> Word32
+assembleTac :: [VMWord] -> (Int -> VMWord) -> Tac Reg -> Word32
 assembleTac funcAddrs addrConv opc =
   let r = fromIntegral in
   let i = fromIntegral in

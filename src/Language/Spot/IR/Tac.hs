@@ -25,22 +25,22 @@ type Reg = Int
 
 
 
-data ThreeAddressCode =
+data ThreeAddressCode var =
     Tac_ret
-  | Tac_load_i Reg VMWord
-  | Tac_load_addr Reg ConstAddr
-  | Tac_load_f Reg FunAddr
-  | Tac_load_ps Reg SymId         -- load plain symbol
-  | Tac_load_cs Reg ConstAddr     -- load compound symbol
-  | Tac_load_c Reg ConstAddr      -- load constant
-  | Tac_add Reg Reg Reg
-  | Tac_sub Reg Reg Reg
-  | Tac_move Reg Reg
-  | Tac_call Reg Reg Int
-  | Tac_call_cl Reg Reg Int
-  | Tac_make_cl Reg Reg Int
+  | Tac_load_i var VMWord
+  | Tac_load_addr var ConstAddr
+  | Tac_load_f var FunAddr
+  | Tac_load_ps var SymId         -- load plain symbol
+  | Tac_load_cs var ConstAddr     -- load compound symbol
+  | Tac_load_c var ConstAddr      -- load constant
+  | Tac_add var var var
+  | Tac_sub var var var
+  | Tac_move var var
+  | Tac_call var var Int
+  | Tac_call_cl var var Int
+  | Tac_make_cl var var Int
   | Tac_jmp Int
-  | Tac_match Reg Reg Reg
+  | Tac_match var var var
   deriving (Show)
 
 type Tac = ThreeAddressCode

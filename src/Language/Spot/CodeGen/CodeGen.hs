@@ -20,8 +20,8 @@ import Control.Exception.Base
 -- TODO add type to all functions (also in other modules)
 -- TODO This module is becoming very difficult to understand. Refactor for ease of understanding
 
-compile :: Expr -> ([[Tac]], ConstTable, SymbolNameList)
-compile ast = (getInstructions result, getCTable result, getSymNames result) --todo reverse most of this
+compile :: Expr -> ([[Tac Reg]], ConstTable, SymbolNameList)
+compile ast = (getInstructions result, getConstantTable result, getSymbolNames result) --todo reverse most of this
   where result = execState (addStartFunction ast) emptyCode
 
 addStartFunction e = do

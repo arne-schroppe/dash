@@ -20,9 +20,11 @@ module Language.Spot.CodeGen.CodeGenState (
 
 -- TODO hide these too by moving execState in here
 , getInstructions
-, getCTable
-, getSymNames
+, getConstantTable
+, getSymbolNames
 , emptyCode
+
+, Code(..)
 ) where
 
 
@@ -47,7 +49,7 @@ import Language.Spot.VM.Types
 
 -- TODO don't use fromJust
 -- TODO "Code" is an utterly stupid name for this
-data Code = Code { _instructions :: Seq.Seq [Tac]
+data Code = Code { _instructions :: Seq.Seq [Tac Reg]
                  , _constTable :: ConstTable
                  , _symbolNames :: Map.Map String SymId
                  , _funcRegDataStack :: [FunctionRegisterData]
@@ -82,14 +84,14 @@ emptyCode = Code { _instructions = Seq.fromList []
 
 -- Convenience getters
 
-getInstructions :: Code -> [[Tac]]
+getInstructions :: Code -> [[Tac Reg]]
 getInstructions = toList . view instructions
 
-getCTable :: Code -> ConstTable
-getCTable = view constTable
+getConstantTable :: Code -> ConstTable
+getConstantTable = view constTable
 
-getSymNames :: Code -> SymbolNameList
-getSymNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . view symbolNames
+getSymbolNames :: Code -> SymbolNameList
+getSymbolNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . view symbolNames
 
 
 -- Functions
@@ -99,7 +101,7 @@ getSymNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . 
 -- TODO do NOT use fromJust
 use' l = fromJust <$> (preuse l)
 
-setFunctionCode :: Int -> [Tac] -> State Code ()
+setFunctionCode :: Int -> [Tac Reg] -> State Code ()
 setFunctionCode funIndex code =
   instructions.(ix funIndex) .= code
 

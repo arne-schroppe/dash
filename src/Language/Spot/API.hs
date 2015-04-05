@@ -3,7 +3,7 @@ module Language.Spot.API where
 import Prelude hiding (lex)
 import Language.Spot.Parser.Lexer
 import Language.Spot.Parser.Parser
-import Language.Spot.CodeGen.CodeGen
+import Language.Spot.CodeGen.CodeGen2
 import Language.Spot.VM.Assembler
 import Language.Spot.VM.Types
 import Language.Spot.VM.Bits
@@ -25,7 +25,7 @@ import qualified Data.IntMap as IntMap
 -- don't bleed Word32 (and fromIntegral) out into the rest. Type Consttable as [[Int]] or [ConstTableEntry] where ConstTableEntry = [Int]
 -- Add better typing for several things, also for uncompiled asm
 
-toAsm :: String -> [[Tac]]
+toAsm :: String -> [[Tac Reg]]
 toAsm prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> compile in
   asm

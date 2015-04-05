@@ -10,10 +10,10 @@ import Language.Spot.VM.Assembler
 import Language.Spot.VM.VM
 import Language.Spot.VM.Bits
 
-runProg :: [[Tac]] -> IO Word32
+runProg :: [[Tac Reg]] -> IO Word32
 runProg = runProgTbl []
 
-runProgTbl :: [Word32] -> [[Tac]] -> IO Word32
+runProgTbl :: [Word32] -> [[Tac Reg]] -> IO Word32
 runProgTbl tbl prog = do
   (value, _, _) <- execute asm tbl' []
   return value

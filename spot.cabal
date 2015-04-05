@@ -23,6 +23,7 @@ library
                     , Language.Spot.Parser.Parser
                     , Language.Spot.IR.Ast
                     , Language.Spot.CodeGen.CodeGen
+                    , Language.Spot.CodeGen.CodeGen2
                     , Language.Spot.CodeGen.CodeGenState
                     , Language.Spot.IR.Tac
                     , Language.Spot.VM.Assembler
