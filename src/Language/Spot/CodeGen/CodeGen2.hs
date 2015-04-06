@@ -12,11 +12,11 @@ import Debug.Trace
 
 compile :: Expr -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile ast =
-        let (result, finalState) = runState (compileExpression ast) emptyCode in
+        let (result, finalState) = runState (compileExpression ast 0) emptyCode in
         let result1 = assignRegisters result in
         ([result1], getConstantTable finalState, getSymbolNames finalState)
 
-data CompValue = 
+data CompValue =
     CVResult
   | CVVar String
   | CVTempVar Int
@@ -25,82 +25,78 @@ data CompValue =
 data CompilationResult = CompilationResult {
     instructions :: [Tac CompValue]
   , usedTempVars :: Int
-  , freeVariables :: [String]
+  -- , freeVariables :: [String]
   }
   deriving (Show)
 
-emptyResult = CompilationResult { instructions = [], usedTempVars = 0, freeVariables = [] }
+emptyResult = CompilationResult { instructions = []
+                                , usedTempVars = 0
+                                -- , freeVariables = [] 
+                                }
 
-compileExpression :: Expr -> State Code CompilationResult
-compileExpression expr = case expr of
-  LitNumber n         -> compileLitNumber n
-  LitSymbol name args -> compileLitSymbol name args
-  FunCall name args   -> compileFunCall name args
+compileExpression :: Expr -> Int -> State Code CompilationResult
+compileExpression expr usedTempVars = case expr of
+  LitNumber n         -> compileLitNumber n usedTempVars
+  LitSymbol name args -> compileLitSymbol name args usedTempVars
+  FunCall name args   -> compileFunCall name args usedTempVars
   LocalBinding (Binding name boundExpr) bodyExpr ->
-                         compileLocalBinding name boundExpr bodyExpr
-  Var a               -> compileVar a
+                         compileLocalBinding name boundExpr bodyExpr usedTempVars
+  Var a               -> compileVar a usedTempVars
 {-
   Match e pats      -> compileMatch e pats
   FunDef params expr -> compileLambda params expr
 -}
   a -> error $ "Can't compile: " ++ show a
 
-compileLitNumber n = return $ emptyResult { instructions = [Tac_load_i CVResult (tw n)] }
+compileLitNumber n utv = return $ emptyResult {
+                              instructions = [Tac_load_i CVResult (tw n)],
+                              usedTempVars = utv }
 
-compileLitSymbol name [] = do
+compileLitSymbol name [] utv = do
   symId <- addSymbolName name
-  return $ emptyResult { instructions = [Tac_load_ps CVResult symId] }
-compileLitSymbol name args = do
+  return $ emptyResult { instructions = [Tac_load_ps CVResult symId], usedTempVars = utv }
+compileLitSymbol name args utv = do
   c <- createConstant $ LitSymbol name args
   cAddr <- addConstant c
-  return $ emptyResult { instructions = [Tac_load_cs CVResult cAddr] }
+  return $ emptyResult { instructions = [Tac_load_cs CVResult cAddr], usedTempVars = utv }
 
 
-compileFunCall (Var "add") [op1, op2] = compileMathFunCall Tac_add op1 op2
-compileFunCall (Var "sub") [op1, op2] = compileMathFunCall Tac_sub op1 op2
+compileFunCall (Var "add") [op1, op2] utv = compileMathFunCall Tac_add op1 op2 utv
+compileFunCall (Var "sub") [op1, op2] utv = compileMathFunCall Tac_sub op1 op2 utv
 
-compileMathFunCall mf op1 op2 = do
-  (v1, res1) <- compileArgument op1
-  (v2, res2) <- compileArgument op2
-  let instrs2' = increaseTempVars (usedTempVars res1) (instructions res2)
-  let v2' = increaseTempVar (usedTempVars res1) v2
-  let finalInstrs = (instructions res1) ++ instrs2' ++ [mf CVResult v1 v2']
-  let r = emptyResult { instructions = finalInstrs,
-                         usedTempVars = (usedTempVars res1) + (usedTempVars res2) }
-  return $ trace (show r) r
+compileMathFunCall mf op1 op2 utv = do
+  (v1, res1) <- compileArgument op1 utv
+  (v2, res2) <- compileArgument op2 (usedTempVars res1)
+  let finalInstrs = (instructions res1) ++ (instructions res2) ++ [mf CVResult v1 v2]
+  return $ emptyResult { instructions = finalInstrs,
+                         usedTempVars = usedTempVars res2 }
 
-compileArgument (Var v) =
-  return (CVVar v, emptyResult)
-compileArgument e = do
-  exprResult <- compileExpression e
+compileArgument (Var v) utv =
+  return (CVVar v, emptyResult { usedTempVars = utv })
+compileArgument e utv = do
+  exprResult <- compileExpression e utv
   let resultTempVar = (usedTempVars exprResult) + 1
   let instrs' = convertResultToTemp resultTempVar (instructions exprResult)
   return $ (CVTempVar resultTempVar,
             exprResult { instructions = instrs', usedTempVars = resultTempVar } )
 
-compileLocalBinding name boundExpr bodyExpr = do
-  boundRes <- compileExpression boundExpr
-  let bindingTempVar = usedTempVars boundRes + 1
+compileLocalBinding name boundExpr bodyExpr utv = do
+  boundRes <- compileExpression boundExpr utv
+  let bindingTempVar = (usedTempVars boundRes) + 1
   let bindingInstrs = convertResultToTemp bindingTempVar (instructions boundRes)
-  bodyRes <- compileExpression bodyExpr
-  let bodyInstrs = increaseTempVars bindingTempVar (instructions boundRes)
-  let bodyInstrs1 = mapTac (convVarToTemp name bindingTempVar) bodyInstrs
-  return $ emptyResult { instructions = bindingInstrs ++ bodyInstrs1 }  -- TODO also return other data
+  bodyRes <- compileExpression bodyExpr bindingTempVar
+  let bodyInstrs = mapTac (convVarToTemp name bindingTempVar) (instructions bodyRes)
+  return $ emptyResult { instructions = bindingInstrs ++ bodyInstrs,
+                         usedTempVars = usedTempVars bodyRes  }  -- TODO also return other data
   where
     convVarToTemp name tempVar v = case v of
       CVVar n | n == name -> CVTempVar tempVar
       a -> a
-  
+
   -- (freeVars, code) <- compileExpression bodyExpr
 
-compileVar a = return $ emptyResult { instructions = [Tac_move CVResult (CVVar a)] }
+compileVar a utv = return $ emptyResult { instructions = [Tac_move CVResult (CVVar a)], usedTempVars = utv }
 
-increaseTempVars n tacs =
-  mapTac (increaseTempVar n) tacs
-
-increaseTempVar minTempVar v = case v of
-  CVTempVar n -> CVTempVar $ minTempVar + n
-  a -> a
 
 convertResultToTemp :: Int -> [Tac CompValue] -> [Tac CompValue]
 convertResultToTemp tempVar tacs = 
