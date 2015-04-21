@@ -24,6 +24,8 @@ module Language.Spot.CodeGen.CodeGenState (
 , getSymbolNames
 , emptyCode
 
+, reserveFunAddr
+
 , Code(..)
 ) where
 
@@ -54,6 +56,7 @@ data Code = Code { _instructions :: Seq.Seq [Tac Reg]
                  , _symbolNames :: Map.Map String SymId
                  , _funcRegDataStack :: [FunctionRegisterData]
                  , _contextStack :: [Context]
+                 , _nextFunctionAddr :: Int -- TODO get rid of this, use relative function addresses instead
                  }
 
 -- numReservedRegisters is a stack because we can have sub-contexts inside a function
@@ -80,6 +83,7 @@ emptyCode = Code { _instructions = Seq.fromList []
                  , _symbolNames = Map.empty
                  , _funcRegDataStack = []
                  , _contextStack = []
+                 , _nextFunctionAddr = 1
                  }
 
 -- Convenience getters
@@ -191,6 +195,11 @@ regContainingVar n = do
     Just r -> return r
     Nothing -> error $ "No register for var " ++ n
 
+reserveFunAddr :: State Code Int
+reserveFunAddr = do
+  nextAddr <- use nextFunctionAddr
+  nextFunctionAddr += 1
+  return nextAddr
 
 -- Symbol names and constants
 

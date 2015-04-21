@@ -21,11 +21,13 @@ library
   build-tools:        alex, happy
   exposed-modules:    Language.Spot.Parser.Lexer
                     , Language.Spot.Parser.Parser
-                    , Language.Spot.IR.Ast
                     , Language.Spot.CodeGen.CodeGen
                     , Language.Spot.CodeGen.CodeGen2
                     , Language.Spot.CodeGen.CodeGenState
+                    , Language.Spot.CodeGen.AstToAnf
+                    , Language.Spot.IR.Ast
                     , Language.Spot.IR.Tac
+                    , Language.Spot.IR.Anf
                     , Language.Spot.VM.Assembler
                     , Language.Spot.VM.VM
                     , Language.Spot.VM.Bits

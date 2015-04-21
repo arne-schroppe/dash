@@ -3,33 +3,52 @@ module Language.Spot.CodeGen.CodeGen2 (
 ) where
 
 import Language.Spot.CodeGen.CodeGenState
-import Language.Spot.IR.Ast
+import Language.Spot.IR.Anf
 import Language.Spot.IR.Tac
 
 import Control.Monad.State
+import qualified Data.Sequence as Seq
+import Data.Foldable
 
 import Debug.Trace
+
+compile :: AnfExpr -> ([[Tac Reg]], ConstTable, SymbolNameList)
+compile expr =
+  let encoded = compileExpr expr in
+  ([encoded], [], [])
+
+compileExpr expr = case expr of
+  AnfNumber n -> [Tac_load_i 0 (fromIntegral n)]
+  AnfPlainSymbol sid -> [Tac_load_ps 0 sid]
+  x -> error $ "Unable to compile " ++ (show x)
+
+
+{-
 
 compile :: Expr -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile ast =
         let (result, finalState) = runState (compileExpression ast 0) emptyCode in
-        let result1 = assignRegisters result in
-        ([result1], getConstantTable finalState, getSymbolNames finalState)
+        let allFuncs = (instructions result) Seq.<| (otherFunctions result) in
+        let result1 = map assignRegisters (toList allFuncs) in
+        (result1, getConstantTable finalState, getSymbolNames finalState)
 
 data CompValue =
     CVResult
   | CVVar String
   | CVTempVar Int
+  | CVFunArg Int
   deriving (Show, Eq)
 
 data CompilationResult = CompilationResult {
     instructions :: [Tac CompValue]
+  , otherFunctions :: Seq.Seq [Tac CompValue]
   , usedTempVars :: Int
   -- , freeVariables :: [String]
   }
   deriving (Show)
 
 emptyResult = CompilationResult { instructions = []
+                                , otherFunctions = Seq.fromList []
                                 , usedTempVars = 0
                                 -- , freeVariables = [] 
                                 }
@@ -61,8 +80,15 @@ compileLitSymbol name args utv = do
   return $ emptyResult { instructions = [Tac_load_cs CVResult cAddr], usedTempVars = utv }
 
 
+-- TODO when compiling fun calls: We need to store somewhere, whether we can call a function
+-- directly, or whether it is (potentially) a closure
 compileFunCall (Var "add") [op1, op2] utv = compileMathFunCall Tac_add op1 op2 utv
 compileFunCall (Var "sub") [op1, op2] utv = compileMathFunCall Tac_sub op1 op2 utv
+compileFunCall (Var name) args utv        = do
+  argCode <- compileFunctionCallArgs args utv
+  let instrs = argCode ++ [Tac_call CVResult (CVVar name)
+  return $ emptyResult { instructions = instrs,
+                         usedTempVars = utv + (length args) }
 
 compileMathFunCall mf op1 op2 utv = do
   (v1, res1) <- compileArgument op1 utv
@@ -80,31 +106,60 @@ compileArgument e utv = do
   return $ (CVTempVar resultTempVar,
             exprResult { instructions = instrs', usedTempVars = resultTempVar } )
 
+compileFunctionCallArgs args utv = do
+  argResult <- foldM (uncurry compileCallArg) emptyResult (zip args [0..(length args)])
+  where
+    compileCallArg expr reg = do
+      (argV, argResult 
+
+compileLocalBinding name (FunDef params expr) bodyExpr utv = do
+  funcResult <- compileFunction params expr
+  funcAddr <- reserveFunAddr
+  let bindingTempVar = utv + 1
+  let combinedOtherFunctions = (otherFunctions funcResult) Seq.|> (instructions funcResult)
+  let bindingInstrs = [ Tac_load_f (CVTempVar bindingTempVar) funcAddr ]
+  bodyRes <- compileExpression bodyExpr bindingTempVar
+  let bodyInstrs = convertVarToTemp name bindingTempVar (instructions bodyRes)
+  return $ emptyResult { instructions = bindingInstrs ++ bodyInstrs,
+                         usedTempVars = usedTempVars bodyRes,
+                         otherFunctions = combinedOtherFunctions }
 compileLocalBinding name boundExpr bodyExpr utv = do
   boundRes <- compileExpression boundExpr utv
   let bindingTempVar = (usedTempVars boundRes) + 1
   let bindingInstrs = convertResultToTemp bindingTempVar (instructions boundRes)
   bodyRes <- compileExpression bodyExpr bindingTempVar
-  let bodyInstrs = mapTac (convVarToTemp name bindingTempVar) (instructions bodyRes)
+  let bodyInstrs = convertVarToTemp name bindingTempVar (instructions bodyRes)
   return $ emptyResult { instructions = bindingInstrs ++ bodyInstrs,
                          usedTempVars = usedTempVars bodyRes  }  -- TODO also return other data
-  where
-    convVarToTemp name tempVar v = case v of
-      CVVar n | n == name -> CVTempVar tempVar
-      a -> a
 
-  -- (freeVars, code) <- compileExpression bodyExpr
 
 compileVar a utv = return $ emptyResult { instructions = [Tac_move CVResult (CVVar a)], usedTempVars = utv }
 
+compileFunction params expr = do
+  let numParams = length params
+  exprRes <- compileExpression expr numParams
+  exprInstrs <- foldM varToTemp (instructions exprRes) (zip [0..numParams] params)
+  return $ emptyResult { instructions = exprInstrs } -- TODO add free vars
+  where
+    varToTemp instrs (n, param) =
+      return $ convertVarToTemp param n instrs
+
+
+convertVarToTemp varName tempNum instrs =
+  mapTac (convertOne varName tempNum) instrs
+  where
+    convertOne name tempVar v = case v of
+      CVVar n | n == name -> CVTempVar tempVar
+      a                   -> a
 
 convertResultToTemp :: Int -> [Tac CompValue] -> [Tac CompValue]
-convertResultToTemp tempVar tacs = 
+convertResultToTemp tempVar tacs =
   mapTac (convResult tempVar) tacs
   where
     convResult tempVar value = case value of
       CVResult -> CVTempVar tempVar
       a -> a
+
 
 
 toWord32 = fromIntegral -- TODO add some range checks here
@@ -123,9 +178,8 @@ createConstant litC =
                 return $ CCompoundSymbol symId encodedArgs
 
 
-assignRegisters :: CompilationResult -> [Tac Reg]
-assignRegisters compResult =
-  let codeWithoutRegs = instructions compResult in
+assignRegisters :: [Tac CompValue] -> [Tac Reg]
+assignRegisters codeWithoutRegs =
   mapTac assignReg codeWithoutRegs
   where
     assignReg :: CompValue -> Reg
@@ -138,7 +192,7 @@ assignRegisters compResult =
 
 mapTac :: (a -> b) -> [Tac a] -> [Tac b]
 mapTac f tacs = map (mapSingleTac f) tacs
-  where 
+  where
     mapSingleTac :: (a -> b) -> Tac a -> Tac b
     mapSingleTac f tac = case tac of
       Tac_load_i var v       -> Tac_load_i (f var) v
@@ -156,4 +210,4 @@ mapTac f tacs = map (mapSingleTac f) tacs
       Tac_jmp n              -> Tac_jmp n
       Tac_match v1 v2 v3     -> Tac_match (f v1) (f v2) (f v3)
       Tac_ret                -> Tac_ret
-
+-}
