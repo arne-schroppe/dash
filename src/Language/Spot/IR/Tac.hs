@@ -15,7 +15,7 @@ data Constant =
   | CMatchVar Int -- Can only be used inside CMatchData
   deriving (Show, Eq)
 
-type ConstTable = [Constant]
+type ConstTable = [Constant] -- TODO move these out of here
 type SymbolNameList = [String]
 
 -- TODO make VMWord and Reg more typesafe and check range when constructing it

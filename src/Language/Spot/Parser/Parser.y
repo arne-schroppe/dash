@@ -90,7 +90,7 @@ Anon_fun:
     val Fun_rest  { $2 }
 
 Fun_rest:
-    '(' opt(eol) plus(id) opt(eol) ')' Def_rest  { FunDef $3 $6 }
+    '(' opt(eol) plus(id) opt(eol) ')' Def_rest  { Lambda $3 $6 }
 
 
 Body:
@@ -194,7 +194,7 @@ makeMonad monad lines =
     (_, call) : []     -> call
     ("_", call) : rest -> foldl (\acc (nid, ncall) ->
           let ns = (Namespace monad (Var "bind")) in
-          let args = [ncall, FunDef [nid] acc] in
+          let args = [ncall, Lambda [nid] acc] in
           FunCall ns args)
         call rest
     (_, _) : rest -> error "Last line in do-block can't be an assignment"

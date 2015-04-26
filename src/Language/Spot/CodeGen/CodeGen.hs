@@ -39,7 +39,7 @@ compileExpression e = case e of
   LocalBinding (Binding name expr) body -> compileLocalBinding name expr body
   Var a             -> compileVar a
   Match e pats      -> compileMatch e pats
-  FunDef params expr -> compileLambda params expr
+  Lambda params expr -> compileLambda params expr
   a -> error $ "Can't compile: " ++ show a
 
 compileLitNumber n = do
@@ -84,7 +84,7 @@ ensureContinuousRegisters funcReg = do
   else
     return ([], funcReg)
 
-compileLocalBinding name (FunDef args expr) body = do
+compileLocalBinding name (Lambda args expr) body = do
   r <- reserveReg
   funAddr <- compileFunction args expr
   addVar name r

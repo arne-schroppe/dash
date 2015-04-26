@@ -19,7 +19,7 @@ data Expr
     | LitSymbol String [Expr]
     | Var String
     | Namespace String Expr  -- TODO merge with var?
-    | FunDef [String] Expr       -- arguments, body
+    | Lambda [String] Expr       -- arguments, body
     | FunCall Expr [Expr]
     | LocalBinding Binding Expr  -- binding, body
     | Module [Binding]

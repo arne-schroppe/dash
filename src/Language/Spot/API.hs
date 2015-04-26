@@ -29,17 +29,17 @@ import qualified Data.IntMap as IntMap
 
 toAsm :: String -> [[Tac Reg]]
 toAsm prog =
-  let (asm, ctable, symNames) = prog |> lex |> parse |> normalize |> compile in
+  let (asm, ctable, symNames) = prog |> lex |> parse |> normalize ||> compile in
   asm
 
 toAtomicConstants :: String -> ([AtomicConstant], IntMap.IntMap VMWord)
 toAtomicConstants prog =
-  let (asm, ctable, symNames) = prog |> lex |> parse |> normalize |> compile in
+  let (asm, ctable, symNames) = prog |> lex |> parse |> normalize ||> compile in
   atomizeConstTable ctable
 
 
 run :: String -> IO VMValue
 run prog = do
-  (value, ctable, symNames) <-  prog |> lex |> parse |> normalize |> compile ||> assemble ||> execute
+  (value, ctable, symNames) <-  prog |> lex |> parse |> normalize ||> compile ||> assemble ||> execute
   return $ decode value ctable symNames
 

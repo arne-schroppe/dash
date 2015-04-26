@@ -164,6 +164,8 @@ What's missing:
 - Modules
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
 - Faster, optimized match patterns (reduce number of comparisons)
+- Uniquely name vars in frontend (?)
+- Prevent duplicate var names in function definition (unless it's for pattern matching?)
 
 TODO: Functions need a runtime tag!
 
