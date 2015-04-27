@@ -21,6 +21,7 @@ compileExpr expr = case expr of
   AnfAtom a -> compileAtom 0 a
   AnfLet var atom body -> compileLet var atom body
   AnfPrimOp primOp -> compilePrimOp primOp
+  AnfMatch _ _ -> [] -- TODO
   x -> error $ "Unable to compile " ++ (show x)
 
 compileAtom reg  a = case a of

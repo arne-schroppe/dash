@@ -76,8 +76,6 @@ normalizeNamedFun "sub" [LitNumber a, LitNumber b] = do
   return norm
 
 
-normalizeMatch a b = error "Fail"
-{-
 normalizeMatch matchedExpr patterns = do
   normalizedPatterns <- forM patterns $
       \(pattern, expr) -> do
@@ -85,7 +83,6 @@ normalizeMatch matchedExpr patterns = do
           return (pattern, normExpr)
   return $ AnfMatch (AnfNumber 0) normalizedPatterns
   -- TODO create something like normalize-name to normalize matched expr
--}
 
 
 isAtomic :: Expr -> Bool
