@@ -59,18 +59,20 @@ normalizeLambda params bodyExpr = do
 normalizeFunCall (Var name) args =
   normalizeNamedFun name args
 
-normalizeNamedFun "add" [LitNumber a, LitNumber b] =
-  let norm = AnfLet (AnfTempVar 1) (AnfNumber a) $
-             AnfLet (AnfTempVar 2) (AnfNumber b) $
-             (AnfPrimOp $ AnfPrimOpAdd (AnfTempVar 1) (AnfTempVar 2))
-  in
+normalizeNamedFun "add" [LitNumber a, LitNumber b] = do
+  tmpVar1 <- newTempVar
+  tmpVar2 <- newTempVar
+  let norm = AnfLet (AnfTempVar tmpVar1) (AnfNumber a) $
+             AnfLet (AnfTempVar tmpVar2) (AnfNumber b) $
+             (AnfPrimOp $ AnfPrimOpAdd (AnfTempVar tmpVar1) (AnfTempVar tmpVar2))
   return norm
 
-normalizeNamedFun "sub" [LitNumber a, LitNumber b] =
-  let norm = AnfLet (AnfTempVar 1) (AnfNumber a) $
-             AnfLet (AnfTempVar 2) (AnfNumber b) $
-             (AnfPrimOp $ AnfPrimOpSub (AnfTempVar 1) (AnfTempVar 2))
-  in
+normalizeNamedFun "sub" [LitNumber a, LitNumber b] = do
+  tmpVar1 <- newTempVar
+  tmpVar2 <- newTempVar
+  let norm = AnfLet (AnfTempVar tmpVar1) (AnfNumber a) $
+             AnfLet (AnfTempVar tmpVar2) (AnfNumber b) $
+             (AnfPrimOp $ AnfPrimOpSub (AnfTempVar tmpVar1) (AnfTempVar tmpVar2))
   return norm
 
 
