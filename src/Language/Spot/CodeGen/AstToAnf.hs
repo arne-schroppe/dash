@@ -3,20 +3,17 @@ module Language.Spot.CodeGen.AstToAnf where
 import Language.Spot.IR.Ast
 import Language.Spot.IR.Anf
 import Language.Spot.IR.Tac
+import Language.Spot.CodeGen.CodeGenState
 import Control.Monad.State
-
-import qualified Data.Map as Map
 
 -- TODO use named variables?
 
-
-
 normalize :: Expr -> (AnfExpr, ConstTable, SymbolNameList)
 normalize expr =
-  let (result, finalState) = runState (normalizeExpr expr) emptyNormData in
-  (result, [], getSymbolNames finalState)
+  let (result, finalState) = runState (normalizeExpr expr) emptyCode in
+  (result, getConstantTable finalState, getSymbolNames finalState)
 
-normalizeExpr :: Expr -> State NormData AnfExpr
+normalizeExpr :: Expr -> State Code AnfExpr
 normalizeExpr expr = case expr of
   FunCall funExpr args -> normalizeFunCall funExpr args
   LocalBinding (Binding name boundExpr) restExpr ->
@@ -26,7 +23,7 @@ normalizeExpr expr = case expr of
     normalizedAtom <- normalizeAtomicExpr expr
     return $ AnfAtom normalizedAtom
 
-normalizeAtomicExpr :: Expr -> State NormData AnfAtomicExpr
+normalizeAtomicExpr :: Expr -> State Code AnfAtomicExpr
 normalizeAtomicExpr expr = case expr of
   LitNumber n -> normalizeNumber n
   LitSymbol sid args -> normalizeSymbol sid args
@@ -73,47 +70,4 @@ normalizeNamedFun "sub" [LitNumber a, LitNumber b] =
   return norm
 
 
-normalizeMatch matchedExpr patterns = do
-  mapM patterns 
-
-
-isAtomic :: Expr -> Bool
-isAtomic expr = case expr of
-  LitNumber _, LitString _, LitSymbol _, Var _, Lambda _ _ -> True
-  _ -> False
-
-
-data NormData = NormData {
-  tempVarCounter :: Int
-, symbolNames :: Map.Map String SymId
-}
-
-emptyNormData = NormData {
-  tempVarCounter = 0,
-, symbolNames = Map.empty
-}
-
-
-newTempVar :: State NormData AnfExpr
-newTempVar = do
-  state <- get
-  let nextTmpVar = (tempVarCounter state) + 1
-  put $ state { tempVarCounter = nextTmpVar }
-  return newTmpVar
-
-
--- TODO copied this from CodeGenState, delete it there
-addSymbolName :: String -> State NormData SymId
-addSymbolName s = do
-  state <- get
-  let syms = symbolNames state
-  if Map.member s syms then
-    return $ syms Map.! s
-  else do
-    nextId <- Map.size syms
-    let syms' = Map.insert s nextId
-    put $ state { symbolNames = syms }
-    return nextId
-
-getSymbolNames :: NormData -> SymbolNameList
-getSymbolNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . view symbolNames
+normalizeMatch matchedExpr patterns = error "Fail match"
