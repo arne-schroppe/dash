@@ -55,26 +55,25 @@ normalizeLambda params bodyExpr = do
   return $ AnfLambda freeVars params normalizedBody
 
 
-
+-- TODO allow for other cases than just named functions
 normalizeFunCall (Var name) args =
   normalizeNamedFun name args
 
-normalizeNamedFun "add" [LitNumber a, LitNumber b] = do
+
+-- TODO prevent code duplication, allow for other functions
+normalizeNamedFun "add" [LitNumber a, LitNumber b] =
+  normalizeMathPrimOp AnfPrimOpAdd a b
+
+normalizeNamedFun "sub" [LitNumber a, LitNumber b] =
+  normalizeMathPrimOp AnfPrimOpSub a b
+
+normalizeMathPrimOp mathPrimOp a b = do
   tmpVar1 <- newTempVar
   tmpVar2 <- newTempVar
   let norm = AnfLet (AnfTempVar tmpVar1) (AnfNumber a) $
              AnfLet (AnfTempVar tmpVar2) (AnfNumber b) $
-             (AnfPrimOp $ AnfPrimOpAdd (AnfTempVar tmpVar1) (AnfTempVar tmpVar2))
+             (AnfPrimOp $ mathPrimOp (AnfTempVar tmpVar1) (AnfTempVar tmpVar2))
   return norm
-
-normalizeNamedFun "sub" [LitNumber a, LitNumber b] = do
-  tmpVar1 <- newTempVar
-  tmpVar2 <- newTempVar
-  let norm = AnfLet (AnfTempVar tmpVar1) (AnfNumber a) $
-             AnfLet (AnfTempVar tmpVar2) (AnfNumber b) $
-             (AnfPrimOp $ AnfPrimOpSub (AnfTempVar tmpVar1) (AnfTempVar tmpVar2))
-  return norm
-
 
 normalizeMatch matchedExpr patterns = do
   normalizedPatterns <- forM patterns $
