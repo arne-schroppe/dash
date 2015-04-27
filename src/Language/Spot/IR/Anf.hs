@@ -1,6 +1,7 @@
 module Language.Spot.IR.Anf where
 
 import Language.Spot.VM.Types
+import Language.Spot.IR.Ast
 
 -- TODO Norm instead of Anf
 -- TODO also, find a naming scheme that prevents `AnfVar AnfVar` confusion
@@ -25,6 +26,7 @@ data AnfExpr =
     AnfAtom AnfAtomicExpr
   | AnfPrimOp AnfPrimOp
   | AnfLet AnfVar AnfAtomicExpr AnfExpr
+  | AnfMatch AnfAtomicExpr [(Pattern, AnfExpr)]
   deriving (Eq, Show)
 
 
