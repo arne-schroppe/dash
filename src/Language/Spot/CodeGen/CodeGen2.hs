@@ -12,26 +12,26 @@ import Data.Foldable
 
 import Debug.Trace
 
-compile :: AnfExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
+compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile expr ctable symlist =
   let encoded = compileExpr expr in
   ([encoded ++ [Tac_ret]], ctable, symlist)
 
 compileExpr expr = case expr of
-  AnfAtom a -> compileAtom 0 a
-  AnfLet var atom body -> compileLet var atom body
-  AnfPrimOp primOp -> compilePrimOp primOp
-  AnfMatch _ _ -> [] -- TODO
+  NAtom a -> compileAtom 0 a
+  NLet var atom body -> compileLet var atom body
+  NPrimOp primOp -> compilePrimOp primOp
+  NMatch _ _ -> [] -- TODO
   x -> error $ "Unable to compile " ++ (show x)
 
 compileAtom reg  a = case a of
-  AnfNumber n -> [Tac_load_i reg (fromIntegral n)]
-  AnfPlainSymbol sid -> [Tac_load_ps reg sid]
+  NNumber n -> [Tac_load_i reg (fromIntegral n)]
+  NPlainSymbol sid -> [Tac_load_ps reg sid]
 
 compilePrimOp primOp = case primOp of
-  AnfPrimOpAdd (AnfTempVar a) (AnfTempVar b) -> [Tac_add 0 (fromIntegral a) (fromIntegral b)]
+  NPrimOpAdd (NTempVar a) (NTempVar b) -> [Tac_add 0 (fromIntegral a) (fromIntegral b)]
 
-compileLet (AnfTempVar reg) atom body =
+compileLet (NTempVar reg) atom body =
   let comp1 = compileAtom reg atom in
   let comp2 = compileExpr body in
   comp1 ++ comp2

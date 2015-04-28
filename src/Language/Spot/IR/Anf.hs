@@ -3,30 +3,28 @@ module Language.Spot.IR.Anf where
 import Language.Spot.VM.Types
 import Language.Spot.IR.Ast
 
--- TODO Norm instead of Anf
--- TODO also, find a naming scheme that prevents `AnfVar AnfVar` confusion
-data AnfVar =
-    AnfTempVar Int
-  | AnfNamedVar String
+data NormVar =
+    NTempVar Int
+  | NNamedVar String
   deriving (Eq, Show)
 
-data AnfPrimOp =
-    AnfPrimOpAdd AnfVar AnfVar
-  | AnfPrimOpSub AnfVar AnfVar
+data NormPrimOp =
+    NPrimOpAdd NormVar NormVar
+  | NPrimOpSub NormVar NormVar
   deriving (Eq, Show)
 
-data AnfAtomicExpr =
-    AnfNumber Int
-  | AnfPlainSymbol Int
-  | AnfVar AnfVar
-  | AnfLambda [String] [String] AnfExpr  -- FreeVars FormalParams Body
+data NormAtomicExpr =
+    NNumber Int
+  | NPlainSymbol Int
+  | NVar NormVar
+  | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body
   deriving (Eq, Show)
 
-data AnfExpr =
-    AnfAtom AnfAtomicExpr
-  | AnfPrimOp AnfPrimOp
-  | AnfLet AnfVar AnfAtomicExpr AnfExpr
-  | AnfMatch AnfAtomicExpr [(Pattern, AnfExpr)]
+data NormExpr =
+    NAtom NormAtomicExpr
+  | NPrimOp NormPrimOp
+  | NLet NormVar NormAtomicExpr NormExpr
+  | NMatch NormAtomicExpr [(Pattern, NormExpr)]
   deriving (Eq, Show)
 
 

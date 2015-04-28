@@ -3,7 +3,7 @@ module Language.Spot.API where
 import Prelude hiding (lex)
 import Language.Spot.Parser.Lexer
 import Language.Spot.Parser.Parser
-import Language.Spot.CodeGen.AstToAnf
+import Language.Spot.CodeGen.Normalization
 import Language.Spot.CodeGen.CodeGen2
 import Language.Spot.VM.Assembler
 import Language.Spot.VM.Types

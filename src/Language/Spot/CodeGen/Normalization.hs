@@ -1,4 +1,4 @@
-module Language.Spot.CodeGen.AstToAnf where
+module Language.Spot.CodeGen.Normalization where
 
 import Language.Spot.IR.Ast
 import Language.Spot.IR.Anf
@@ -11,23 +11,22 @@ import qualified Data.Map as Map
 -- TODO use named variables?
 
 
-
-normalize :: Expr -> (AnfExpr, ConstTable, SymbolNameList)
+normalize :: Expr -> (NormExpr, ConstTable, SymbolNameList)
 normalize expr =
-  let (result, finalState) = runState (normalizeExpr expr) emptyNormData in
+  let (result, finalState) = runState (normalizeExpr expr) emptyNormState in
   (result, [], getSymbolNames finalState)
 
-normalizeExpr :: Expr -> State NormData AnfExpr
+normalizeExpr :: Expr -> State NormState NormExpr
 normalizeExpr expr = case expr of
   FunCall funExpr args -> normalizeFunCall funExpr args
   LocalBinding (Binding name boundExpr) restExpr ->
-        normalizeLet (AnfNamedVar name) boundExpr restExpr
+        normalizeLet (NNamedVar name) boundExpr restExpr
   Match matchedExpr patterns -> normalizeMatch matchedExpr patterns
   a -> do
     normalizedAtom <- normalizeAtomicExpr expr
-    return $ AnfAtom normalizedAtom
+    return $ NAtom normalizedAtom
 
-normalizeAtomicExpr :: Expr -> State NormData AnfAtomicExpr
+normalizeAtomicExpr :: Expr -> State NormState NormAtomicExpr
 normalizeAtomicExpr expr = case expr of
   LitNumber n -> normalizeNumber n
   LitSymbol sid args -> normalizeSymbol sid args
@@ -38,21 +37,21 @@ normalizeAtomicExpr expr = case expr of
 normalizeLet var boundExpr restExpr = do
   normalizedBoundExpr <- normalizeAtomicExpr boundExpr
   normalizedRestExpr <- normalizeExpr restExpr
-  return $ AnfLet var normalizedBoundExpr normalizedRestExpr
+  return $ NLet var normalizedBoundExpr normalizedRestExpr
 
-normalizeNumber n = return (AnfNumber n)
+normalizeNumber n = return (NNumber n)
 
 normalizeSymbol sid [] = do
   symId <- addSymbolName sid
-  return (AnfPlainSymbol symId)
+  return (NPlainSymbol symId)
 normalizeSymbol sid args = error "Can't normalize this symbol"
 
-normalizeVar name = return $ AnfVar $ AnfNamedVar name
+normalizeVar name = return $ NVar $ NNamedVar name
 
 normalizeLambda params bodyExpr = do
   normalizedBody <- normalizeExpr bodyExpr
   let freeVars = []
-  return $ AnfLambda freeVars params normalizedBody
+  return $ NLambda freeVars params normalizedBody
 
 
 -- TODO allow for other cases than just named functions
@@ -62,17 +61,17 @@ normalizeFunCall (Var name) args =
 
 -- TODO prevent code duplication, allow for other functions
 normalizeNamedFun "add" [LitNumber a, LitNumber b] =
-  normalizeMathPrimOp AnfPrimOpAdd a b
+  normalizeMathPrimOp NPrimOpAdd a b
 
 normalizeNamedFun "sub" [LitNumber a, LitNumber b] =
-  normalizeMathPrimOp AnfPrimOpSub a b
+  normalizeMathPrimOp NPrimOpSub a b
 
 normalizeMathPrimOp mathPrimOp a b = do
   tmpVar1 <- newTempVar
   tmpVar2 <- newTempVar
-  let norm = AnfLet (AnfTempVar tmpVar1) (AnfNumber a) $
-             AnfLet (AnfTempVar tmpVar2) (AnfNumber b) $
-             (AnfPrimOp $ mathPrimOp (AnfTempVar tmpVar1) (AnfTempVar tmpVar2))
+  let norm = NLet (NTempVar tmpVar1) (NNumber a) $
+             NLet (NTempVar tmpVar2) (NNumber b) $
+             (NPrimOp $ mathPrimOp (NTempVar tmpVar1) (NTempVar tmpVar2))
   return norm
 
 normalizeMatch matchedExpr patterns = do
@@ -80,7 +79,7 @@ normalizeMatch matchedExpr patterns = do
       \(pattern, expr) -> do
           normExpr <- normalizeExpr expr
           return (pattern, normExpr)
-  return $ AnfMatch (AnfNumber 0) normalizedPatterns
+  return $ NMatch (NNumber 0) normalizedPatterns
   -- TODO create something like normalize-name to normalize matched expr
 
 
@@ -94,18 +93,18 @@ isAtomic expr = case expr of
   _ -> False
 
 
-data NormData = NormData {
+data NormState = NormState {
   tempVarCounter :: Int
 , symbolNames :: Map.Map String SymId
 }
 
-emptyNormData = NormData {
+emptyNormState = NormState {
   tempVarCounter = 0
 , symbolNames = Map.empty
 }
 
 
-newTempVar :: State NormData Int
+newTempVar :: State NormState Int
 newTempVar = do
   state <- get
   let nextTmpVar = (tempVarCounter state) + 1
@@ -114,7 +113,7 @@ newTempVar = do
 
 
 -- TODO copied this from CodeGenState, delete it there
-addSymbolName :: String -> State NormData SymId
+addSymbolName :: String -> State NormState SymId
 addSymbolName s = do
   state <- get
   let syms = symbolNames state
@@ -126,5 +125,7 @@ addSymbolName s = do
     put $ state { symbolNames = syms' }
     return nextId
 
-getSymbolNames :: NormData -> SymbolNameList
+getSymbolNames :: NormState -> SymbolNameList
 getSymbolNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . symbolNames
+
+
