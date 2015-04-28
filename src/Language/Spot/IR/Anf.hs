@@ -3,6 +3,21 @@ module Language.Spot.IR.Anf where
 import Language.Spot.VM.Types
 import Language.Spot.IR.Ast
 
+data NormExpr =
+    NAtom NormAtomicExpr
+  | NMatch NormVar [(Pattern, NormExpr)]
+  | NLet NormVar NormAtomicExpr NormExpr
+  deriving (Eq, Show)
+
+data NormAtomicExpr =
+    NNumber Int
+  | NPlainSymbol Int
+  | NVar NormVar
+  | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body
+  | NPrimOp NormPrimOp
+  | NFunCall [NormVar]
+  deriving (Eq, Show)
+
 data NormVar =
     NTempVar Int
   | NNamedVar String
@@ -13,18 +28,6 @@ data NormPrimOp =
   | NPrimOpSub NormVar NormVar
   deriving (Eq, Show)
 
-data NormAtomicExpr =
-    NNumber Int
-  | NPlainSymbol Int
-  | NVar NormVar
-  | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body
-  deriving (Eq, Show)
 
-data NormExpr =
-    NAtom NormAtomicExpr
-  | NPrimOp NormPrimOp
-  | NLet NormVar NormAtomicExpr NormExpr
-  | NMatch NormAtomicExpr [(Pattern, NormExpr)]
-  deriving (Eq, Show)
 
 

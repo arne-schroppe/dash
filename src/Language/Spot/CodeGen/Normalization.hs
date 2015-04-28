@@ -71,7 +71,7 @@ normalizeMathPrimOp mathPrimOp a b = do
   tmpVar2 <- newTempVar
   let norm = NLet (NTempVar tmpVar1) (NNumber a) $
              NLet (NTempVar tmpVar2) (NNumber b) $
-             (NPrimOp $ mathPrimOp (NTempVar tmpVar1) (NTempVar tmpVar2))
+             NAtom (NPrimOp $ mathPrimOp (NTempVar tmpVar1) (NTempVar tmpVar2))
   return norm
 
 normalizeMatch matchedExpr patterns = do
@@ -79,7 +79,9 @@ normalizeMatch matchedExpr patterns = do
       \(pattern, expr) -> do
           normExpr <- normalizeExpr expr
           return (pattern, normExpr)
-  return $ NMatch (NNumber 0) normalizedPatterns
+  tmpVar <- newTempVar
+  return $ NLet (NTempVar tmpVar) (NNumber 0) $
+           NMatch (NTempVar tmpVar) normalizedPatterns
   -- TODO create something like normalize-name to normalize matched expr
 
 

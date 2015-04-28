@@ -20,7 +20,7 @@ compile expr ctable symlist =
 compileExpr expr = case expr of
   NAtom a -> compileAtom 0 a
   NLet var atom body -> compileLet var atom body
-  NPrimOp primOp -> compilePrimOp primOp
+  NAtom (NPrimOp primOp) -> compilePrimOp primOp
   NMatch _ _ -> [] -- TODO
   x -> error $ "Unable to compile " ++ (show x)
 

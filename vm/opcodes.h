@@ -11,7 +11,7 @@ typedef enum {
   OP_LOADc = 4,
   OP_ADD = 5,
   OP_SUB = 6,
-  OP_MOVE = 7,
+  OP_MOVE = 7, //Maybe we don't need this, could be add with a zero (see MIPS instruction set)
   OP_CALL = 8,
   OP_CALLCL = 9,
   OP_MAKECL = 10,
