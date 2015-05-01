@@ -5,7 +5,7 @@ import Language.Spot.IR.Ast
 
 data NormExpr =
     NAtom NormAtomicExpr
-  | NMatch NormVar [(Pattern, NormExpr)]
+  | NMatch Int NormVar [(Pattern, NormExpr)] -- MaxCaptures Subject (Patterns, Expr)
   | NLet NormVar NormAtomicExpr NormExpr
   deriving (Eq, Show)
 

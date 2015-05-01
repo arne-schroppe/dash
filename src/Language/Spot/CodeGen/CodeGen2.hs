@@ -21,7 +21,7 @@ compileExpr expr = case expr of
   NAtom a -> compileAtom 0 a
   NLet var atom body -> compileLet var atom body
   NAtom (NPrimOp primOp) -> compilePrimOp primOp
-  NMatch _ _ -> [] -- TODO
+  NMatch _ _ _ -> [] -- TODO
   x -> error $ "Unable to compile " ++ (show x)
 
 compileAtom reg  a = case a of

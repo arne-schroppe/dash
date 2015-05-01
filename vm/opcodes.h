@@ -21,7 +21,7 @@ typedef enum {
 
 #define instr_size (sizeof(vm_instruction) * 8)
 #define __regb 5  /* Number of bits for registers */
-#define __opcb 4 /* Number of bits for obcode */
+#define __opcb 4 /* Number of bits for opcode */
 
 
 #define get_opcode(instr) ((instr & 0xF0000000) >> (instr_size - __opcb))
@@ -45,10 +45,10 @@ typedef enum {
 #define op_load_c(r0, i) (instr_ri(OP_LOADc, r0, i))
 #define op_add(r0, r1, r2) (instr_rrr(OP_ADD, r0, r1, r2))
 #define op_sub(r0, r1, r2) (instr_rrr(OP_SUB, r0, r1, r2))
-#define op_halt (instr_ri(OP_HALT, 0, 0))
+#define op_halt (instr_ri(OP_HALT, 0, 0)) //TODO delete
 #define op_move(r0, r1) (instr_rrr(OP_MOVE, r0, r1, 0))
 #define op_call(r0, fr, n) (instr_rrr(OP_CALL, r0, fr, n))
-#define op_callcl(r0, fr, n) (instr_rrr(OP_CALLCL, r0, fr, n))
+#define op_callcl(r0, fr, n) (instr_rrr(OP_CALLCL, r0, fr, n)) //TODO replace with generic jmp?
 #define op_ret (instr_ri(OP_RET, 0, 0))
 #define op_makecl(r0, fr, n) (instr_rrr(OP_MAKECL, r0, fr, n))
 #define op_jmp(n) (instr_ri(OP_JMP, 0, n))

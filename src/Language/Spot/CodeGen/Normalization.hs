@@ -60,19 +60,29 @@ normalizeFunCall (Var name) args =
 
 
 -- TODO prevent code duplication, allow for other functions
-normalizeNamedFun "add" [LitNumber a, LitNumber b] =
+normalizeNamedFun "add" [a, b] = do
   normalizeMathPrimOp NPrimOpAdd a b
 
-normalizeNamedFun "sub" [LitNumber a, LitNumber b] =
+normalizeNamedFun "sub" [a, b] =
   normalizeMathPrimOp NPrimOpSub a b
 
 normalizeMathPrimOp mathPrimOp a b = do
-  tmpVar1 <- newTempVar
-  tmpVar2 <- newTempVar
-  let norm = NLet (NTempVar tmpVar1) (NNumber a) $
-             NLet (NTempVar tmpVar2) (NNumber b) $
-             NAtom (NPrimOp $ mathPrimOp (NTempVar tmpVar1) (NTempVar tmpVar2))
-  return norm
+  aExpr <- normalizeExpr a
+  nameExpr aExpr ( \ aVar -> do
+          bExpr <- normalizeExpr b
+          nameExpr bExpr ( \ bVar ->
+                  return $ NAtom (NPrimOp $ mathPrimOp aVar bVar) ))
+
+nameExpr expr k = case expr of
+  NMatch _ _ _ -> error "Non-atomic"
+  NAtom aExpr -> do
+    tmpVar <- newTempVar
+    let var = NTempVar tmpVar
+    bodyExpr <- k var
+    return $ NLet var aExpr bodyExpr
+  NLet v boundExpr bodyExpr -> do
+    expr <- nameExpr bodyExpr k
+    return $ NLet v boundExpr expr
 
 normalizeMatch matchedExpr patterns = do
   normalizedPatterns <- forM patterns $
@@ -81,7 +91,7 @@ normalizeMatch matchedExpr patterns = do
           return (pattern, normExpr)
   tmpVar <- newTempVar
   return $ NLet (NTempVar tmpVar) (NNumber 0) $
-           NMatch (NTempVar tmpVar) normalizedPatterns
+           NMatch 0 (NTempVar tmpVar) normalizedPatterns
   -- TODO create something like normalize-name to normalize matched expr
 
 
@@ -92,6 +102,7 @@ isAtomic expr = case expr of
   LitSymbol _ _ -> True
   Var _ -> True
   Lambda _ _ -> True
+  FunCall _ _ -> True
   _ -> False
 
 
@@ -109,9 +120,10 @@ emptyNormState = NormState {
 newTempVar :: State NormState Int
 newTempVar = do
   state <- get
+  let tmpVar = tempVarCounter state
   let nextTmpVar = (tempVarCounter state) + 1
   put $ state { tempVarCounter = nextTmpVar }
-  return nextTmpVar
+  return tmpVar
 
 
 -- TODO copied this from CodeGenState, delete it there

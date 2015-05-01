@@ -27,9 +27,10 @@ spec = do
         norm `shouldBe` (NAtom $ NPlainSymbol 0)
 
       it "splits a complex addition operation" $ do
-        let ast =
-                FunCall (Var "add") [(FunCall (Var "sub") [LitNumber 2, LitNumber 3]),
-                                     LitNumber 4]
+        let ast = FunCall (Var "add") 
+                      [(FunCall (Var "sub")
+                          [LitNumber 2, LitNumber 3]),
+                       LitNumber 4]
         let norm = pureNorm ast
         let expected =
                 NLet (NTempVar 0) (NNumber 2) $
