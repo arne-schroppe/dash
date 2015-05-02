@@ -59,12 +59,14 @@ normalizeFunCall (Var name) args =
   normalizeNamedFun name args
 
 
--- TODO prevent code duplication, allow for other functions
-normalizeNamedFun "add" [a, b] = do
+normalizeNamedFun "add" [a, b] =
   normalizeMathPrimOp NPrimOpAdd a b
 
 normalizeNamedFun "sub" [a, b] =
   normalizeMathPrimOp NPrimOpSub a b
+
+normalizeNamedFun name args =
+  normalizeExprList args $ \ normArgs -> NAtom $ NFunCall $ (NNamedVar name) : normArgs
 
 normalizeMathPrimOp mathPrimOp a b = do
   aExpr <- normalizeExpr a
@@ -72,6 +74,16 @@ normalizeMathPrimOp mathPrimOp a b = do
           bExpr <- normalizeExpr b
           nameExpr bExpr ( \ bVar ->
                   return $ NAtom (NPrimOp $ mathPrimOp aVar bVar) ))
+
+normalizeExprList exprList k =
+  normalizeExprList' exprList [] k
+  where
+    normalizeExprList' [] acc k = return $ k $ reverse acc
+    normalizeExprList' exprList acc k = do
+      let hd = head exprList
+      normExpr <- normalizeExpr hd
+      nameExpr normExpr $ \ var ->
+        normalizeExprList' (tail exprList) (var : acc) k
 
 nameExpr expr k = case expr of
   NMatch _ _ _ -> error "Non-atomic"
@@ -93,17 +105,6 @@ normalizeMatch matchedExpr patterns = do
   return $ NLet (NTempVar tmpVar) (NNumber 0) $
            NMatch 0 (NTempVar tmpVar) normalizedPatterns
   -- TODO create something like normalize-name to normalize matched expr
-
-
-isAtomic :: Expr -> Bool
-isAtomic expr = case expr of
-  LitNumber _ -> True
-  LitString _ -> True
-  LitSymbol _ _ -> True
-  Var _ -> True
-  Lambda _ _ -> True
-  FunCall _ _ -> True
-  _ -> False
 
 
 data NormState = NormState {

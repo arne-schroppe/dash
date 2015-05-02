@@ -1,5 +1,7 @@
 module Language.Spot.IR.Anf where
 
+-- TODO this is not ANF anymore. Just call it Norm
+
 import Language.Spot.VM.Types
 import Language.Spot.IR.Ast
 
