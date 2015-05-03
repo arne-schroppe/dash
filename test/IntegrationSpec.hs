@@ -146,6 +146,7 @@ spec = do
       result `shouldReturn` VMNumber 23
 
 
+    -- TODO When returning a lambda from a function (as seen here) it would be more secure to have a tag for lambdas
     it "returns a simple lambda" $ do
       let code =  " val make-adder (x) = { \n\
                   \   val (y) = add 22 y \n\

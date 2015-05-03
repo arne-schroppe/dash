@@ -89,6 +89,24 @@ spec = do
                 NAtom $ NPrimOp $ NPrimOpAdd (NTempVar 0) (NTempVar 0)
         norm `shouldBe` expected
 
+
+      it "normalizes a returned lambda call" $ do
+        let ast = LocalBinding (Binding "make-l" $ Lambda ["x"] $
+                                Lambda ["y"] $ LitNumber 22 ) $
+                  LocalBinding (Binding "l" $ FunCall (Var "make-l") [LitNumber 0]) $
+                  FunCall (Var "l") [LitNumber 55]
+        let norm = pureNorm ast
+        let expected =
+                NLet (NTempVar 0) (NLambda [] ["x"] $ NAtom $
+                    NLambda [] ["y"] $ NAtom $ NNumber 22) $
+                NLet (NTempVar 1) (NNumber 0) $
+                NLet (NTempVar 2) (NFunCall [NTempVar 0, NTempVar 1]) $
+                NLet (NTempVar 3) (NNumber 55) $
+                NAtom $ NFunCall [NTempVar 2, NTempVar 3]
+        norm `shouldBe` expected
+
+
+
 -- TODO don't care about match for now
 {-
       -- TODO all named vars should also be put in a temp var
