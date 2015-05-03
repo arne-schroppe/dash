@@ -9,19 +9,6 @@ import Data.List
 import qualified Data.Map as Map
 
 
-{-
-
-Algorithm:
-  If local binding:
-    atomize bound expression with continuation
-    in continuation:
-      add NLet
-      assign binding to map
-    continue with rest
-  else (must be return value)
-    atomize with id as continuation
-
--}
 
 type Cont = NormAtomicExpr -> State NormState NormExpr
 
@@ -33,11 +20,10 @@ normalize expr =
 normalizeExpr :: Expr -> State NormState NormExpr
 normalizeExpr expr = case expr of
   LocalBinding (Binding name boundExpr) restExpr ->
-    atomizeExpr boundExpr $ \ aExpr -> do
-      tmpVar <- newTempVar
-      addBinding name tmpVar
+    nameExpr boundExpr $ \ (NTempVar var) -> do
+      addBinding name var
       rest <- normalizeExpr restExpr
-      return $ NLet (NTempVar tmpVar) aExpr rest
+      return $ rest
   _ -> do
     atomizeExpr expr $ return . NAtom
 
@@ -51,16 +37,6 @@ atomizeExpr expr k = case expr of
   Match matchedExpr patterns -> normalizeMatch matchedExpr patterns k
   x -> error $ "Unable to normalize " ++ (show x)
 
-{-
-normalizeNamedLet name boundExpr restExpr = do
-  tmpVar <- newTempVar
-  normalizeLet (NTempVar tmpVar) boundExpr restExpr
-
-normalizeLet var boundExpr restExpr = do
-  normalizedBoundExpr <- normalizeAtomicExpr boundExpr
-  normalizedRestExpr <- normalizeExpr restExpr
-  return $ NLet var normalizedBoundExpr normalizedRestExpr
--}
 
 normalizeNumber n k = k (NNumber n)
 
@@ -87,17 +63,27 @@ normalizeFunCall (Var "sub") [a, b] k =
 
 
 normalizeFunCall funExpr args k = do
-  normFunExpr <- normalizeExpr funExpr
-  nameExpr normFunExpr $ \ funVar ->
+  nameExpr funExpr $ \ funVar ->
           normalizeExprList args $ \ normArgs ->
                   k $ NFunCall $ funVar : normArgs
 
 normalizeMathPrimOp mathPrimOp a b k = do
-  aExpr <- normalizeExpr a
-  nameExpr aExpr ( \ aVar -> do
-          bExpr <- normalizeExpr b
-          nameExpr bExpr ( \ bVar ->
-                  k $ NPrimOp $ mathPrimOp aVar bVar ))
+  normalizeExprList [a, b] $ \ [aVar, bVar] ->
+      k $ NPrimOp $ mathPrimOp aVar bVar
+
+
+normalizeMatch matchedExpr patterns k = do
+  normalizedPatterns <- forM patterns $
+      \(pattern, expr) -> do
+          normExpr <- normalizeExpr expr
+          return (pattern, normExpr)
+  tmpVar <- newTempVar
+  k $ NNumber 0
+
+
+
+
+----- Normalization helper functions -----
 
 normalizeExprList exprList k =
   normalizeExprList' exprList [] k
@@ -107,13 +93,11 @@ normalizeExprList exprList k =
       return expr
     normalizeExprList' exprList acc k = do
       let hd = head exprList
-      atomizeExpr hd $ \ aExpr -> do
-        tmpVar <- newTempVar
-        let var = NTempVar tmpVar
+      nameExpr hd $ \ var -> do
         restExpr <- normalizeExprList' (tail exprList) (var : acc) k
-        return $ NLet var aExpr restExpr
+        return restExpr
 
-newnameExpr expr k = case expr of
+nameExpr expr k = case expr of
   Var name -> do
     bnds <- gets bindings
     if Map.member name bnds then do
@@ -131,35 +115,6 @@ newnameExpr expr k = case expr of
         restExpr <- k var
         return $ NLet var aExpr restExpr
 
-nameExpr expr k = case expr of
-  NAtom (NVar name) -> do
-    bnds <- gets bindings
-    if Map.member name bnds then do
-      let Just varId = Map.lookup name bnds
-      bodyExpr <- k (NTempVar varId)
-      return bodyExpr
-    else
-      letBind (NVar name) k
-  NAtom aExpr ->
-    letBind aExpr k
-  NLet v boundExpr bodyExpr -> do
-    expr <- nameExpr bodyExpr k
-    return $ NLet v boundExpr expr
-  where
-    letBind aExpr k = do
-      tmpVar <- newTempVar
-      let var = NTempVar tmpVar
-      bodyExpr <- k var
-      return $ NLet var aExpr bodyExpr
-
-
-normalizeMatch matchedExpr patterns k = do
-  normalizedPatterns <- forM patterns $
-      \(pattern, expr) -> do
-          normExpr <- normalizeExpr expr
-          return (pattern, normExpr)
-  tmpVar <- newTempVar
-  k $ NNumber 0
 
 
 
