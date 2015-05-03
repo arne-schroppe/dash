@@ -20,8 +20,7 @@ normalizeExpr :: Expr -> State NormState NormExpr
 normalizeExpr expr = case expr of
   FunCall funExpr args -> normalizeFunCall funExpr args
   LocalBinding (Binding name boundExpr) restExpr ->
-        normalizeLet (NNamedVar name) boundExpr restExpr
-  Match matchedExpr patterns -> normalizeMatch matchedExpr patterns
+        normalizeNamedLet name boundExpr restExpr
   a -> do
     normalizedAtom <- normalizeAtomicExpr expr
     return $ NAtom normalizedAtom
@@ -32,7 +31,13 @@ normalizeAtomicExpr expr = case expr of
   LitSymbol sid args -> normalizeSymbol sid args
   Var name -> normalizeVar name
   Lambda params bodyExpr -> normalizeLambda params bodyExpr
+  Match matchedExpr patterns -> normalizeMatch matchedExpr patterns
   x -> error $ "Unable to normalize " ++ (show x)
+
+normalizeNamedLet name boundExpr restExpr = do
+  tmpVar <- newTempVar
+  addBinding name tmpVar
+  normalizeLet (NTempVar tmpVar) boundExpr restExpr
 
 normalizeLet var boundExpr restExpr = do
   normalizedBoundExpr <- normalizeAtomicExpr boundExpr
@@ -46,7 +51,8 @@ normalizeSymbol sid [] = do
   return (NPlainSymbol symId)
 normalizeSymbol sid args = error "Can't normalize this symbol"
 
-normalizeVar name = return $ NVar $ NNamedVar name
+normalizeVar name = do
+  return $ NVar name
 
 normalizeLambda params bodyExpr = do
   normalizedBody <- normalizeExpr bodyExpr
@@ -55,18 +61,19 @@ normalizeLambda params bodyExpr = do
 
 
 -- TODO allow for other cases than just named functions
-normalizeFunCall (Var name) args =
-  normalizeNamedFun name args
-
-
-normalizeNamedFun "add" [a, b] =
+normalizeFunCall (Var "add") [a, b] =
   normalizeMathPrimOp NPrimOpAdd a b
 
-normalizeNamedFun "sub" [a, b] =
+normalizeFunCall (Var "sub") [a, b] =
   normalizeMathPrimOp NPrimOpSub a b
 
-normalizeNamedFun name args =
-  normalizeExprList args $ \ normArgs -> NAtom $ NFunCall $ (NNamedVar name) : normArgs
+
+
+normalizeFunCall funExpr args = do
+  normFunExpr <- normalizeExpr funExpr
+  nameExpr normFunExpr $ \ funVar ->
+          normalizeExprList args $ \ normArgs -> do
+                  return $ NAtom $ NFunCall $ funVar : normArgs
 
 normalizeMathPrimOp mathPrimOp a b = do
   aExpr <- normalizeExpr a
@@ -78,7 +85,9 @@ normalizeMathPrimOp mathPrimOp a b = do
 normalizeExprList exprList k =
   normalizeExprList' exprList [] k
   where
-    normalizeExprList' [] acc k = return $ k $ reverse acc
+    normalizeExprList' [] acc k = do
+      expr <- k $ reverse acc
+      return expr
     normalizeExprList' exprList acc k = do
       let hd = head exprList
       normExpr <- normalizeExpr hd
@@ -86,15 +95,26 @@ normalizeExprList exprList k =
         normalizeExprList' (tail exprList) (var : acc) k
 
 nameExpr expr k = case expr of
-  NMatch _ _ _ -> error "Non-atomic"
-  NAtom aExpr -> do
-    tmpVar <- newTempVar
-    let var = NTempVar tmpVar
-    bodyExpr <- k var
-    return $ NLet var aExpr bodyExpr
+  NAtom (NVar name) -> do
+    bnds <- gets bindings
+    if Map.member name bnds then do
+      let Just varId = Map.lookup name bnds
+      bodyExpr <- k (NTempVar varId)
+      return bodyExpr
+    else
+      letBind (NVar name) k
+  NAtom aExpr ->
+    letBind aExpr k
   NLet v boundExpr bodyExpr -> do
     expr <- nameExpr bodyExpr k
     return $ NLet v boundExpr expr
+  where
+    letBind aExpr k = do
+      tmpVar <- newTempVar
+      let var = NTempVar tmpVar
+      bodyExpr <- k var
+      return $ NLet var aExpr bodyExpr
+
 
 normalizeMatch matchedExpr patterns = do
   normalizedPatterns <- forM patterns $
@@ -102,19 +122,24 @@ normalizeMatch matchedExpr patterns = do
           normExpr <- normalizeExpr expr
           return (pattern, normExpr)
   tmpVar <- newTempVar
+  return $ NNumber 0
+{-
   return $ NLet (NTempVar tmpVar) (NNumber 0) $
-           NMatch 0 (NTempVar tmpVar) normalizedPatterns
+           NAtom $ NMatch 0 (NTempVar tmpVar) normalizedPatterns
+-}
   -- TODO create something like normalize-name to normalize matched expr
 
 
 data NormState = NormState {
   tempVarCounter :: Int
 , symbolNames :: Map.Map String SymId
+, bindings :: Map.Map String Int
 }
 
 emptyNormState = NormState {
   tempVarCounter = 0
 , symbolNames = Map.empty
+, bindings = Map.empty
 }
 
 
@@ -143,4 +168,10 @@ addSymbolName s = do
 getSymbolNames :: NormState -> SymbolNameList
 getSymbolNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . symbolNames
 
+
+addBinding :: String -> Int -> State NormState ()
+addBinding name tmpVarId = do
+  state <- get
+  let bindings' = Map.insert name tmpVarId (bindings state)
+  put $ state { bindings = bindings' }
 

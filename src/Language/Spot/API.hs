@@ -27,6 +27,8 @@ import qualified Data.IntMap as IntMap
 -- don't bleed Word32 (and fromIntegral) out into the rest. Type Consttable as [[Int]] or [ConstTableEntry] where ConstTableEntry = [Int]
 -- Add better typing for several things, also for uncompiled asm
 
+
+
 toAsm :: String -> [[Tac Reg]]
 toAsm prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> normalize ||> compile in

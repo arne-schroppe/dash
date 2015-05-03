@@ -21,7 +21,7 @@ compileExpr expr = case expr of
   NAtom a -> compileAtom 0 a
   NLet var atom body -> compileLet var atom body
   NAtom (NPrimOp primOp) -> compilePrimOp primOp
-  NMatch _ _ _ -> [] -- TODO
+  NAtom (NMatch _ _ _) -> [] -- TODO
   x -> error $ "Unable to compile " ++ (show x)
 
 compileAtom reg  a = case a of
@@ -32,7 +32,7 @@ compilePrimOp primOp = case primOp of
   NPrimOpAdd (NTempVar a) (NTempVar b) -> [Tac_add 0 (fromIntegral a) (fromIntegral b)]
 
 compileLet (NTempVar reg) atom body =
-  let comp1 = compileAtom reg atom in
+  let comp1 = [] in -- TODO compileAtom reg atom in
   let comp2 = compileExpr body in
   comp1 ++ comp2
   

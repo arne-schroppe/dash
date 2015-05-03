@@ -50,17 +50,64 @@ spec = do
                        LitNumber 6]
         let norm = pureNorm ast
         let expected =
-                NLet (NTempVar 0) (NNumber 1) $
-                NLet (NTempVar 1) (NNumber 2) $
-                NLet (NTempVar 2) (NFunCall [(NNamedVar "fun2"), (NTempVar 0), (NTempVar 1)]) $
-                NLet (NTempVar 3) (NNumber 3) $
-                NLet (NTempVar 4) (NNumber 4) $
-                NLet (NTempVar 5) (NNumber 5) $
-                NLet (NTempVar 6) (NPrimOp $ NPrimOpAdd (NTempVar 4) (NTempVar 5)) $
-                NLet (NTempVar 7) (NNumber 6) $
-                NAtom $ NFunCall [(NNamedVar "fun1"),
-                                  (NTempVar 2),
-                                  (NTempVar 3),
-                                  (NTempVar 6),
-                                  (NTempVar 7)]
+                NLet (NTempVar 0) (NVar "fun1") $
+                NLet (NTempVar 1) (NVar "fun2") $
+                NLet (NTempVar 2) (NNumber 1) $
+                NLet (NTempVar 3) (NNumber 2) $
+                NLet (NTempVar 4) (NFunCall [(NTempVar 1), (NTempVar 2), (NTempVar 3)]) $
+                NLet (NTempVar 5) (NNumber 3) $
+                NLet (NTempVar 6) (NNumber 4) $
+                NLet (NTempVar 7) (NNumber 5) $
+                NLet (NTempVar 8) (NPrimOp $ NPrimOpAdd (NTempVar 6) (NTempVar 7)) $
+                NLet (NTempVar 9) (NNumber 6) $
+                NAtom $ NFunCall [NTempVar 0,
+                                  NTempVar 4,
+                                  NTempVar 5,
+                                  NTempVar 8,
+                                  NTempVar 9]
         norm `shouldBe` expected
+
+      it "normalizes a lambda call" $ do
+        let ast = FunCall
+                (Lambda ["a", "b"]
+                    (LitNumber 5))
+                [LitNumber 1, LitNumber 2]
+        let norm = pureNorm ast
+        let expected =
+                NLet (NTempVar 0) (NLambda [] ["a", "b"] (NAtom $ NNumber 5)) $
+                NLet (NTempVar 1) (NNumber 1) $
+                NLet (NTempVar 2) (NNumber 2) $
+                NAtom $ NFunCall [NTempVar 0, NTempVar 1, NTempVar 2]
+        norm `shouldBe` expected
+
+      it "reuses named variables" $ do
+        let ast = LocalBinding (Binding "x" $ LitNumber 3) $
+                  FunCall (Var "add") [Var "x", Var "x"]
+        let norm = pureNorm ast
+        let expected =
+                NLet (NTempVar 0) (NNumber 3) $
+                NAtom $ NPrimOp $ NPrimOpAdd (NTempVar 0) (NTempVar 0)
+        norm `shouldBe` expected
+
+-- TODO don't care about match for now
+{-
+      -- TODO all named vars should also be put in a temp var
+      it "normalizes a match expression" $ do
+        let ast = LocalBinding (Binding "a" $
+                Match (LitNumber 101) [
+                  (PatNumber 1, LitNumber 33),
+                  (PatNumber 2, LitNumber 44)
+                ]) $
+                FunCall (Var "func") [Var "a"]
+        let norm = pureNorm ast
+        let expected =
+                NLet (NTempVar 0) (NNumber 101) $
+                NLet (NTempVar 1) (NMatch 0 (NTempVar 0) [
+                  (PatNumber 1, NAtom $ NNumber 33),
+                  (PatNumber 2, NAtom $ NNumber 44)
+                ]) $
+                NAtom $ NFunCall [NNamedVar "func", NTempVar 1]
+        norm `shouldBe` expected
+-}
+
+
