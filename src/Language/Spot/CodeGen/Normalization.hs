@@ -17,6 +17,7 @@ normalize expr =
   let (result, finalState) = runState (normalizeExpr expr) emptyNormState in
   (result, [], getSymbolNames finalState)
 
+
 normalizeExpr :: Expr -> State NormState NormExpr
 normalizeExpr expr = case expr of
   LocalBinding (Binding name boundExpr) restExpr ->
@@ -27,6 +28,7 @@ normalizeExpr expr = case expr of
   _ -> do
     atomizeExpr expr $ return . NAtom
 
+
 atomizeExpr :: Expr -> Cont -> State NormState NormExpr
 atomizeExpr expr k = case expr of
   FunCall funExpr args -> normalizeFunCall funExpr args k
@@ -35,18 +37,30 @@ atomizeExpr expr k = case expr of
   Var name -> normalizeVar name k
   Lambda params bodyExpr -> normalizeLambda params bodyExpr k
   Match matchedExpr patterns -> normalizeMatch matchedExpr patterns k
+  LocalBinding (Binding name boundExpr) restExpr -> -- inner local binding ! (i.e. let a = let b = 2 in 1 + b)
+    atomizeExpr boundExpr $ \ aExpr -> do
+      tmpVar <- newTempVar
+      let var = NTempVar tmpVar
+      addBinding name tmpVar
+      atomizeExpr restExpr $ \ boundExpr -> do
+        rest <- k boundExpr
+        return $ NLet var aExpr rest
   x -> error $ "Unable to normalize " ++ (show x)
 
 
 normalizeNumber n k = k (NNumber n)
 
+
 normalizeSymbol sid [] k = do
   symId <- addSymbolName sid
   k (NPlainSymbol symId)
+
 normalizeSymbol sid args k = error "Can't normalize this symbol"
+
 
 normalizeVar name k = do
   k $ NVar name
+
 
 normalizeLambda params bodyExpr k = do
   normalizedBody <- normalizeExpr bodyExpr
@@ -54,13 +68,11 @@ normalizeLambda params bodyExpr k = do
   k $ NLambda freeVars params normalizedBody
 
 
--- TODO allow for other cases than just named functions
 normalizeFunCall (Var "add") [a, b] k =
   normalizeMathPrimOp NPrimOpAdd a b k
 
 normalizeFunCall (Var "sub") [a, b] k =
   normalizeMathPrimOp NPrimOpSub a b k
-
 
 normalizeFunCall funExpr args k = do
   nameExpr funExpr $ \ funVar ->

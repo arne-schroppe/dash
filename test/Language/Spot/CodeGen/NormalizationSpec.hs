@@ -105,6 +105,20 @@ spec = do
                 NAtom $ NFunCall [NTempVar 2, NTempVar 3]
         norm `shouldBe` expected
 
+      it "normalizes nested bindings" $ do
+        let ast = LocalBinding (Binding "a" $
+                    LocalBinding (Binding "b" $ LitNumber 22) $
+                    FunCall (Var "add") [Var "b", LitNumber 4] ) $
+                  FunCall (Var "sub") [Var "a", LitNumber 55]
+        let norm = pureNorm ast
+        let expected =
+                -- TODO would be nicer if the first two were flipped around
+                NLet (NTempVar 1) (NNumber 4) $
+                NLet (NTempVar 0) (NNumber 22) $
+                NLet (NTempVar 2) (NPrimOp $ NPrimOpAdd (NTempVar 0) (NTempVar 1)) $
+                NLet (NTempVar 3) (NNumber 55) $
+                NAtom $ NPrimOp $ NPrimOpSub (NTempVar 2) (NTempVar 3)
+        norm `shouldBe` expected
 
 
 -- TODO don't care about match for now
