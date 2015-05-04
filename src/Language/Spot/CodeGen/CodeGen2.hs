@@ -3,7 +3,7 @@ module Language.Spot.CodeGen.CodeGen2 (
 ) where
 
 import Language.Spot.CodeGen.CodeGenState
-import Language.Spot.IR.Anf
+import Language.Spot.IR.Norm
 import Language.Spot.IR.Tac
 
 import Control.Monad.State

@@ -10,7 +10,7 @@ import Language.Spot.VM.Types
 import Language.Spot.VM.Bits
 import Language.Spot.VM.VM
 import Language.Spot.IR.Tac
-import Language.Spot.IR.Anf
+import Language.Spot.IR.Norm
 
 import Data.Word
 import qualified Data.IntMap as IntMap

@@ -1,7 +1,7 @@
 module Language.Spot.CodeGen.Normalization where
 
 import Language.Spot.IR.Ast
-import Language.Spot.IR.Anf
+import Language.Spot.IR.Norm
 import Language.Spot.IR.Tac
 import Control.Monad.State
 

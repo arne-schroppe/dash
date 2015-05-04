@@ -1,7 +1,7 @@
 module Language.Spot.CodeGen.NormalizationSpec where
 
 import Language.Spot.CodeGen.Normalization
-import Language.Spot.IR.Anf
+import Language.Spot.IR.Norm
 import Language.Spot.IR.Ast
 
 import Test.Hspec
