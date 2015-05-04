@@ -33,11 +33,11 @@ spec = do
                        LitNumber 4]
         let norm = pureNorm ast
         let expected =
-                NLet (NTempVar 0) (NNumber 2) $
-                NLet (NTempVar 1) (NNumber 3) $
-                NLet (NTempVar 2) (NPrimOp $ NPrimOpSub (NTempVar 0) (NTempVar 1)) $
-                NLet (NTempVar 3) (NNumber 4) $
-                NAtom $ NPrimOp $ NPrimOpAdd (NTempVar 2) (NTempVar 3)
+                NLet (NVar 0) (NNumber 2) $
+                NLet (NVar 1) (NNumber 3) $
+                NLet (NVar 2) (NPrimOp $ NPrimOpSub (NVar 0) (NVar 1)) $
+                NLet (NVar 3) (NNumber 4) $
+                NAtom $ NPrimOp $ NPrimOpAdd (NVar 2) (NVar 3)
         norm `shouldBe` expected
 
       it "normalizes general function calls" $ do
@@ -50,21 +50,21 @@ spec = do
                        LitNumber 6]
         let norm = pureNorm ast
         let expected =
-                NLet (NTempVar 0) (NFreeVar "fun1") $
-                NLet (NTempVar 1) (NFreeVar "fun2") $
-                NLet (NTempVar 2) (NNumber 1) $
-                NLet (NTempVar 3) (NNumber 2) $
-                NLet (NTempVar 4) (NFunCall [(NTempVar 1), (NTempVar 2), (NTempVar 3)]) $
-                NLet (NTempVar 5) (NNumber 3) $
-                NLet (NTempVar 6) (NNumber 4) $
-                NLet (NTempVar 7) (NNumber 5) $
-                NLet (NTempVar 8) (NPrimOp $ NPrimOpAdd (NTempVar 6) (NTempVar 7)) $
-                NLet (NTempVar 9) (NNumber 6) $
-                NAtom $ NFunCall [NTempVar 0,
-                                  NTempVar 4,
-                                  NTempVar 5,
-                                  NTempVar 8,
-                                  NTempVar 9]
+                NLet (NVar 0) (NFreeVar "fun1") $
+                NLet (NVar 1) (NFreeVar "fun2") $
+                NLet (NVar 2) (NNumber 1) $
+                NLet (NVar 3) (NNumber 2) $
+                NLet (NVar 4) (NFunCall [(NVar 1), (NVar 2), (NVar 3)]) $
+                NLet (NVar 5) (NNumber 3) $
+                NLet (NVar 6) (NNumber 4) $
+                NLet (NVar 7) (NNumber 5) $
+                NLet (NVar 8) (NPrimOp $ NPrimOpAdd (NVar 6) (NVar 7)) $
+                NLet (NVar 9) (NNumber 6) $
+                NAtom $ NFunCall [NVar 0,
+                                  NVar 4,
+                                  NVar 5,
+                                  NVar 8,
+                                  NVar 9]
         norm `shouldBe` expected
 
       it "normalizes a lambda call" $ do
@@ -74,10 +74,10 @@ spec = do
                 [LitNumber 1, LitNumber 2]
         let norm = pureNorm ast
         let expected =
-                NLet (NTempVar 0) (NLambda [] ["a", "b"] (NAtom $ NNumber 5)) $
-                NLet (NTempVar 1) (NNumber 1) $
-                NLet (NTempVar 2) (NNumber 2) $
-                NAtom $ NFunCall [NTempVar 0, NTempVar 1, NTempVar 2]
+                NLet (NVar 0) (NLambda [] ["a", "b"] (NAtom $ NNumber 5)) $
+                NLet (NVar 1) (NNumber 1) $
+                NLet (NVar 2) (NNumber 2) $
+                NAtom $ NFunCall [NVar 0, NVar 1, NVar 2]
         norm `shouldBe` expected
 
       it "reuses named variables" $ do
@@ -85,8 +85,8 @@ spec = do
                   FunCall (Var "add") [Var "x", Var "x"]
         let norm = pureNorm ast
         let expected =
-                NLet (NTempVar 0) (NNumber 3) $
-                NAtom $ NPrimOp $ NPrimOpAdd (NTempVar 0) (NTempVar 0)
+                NLet (NVar 0) (NNumber 3) $
+                NAtom $ NPrimOp $ NPrimOpAdd (NVar 0) (NVar 0)
         norm `shouldBe` expected
 
 
@@ -97,12 +97,12 @@ spec = do
                   FunCall (Var "l") [LitNumber 55]
         let norm = pureNorm ast
         let expected =
-                NLet (NTempVar 0) (NLambda [] ["x"] $ NAtom $
+                NLet (NVar 0) (NLambda [] ["x"] $ NAtom $
                     NLambda [] ["y"] $ NAtom $ NNumber 22) $
-                NLet (NTempVar 1) (NNumber 0) $
-                NLet (NTempVar 2) (NFunCall [NTempVar 0, NTempVar 1]) $
-                NLet (NTempVar 3) (NNumber 55) $
-                NAtom $ NFunCall [NTempVar 2, NTempVar 3]
+                NLet (NVar 1) (NNumber 0) $
+                NLet (NVar 2) (NFunCall [NVar 0, NVar 1]) $
+                NLet (NVar 3) (NNumber 55) $
+                NAtom $ NFunCall [NVar 2, NVar 3]
         norm `shouldBe` expected
 
       it "normalizes nested bindings" $ do
@@ -112,11 +112,11 @@ spec = do
                   FunCall (Var "sub") [Var "a", LitNumber 55]
         let norm = pureNorm ast
         let expected =
-                NLet (NTempVar 1) (NNumber 4) $
-                NLet (NTempVar 0) (NNumber 22) $
-                NLet (NTempVar 2) (NPrimOp $ NPrimOpAdd (NTempVar 0) (NTempVar 1)) $
-                NLet (NTempVar 3) (NNumber 55) $
-                NAtom $ NPrimOp $ NPrimOpSub (NTempVar 2) (NTempVar 3)
+                NLet (NVar 1) (NNumber 4) $
+                NLet (NVar 0) (NNumber 22) $
+                NLet (NVar 2) (NPrimOp $ NPrimOpAdd (NVar 0) (NVar 1)) $
+                NLet (NVar 3) (NNumber 55) $
+                NAtom $ NPrimOp $ NPrimOpSub (NVar 2) (NVar 3)
         norm `shouldBe` expected
 
       it "vars in tail position are referenced by number" $ do
@@ -124,8 +124,8 @@ spec = do
                   Var "a"
         let norm = pureNorm ast
         let expected =
-                NLet (NTempVar 0) (NNumber 55) $
-                NAtom $ NResultVar (NTempVar 0)
+                NLet (NVar 0) (NNumber 55) $
+                NAtom $ NResultVar (NVar 0)
         norm `shouldBe` expected
 
 -- TODO don't care about match for now

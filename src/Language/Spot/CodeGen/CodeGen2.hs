@@ -18,11 +18,8 @@ compile expr ctable symlist =
   ([encoded ++ [Tac_ret]], ctable, symlist)
 
 compileExpr expr = case expr of
-  NAtom a -> compileAtom 0 a
   NLet var atom body -> compileLet var atom body
-  NAtom (NPrimOp primOp) -> compilePrimOp primOp
-  NAtom (NMatch _ _ _) -> [] -- TODO
-  x -> error $ "Unable to compile " ++ (show x)
+  NAtom a -> compileAtom 0 a
 
 
 compileAtom reg atom = case atom of
@@ -31,9 +28,7 @@ compileAtom reg atom = case atom of
   NPrimOp (NPrimOpAdd a b) -> [Tac_add reg (r a) (r b)]
   NPrimOp (NPrimOpSub a b) -> [Tac_sub reg (r a) (r b)]
   NResultVar t -> [Tac_move reg (r t)]
-
-compilePrimOp primOp = case primOp of
-  NPrimOpAdd (NTempVar a) (NTempVar b) -> [Tac_add 0 (fromIntegral a) (fromIntegral b)]
+  x -> error $ "Unable to compile " ++ (show x)
 
 compileLet tmpVar atom body =
   let comp1 = compileAtom (r tmpVar) atom in -- TODO compileAtom reg atom in
@@ -41,7 +36,7 @@ compileLet tmpVar atom body =
   comp1 ++ comp2
   
 
-r (NTempVar tmpVar) = tmpVar + 1
+r (NVar tmpVar) = tmpVar + 1
 
 
 

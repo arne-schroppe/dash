@@ -21,9 +21,7 @@ data NormAtomicExpr =
   | NMatch Int NormVar [(Pattern, NormExpr)] -- MaxCaptures Subject (Patterns, Expr)
   deriving (Eq, Show)
 
-data NormVar =
-    NTempVar Int
-  -- | NNamedVar String
+newtype NormVar = NVar { normVarValue :: Int }
   deriving (Eq, Show)
 
 data NormPrimOp =

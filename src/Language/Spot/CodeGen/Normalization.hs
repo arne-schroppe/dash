@@ -21,7 +21,7 @@ normalize expr =
 normalizeExpr :: Expr -> State NormState NormExpr
 normalizeExpr expr = case expr of
   LocalBinding (Binding name boundExpr) restExpr ->
-    nameExpr boundExpr $ \ (NTempVar var) -> do
+    nameExpr boundExpr $ \ var -> do
       addBinding name var
       rest <- normalizeExpr restExpr
       return $ rest
@@ -39,9 +39,8 @@ atomizeExpr expr k = case expr of
   Match matchedExpr patterns -> normalizeMatch matchedExpr patterns k
   LocalBinding (Binding name boundExpr) restExpr -> -- inner local binding ! (i.e. let a = let b = 2 in 1 + b)
     atomizeExpr boundExpr $ \ aExpr -> do
-      tmpVar <- newTempVar
-      let var = NTempVar tmpVar
-      addBinding name tmpVar
+      var <- newTempVar
+      addBinding name var
       atomizeExpr restExpr $ \ boundExpr -> do
         rest <- k boundExpr
         return $ NLet var aExpr rest
@@ -62,8 +61,8 @@ normalizeSymbol sid args k = error "Can't normalize this symbol"
 normalizeVar name k = do
   bnds <- gets bindings
   if Map.member name bnds then do
-    let Just varId = Map.lookup name bnds
-    k $ NResultVar (NTempVar varId)
+    let Just var = Map.lookup name bnds
+    k $ NResultVar var
   else
     k $ NFreeVar name
 
@@ -95,7 +94,6 @@ normalizeMatch matchedExpr patterns k = do
       \(pattern, expr) -> do
           normExpr <- normalizeExpr expr
           return (pattern, normExpr)
-  tmpVar <- newTempVar
   k $ NNumber 0
 
 
@@ -115,12 +113,13 @@ normalizeExprList exprList k =
         restExpr <- normalizeExprList' (tail exprList) (var : acc) k
         return restExpr
 
+
 nameExpr expr k = case expr of
   Var name -> do
     bnds <- gets bindings
     if Map.member name bnds then do
-      let Just varId = Map.lookup name bnds
-      bodyExpr <- k (NTempVar varId)
+      let Just var = Map.lookup name bnds
+      bodyExpr <- k var
       return bodyExpr
     else
       letBind expr k
@@ -128,8 +127,7 @@ nameExpr expr k = case expr of
   where
     letBind e k = do
       atomizeExpr e $ \ aExpr -> do
-        tmpVar <- newTempVar
-        let var = NTempVar tmpVar
+        var <- newTempVar
         restExpr <- k var
         return $ NLet var aExpr restExpr
 
@@ -141,7 +139,7 @@ nameExpr expr k = case expr of
 data NormState = NormState {
   tempVarCounter :: Int
 , symbolNames :: Map.Map String SymId
-, bindings :: Map.Map String Int
+, bindings :: Map.Map String NormVar
 }
 
 emptyNormState = NormState {
@@ -151,13 +149,13 @@ emptyNormState = NormState {
 }
 
 
-newTempVar :: State NormState Int
+newTempVar :: State NormState NormVar
 newTempVar = do
   state <- get
   let tmpVar = tempVarCounter state
   let nextTmpVar = (tempVarCounter state) + 1
   put $ state { tempVarCounter = nextTmpVar }
-  return tmpVar
+  return (NVar tmpVar)
 
 
 -- TODO copied this from CodeGenState, delete it there
@@ -177,9 +175,9 @@ getSymbolNames :: NormState -> SymbolNameList
 getSymbolNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . symbolNames
 
 
-addBinding :: String -> Int -> State NormState ()
-addBinding name tmpVarId = do
+addBinding :: String -> NormVar -> State NormState ()
+addBinding name var = do
   state <- get
-  let bindings' = Map.insert name tmpVarId (bindings state)
+  let bindings' = Map.insert name var (bindings state)
   put $ state { bindings = bindings' }
 
