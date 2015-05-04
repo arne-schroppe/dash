@@ -13,7 +13,8 @@ data NormExpr =
 data NormAtomicExpr =
     NNumber Int
   | NPlainSymbol Int
-  | NVar String
+  | NFreeVar String
+  | NResultVar NormVar
   | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body
   | NPrimOp NormPrimOp
   | NFunCall [NormVar]

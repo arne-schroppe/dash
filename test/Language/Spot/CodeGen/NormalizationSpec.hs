@@ -50,8 +50,8 @@ spec = do
                        LitNumber 6]
         let norm = pureNorm ast
         let expected =
-                NLet (NTempVar 0) (NVar "fun1") $
-                NLet (NTempVar 1) (NVar "fun2") $
+                NLet (NTempVar 0) (NFreeVar "fun1") $
+                NLet (NTempVar 1) (NFreeVar "fun2") $
                 NLet (NTempVar 2) (NNumber 1) $
                 NLet (NTempVar 3) (NNumber 2) $
                 NLet (NTempVar 4) (NFunCall [(NTempVar 1), (NTempVar 2), (NTempVar 3)]) $
@@ -112,7 +112,6 @@ spec = do
                   FunCall (Var "sub") [Var "a", LitNumber 55]
         let norm = pureNorm ast
         let expected =
-                -- TODO would be nicer if the first two were flipped around
                 NLet (NTempVar 1) (NNumber 4) $
                 NLet (NTempVar 0) (NNumber 22) $
                 NLet (NTempVar 2) (NPrimOp $ NPrimOpAdd (NTempVar 0) (NTempVar 1)) $
@@ -120,6 +119,14 @@ spec = do
                 NAtom $ NPrimOp $ NPrimOpSub (NTempVar 2) (NTempVar 3)
         norm `shouldBe` expected
 
+      it "vars in tail position are referenced by number" $ do
+        let ast = LocalBinding (Binding "a" $ LitNumber 55) $
+                  Var "a"
+        let norm = pureNorm ast
+        let expected =
+                NLet (NTempVar 0) (NNumber 55) $
+                NAtom $ NResultVar (NTempVar 0)
+        norm `shouldBe` expected
 
 -- TODO don't care about match for now
 {-

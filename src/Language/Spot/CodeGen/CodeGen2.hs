@@ -24,18 +24,40 @@ compileExpr expr = case expr of
   NAtom (NMatch _ _ _) -> [] -- TODO
   x -> error $ "Unable to compile " ++ (show x)
 
-compileAtom reg  a = case a of
+
+compileAtom reg atom = case atom of
   NNumber n -> [Tac_load_i reg (fromIntegral n)]
   NPlainSymbol sid -> [Tac_load_ps reg sid]
+  NPrimOp (NPrimOpAdd a b) -> [Tac_add reg (r a) (r b)]
+  NPrimOp (NPrimOpSub a b) -> [Tac_sub reg (r a) (r b)]
+  NResultVar t -> [Tac_move reg (r t)]
 
 compilePrimOp primOp = case primOp of
   NPrimOpAdd (NTempVar a) (NTempVar b) -> [Tac_add 0 (fromIntegral a) (fromIntegral b)]
 
-compileLet (NTempVar reg) atom body =
-  let comp1 = [] in -- TODO compileAtom reg atom in
+compileLet tmpVar atom body =
+  let comp1 = compileAtom (r tmpVar) atom in -- TODO compileAtom reg atom in
   let comp2 = compileExpr body in
   comp1 ++ comp2
   
+
+r (NTempVar tmpVar) = tmpVar + 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 {-
 

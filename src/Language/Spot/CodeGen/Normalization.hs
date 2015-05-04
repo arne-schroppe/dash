@@ -58,8 +58,14 @@ normalizeSymbol sid [] k = do
 normalizeSymbol sid args k = error "Can't normalize this symbol"
 
 
+-- This is only direct usage of a var (as a "return value")
 normalizeVar name k = do
-  k $ NVar name
+  bnds <- gets bindings
+  if Map.member name bnds then do
+    let Just varId = Map.lookup name bnds
+    k $ NResultVar (NTempVar varId)
+  else
+    k $ NFreeVar name
 
 
 normalizeLambda params bodyExpr k = do
