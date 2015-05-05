@@ -49,12 +49,21 @@ atomizeExpr expr k = case expr of
 
 normalizeNumber n k = k (NNumber n)
 
-
 normalizeSymbol sid [] k = do
   symId <- addSymbolName sid
   k (NPlainSymbol symId)
 
-normalizeSymbol sid args k = error "Can't normalize this symbol"
+normalizeSymbol sid args k = error "Can't normalize complex symbols yet"
+-- There are three cases:
+--   - static symbols, which are completely in the sym table
+--   - dynamic symbols, which have some dynamic elements. A template for these can be
+--     generated in the sym table and then be copied and modified
+--   - unknown dynamism. This happens when symbols include free vars. We need to
+--     resolve at a later point, whether the closed over var is static or dynamic
+{-
+  normalizeExprList args $ \ normArgs ->
+          k $ NFunCall $ funVar : normArgs
+-}
 
 
 -- This is only direct usage of a var (as a "return value")

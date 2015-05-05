@@ -34,7 +34,7 @@ compileLet tmpVar atom body =
   let comp1 = compileAtom (r tmpVar) atom in -- TODO compileAtom reg atom in
   let comp2 = compileExpr body in
   comp1 ++ comp2
-  
+
 
 r (NVar tmpVar) = tmpVar + 1
 
