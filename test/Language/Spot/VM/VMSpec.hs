@@ -48,6 +48,7 @@ spec = do
                     Tac_load_i  2 23,
                     Tac_add  4 1 2,
                     Tac_load_f  3 1,
+                    Tac_set_arg 0 4 0,
                     Tac_call 0 3 1,
                     Tac_ret ], [
                     Tac_load_i  2 100,
@@ -61,12 +62,14 @@ spec = do
                     Tac_load_i 3 80,
                     Tac_make_cl 2 2 1,
                     Tac_load_f 1 1,
+                    Tac_set_arg 0 2 0,
                     Tac_call 0 1 1,
                     Tac_ret ], [
                     -- fun1
                     Tac_load_i 2 115,
                     Tac_load_i 3 23,
                     Tac_add 2 2 3,
+                    Tac_set_arg 0 2 0,
                     Tac_call_cl 0 1 1,
                     Tac_ret ], [
                     -- fun2
@@ -77,8 +80,10 @@ spec = do
 
     it "calls a closure upwards" $ do
       let prog = [[ Tac_load_f 1 1,
+                    Tac_set_arg 0 2 0,
                     Tac_call 1 1 1,
                     Tac_load_i 2 80,
+                    Tac_set_arg 0 2 0,
                     Tac_call_cl 0 1 1,
                     Tac_ret ], [
                     -- fun 1

@@ -41,6 +41,7 @@ data ThreeAddressCode var =
   | Tac_make_cl var var Int
   | Tac_jmp Int
   | Tac_match var var var
+  | Tac_set_arg Int var Int
   deriving (Show)
 
 type Tac = ThreeAddressCode
