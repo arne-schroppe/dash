@@ -33,11 +33,12 @@ typedef enum {
 vm_type type_of_value(vm_value value);
 
 extern const vm_value vm_tag_number;
-extern const vm_value vm_tag_simple_symbol;
+extern const vm_value vm_tag_plain_symbol;
 extern const vm_value vm_tag_compound_symbol;
 
 extern const vm_value vm_tag_match_data;
 
+//TODO !!! Unify Compound/Complex symbol !!!
 #define __tag_mask(t) ((t & 0xF) << (sizeof(vm_value) * 8 - 4))
 #define val(x, t) (x | __tag_mask(t))
 #define from_val(x, t) (x & ~__tag_mask(t)) //TODO mask instead

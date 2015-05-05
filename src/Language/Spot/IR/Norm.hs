@@ -13,7 +13,7 @@ data NormExpr =
 data NormAtomicExpr =
     NNumber Int
   | NPlainSymbol Int
---  | NComplexSymbol Int [NormVar]  -- this is somewhat complicated, as we have to distinguish between dynamic and static symbols
+--  | NCompoundSymbol Int [NormVar]  -- this is somewhat complicated, as we have to distinguish between dynamic and static symbols
   | NFreeVar String
   | NResultVar NormVar
   | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body

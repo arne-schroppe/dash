@@ -27,6 +27,7 @@ static stack_frame stack[STACK_SIZE];
 static int stack_pointer = 0;
 static int program_pointer = 0;
 
+static vm_value fun_call_arg[NUM_REGS];
 
 #define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
     printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
@@ -119,7 +120,7 @@ bool execute_instruction(vm_instruction instr) {
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
       int num_args = get_arg_r2(instr);
-      memcpy(&next_frame.reg[1], &current_frame.reg[func_address_reg + 1], num_args * sizeof(vm_value));
+      memcpy(&next_frame.reg[1], &fun_call_arg[0], num_args * sizeof(vm_value));
       next_frame.return_address = program_pointer;
       next_frame.result_register = get_arg_r0(instr);
       debug( printf("CALL   r%02i r%02i r%02i\n", get_arg_r0(instr), func_address_reg, num_args) );
@@ -133,7 +134,7 @@ bool execute_instruction(vm_instruction instr) {
       heap_address cl_address = (heap_address)get_reg(cl_address_reg);
       int num_args = get_arg_r2(instr);
 
-      memcpy(&next_frame.reg[1], &current_frame.reg[cl_address_reg + 1], num_args * sizeof(vm_value));
+      memcpy(&next_frame.reg[1], &fun_call_arg[0], num_args * sizeof(vm_value));
       next_frame.return_address = program_pointer;
       next_frame.result_register = get_arg_r0(instr);
 
@@ -210,6 +211,15 @@ bool execute_instruction(vm_instruction instr) {
       }
 
       program_pointer += i;
+    }
+    break;
+
+    case OP_SETARG: {
+      int target_arg = get_arg_r0(instr);
+      int source_reg = get_arg_r1(instr);
+      int extra_amount = get_arg_r2(instr);
+      memcpy(&fun_call_arg[target_arg], &current_frame.reg[source_reg], (1 + extra_amount) * sizeof(vm_value));
+      debug( printf("SETARG a%02i r%02i n%02i\n", target_arg, source_reg, extra_amount) );
     }
     break;
 
@@ -308,6 +318,7 @@ void reset() {
   const_table = 0;
   const_table_length = 0;
   memset(stack, 0, sizeof(stack_frame) * STACK_SIZE);
+  memset(fun_call_arg, 0, sizeof(vm_value) * NUM_REGS);
 }
 
 void print_program(vm_instruction *program) {

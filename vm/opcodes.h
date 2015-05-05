@@ -16,7 +16,9 @@ typedef enum {
   OP_CALLCL = 9,
   OP_MAKECL = 10,
   OP_JMP = 11,
-  OP_MATCH = 12
+  OP_MATCH = 12,
+  OP_SETARG = 13
+  //OP_SPACE = 14, //Adds space for temporary values
 } vm_opcode;
 
 #define instr_size (sizeof(vm_instruction) * 8)
@@ -39,21 +41,21 @@ typedef enum {
                                             (reg1 << (instr_size - (__opcb + 2 * __regb))) + \
                                             (reg2 << (instr_size - (__opcb + 3 * __regb))))
 
+//TODO rename all r's to t's (for temporary)
 #define op_load_i(r0, i) (instr_ri(OP_LOADi, r0, i))
 #define op_load_ps(r0, i) (instr_ri(OP_LOADps, r0, i))
 #define op_load_cs(r0, i) (instr_ri(OP_LOADcs, r0, i))
 #define op_load_c(r0, i) (instr_ri(OP_LOADc, r0, i))
 #define op_add(r0, r1, r2) (instr_rrr(OP_ADD, r0, r1, r2))
 #define op_sub(r0, r1, r2) (instr_rrr(OP_SUB, r0, r1, r2))
-#define op_halt (instr_ri(OP_HALT, 0, 0)) //TODO delete
 #define op_move(r0, r1) (instr_rrr(OP_MOVE, r0, r1, 0))
 #define op_call(r0, fr, n) (instr_rrr(OP_CALL, r0, fr, n))
-#define op_callcl(r0, fr, n) (instr_rrr(OP_CALLCL, r0, fr, n)) //TODO replace with generic jmp?
+#define op_callcl(r0, fr, n) (instr_rrr(OP_CALLCL, r0, fr, n))
 #define op_ret (instr_ri(OP_RET, 0, 0))
 #define op_makecl(r0, fr, n) (instr_rrr(OP_MAKECL, r0, fr, n))
 #define op_jmp(n) (instr_ri(OP_JMP, 0, n))
 #define op_match(r1, r2, r3) (instr_rrr(OP_MATCH, r1, r2, r3))
-
-
+#define op_setarg(arg, r, n) (instr_rrr(OP_SETARG, arg, r, n))
+// #define op_space(n) (instr_ri(OP_SPACE, 0, n))
 
 #endif
