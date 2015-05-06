@@ -12,14 +12,26 @@ import Data.Foldable
 
 import Debug.Trace
 
+import qualified Data.Sequence as Seq
+import qualified Data.Map as Map
+
+-- TODO when there is more time, do dataflow analysis to reuse registers
+
+
+
 compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
-compile expr ctable symlist =
-  let encoded = compileExpr expr in
-  ([encoded ++ [Tac_ret 0]], ctable, symlist)
+compile expr _ symlist =
+  let result = execState (compileFunc [] expr) emptyCompState in
+  (toList (instructions result), dataTable result, symlist)
+
+
+compileFunc params expr = do
+  let funcCode = compileExpr expr
+  addFunction funcCode
 
 compileExpr expr = case expr of
   NLet var atom body -> compileLet var atom body
-  NAtom a -> compileAtom 0 a
+  NAtom a -> (compileAtom 0 a) ++ [Tac_ret 0]
 
 
 compileAtom reg atom = case atom of
@@ -28,6 +40,7 @@ compileAtom reg atom = case atom of
   NPrimOp (NPrimOpAdd a b) -> [Tac_add reg (r a) (r b)]
   NPrimOp (NPrimOpSub a b) -> [Tac_sub reg (r a) (r b)]
   NResultVar t -> [Tac_move reg (r t)]
+  NLambda freeVars params expr -> [Tac_load_f reg 9999]
   x -> error $ "Unable to compile " ++ (show x)
 
 compileLet tmpVar atom body =
@@ -36,10 +49,27 @@ compileLet tmpVar atom body =
   comp1 ++ comp2
 
 
-r (NVar tmpVar) = tmpVar + 1
+r (NVar tmpVar) = tmpVar
 
 
 
+
+----- State -----
+
+data CompState = CompState {
+                   instructions :: Seq.Seq [Tac Reg]
+                 , dataTable :: ConstTable -- rename ConstTable to DataTable
+                 }
+
+emptyCompState = CompState {
+                   instructions = Seq.fromList []
+                 , dataTable = []
+                 }
+
+addFunction code = do
+  state <- get
+  let instrs' = (instructions state) Seq.|> code
+  put $ state { instructions = instrs' }
 
 
 
@@ -59,7 +89,7 @@ r (NVar tmpVar) = tmpVar + 1
 compile :: Expr -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile ast =
         let (result, finalState) = runState (compileExpression ast 0) emptyCode in
-        let allFuncs = (instructions result) Seq.<| (otherFunctions result) in
+        let allFuncsncs = (instructions result) Seq.<| (otherFunctions result) in
         let result1 = map assignRegisters (toList allFuncs) in
         (result1, getConstantTable finalState, getSymbolNames finalState)
 
