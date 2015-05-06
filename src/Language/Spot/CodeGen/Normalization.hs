@@ -91,7 +91,7 @@ normalizeFunCall (Var "sub") [a, b] k =
 normalizeFunCall funExpr args k = do
   nameExpr funExpr $ \ funVar ->
           normalizeExprList args $ \ normArgs ->
-                  k $ NFunCall $ funVar : normArgs
+                  k $ NFunCall funVar normArgs
 
 normalizeMathPrimOp mathPrimOp a b k = do
   normalizeExprList [a, b] $ \ [aVar, bVar] ->
@@ -152,7 +152,7 @@ data NormState = NormState {
 }
 
 emptyNormState = NormState {
-  tempVarCounter = 0
+  tempVarCounter = 0 -- TODO needs to be a stack
 , symbolNames = Map.empty
 , bindings = Map.empty
 }

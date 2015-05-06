@@ -54,13 +54,13 @@ spec = do
                 NLet (NVar 1) (NFreeVar "fun2") $
                 NLet (NVar 2) (NNumber 1) $
                 NLet (NVar 3) (NNumber 2) $
-                NLet (NVar 4) (NFunCall [(NVar 1), (NVar 2), (NVar 3)]) $
+                NLet (NVar 4) (NFunCall (NVar 1) [(NVar 2), (NVar 3)]) $
                 NLet (NVar 5) (NNumber 3) $
                 NLet (NVar 6) (NNumber 4) $
                 NLet (NVar 7) (NNumber 5) $
                 NLet (NVar 8) (NPrimOp $ NPrimOpAdd (NVar 6) (NVar 7)) $
                 NLet (NVar 9) (NNumber 6) $
-                NAtom $ NFunCall [NVar 0,
+                NAtom $ NFunCall (NVar 0) [
                                   NVar 4,
                                   NVar 5,
                                   NVar 8,
@@ -77,7 +77,7 @@ spec = do
                 NLet (NVar 0) (NLambda [] ["a", "b"] (NAtom $ NNumber 5)) $
                 NLet (NVar 1) (NNumber 1) $
                 NLet (NVar 2) (NNumber 2) $
-                NAtom $ NFunCall [NVar 0, NVar 1, NVar 2]
+                NAtom $ NFunCall (NVar 0) [NVar 1, NVar 2]
         norm `shouldBe` expected
 
       it "reuses named variables" $ do
@@ -100,9 +100,9 @@ spec = do
                 NLet (NVar 0) (NLambda [] ["x"] $ NAtom $
                     NLambda [] ["y"] $ NAtom $ NNumber 22) $
                 NLet (NVar 1) (NNumber 0) $
-                NLet (NVar 2) (NFunCall [NVar 0, NVar 1]) $
+                NLet (NVar 2) (NFunCall (NVar 0) [NVar 1]) $
                 NLet (NVar 3) (NNumber 55) $
-                NAtom $ NFunCall [NVar 2, NVar 3]
+                NAtom $ NFunCall (NVar 2) [NVar 3]
         norm `shouldBe` expected
 
       it "normalizes nested bindings" $ do

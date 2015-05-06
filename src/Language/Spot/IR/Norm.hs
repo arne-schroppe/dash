@@ -15,10 +15,11 @@ data NormAtomicExpr =
   | NPlainSymbol Int
 --  | NCompoundSymbol Int [NormVar]  -- this is somewhat complicated, as we have to distinguish between dynamic and static symbols
   | NFreeVar String
+  -- | NFuncParam String  -- TODO add this too ?
   | NResultVar NormVar
   | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body
   | NPrimOp NormPrimOp
-  | NFunCall [NormVar]
+  | NFunCall NormVar [NormVar]
   | NMatch Int NormVar [(Pattern, NormExpr)] -- MaxCaptures Subject (Patterns, Expr)
   deriving (Eq, Show)
 

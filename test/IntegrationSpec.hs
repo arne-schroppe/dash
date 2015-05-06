@@ -54,6 +54,7 @@ spec = do
                  \ } \n\
                  \ add-two 5"
       let result = run code
+      putStrLn $ show $ toAsm code
       result `shouldReturn` VMNumber 7
 
     it "applies a local variable to a custom function" $ do

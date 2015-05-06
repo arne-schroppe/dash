@@ -2,7 +2,6 @@ module Language.Spot.CodeGen.CodeGen2 (
   compile
 ) where
 
-import Language.Spot.CodeGen.CodeGenState
 import Language.Spot.IR.Norm
 import Language.Spot.IR.Tac
 
@@ -26,30 +25,57 @@ compile expr _ symlist =
 
 
 compileFunc params expr = do
-  let funcCode = compileExpr expr
-  addFunction funcCode
+  startFunction params
+  funcCode <- compileExpr expr
+  funAddr <- addFunction funcCode
+  endFunction
+  return funAddr
 
 compileExpr expr = case expr of
   NLet var atom body -> compileLet var atom body
-  NAtom a -> (compileAtom 0 a) ++ [Tac_ret 0]
+  NAtom a -> do
+          code <- compileAtom 0 a
+          return $ code ++ [Tac_ret 0]
 
 
 compileAtom reg atom = case atom of
-  NNumber n -> [Tac_load_i reg (fromIntegral n)]
-  NPlainSymbol sid -> [Tac_load_ps reg sid]
-  NPrimOp (NPrimOpAdd a b) -> [Tac_add reg (r a) (r b)]
-  NPrimOp (NPrimOpSub a b) -> [Tac_sub reg (r a) (r b)]
-  NResultVar t -> [Tac_move reg (r t)]
-  NLambda freeVars params expr -> [Tac_load_f reg 9999]
+  NNumber n -> return [Tac_load_i reg (fromIntegral n)]
+  NPlainSymbol sid -> return [Tac_load_ps reg sid]
+  NPrimOp (NPrimOpAdd a b) -> do
+          ra <- r a
+          rb <- r b
+          return [Tac_add reg ra rb]
+  NPrimOp (NPrimOpSub a b) -> do
+          ra <- r a
+          rb <- r b
+          return [Tac_sub reg ra rb]
+  NResultVar t -> do
+          rt <- r t
+          return [Tac_move reg rt]
+  NLambda freeVars params expr -> do
+          funAddr <- compileFunc params expr
+          return [Tac_load_f reg funAddr]
+  NFunCall funVar args -> do
+          argInstrs <- mapM (uncurry compileSetArg) $ zip [0..(length args)] args
+          rFun <- r funVar
+          let callInstr = [Tac_call reg rFun (length args)]
+          return $ argInstrs ++ callInstr
+  NFreeVar name -> do
+          regIndex <- param name
+          return [Tac_move reg regIndex]
   x -> error $ "Unable to compile " ++ (show x)
 
-compileLet tmpVar atom body =
-  let comp1 = compileAtom (r tmpVar) atom in -- TODO compileAtom reg atom in
-  let comp2 = compileExpr body in
-  comp1 ++ comp2
+compileLet tmpVar atom body = do
+  rTmp <- r tmpVar
+  comp1 <- compileAtom rTmp atom
+  comp2 <- compileExpr body
+  return $ comp1 ++ comp2
 
 
-r (NVar tmpVar) = tmpVar
+
+compileSetArg arg var = do
+  rVar <- r var
+  return $ Tac_set_arg arg rVar 0
 
 
 
@@ -59,17 +85,48 @@ r (NVar tmpVar) = tmpVar
 data CompState = CompState {
                    instructions :: Seq.Seq [Tac Reg]
                  , dataTable :: ConstTable -- rename ConstTable to DataTable
+                 , functionParams :: [Map.Map String Int]
                  }
 
 emptyCompState = CompState {
                    instructions = Seq.fromList []
                  , dataTable = []
+                 , functionParams = []
                  }
+
+startFunction params = do
+  state <- get
+  let newBindings = Map.fromList (zip params [0..(length params)])
+  let funParams' = newBindings : functionParams state
+  put $ state { functionParams = funParams' }
+
+endFunction = do
+  state <- get
+  put $ state { functionParams = (tail $ functionParams state) }
+
+numParameters :: State CompState Int
+numParameters = do
+  paramStack <- gets functionParams
+  return $ Map.size $ head paramStack
+
+r (NVar tmpVar) = do
+  numParams <- numParameters
+  return $ numParams + tmpVar
+
+param name = do
+  paramStack <- gets functionParams
+  let localParams = head paramStack
+  case Map.lookup name localParams of
+    Just index -> return index
+    Nothing -> fail $ "Unknown parameter: " ++ name
 
 addFunction code = do
   state <- get
-  let instrs' = (instructions state) Seq.|> code
+  let instrs = instructions state
+  let nextFunAddr = Seq.length instrs
+  let instrs' = instrs Seq.|> code
   put $ state { instructions = instrs' }
+  return nextFunAddr
 
 
 
