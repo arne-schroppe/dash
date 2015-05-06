@@ -50,9 +50,9 @@ it( directly_calls_a_function ) {
     op_setarg(0, 4, 0),
     op_call(0, 3, 1), /* result reg, reg with function address, num parameters */
     op_ret(0),
-    op_load_i(2, 100),
-    op_add(0, 1, 2),
-    op_ret(0)
+    op_load_i(1, 100),
+    op_add(2, 0, 1),
+    op_ret(2)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 138);
@@ -76,13 +76,13 @@ it( calls_a_closure_downwards ) {
     op_load_i(3, 23),
     op_add(2, 2, 3),
     op_setarg(0, 2, 0),
-    op_callcl(0, 1, 1), //closure at register 1 with 1 argument
-    op_ret(0),
+    op_callcl(3, 0, 1), //closure at register 1 with 1 argument
+    op_ret(3),
 
     // fun2
     //fun_header(1, 1), /* 1 closed over value, 1 parameter */
-    op_sub(0, 1, 2), // addr 11 // reg1 holds the function argument, reg2 is the single env value
-    op_ret(0)
+    op_sub(2, 0, 1), // addr 11 // reg1 holds the function argument, reg2 is the single env value
+    op_ret(2)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 58); //115 + 23 - 80
@@ -108,8 +108,8 @@ it( calls_a_closure_upwards ) {
     op_ret(0),
 
     // fun 2
-    op_sub(0, 1, 2),
-    op_ret(0)
+    op_sub(2, 0, 1),
+    op_ret(2)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 56); //80 - 24
