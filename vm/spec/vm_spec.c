@@ -9,7 +9,7 @@
 it( load_as_a_number_into_a_register ) {
   vm_instruction program[] = {
     op_load_i(0, 55),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, val(55, vm_tag_number));
@@ -22,7 +22,7 @@ it( adds_two_numbers ) {
     op_load_i(1, 5),
     op_load_i(2, 32),
     op_add(0, 1, 2),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 37);
@@ -32,8 +32,8 @@ it( adds_two_numbers ) {
 it( moves_a_register ) {
   vm_instruction program[] = {
     op_load_i(2, 37),
-    op_move(0, 2),
-    op_ret
+    op_move(1, 2),
+    op_ret(1)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 37);
@@ -49,10 +49,10 @@ it( directly_calls_a_function ) {
     op_load_i(3, fun_address),
     op_setarg(0, 4, 0),
     op_call(0, 3, 1), /* result reg, reg with function address, num parameters */
-    op_ret,
+    op_ret(0),
     op_load_i(2, 100),
     op_add(0, 1, 2),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 138);
@@ -69,7 +69,7 @@ it( calls_a_closure_downwards ) {
     op_load_i(1, fun_address1),
     op_setarg(0, 2, 0),
     op_call(0, 1, 1), //call fun1 with a closure to fun2
-    op_ret,
+    op_ret(0),
 
     // fun1
     op_load_i(2, 115), // addr 6
@@ -77,12 +77,12 @@ it( calls_a_closure_downwards ) {
     op_add(2, 2, 3),
     op_setarg(0, 2, 0),
     op_callcl(0, 1, 1), //closure at register 1 with 1 argument
-    op_ret,
+    op_ret(0),
 
     // fun2
     //fun_header(1, 1), /* 1 closed over value, 1 parameter */
     op_sub(0, 1, 2), // addr 11 // reg1 holds the function argument, reg2 is the single env value
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 58); //115 + 23 - 80
@@ -99,17 +99,17 @@ it( calls_a_closure_upwards ) {
     op_load_i(2, 80),
     op_setarg(0, 2, 0),
     op_callcl(0, 1, 1),
-    op_ret,
+    op_ret(0),
 
     // fun 1
     op_load_i(1, fun_address2),
     op_load_i(2, 24),
     op_makecl(0, 1, 1),
-    op_ret,
+    op_ret(0),
 
     // fun 2
     op_sub(0, 1, 2),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, 56); //80 - 24
@@ -137,7 +137,7 @@ it( applies_a_symbol_tag_to_a_value ) {
 it( load_as_a_symbol_into_a_register ) {
   vm_instruction program[] = {
     op_load_ps(0, 12),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, val(12, vm_tag_plain_symbol));
@@ -152,7 +152,7 @@ it( load_as_a_constant ) {
 
   vm_instruction program[] = {
     op_load_c(0, 0),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, val(33, vm_tag_plain_symbol));
@@ -167,7 +167,7 @@ it( load_as_a_compound_symbol ) {
 
   vm_instruction program[] = {
     op_load_cs(0, 1),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, 0);
   is_equal(result, val(1, vm_tag_compound_symbol));
@@ -179,9 +179,9 @@ it( jumps_forward ) {
   vm_instruction program[] = {
     op_load_i(0, 66),
     op_jmp(1),
-    op_ret,
+    op_ret(0),
     op_load_i(0, 70),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, val(70, vm_tag_number));
@@ -203,9 +203,9 @@ it( matches_a_number ) {
     op_jmp(1),
     op_jmp(2),
     op_load_i(0, 4),
-    op_ret,
+    op_ret(0),
     op_load_i(0, 300),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, val(300, vm_tag_number));
@@ -226,9 +226,9 @@ it( matches_a_symbol ) {
     op_jmp(1),
     op_jmp(2),
     op_load_i(0, 4),
-    op_ret,
+    op_ret(0),
     op_load_i(0, 300),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, val(300, vm_tag_number));
@@ -260,9 +260,9 @@ it( matches_a_compound_symbol ) {
     op_jmp(1),
     op_jmp(2),
     op_load_i(0, 4),
-    op_ret,
+    op_ret(0),
     op_load_i(0, 300),
-    op_ret
+    op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, val(300, vm_tag_number));
@@ -296,9 +296,9 @@ it( binds_a_value_in_a_match ) {
     op_jmp(1),
     op_jmp(2),
     op_load_i(0, 22), /* case 1 */
-    op_ret,
+    op_ret(0),
     op_move(0, 4), /* case 2 */
-    op_ret
+    op_ret(0)
   };
 
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
@@ -342,9 +342,9 @@ it( binds_a_value_in_a_nested_symbol ) {
     op_jmp(1),
     op_jmp(2),
     op_load_i(0, 100),
-    op_ret,
+    op_ret(0),
     op_sub(0, 3, 4), /* there is only one case */
-    op_ret
+    op_ret(0)
   };
 
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));

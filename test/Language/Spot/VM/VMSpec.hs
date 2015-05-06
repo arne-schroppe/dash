@@ -26,7 +26,7 @@ spec = do
 
     it "loads a number into a register" $ do
       let prog = [[ Tac_load_i 0 55,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProg prog) `shouldReturn` 55
 
 
@@ -34,13 +34,13 @@ spec = do
       let prog = [[ Tac_load_i 1 5,
                     Tac_load_i 2 32,
                     Tac_add 0 1 2,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProg prog) `shouldReturn` 37
 
     it "moves a register" $ do
       let prog = [[ Tac_load_i  2 37,
                     Tac_move  0 2,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProg prog) `shouldReturn` 37
 
     it "directly calls a function" $ do
@@ -50,10 +50,10 @@ spec = do
                     Tac_load_f  3 1,
                     Tac_set_arg 0 4 0,
                     Tac_call 0 3 1,
-                    Tac_ret ], [
+                    Tac_ret 0 ], [
                     Tac_load_i  2 100,
                     Tac_add  0 1 2,
-                    Tac_ret]]
+                    Tac_ret 0]]
 
       (runProg prog) `shouldReturn` 138
 
@@ -64,18 +64,18 @@ spec = do
                     Tac_load_f 1 1,
                     Tac_set_arg 0 2 0,
                     Tac_call 0 1 1,
-                    Tac_ret ], [
+                    Tac_ret 0 ], [
                     -- fun1
                     Tac_load_i 2 115,
                     Tac_load_i 3 23,
                     Tac_add 2 2 3,
                     Tac_set_arg 0 2 0,
                     Tac_call_cl 0 1 1,
-                    Tac_ret ], [
+                    Tac_ret 0 ], [
                     -- fun2
                     -- fun_header 1 1, -- (* 1 closed over value, 1 parameter *)
                     Tac_sub 0 1 2,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProg prog) `shouldReturn` 58 -- 115 + 23 - 80
 
     it "calls a closure upwards" $ do
@@ -85,15 +85,15 @@ spec = do
                     Tac_load_i 2 80,
                     Tac_set_arg 0 2 0,
                     Tac_call_cl 0 1 1,
-                    Tac_ret ], [
+                    Tac_ret 0 ], [
                     -- fun 1
                     Tac_load_f 1 2,
                     Tac_load_i 2 24,
                     Tac_make_cl 0 1 1,
-                    Tac_ret ], [
+                    Tac_ret 0 ], [
                     -- fun 2
                     Tac_sub 0 1 2,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProg prog) `shouldReturn` 56 -- 80 - 24
 
 {-
@@ -114,27 +114,27 @@ spec = do
 -}
     it "loads a symbol into a register" $ do
       let prog = [[ Tac_load_ps 0 12,
-                    Tac_ret]]
+                    Tac_ret 0]]
       (runProg prog) `shouldReturn` (encodePlainSymbol 12)
 
     it "loads a constant" $ do
       let ctable = [ encodeNumber 33 ]
       let prog = [[ Tac_load_c 0 0,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProgTbl ctable prog) `shouldReturn` (33)
 
     it "loads a data symbol" $ do
       let prog = [[ Tac_load_cs 0 1,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProg prog) `shouldReturn` (encodeCompoundSymbolRef 1)
 
 
     it "jumps forward" $ do
       let prog = [[ Tac_load_i 0 66,
                     Tac_jmp 1,
-                    Tac_ret,
+                    Tac_ret 0,
                     Tac_load_i 0 70,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProg prog) `shouldReturn` 70
 
     it "matches a number" $ do
@@ -148,9 +148,9 @@ spec = do
                     Tac_jmp 1,
                     Tac_jmp 2,
                     Tac_load_i 0 4,
-                    Tac_ret,
+                    Tac_ret 0,
                     Tac_load_i 0 300,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a symbol" $ do
@@ -164,9 +164,9 @@ spec = do
                     Tac_jmp 1,
                     Tac_jmp 2,
                     Tac_load_i 0 4,
-                    Tac_ret,
+                    Tac_ret 0,
                     Tac_load_i 0 300,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a data symbol" $ do
@@ -189,9 +189,9 @@ spec = do
                     Tac_jmp 1,
                     Tac_jmp 2,
                     Tac_load_i 0 4,
-                    Tac_ret,
+                    Tac_ret 0,
                     Tac_load_i 0 300,
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "binds a value in a match" $ do
@@ -215,9 +215,9 @@ spec = do
                     Tac_jmp 1,
                     Tac_jmp 2,
                     Tac_load_i 0 22,
-                    Tac_ret,
+                    Tac_ret 0,
                     Tac_move 0 4, -- reg 4 contains match var 1 (see pattern in ctable)
-                    Tac_ret ]]
+                    Tac_ret 0 ]]
       (runProgTbl ctable prog) `shouldReturn` 77
 
 {- TODO

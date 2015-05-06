@@ -165,11 +165,14 @@ bool execute_instruction(vm_instruction instr) {
     break;
 
     case OP_RET: {
+      int return_val_reg = get_arg_r0(instr);
       if (stack_pointer == 0) {
+        //We simply copy the result value to register 0, so that the runtime can find it
+        current_frame.reg[0] = current_frame.reg[return_val_reg];
         return false;
       }
       --stack_pointer;
-      current_frame.reg[next_frame.result_register] = next_frame.reg[0];
+      current_frame.reg[next_frame.result_register] = next_frame.reg[return_val_reg];
       debug( printf("RET\n") );
       program_pointer = next_frame.return_address;
     }

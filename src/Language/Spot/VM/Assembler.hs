@@ -50,7 +50,7 @@ assembleTac funcAddrs addrConv opc =
   let r = fromIntegral in
   let i = fromIntegral in
   case opc of
-    Tac_ret             -> instructionRI   0 0 0
+    Tac_ret r0          -> instructionRI   0 (r r0) 0
     Tac_load_i r0 i     -> instructionRI   1 (r r0) i
     Tac_load_addr r0 a  -> instructionRI   1 (r r0) (addrConv a)
     Tac_load_f r0 fi    -> instructionRI   1 (r r0) (funcAddrs !! fi)

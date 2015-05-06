@@ -27,7 +27,7 @@ compile ast = (getInstructions result, getConstantTable result, getSymbolNames r
 addStartFunction e = do
   beginFunction []
   code <- compileExpression e
-  setFunctionCode 0 (code ++ [Tac_ret])
+  setFunctionCode 0 (code ++ [Tac_ret 0])
   endFunction
 
 
@@ -109,7 +109,7 @@ compileLambda params expr = do
 compileFunction args expr = do
   funAddr <- beginFunction args
   code <- compileExpression expr
-  setFunctionCode funAddr (code ++ [Tac_ret])
+  setFunctionCode funAddr (code ++ [Tac_ret 0])
   endFunction
   return funAddr
 

@@ -26,7 +26,7 @@ type Reg = Int
 
 
 data ThreeAddressCode var =
-    Tac_ret
+    Tac_ret var
   | Tac_load_i var VMWord
   | Tac_load_addr var ConstAddr
   | Tac_load_f var FunAddr

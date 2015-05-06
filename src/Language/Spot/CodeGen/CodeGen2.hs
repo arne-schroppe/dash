@@ -15,7 +15,7 @@ import Debug.Trace
 compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile expr ctable symlist =
   let encoded = compileExpr expr in
-  ([encoded ++ [Tac_ret]], ctable, symlist)
+  ([encoded ++ [Tac_ret 0]], ctable, symlist)
 
 compileExpr expr = case expr of
   NLet var atom body -> compileLet var atom body
