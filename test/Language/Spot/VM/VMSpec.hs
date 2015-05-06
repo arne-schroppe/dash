@@ -60,6 +60,7 @@ spec = do
     it "calls a closure downwards" $ do
       let prog = [[ Tac_load_f 2 2,
                     Tac_load_i 3 80,
+                    Tac_set_arg 0 3 0,
                     Tac_make_cl 2 2 1,
                     Tac_load_f 1 1,
                     Tac_set_arg 0 2 0,
@@ -88,6 +89,7 @@ spec = do
                     -- fun 1
                     Tac_load_f 1 2,
                     Tac_load_i 2 24,
+                    Tac_set_arg 0 2 0,
                     Tac_make_cl 0 1 1,
                     Tac_ret 0 ], [
                     -- fun 2

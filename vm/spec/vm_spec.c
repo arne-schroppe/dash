@@ -60,11 +60,12 @@ it( directly_calls_a_function ) {
 
 
 it( calls_a_closure_downwards ) {
-  const int fun_address1 = 7;
-  const int fun_address2 = 13;
+  const int fun_address1 = 8;
+  const int fun_address2 = 14;
   vm_instruction program[] = {
     op_load_i(2, fun_address2), //TODO this shouldn't be load_i
     op_load_i(3, 80),
+    op_setarg(0, 3, 0),
     op_makecl(2, 2, 1),
     op_load_i(1, fun_address1),
     op_setarg(0, 2, 0),
@@ -91,7 +92,7 @@ it( calls_a_closure_downwards ) {
 
 it( calls_a_closure_upwards ) {
   const int fun_address1 = 7;
-  const int fun_address2 = 11;
+  const int fun_address2 = 12;
   vm_instruction program[] = {
     op_load_i(1, fun_address1),
     op_setarg(0, 2, 0),
@@ -104,6 +105,7 @@ it( calls_a_closure_upwards ) {
     // fun 1
     op_load_i(1, fun_address2),
     op_load_i(2, 24),
+    op_setarg(0, 2, 0),
     op_makecl(0, 1, 1),
     op_ret(0),
 

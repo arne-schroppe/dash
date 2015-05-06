@@ -27,7 +27,7 @@ static stack_frame stack[STACK_SIZE];
 static int stack_pointer = 0;
 static int program_pointer = 0;
 
-static vm_value fun_call_arg[NUM_REGS];
+static vm_value arg_reg[NUM_REGS];
 
 #define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
     printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
@@ -120,7 +120,7 @@ bool execute_instruction(vm_instruction instr) {
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
       int num_args = get_arg_r2(instr);
-      memcpy(&next_frame.reg[0], &fun_call_arg[0], num_args * sizeof(vm_value));
+      memcpy(&next_frame.reg[0], &arg_reg[0], num_args * sizeof(vm_value));
       next_frame.return_address = program_pointer;
       next_frame.result_register = get_arg_r0(instr);
       debug( printf("CALL   r%02i r%02i r%02i\n", get_arg_r0(instr), func_address_reg, num_args) );
@@ -134,7 +134,7 @@ bool execute_instruction(vm_instruction instr) {
       heap_address cl_address = (heap_address)get_reg(cl_address_reg);
       int num_args = get_arg_r2(instr);
 
-      memcpy(&next_frame.reg[0], &fun_call_arg[0], num_args * sizeof(vm_value));
+      memcpy(&next_frame.reg[0], &arg_reg[0], num_args * sizeof(vm_value));
       next_frame.return_address = program_pointer;
       next_frame.result_register = get_arg_r0(instr);
 
@@ -154,10 +154,11 @@ bool execute_instruction(vm_instruction instr) {
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
       int num_args = get_arg_r2(instr); //TODO check that num_args > 0
+
       heap_address cl_address = heap_alloc(num_args + 2); /* args + closure header + pointer to function */
       vm_value *cl_pointer = heap_get_pointer(cl_address);
       *cl_pointer = num_args; /* write header */
-      memcpy(cl_pointer + 1, &get_reg(func_address_reg + 1), num_args);
+      memcpy(cl_pointer + 1, &arg_reg[0], num_args);
       *(cl_pointer + num_args + 1) = func_address;
       get_reg(reg0) = (vm_value) cl_address;
       debug( printf("MAKECL r%02i r%02i r%02i\n", reg0, func_address_reg, num_args) );
@@ -221,7 +222,7 @@ bool execute_instruction(vm_instruction instr) {
       int target_arg = get_arg_r0(instr);
       int source_reg = get_arg_r1(instr);
       int extra_amount = get_arg_r2(instr);
-      memcpy(&fun_call_arg[target_arg], &current_frame.reg[source_reg], (1 + extra_amount) * sizeof(vm_value));
+      memcpy(&arg_reg[target_arg], &current_frame.reg[source_reg], (1 + extra_amount) * sizeof(vm_value));
       debug( printf("SETARG a%02i r%02i n%02i\n", target_arg, source_reg, extra_amount) );
     }
     break;
@@ -312,7 +313,11 @@ void print_registers(stack_frame frame) {
   for(i=0; i<num_displayed_regs; ++i) {
     sprintf(&buffer[i*(reg_display_size + 1)], "%016x ", frame.reg[i]);
   }
-  printf("%s\n", buffer);
+  printf("regs: %s\n", buffer);
+  for(i=0; i<num_displayed_regs; ++i) {
+    sprintf(&buffer[i*(reg_display_size + 1)], "%016x ", arg_reg[i]);
+  }
+  printf("args: %s\n", buffer);
 }
 
 void reset() {
@@ -321,7 +326,7 @@ void reset() {
   const_table = 0;
   const_table_length = 0;
   memset(stack, 0, sizeof(stack_frame) * STACK_SIZE);
-  memset(fun_call_arg, 0, sizeof(vm_value) * NUM_REGS);
+  memset(arg_reg, 0, sizeof(vm_value) * NUM_REGS);
 }
 
 void print_program(vm_instruction *program) {
