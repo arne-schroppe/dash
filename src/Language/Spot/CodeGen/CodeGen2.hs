@@ -25,10 +25,9 @@ compile expr _ symlist =
 
 
 compileFunc params expr = do
-  startFunction params
+  funAddr <- beginFunction params
   funcCode <- compileExpr expr
-  funAddr <- addFunction funcCode
-  endFunction
+  endFunction funAddr funcCode
   return funAddr
 
 compileExpr expr = case expr of
@@ -94,15 +93,20 @@ emptyCompState = CompState {
                  , functionParams = []
                  }
 
-startFunction params = do
+beginFunction params = do
   state <- get
   let newBindings = Map.fromList (zip params [0..(length params)])
   let funParams' = newBindings : functionParams state
   put $ state { functionParams = funParams' }
+  addr <- addPlaceholderFunction
+  return addr
 
-endFunction = do
+endFunction funAddr code = do
   state <- get
-  put $ state { functionParams = (tail $ functionParams state) }
+  let instrs = instructions state
+  let instrs' = Seq.update funAddr code instrs
+  put $ state { functionParams = (tail $ functionParams state),
+                instructions = instrs' }
 
 numParameters :: State CompState Int
 numParameters = do
@@ -120,11 +124,11 @@ param name = do
     Just index -> return index
     Nothing -> fail $ "Unknown parameter: " ++ name
 
-addFunction code = do
+addPlaceholderFunction = do
   state <- get
   let instrs = instructions state
   let nextFunAddr = Seq.length instrs
-  let instrs' = instrs Seq.|> code
+  let instrs' = instrs Seq.|> []
   put $ state { instructions = instrs' }
   return nextFunAddr
 
