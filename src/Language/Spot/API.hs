@@ -28,6 +28,10 @@ import qualified Data.IntMap as IntMap
 -- Add better typing for several things, also for uncompiled asm
 
 
+toNorm :: String -> NormExpr
+toNorm prog =
+  let (nExpr, ctable, symNames) = prog |> lex |> parse |> normalize in
+  nExpr
 
 toAsm :: String -> [[Tac Reg]]
 toAsm prog =

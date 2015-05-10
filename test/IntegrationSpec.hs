@@ -76,17 +76,24 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 77
 
+
+{-
     it "returns a closure" $ do
-      let code =  " val make-adder (x) = { \n\
-                  \   val (y) = add x y \n\
+      let code =  " val make-sub (x) = { \n\
+                  \   val (y) = sub x y \n\
                   \ } \n\
-                  \ val adder = make-adder 4 \n\
-                  \ adder 55"
+                  \ val subtractor = make-sub 4 \n\
+                  \ subtractor 55"
       let result = run code
-      result `shouldReturn` VMNumber 59
+      putStrLn $ show $ toNorm code
+      putStrLn $ show $ toAsm code
+      result `shouldReturn` VMNumber 51
 
     -- TODO test recursion, both top-level and inside a function
+-}
 
+
+{-
     context "when matching" $ do
 
       it "matches a value against a single number" $ do
@@ -167,7 +174,7 @@ spec = do
                     \ }"
         let result = run code
         result `shouldReturn` VMNumber 23
-
+-}
 
 
 {-

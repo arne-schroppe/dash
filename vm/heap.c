@@ -6,13 +6,14 @@ static size_t initial_heap_size = 1024;
 static heap_address next_free_address = 0;
 
 void init_heap() {
+  if (heap) {
+    free(heap);
+  }
+  next_free_address = 0;
   heap = calloc(initial_heap_size, sizeof(vm_value)); //TODO this obviously needs some improvement
 }
 
 heap_address heap_alloc(size_t size) {
-  if (heap == 0) {
-    init_heap();
-  }
   heap_address old = next_free_address;
   next_free_address += size;
   return old;

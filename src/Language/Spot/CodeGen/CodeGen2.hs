@@ -8,6 +8,7 @@ import Language.Spot.IR.Tac
 import Control.Monad.State
 import qualified Data.Sequence as Seq
 import Data.Foldable
+import Control.Applicative
 
 import Debug.Trace
 
@@ -20,12 +21,12 @@ import qualified Data.Map as Map
 
 compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile expr _ symlist =
-  let result = execState (compileFunc [] expr) emptyCompState in
+  let result = execState (compileFunc [] [] expr) emptyCompState in
   (toList (instructions result), dataTable result, symlist)
 
 
-compileFunc params expr = do
-  funAddr <- beginFunction params
+compileFunc freeVars params expr = do
+  funAddr <- beginFunction freeVars params
   funcCode <- compileExpr expr
   endFunction funAddr funcCode
   return funAddr
@@ -33,75 +34,114 @@ compileFunc params expr = do
 compileExpr expr = case expr of
   NLet var atom body -> compileLet var atom body
   NAtom a -> do
-          code <- compileAtom 0 a
+          code <- compileAtom 0 a True
           return $ code ++ [Tac_ret 0]
 
 
-compileAtom reg atom = case atom of
+compileAtom reg atom isResultValue = case atom of
   NNumber n -> return [Tac_load_i reg (fromIntegral n)]
   NPlainSymbol sid -> return [Tac_load_ps reg sid]
   NPrimOp (NPrimOpAdd a b) -> do
-          ra <- r a
-          rb <- r b
+          ra <- getReg a
+          rb <- getReg b
           return [Tac_add reg ra rb]
   NPrimOp (NPrimOpSub a b) -> do
-          ra <- r a
-          rb <- r b
+          ra <- getReg a
+          rb <- getReg b
           return [Tac_sub reg ra rb]
-{-
-  NResultVar t -> do
-          rt <- r t
-          return [Tac_move reg rt]
--}
-  NLambda freeVars params expr -> do
-          funAddr <- compileFunc params expr
-          return [Tac_load_f reg funAddr]
+  NLambda [] params expr -> do
+          funAddr <- compileFunc [] params expr
+          if isResultValue then
+              return [Tac_load_f reg funAddr, Tac_make_cl reg reg 0]
+          else
+              return [Tac_load_f reg funAddr]
+  NLambda freeVars params expr -> compileClosure reg freeVars params expr
   NFunCall funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zip [0..(length args)] args
-          rFun <- r funVar
-          let callInstr = [Tac_call reg rFun (length args)]
-          return $ argInstrs ++ callInstr
-  NVar var -> error "Fail"
-{-
-          regIndex <- param name
+          rFun <- getReg funVar
+          direct <- isDirectCallReg rFun
+          if direct then do
+            let callInstr = [Tac_call reg rFun (length args)]
+            return $ argInstrs ++ callInstr
+          else do
+            let callInstr = [Tac_call_cl reg rFun (length args)]
+            return $ argInstrs ++ callInstr
+  NVar var -> case var of
+    -- TODO add constant free var. Resolve to whatever it is in outer context
+    NLocalVar varId _ -> do
+          rt <- getReg var
+          return [Tac_move reg rt]
+    NFunParam name -> do
+          regIndex <- getReg var
           return [Tac_move reg regIndex]
--}
+    _ -> error "fail"
   x -> error $ "Unable to compile " ++ (show x)
 
 compileLet tmpVar atom body = do
-  rTmp <- r tmpVar
-  comp1 <- compileAtom rTmp atom
+  let callDirect = canBeCalledDirectly atom
+  rTmp <- getReg tmpVar
+  when callDirect $ addDirectCallReg rTmp
+  comp1 <- compileAtom rTmp atom False
   comp2 <- compileExpr body
   return $ comp1 ++ comp2
 
+-- This determines whether we'll use Tac_call or Tac_call_cl later
+canBeCalledDirectly atom = case atom of
+  NVar (NConstantFreeVar _) -> True
+  NLambda ([]) _ _ -> True
+  _ -> False
+
+compileClosure reg freeVars params expr = do
+  funAddr <- compileFunc freeVars params expr
+  argInstrs <- mapM (uncurry compileSetArgN) $ zip [0..(length freeVars)] freeVars
+  -- TODO use the next free register
+  let makeClosureInstr = [ Tac_load_f 31 funAddr, Tac_make_cl reg 31 (length freeVars)]
+  return $ argInstrs ++ makeClosureInstr
 
 
 compileSetArg arg var = do
-  rVar <- r var
+  rVar <- getReg var
   return $ Tac_set_arg arg rVar 0
 
+compileSetArgN arg name = do
+  rVar <- getRegByName name
+  return $ Tac_set_arg arg rVar 0
 
 
 
 ----- State -----
 
+-- TODO introduce a proper symtable
 data CompState = CompState {
                    instructions :: Seq.Seq [Tac Reg]
                  , dataTable :: ConstTable -- rename ConstTable to DataTable
                  , functionParams :: [Map.Map String Int]
+                 , freeVariables :: [Map.Map String Int]
+
+                 -- these are all the registers that hold function values which
+                 -- can be called directly with Tac_call. Everything else is 
+                 -- called with Tac_call_cl
+                 , directCallRegs :: [[Int]]
                  }
 
 emptyCompState = CompState {
                    instructions = Seq.fromList []
                  , dataTable = []
                  , functionParams = []
+                 , freeVariables = []
+                 , directCallRegs = []
                  }
 
-beginFunction params = do
+beginFunction freeVars params = do
   state <- get
+  let localFreeVars = Map.fromList (zip freeVars [0..(length freeVars)])
+  let freeVars' = localFreeVars : freeVariables state
   let newBindings = Map.fromList (zip params [0..(length params)])
   let funParams' = newBindings : functionParams state
-  put $ state { functionParams = funParams' }
+  put $ state { functionParams = funParams'
+              , freeVariables = freeVars'
+              , directCallRegs = [] : (directCallRegs state)
+              }
   addr <- addPlaceholderFunction
   return addr
 
@@ -110,6 +150,8 @@ endFunction funAddr code = do
   let instrs = instructions state
   let instrs' = Seq.update funAddr code instrs
   put $ state { functionParams = (tail $ functionParams state),
+                freeVariables = (tail $ freeVariables state),
+                directCallRegs = (tail $ directCallRegs state),
                 instructions = instrs' }
 
 numParameters :: State CompState Int
@@ -117,16 +159,26 @@ numParameters = do
   paramStack <- gets functionParams
   return $ Map.size $ head paramStack
 
-r (NLocalVar tmpVar name) = do
-  numParams <- numParameters
-  return $ numParams + tmpVar
-
+param :: String -> State CompState (Maybe Int)
 param name = do
   paramStack <- gets functionParams
   let localParams = head paramStack
-  case Map.lookup name localParams of
-    Just index -> return index
-    Nothing -> fail $ "Unknown parameter: " ++ name
+  let res = Map.lookup name localParams
+  return res
+
+
+numFreeVars :: State CompState Int
+numFreeVars = do
+  freeVarStack <- gets freeVariables
+  return $ Map.size $ head freeVarStack
+
+freeVar :: String -> State CompState (Maybe Int)
+freeVar name = do
+  freeVarStack <- gets freeVariables
+  let localFreeVars = head freeVarStack
+  let res = Map.lookup name localFreeVars
+  return res
+
 
 addPlaceholderFunction = do
   state <- get
@@ -136,9 +188,54 @@ addPlaceholderFunction = do
   put $ state { instructions = instrs' }
   return nextFunAddr
 
+getRegByName :: String -> State CompState Int
+getRegByName name = do
+  lookup <- getRegN name
+  case lookup of
+    Just index -> return index
+    Nothing -> error $ "Unknown identifier " ++ name
+  where getRegN name = do
+          p <- param name
+          case p of
+                  Just i -> return $ Just i
+                  Nothing -> do
+                          f <- freeVar name
+                          return f
 
+getReg :: NormVar -> State CompState Int
+getReg (NConstantFreeVar _) = error "Compiler error"
 
+getReg (NFunParam name) = do
+  lookup <- param name
+  case lookup of
+          Just index -> return index
+          Nothing -> error $ "Unknown parameter: " ++ name
 
+-- When calling a closure, the first n registers are formal arguments
+-- and the next m registers are closed-over variables
+-- TODO document this fact somewhere visible
+getReg (NDynamicFreeVar name) = do
+  numParams <- numParameters
+  lookup <- freeVar name
+  case lookup of
+          Just index -> return $ numParams + index
+          Nothing -> error $ "Unknown free var: " ++ name
+
+getReg (NLocalVar tmpVar name) = do
+  numFree <- numFreeVars
+  numParams <- numParameters
+  return $ numFree + numParams + tmpVar
+
+isDirectCallReg reg = do
+  dCallRegStack <- gets directCallRegs
+  let dCallRegs = head dCallRegStack
+  return $ Prelude.elem reg dCallRegs
+
+addDirectCallReg reg = do
+  state <- get
+  let dCallRegs = head $ directCallRegs state
+  let dCallRegs' = (reg : dCallRegs) : (tail $ directCallRegs state)
+  put $ state { directCallRegs = dCallRegs' }
 
 
 

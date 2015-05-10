@@ -107,9 +107,10 @@ normalizeVar name k = do
 normalizeLambda params bodyExpr k = do
   enterContext params
   normalizedBody <- normalizeExpr bodyExpr
+  con <- context
+  let free = freeVars con
   leaveContext
-  let freeVars = []
-  k $ NLambda freeVars params normalizedBody
+  k $ NLambda free params normalizedBody
 
 
 normalizeFunCall (Var "add") [a, b] k =
@@ -194,11 +195,13 @@ emptyNormState = NormState {
 data Context = Context {
   tempVarCounter :: Int
 , bindings :: Map.Map String (NormVar, Bool) -- Bool indicates if this is a dynamic var
+, freeVars :: [String]
 } deriving (Eq, Show)
 
 emptyContext = Context {
   tempVarCounter = 0
 , bindings = Map.empty
+, freeVars = []
 }
 
 -- Name lookup can have X outcomes:
@@ -220,7 +223,8 @@ lookupName name = do
     Just bnd -> return $ fst bnd
     Nothing -> do
            (var, isDynamic) <- lookupNameInContext name (tail ctxs)
-           if isDynamic then
+           if isDynamic then do
+             addDynamicVar name
              return $ NDynamicFreeVar name
            else
              return $ NConstantFreeVar name
@@ -236,9 +240,8 @@ lookupNameInContext name conts = do
 enterContext funParams = do
   pushContext emptyContext
   forM funParams $ \ paramName ->
-    -- TODO for function params it actually doesn't matter whether they're dynamic or not
-    -- Should we have three states, Constant / Dynamic / NotRelevant ?
-    addBinding paramName (NFunParam paramName, False)
+    -- Function params are always dynamic
+    addBinding paramName (NFunParam paramName, True)
 
 leaveContext = do
   popContext
@@ -266,6 +269,14 @@ putContext c = do
   state <- get
   put $ state { contexts = c : (tail.contexts $ state) }
 
+addDynamicVar name = do
+  con <- context
+  let free = freeVars con
+  if not (name `elem` free) then do
+          let free' = name : free
+          let con' = con { freeVars = free' }
+          putContext con'
+  else return ()
 
 addBinding :: String -> (NormVar, Bool) -> State NormState ()
 addBinding name bnd = do
