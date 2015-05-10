@@ -117,7 +117,7 @@ numParameters = do
   paramStack <- gets functionParams
   return $ Map.size $ head paramStack
 
-r (NLocalVar tmpVar) = do
+r (NLocalVar tmpVar name) = do
   numParams <- numParameters
   return $ numParams + tmpVar
 

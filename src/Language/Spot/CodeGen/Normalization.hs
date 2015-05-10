@@ -36,14 +36,22 @@ type Cont = NormAtomicExpr -> State NormState NormExpr
 
 normalize :: Expr -> (NormExpr, ConstTable, SymbolNameList)
 normalize expr =
-  let (result, finalState) = runState (normalizeLambda [] expr return) emptyNormState in
-  (NAtom $ result, [], getSymbolNames finalState)
+  let (result, finalState) = runState (normalizeInContext expr) emptyNormState in
+  (result, [], getSymbolNames finalState)
+
+
+
+normalizeInContext expr = do
+  enterContext []
+  nExpr <- normalizeExpr expr
+  leaveContext
+  return nExpr
 
 
 normalizeExpr :: Expr -> State NormState NormExpr
 normalizeExpr expr = case expr of
   LocalBinding (Binding name boundExpr) restExpr ->
-    nameExpr boundExpr $ \ var -> do
+    nameExpr boundExpr name $ \ var -> do
       -- TODO use isDynamic here
       addBinding name (var, False)
       rest <- normalizeExpr restExpr
@@ -62,7 +70,7 @@ atomizeExpr expr k = case expr of
   Match matchedExpr patterns -> normalizeMatch matchedExpr patterns k
   LocalBinding (Binding name boundExpr) restExpr -> -- inner local binding ! (i.e. let a = let b = 2 in 1 + b)
     atomizeExpr boundExpr $ \ aExpr -> do
-      var <- newTempVar
+      var <- newTempVar name
       addBinding name (var, False)
       atomizeExpr restExpr $ \ boundExpr -> do
         rest <- k boundExpr
@@ -97,7 +105,7 @@ normalizeVar name k = do
 
 
 normalizeLambda params bodyExpr k = do
-  enterContext
+  enterContext params
   normalizedBody <- normalizeExpr bodyExpr
   leaveContext
   let freeVars = []
@@ -111,7 +119,7 @@ normalizeFunCall (Var "sub") [a, b] k =
   normalizeMathPrimOp NPrimOpSub a b k
 
 normalizeFunCall funExpr args k = do
-  nameExpr funExpr $ \ funVar ->
+  nameExpr funExpr "" $ \ funVar ->
           normalizeExprList args $ \ normArgs ->
                   k $ NFunCall funVar normArgs
 
@@ -140,28 +148,28 @@ normalizeExprList exprList k =
       return expr
     normalizeExprList' exprList acc k = do
       let hd = head exprList
-      nameExpr hd $ \ var -> do
+      nameExpr hd "" $ \ var -> do
         restExpr <- normalizeExprList' (tail exprList) (var : acc) k
         return restExpr
 
 
-nameExpr expr k = case expr of
+nameExpr expr originalName k = case expr of
   -- Some variable can be used directly and don't need to be let-bound
   Var name -> do
     var <- lookupName name
     case var of
       -- Constant free vars are let-bound
-      NConstantFreeVar n -> letBind expr k
+      NConstantFreeVar n -> letBind expr k ""
       -- All other vars are used directly (because they will be in a register later on)
       v -> do
             bodyExpr <- k v
             return bodyExpr
   -- Everything that is not a Var needs to be let-bound
-  _ -> letBind expr k
+  _ -> letBind expr k originalName
   where
-    letBind e k = do
+    letBind e k n = do
       atomizeExpr e $ \ aExpr -> do
-        var <- newTempVar
+        var <- newTempVar n
         restExpr <- k var
         return $ NLet var aExpr restExpr
 
@@ -225,19 +233,23 @@ lookupNameInContext name conts = do
     Just bnd -> return bnd
     Nothing  -> lookupNameInContext name (tail conts)
 
-enterContext = do
+enterContext funParams = do
   pushContext emptyContext
+  forM funParams $ \ paramName ->
+    -- TODO for function params it actually doesn't matter whether they're dynamic or not
+    -- Should we have three states, Constant / Dynamic / NotRelevant ?
+    addBinding paramName (NFunParam paramName, False)
 
 leaveContext = do
   popContext
 
-newTempVar :: State NormState NormVar
-newTempVar = do
+newTempVar :: String -> State NormState NormVar
+newTempVar name = do
   con <- context
   let tmpVar = tempVarCounter con
   let nextTmpVar = tmpVar + 1
   putContext $ con { tempVarCounter = nextTmpVar }
-  return (NLocalVar tmpVar)
+  return (NLocalVar tmpVar name)
 
 
 context = gets $ head.contexts

@@ -33,7 +33,7 @@ data NormAtomicExpr =
 
 
 data NormVar =
-    NLocalVar Int
+    NLocalVar Int String
   | NDynamicFreeVar String
   | NFunParam String
   | NConstantFreeVar String
