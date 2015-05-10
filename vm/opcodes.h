@@ -29,8 +29,8 @@ typedef enum {
 #define get_opcode(instr) ((instr & 0xF0000000) >> (instr_size - __opcb))
 
 #define get_arg_r0(instr) ((instr & 0x0F800000) >> (instr_size - (__opcb + __regb)))
-#define get_arg_r1(instr) ((instr & 0x001F0000) >> (instr_size - (__opcb + 2 * __regb)))
-#define get_arg_r2(instr) ((instr & 0x0000F800) >> (instr_size - (__opcb + 3 * __regb)))
+#define get_arg_r1(instr) ((instr & 0x007C0000) >> (instr_size - (__opcb + 2 * __regb)))
+#define get_arg_r2(instr) ((instr & 0x0003E000) >> (instr_size - (__opcb + 3 * __regb)))
 #define get_arg_i(instr)   (instr & 0x007FFFFF)
 
 

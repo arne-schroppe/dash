@@ -84,8 +84,6 @@ spec = do
                   \ val subtractor = make-sub 55 \n\
                   \ subtractor 4"
       let result = run code
-      putStrLn $ show $ toNorm code
-      putStrLn $ show $ toAsm code
       result `shouldReturn` VMNumber 51
 
     -- TODO test recursion, both top-level and inside a function

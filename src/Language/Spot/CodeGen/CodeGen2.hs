@@ -95,7 +95,7 @@ compileClosure reg freeVars params expr = do
   funAddr <- compileFunc freeVars params expr
   argInstrs <- mapM (uncurry compileSetArgN) $ zip [0..(length freeVars)] freeVars
   -- TODO use the next free register instead of hardcoded value
-  let makeClosureInstr = [ Tac_load_f 7 funAddr, Tac_make_cl reg 7 (length freeVars)]
+  let makeClosureInstr = [ Tac_load_f 31 funAddr, Tac_make_cl reg 31 (length freeVars)]
   return $ argInstrs ++ makeClosureInstr
 
 
