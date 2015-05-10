@@ -77,20 +77,18 @@ spec = do
       result `shouldReturn` VMNumber 77
 
 
-{-
     it "returns a closure" $ do
       let code =  " val make-sub (x) = { \n\
                   \   val (y) = sub x y \n\
                   \ } \n\
-                  \ val subtractor = make-sub 4 \n\
-                  \ subtractor 55"
+                  \ val subtractor = make-sub 55 \n\
+                  \ subtractor 4"
       let result = run code
       putStrLn $ show $ toNorm code
       putStrLn $ show $ toAsm code
       result `shouldReturn` VMNumber 51
 
     -- TODO test recursion, both top-level and inside a function
--}
 
 
 {-
