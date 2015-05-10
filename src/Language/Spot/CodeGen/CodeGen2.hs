@@ -48,9 +48,11 @@ compileAtom reg atom = case atom of
           ra <- r a
           rb <- r b
           return [Tac_sub reg ra rb]
+{-
   NResultVar t -> do
           rt <- r t
           return [Tac_move reg rt]
+-}
   NLambda freeVars params expr -> do
           funAddr <- compileFunc params expr
           return [Tac_load_f reg funAddr]
@@ -59,9 +61,11 @@ compileAtom reg atom = case atom of
           rFun <- r funVar
           let callInstr = [Tac_call reg rFun (length args)]
           return $ argInstrs ++ callInstr
-  NFreeVar name -> do
+  NVar var -> error "Fail"
+{-
           regIndex <- param name
           return [Tac_move reg regIndex]
+-}
   x -> error $ "Unable to compile " ++ (show x)
 
 compileLet tmpVar atom body = do
@@ -113,7 +117,7 @@ numParameters = do
   paramStack <- gets functionParams
   return $ Map.size $ head paramStack
 
-r (NVar tmpVar) = do
+r (NLocalVar tmpVar) = do
   numParams <- numParameters
   return $ numParams + tmpVar
 

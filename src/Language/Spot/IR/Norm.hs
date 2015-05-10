@@ -5,6 +5,16 @@ module Language.Spot.IR.Norm where
 import Language.Spot.VM.Types
 import Language.Spot.IR.Ast
 
+-- How do we handle KnownFreeVars? Initial idea would be to add an initial function
+-- placeholder for each toplevel function (to get an address) and to immediately
+-- encode constants, and then use that information to replace NKnownFreeVar with its
+-- respective value. For this to work we finally need a symbol table
+
+-- Symbol table:
+-- When entering a scope, scan through all definitions as explained above (known free
+-- variables are not necessarily at the top-level). Note down the names and known
+-- types but don't eval yet. This way we can also do mutual recursion.
+
 data NormExpr =
     NAtom NormAtomicExpr
   | NLet NormVar NormAtomicExpr NormExpr
@@ -13,17 +23,20 @@ data NormExpr =
 data NormAtomicExpr =
     NNumber Int
   | NPlainSymbol Int
---  | NCompoundSymbol Int [NormVar]  -- this is somewhat complicated, as we have to distinguish between dynamic and static symbols
-  | NFreeVar String
-  -- | NFuncParam String  -- TODO add this too ?
-  | NResultVar NormVar
+--  | NCompoundSymbol Int Bool [NormVar]  -- this is somewhat complicated, as we have to distinguish between dynamic and static symbols
+  | NVar NormVar -- This is only for returning a var as a result
   | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body
   | NPrimOp NormPrimOp
   | NFunCall NormVar [NormVar]
   | NMatch Int NormVar [(Pattern, NormExpr)] -- MaxCaptures Subject (Patterns, Expr)
   deriving (Eq, Show)
 
-newtype NormVar = NVar { normVarValue :: Int }
+
+data NormVar =
+    NLocalVar Int
+  | NDynamicFreeVar String
+  | NFunParam String
+  | NConstantFreeVar String
   deriving (Eq, Show)
 
 data NormPrimOp =

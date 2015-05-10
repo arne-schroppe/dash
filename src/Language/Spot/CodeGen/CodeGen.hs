@@ -22,13 +22,15 @@ import Control.Exception.Base
 
 compile :: Expr -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile ast = (getInstructions result, getConstantTable result, getSymbolNames result) --todo reverse most of this
-  where result = execState (addStartFunction ast) emptyCode
+  where result = execState (compileExpression ast) emptyCode
 
+{-
 addStartFunction e = do
   beginFunction []
   code <- compileExpression e
   setFunctionCode 0 (code ++ [Tac_ret 0])
   endFunction
+-}
 
 
 

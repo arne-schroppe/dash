@@ -9,20 +9,43 @@ import Data.List
 import qualified Data.Map as Map
 
 
+{-
+
+Normalization
+~~~~~~~~~~~~~
+
+
+There are 4 types of variables: Local temporary variables (these are the ones create by
+normalization), function parameters (these will have a register inside a lambda), dynamic
+free variables (these will turn a lambda into a closure and thus will also have their
+unique register), and constant free variables (these are free variables that are known at
+compile time and can thus be used immediately). Furthermore, free variables can occur in
+two constructs, lambdas and compund symbols. The NLambda constructor lists all its free
+variables, NCompoundSymbol has a boolean to indicate whether it is constant or dynamic.
+
+
+
+TODO: Forget forward declaration for now
+TODO: Forget mutual recursion for now
+
+
+-}
+
 
 type Cont = NormAtomicExpr -> State NormState NormExpr
 
 normalize :: Expr -> (NormExpr, ConstTable, SymbolNameList)
 normalize expr =
-  let (result, finalState) = runState (normalizeExpr expr) emptyNormState in
-  (result, [], getSymbolNames finalState)
+  let (result, finalState) = runState (normalizeLambda [] expr return) emptyNormState in
+  (NAtom $ result, [], getSymbolNames finalState)
 
 
 normalizeExpr :: Expr -> State NormState NormExpr
 normalizeExpr expr = case expr of
   LocalBinding (Binding name boundExpr) restExpr ->
     nameExpr boundExpr $ \ var -> do
-      addBinding name var
+      -- TODO use isDynamic here
+      addBinding name (var, False)
       rest <- normalizeExpr restExpr
       return $ rest
   _ -> do
@@ -40,7 +63,7 @@ atomizeExpr expr k = case expr of
   LocalBinding (Binding name boundExpr) restExpr -> -- inner local binding ! (i.e. let a = let b = 2 in 1 + b)
     atomizeExpr boundExpr $ \ aExpr -> do
       var <- newTempVar
-      addBinding name var
+      addBinding name (var, False)
       atomizeExpr restExpr $ \ boundExpr -> do
         rest <- k boundExpr
         return $ NLet var aExpr rest
@@ -60,6 +83,7 @@ normalizeSymbol sid args k = error "Can't normalize complex symbols yet"
 --     generated in the sym table and then be copied and modified
 --   - unknown dynamism. This happens when symbols include free vars. We need to
 --     resolve at a later point whether the closed over var is static or dynamic
+--     (or do we?)
 {-
   normalizeExprList args $ \ normArgs ->
           k $ NFunCall $ funVar : normArgs
@@ -68,16 +92,14 @@ normalizeSymbol sid args k = error "Can't normalize complex symbols yet"
 
 -- This is only direct usage of a var (as a "return value")
 normalizeVar name k = do
-  bnds <- gets bindings
-  if Map.member name bnds then do
-    let Just var = Map.lookup name bnds
-    k $ NResultVar var
-  else
-    k $ NFreeVar name
+  var <- lookupName name
+  k $ NVar var
 
 
 normalizeLambda params bodyExpr k = do
+  enterContext
   normalizedBody <- normalizeExpr bodyExpr
+  leaveContext
   let freeVars = []
   k $ NLambda freeVars params normalizedBody
 
@@ -124,14 +146,17 @@ normalizeExprList exprList k =
 
 
 nameExpr expr k = case expr of
+  -- Some variable can be used directly and don't need to be let-bound
   Var name -> do
-    bnds <- gets bindings
-    if Map.member name bnds then do
-      let Just var = Map.lookup name bnds
-      bodyExpr <- k var
-      return bodyExpr
-    else
-      letBind expr k
+    var <- lookupName name
+    case var of
+      -- Constant free vars are let-bound
+      NConstantFreeVar n -> letBind expr k
+      -- All other vars are used directly (because they will be in a register later on)
+      v -> do
+            bodyExpr <- k v
+            return bodyExpr
+  -- Everything that is not a Var needs to be let-bound
   _ -> letBind expr k
   where
     letBind e k = do
@@ -140,34 +165,105 @@ nameExpr expr k = case expr of
         restExpr <- k var
         return $ NLet var aExpr restExpr
 
-
+isDynamic expr = case expr of
+  NLambda (h:[]) _ _ -> True
+  -- NCompoundSymbol True _ _ -> True
+  _ -> False
 
 
 ----- State -----
 
 data NormState = NormState {
-  tempVarCounter :: Int
-, symbolNames :: Map.Map String SymId
-, bindings :: Map.Map String NormVar
+  symbolNames :: Map.Map String SymId
+, contexts :: [Context] -- head is current context
 }
 
 emptyNormState = NormState {
-  tempVarCounter = 0 -- TODO needs to be a stack
-, symbolNames = Map.empty
+  symbolNames = Map.empty
+, contexts = []
+}
+
+data Context = Context {
+  tempVarCounter :: Int
+, bindings :: Map.Map String (NormVar, Bool) -- Bool indicates if this is a dynamic var
+} deriving (Eq, Show)
+
+emptyContext = Context {
+  tempVarCounter = 0
 , bindings = Map.empty
 }
 
+-- Name lookup can have X outcomes:
+-- 1. It is a local temp var or fun param. In this case, just use NFunParam or NLocalVar
+-- 2. It is a variable from an outer context. In this case there are two possibilities:
+-- 2.1. It is a static variable (i.e. a lambda or compound symbol with no free vars or
+--      another constant expression). In this case, add a new temp that has a 
+--      NConstantFreeVar assigned to it. The code generator will resolve this directly.
+-- 2.2. It is a dynamic variable. In this case add it as an NDynamicFreeVar. The code
+--      generator will assign a register for it.
+-- 3. It is an unknown variable, which results in an error.
+
+
+lookupName name = do
+  state <- get
+  let ctxs = contexts state
+  let localContext = head ctxs
+  case Map.lookup name (bindings localContext)  of
+    Just bnd -> return $ fst bnd
+    Nothing -> do
+           (var, isDynamic) <- lookupNameInContext name (tail ctxs)
+           if isDynamic then
+             return $ NDynamicFreeVar name
+           else
+             return $ NConstantFreeVar name
+
+
+lookupNameInContext name [] = error $ "Identifier " ++ name ++ " not found"
+lookupNameInContext name conts = do
+  let binds = bindings $ head conts
+  case Map.lookup name binds of
+    Just bnd -> return bnd
+    Nothing  -> lookupNameInContext name (tail conts)
+
+enterContext = do
+  pushContext emptyContext
+
+leaveContext = do
+  popContext
 
 newTempVar :: State NormState NormVar
 newTempVar = do
+  con <- context
+  let tmpVar = tempVarCounter con
+  let nextTmpVar = tmpVar + 1
+  putContext $ con { tempVarCounter = nextTmpVar }
+  return (NLocalVar tmpVar)
+
+
+context = gets $ head.contexts
+
+pushContext c = do
   state <- get
-  let tmpVar = tempVarCounter state
-  let nextTmpVar = (tempVarCounter state) + 1
-  put $ state { tempVarCounter = nextTmpVar }
-  return (NVar tmpVar)
+  put $ state { contexts = c : (contexts state) }
+
+popContext = do
+  state <- get
+  put $ state { contexts = tail.contexts $ state }
+
+putContext c = do
+  state <- get
+  put $ state { contexts = c : (tail.contexts $ state) }
 
 
--- TODO copied this from CodeGenState, delete it there
+addBinding :: String -> (NormVar, Bool) -> State NormState ()
+addBinding name bnd = do
+  con <- context
+  let bindings' = Map.insert name bnd (bindings con)
+  putContext $ con { bindings = bindings' }
+
+
+--- Symbols
+
 addSymbolName :: String -> State NormState SymId
 addSymbolName s = do
   state <- get
@@ -183,10 +279,4 @@ addSymbolName s = do
 getSymbolNames :: NormState -> SymbolNameList
 getSymbolNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . symbolNames
 
-
-addBinding :: String -> NormVar -> State NormState ()
-addBinding name var = do
-  state <- get
-  let bindings' = Map.insert name var (bindings state)
-  put $ state { bindings = bindings' }
 

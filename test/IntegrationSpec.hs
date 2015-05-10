@@ -54,7 +54,6 @@ spec = do
                  \ } \n\
                  \ add-two 5"
       let result = run code
-      putStrLn $ show $ toAsm code
       result `shouldReturn` VMNumber 7
 
     it "applies a local variable to a custom function" $ do
@@ -67,86 +66,6 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 7
 
-    it "matches a value against a single number" $ do
-      let code = " match 1 with {\n\
-                 \   1 -> :one \n\
-                 \ }"
-      let result = run code
-      result `shouldReturn` VMSymbol "one" []
-
-    it "matches a value against numbers" $ do
-      let code = " match 7 with {\n\
-                 \   1 -> :one \n\
-                 \   2 -> :two \n\
-                 \   3 -> :three \n\
-                 \   4 -> :four \n\
-                 \   5 -> :five \n\
-                 \   6 -> :six \n\
-                 \   7 -> :seven \n\
-                 \   8 -> :eight \n\
-                 \ }"
-      let result = run code
-      result `shouldReturn` VMSymbol "seven" []
-
-    it "matches a value against symbols" $ do
-      let code = " match :two with {\n\
-                 \   :one -> 1 \n\
-                 \   :two -> 2 \n\
-                 \ }"
-      let result = run code
-      result `shouldReturn` VMNumber 2
-
-    it "matches a value against numbers inside a function" $ do
-      let code = " val check (n) = { \n\
-                 \   match n with { \n\
-                 \     1 -> :one \n\
-                 \     2 -> :two \n\
-                 \ } \n\
-                 \ } \n\
-                 \ check 2"
-      let result = run code
-      result `shouldReturn` VMSymbol "two" []
-
-
-    it "binds an identifier in a match pattern" $ do
-      let code = " match 2 with { \n\
-                 \   1 -> :one \n\
-                 \   n -> add 5 n \n\
-                 \ }"
-      let result = run code
-      result `shouldReturn` VMNumber 7
-
-
-    it "matches a compound symbol" $ do
-      let code =  " match (:test 4 8 15) with { \n\
-                  \ :test 1 2 3 -> 1 \n\
-                  \ :test 4 8 15 -> 2 \n\
-                  \ :test 99 100 101 -> 3 \n\
-                  \ }"
-      let result = run code
-      result `shouldReturn` VMNumber 2
-
-
-    it "binds a value inside a symbol" $ do
-      let code =  " match (:test 4 8 15) with { \n\
-                  \ :test 1 2 3 -> 1 \n\
-                  \ :test 4 n m -> add n m \n\
-                  \ :test 99 100 101 -> 3 \n\
-                  \ }"
-      let result = run code
-      result `shouldReturn` VMNumber 23
-
-
-    it "binds a value inside a nested symbol" $ do
-      let code =  " match :test 4 (:inner 8) 15 with { \n\
-                  \ :test 4 (:wrong n) m -> 1 \n\
-                  \ :test 4 (:inner n) m -> add n m \n\
-                  \ :test 4 (:wrong n) m -> 1 \n\
-                  \ }"
-      let result = run code
-      result `shouldReturn` VMNumber 23
-
-
     -- TODO When returning a lambda from a function (as seen here) it would be more secure to have a tag for lambdas
     it "returns a simple lambda" $ do
       let code =  " val make-adder (x) = { \n\
@@ -156,6 +75,100 @@ spec = do
                   \ adder 55"
       let result = run code
       result `shouldReturn` VMNumber 77
+
+    it "returns a closure" $ do
+      let code =  " val make-adder (x) = { \n\
+                  \   val (y) = add x y \n\
+                  \ } \n\
+                  \ val adder = make-adder 4 \n\
+                  \ adder 55"
+      let result = run code
+      result `shouldReturn` VMNumber 59
+
+    -- TODO test recursion, both top-level and inside a function
+
+    context "when matching" $ do
+
+      it "matches a value against a single number" $ do
+        let code = " match 1 with {\n\
+                   \   1 -> :one \n\
+                   \ }"
+        let result = run code
+        result `shouldReturn` VMSymbol "one" []
+
+      it "matches a value against numbers" $ do
+        let code = " match 7 with {\n\
+                   \   1 -> :one \n\
+                   \   2 -> :two \n\
+                   \   3 -> :three \n\
+                   \   4 -> :four \n\
+                   \   5 -> :five \n\
+                   \   6 -> :six \n\
+                   \   7 -> :seven \n\
+                   \   8 -> :eight \n\
+                   \ }"
+        let result = run code
+        result `shouldReturn` VMSymbol "seven" []
+
+      it "matches a value against symbols" $ do
+        let code = " match :two with {\n\
+                   \   :one -> 1 \n\
+                   \   :two -> 2 \n\
+                   \ }"
+        let result = run code
+        result `shouldReturn` VMNumber 2
+
+      it "matches a value against numbers inside a function" $ do
+        let code = " val check (n) = { \n\
+                   \   match n with { \n\
+                   \     1 -> :one \n\
+                   \     2 -> :two \n\
+                   \ } \n\
+                   \ } \n\
+                   \ check 2"
+        let result = run code
+        result `shouldReturn` VMSymbol "two" []
+
+
+      it "binds an identifier in a match pattern" $ do
+        let code = " match 2 with { \n\
+                   \   1 -> :one \n\
+                   \   n -> add 5 n \n\
+                   \ }"
+        let result = run code
+        result `shouldReturn` VMNumber 7
+
+
+      it "matches a compound symbol" $ do
+        let code =  " match (:test 4 8 15) with { \n\
+                    \ :test 1 2 3 -> 1 \n\
+                    \ :test 4 8 15 -> 2 \n\
+                    \ :test 99 100 101 -> 3 \n\
+                    \ }"
+        let result = run code
+        result `shouldReturn` VMNumber 2
+
+
+      it "binds a value inside a symbol" $ do
+        let code =  " match (:test 4 8 15) with { \n\
+                    \ :test 1 2 3 -> 1 \n\
+                    \ :test 4 n m -> add n m \n\
+                    \ :test 99 100 101 -> 3 \n\
+                    \ }"
+        let result = run code
+        result `shouldReturn` VMNumber 23
+
+
+      it "binds a value inside a nested symbol" $ do
+        let code =  " match :test 4 (:inner 8) 15 with { \n\
+                    \ :test 4 (:wrong n) m -> 1 \n\
+                    \ :test 4 (:inner n) m -> add n m \n\
+                    \ :test 4 (:wrong n) m -> 1 \n\
+                    \ }"
+        let result = run code
+        result `shouldReturn` VMNumber 23
+
+
 
 {-
 What's missing:
