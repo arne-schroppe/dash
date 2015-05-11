@@ -77,7 +77,7 @@ spec = do
       result `shouldReturn` VMNumber 77
 
 
-    it "returns a closure" $ do
+    it "returns a closure with a dynamic variable" $ do
       let code =  " val make-sub (x) = { \n\
                   \   val (y) = sub x y \n\
                   \ } \n\
@@ -85,6 +85,31 @@ spec = do
                   \ subtractor 4"
       let result = run code
       result `shouldReturn` VMNumber 51
+
+    it "captures a constant" $ do
+      let code =  " val c = 30 \n\
+                  \ val make-sub (x) = { \n\
+                  \   val (y) = sub c y \n\
+                  \ } \n\
+                  \ val subtractor = make-sub 10 \n\
+                  \ subtractor 4"
+      let result = run code
+      result `shouldReturn` VMNumber 26
+
+
+    it "supports nested closures" $ do
+      let code = "\
+      \ val outside = 16 \n\
+      \ val make-adder-maker (x) = {\n\
+      \   val (y) = {\n\
+      \     val (z) = {\n\
+      \       add (add x (add z y)) outside \n\
+      \ }\n\
+      \ }\n\
+      \ }\n\
+      \ ((make-adder-maker 4) 8) 15"
+      let result = run code
+      result `shouldReturn` VMNumber 43
 
     -- TODO test recursion, both top-level and inside a function
 
@@ -191,18 +216,6 @@ TODO: Functions need a runtime tag!
 
 {-
 
-    it "supports nested closures" $ do
-      let result = run "\
-      \ val outside = 16 \n\
-      \ val make-adder-maker (x) = {\n\
-      \   val (y) = {\n\
-      \     val (z) = {\n\
-      \       add (add x (add z y)) outside \n\
-      \ }\n\
-      \ }\n\
-      \ }\n\
-      \ ((make-adder-maker 4) 8) 15"
-      result `shouldReturn` VMNumber 43
 -}
 
     {- TODO
