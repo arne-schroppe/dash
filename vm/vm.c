@@ -158,7 +158,7 @@ bool execute_instruction(vm_instruction instr) {
       heap_address cl_address = heap_alloc(num_args + 2); /* args + closure header + pointer to function */
       vm_value *cl_pointer = heap_get_pointer(cl_address);
       *cl_pointer = num_args; /* write header */
-      memcpy(cl_pointer + 1, &arg_reg[0], num_args);
+      memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
       *(cl_pointer + num_args + 1) = func_address;
       get_reg(reg0) = (vm_value) cl_address;
       debug( printf("MAKECL r%02i r%02i r%02i\n", reg0, func_address_reg, num_args) );

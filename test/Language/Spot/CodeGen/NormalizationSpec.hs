@@ -151,6 +151,19 @@ spec = do
                          NAtom $ NPrimOp $ NPrimOpAdd (NFunParam "a") (NDynamicFreeVar "b")
         norm `shouldBe` expected
 
+      it "identifies nested closures" $ do
+        let ast = Lambda ["a"] $
+                  Lambda ["b"] $
+                  Lambda ["c"] $
+                  Lambda ["d"] $ FunCall (Var "add") [Var "a", Var "b"]
+        let norm = pureNorm ast
+        let expected = NAtom $ NLambda [] ["a"] $
+                       NAtom $ NLambda ["a"] ["b"] $
+                       NAtom $ NLambda ["b", "a"] ["c"] $
+                       NAtom $ NLambda ["b", "a"] ["d"] $
+                        NAtom $ NPrimOp $ NPrimOpAdd (NDynamicFreeVar "a") (NDynamicFreeVar "b")
+        norm `shouldBe` expected
+
 -- TODO don't care about match for now
 {-
       -- TODO all named vars should also be put in a temp var

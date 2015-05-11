@@ -60,7 +60,7 @@ compileAtom reg atom name isResultValue = case atom of
           compileLoadLambda reg funAddr isResultValue
   NLambda freeVars params expr -> compileClosure reg freeVars params expr
   NFunCall funVar args -> do
-          argInstrs <- mapM (uncurry compileSetArg) $ zip [0..(length args)] args
+          argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
           rFun <- getReg funVar
           direct <- isDirectCallReg rFun
           if direct then do
@@ -127,21 +127,23 @@ isConstant atom = case atom of
 
 compileClosure reg freeVars params expr = do
   funAddr <- compileFunc freeVars params expr
-  argInstrs <- mapM (uncurry compileSetArgN) $ zip [0..(length freeVars)] freeVars
+  argInstrs <- mapM (uncurry compileSetArgN) $ zipWithIndex freeVars
   -- TODO use the next free register instead of hardcoded value
-  let makeClosureInstr = [ Tac_load_f 31 funAddr, Tac_make_cl reg 31 (length freeVars)]
+  let makeClosureInstr = [Tac_load_f 31 funAddr, Tac_make_cl reg 31 (length freeVars)]
   return $ argInstrs ++ makeClosureInstr
 
 
-compileSetArg arg var = do
+
+compileSetArg var arg = do
   rVar <- getReg var
   return $ Tac_set_arg arg rVar 0
 
-compileSetArgN arg name = do
+compileSetArgN name arg = do
   rVar <- getRegByName name
   return $ Tac_set_arg arg rVar 0
 
 
+zipWithIndex l = zip l [0..(length l)]
 
 
 ----- State -----
@@ -186,8 +188,8 @@ data CompCodeConst =
 
 beginFunction freeVars params = do
   state <- get
-  let localFreeVars = Map.fromList (zip freeVars [0..(length freeVars)])
-  let paramBindings = Map.fromList (zip params [0..(length params)])
+  let localFreeVars = Map.fromList (zipWithIndex freeVars)
+  let paramBindings = Map.fromList (zipWithIndex params)
   let newScope = makeScope paramBindings localFreeVars
   put $ state { scopes = newScope : (scopes state) }
   addr <- addPlaceholderFunction
@@ -236,6 +238,7 @@ getRegByName :: String -> State CompState Int
 getRegByName name = do
   lookup <- getRegN name
   -- TODO make this less ugly
+  -- TODO code duplication, handling of register offsets for free vars should be handled in one place only
   case lookup of
     Just index -> return index
     Nothing -> error $ "Unknown identifier " ++ name
@@ -245,7 +248,8 @@ getRegByName name = do
                   Just i -> return $ Just i
                   Nothing -> do
                           f <- freeVar name
-                          return f
+                          numParams <- numParameters
+                          return $ (+) <$> f <*> Just numParams
 
 getReg :: NormVar -> State CompState Int
 getReg (NConstantFreeVar _) = error "Compiler error"

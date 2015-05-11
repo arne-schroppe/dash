@@ -116,10 +116,18 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 6
 
+    it "captures several dynamic values" $ do
+      let code =  " val make-sub (x y z w) = { \n\
+                  \   val (a) = sub (sub z y) (sub x a)\n\
+                  \ } \n\
+                  \ val test = make-sub 33 55 99 160 \n\
+                  \ test 24"
+      let result = run code
+      result `shouldReturn` VMNumber ( (99 - 55) - (33 - 24) ) -- result: 35
 
     it "supports nested closures" $ do
       let code = "\
-      \ val outside = 16 \n\
+      \ val outside = 1623 \n\
       \ val make-adder-maker (x) = {\n\
       \   val (y) = {\n\
       \     val (z) = {\n\
@@ -127,9 +135,9 @@ spec = do
       \ }\n\
       \ }\n\
       \ }\n\
-      \ ((make-adder-maker 4) 8) 15"
+      \ ((make-adder-maker 9) 80) 150"
       let result = run code
-      result `shouldReturn` VMNumber 43
+      result `shouldReturn` VMNumber 1862
 
     -- TODO test recursion, both top-level and inside a function
 

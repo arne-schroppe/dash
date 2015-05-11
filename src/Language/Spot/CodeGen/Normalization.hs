@@ -110,6 +110,7 @@ normalizeLambda params bodyExpr k = do
   con <- context
   let free = freeVars con
   leaveContext
+  addMissingFreeVarsToOwnContext free
   k $ NLambda free params normalizedBody
 
 
@@ -136,6 +137,12 @@ normalizeMatch matchedExpr patterns k = do
           return (pattern, normExpr)
   k $ NNumber 0
 
+-- Free variables in a lambda that can't be resolved in our context need to become
+-- our free variables
+addMissingFreeVarsToOwnContext freeVs =
+  forM (reverse freeVs) $ \ name -> do
+          hasB <- hasBinding name
+          when (not hasB) $ addDynamicVar name
 
 
 
@@ -284,6 +291,9 @@ addBinding name bnd = do
   let bindings' = Map.insert name bnd (bindings con)
   putContext $ con { bindings = bindings' }
 
+hasBinding name = do
+  con <- context
+  return $ Map.member name (bindings con)
 
 --- Symbols
 
