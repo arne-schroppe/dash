@@ -96,6 +96,15 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 26
 
+    it "captures a constant plain symbol" $ do
+      let code =  " val ps = :my-symbol \n\
+                  \ val make-sym (x) = { \n\
+                  \   val (y) = ps \n\
+                  \ } \n\
+                  \ val symbolicator = make-sym 44 \n\
+                  \ symbolicator 55"
+      let result = run code
+      result `shouldReturn` VMSymbol "my-symbol" []
 
     it "captures a constant function" $ do
       let code =  " val subsub (a b) = sub a b \n\

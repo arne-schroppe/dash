@@ -43,7 +43,9 @@ compileAtom reg atom name isResultValue = case atom of
   NNumber n -> do
           addCodeConst name $ CConstNumber (fromIntegral n)
           return [Tac_load_i reg (fromIntegral n)]
-  NPlainSymbol sid -> return [Tac_load_ps reg sid] -- TODO test and add const
+  NPlainSymbol sid -> do
+          addCodeConst name $ CConstPlainSymbol sid
+          return [Tac_load_ps reg sid]
   NPrimOp (NPrimOpAdd a b) -> do
           ra <- getReg a
           rb <- getReg b
