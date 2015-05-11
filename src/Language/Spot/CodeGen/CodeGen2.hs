@@ -115,33 +115,37 @@ compileSetArgN arg name = do
 data CompState = CompState {
                    instructions :: Seq.Seq [Tac Reg]
                  , dataTable :: ConstTable -- rename ConstTable to DataTable
-                 , functionParams :: [Map.Map String Int]
-                 , freeVariables :: [Map.Map String Int]
-
-                 -- these are all the registers that hold function values which
-                 -- can be called directly with Tac_call. Everything else is 
-                 -- called with Tac_call_cl
-                 , directCallRegs :: [[Int]]
+                 , scopes :: [CompScope]
                  }
 
 emptyCompState = CompState {
                    instructions = Seq.fromList []
                  , dataTable = []
-                 , functionParams = []
-                 , freeVariables = []
-                 , directCallRegs = []
+                 , scopes = []
                  }
+
+data CompScope = CompScope {
+                   functionParams :: Map.Map String Int
+                 , freeVariables :: Map.Map String Int
+
+                 -- these are all the registers that hold function values which
+                 -- can be called directly with Tac_call. Everything else is 
+                 -- called with Tac_call_cl
+                 , directCallRegs :: [Int]
+                 }
+
+makeScope fps freeVars = CompScope {
+               functionParams = fps
+             , freeVariables = freeVars
+             , directCallRegs = []
+             }
 
 beginFunction freeVars params = do
   state <- get
   let localFreeVars = Map.fromList (zip freeVars [0..(length freeVars)])
-  let freeVars' = localFreeVars : freeVariables state
-  let newBindings = Map.fromList (zip params [0..(length params)])
-  let funParams' = newBindings : functionParams state
-  put $ state { functionParams = funParams'
-              , freeVariables = freeVars'
-              , directCallRegs = [] : (directCallRegs state)
-              }
+  let paramBindings = Map.fromList (zip params [0..(length params)])
+  let newScope = makeScope paramBindings localFreeVars
+  put $ state { scopes = newScope : (scopes state) }
   addr <- addPlaceholderFunction
   return addr
 
@@ -149,33 +153,29 @@ endFunction funAddr code = do
   state <- get
   let instrs = instructions state
   let instrs' = Seq.update funAddr code instrs
-  put $ state { functionParams = (tail $ functionParams state),
-                freeVariables = (tail $ freeVariables state),
-                directCallRegs = (tail $ directCallRegs state),
+  put $ state { scopes = (tail $ scopes state),
                 instructions = instrs' }
 
 numParameters :: State CompState Int
 numParameters = do
-  paramStack <- gets functionParams
-  return $ Map.size $ head paramStack
+  localParams <- gets $ functionParams.head.scopes
+  return $ Map.size localParams
 
 param :: String -> State CompState (Maybe Int)
 param name = do
-  paramStack <- gets functionParams
-  let localParams = head paramStack
+  localParams <- gets $ functionParams.head.scopes
   let res = Map.lookup name localParams
   return res
 
 
 numFreeVars :: State CompState Int
 numFreeVars = do
-  freeVarStack <- gets freeVariables
-  return $ Map.size $ head freeVarStack
+  localFreeVars <- gets $ freeVariables.head.scopes
+  return $ Map.size localFreeVars
 
 freeVar :: String -> State CompState (Maybe Int)
 freeVar name = do
-  freeVarStack <- gets freeVariables
-  let localFreeVars = head freeVarStack
+  localFreeVars <- gets $ freeVariables.head.scopes
   let res = Map.lookup name localFreeVars
   return res
 
@@ -227,16 +227,23 @@ getReg (NLocalVar tmpVar name) = do
   return $ numFree + numParams + tmpVar
 
 isDirectCallReg reg = do
-  dCallRegStack <- gets directCallRegs
-  let dCallRegs = head dCallRegStack
+  scope <- getScope
+  let dCallRegs = directCallRegs scope
   return $ Prelude.elem reg dCallRegs
 
 addDirectCallReg reg = do
-  state <- get
-  let dCallRegs = head $ directCallRegs state
-  let dCallRegs' = (reg : dCallRegs) : (tail $ directCallRegs state)
-  put $ state { directCallRegs = dCallRegs' }
+  scope <- getScope
+  let dCallRegs = directCallRegs scope
+  let dCallRegs' = reg : dCallRegs
+  putScope $ scope { directCallRegs = dCallRegs' }
 
+getScope = do
+  state <- get
+  return $ head (scopes state)
+
+putScope s = do
+  state <- get
+  put $ state { scopes = s : (tail $ scopes state) }
 
 
 
