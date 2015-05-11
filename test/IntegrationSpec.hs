@@ -86,7 +86,7 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 51
 
-    it "captures a constant" $ do
+    it "captures a constant number" $ do
       let code =  " val c = 30 \n\
                   \ val make-sub (x) = { \n\
                   \   val (y) = sub c y \n\
@@ -95,6 +95,17 @@ spec = do
                   \ subtractor 4"
       let result = run code
       result `shouldReturn` VMNumber 26
+
+
+    it "captures a constant function" $ do
+      let code =  " val subsub (a b) = sub a b \n\
+                  \ val make-sub (x) = { \n\
+                  \   val (y) = subsub x y \n\
+                  \ } \n\
+                  \ val subtractor = make-sub 10 \n\
+                  \ subtractor 4"
+      let result = run code
+      result `shouldReturn` VMNumber 6
 
 
     it "supports nested closures" $ do
