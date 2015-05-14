@@ -37,7 +37,7 @@ type Cont = NormAtomicExpr -> State NormState NormExpr
 normalize :: Expr -> (NormExpr, ConstTable, SymbolNameList)
 normalize expr =
   let (result, finalState) = runState (normalizeInContext expr) emptyNormState in
-  (result, [], getSymbolNames finalState)
+  (result, constTable finalState, getSymbolNames finalState)
 
 
 
@@ -84,7 +84,11 @@ normalizeSymbol sid [] k = do
   symId <- addSymbolName sid
   k (NPlainSymbol symId)
 
-normalizeSymbol sid args k = error "Can't normalize complex symbols yet"
+normalizeSymbol sid args k = do
+  encConst <- encodeConstant $ LitSymbol sid args
+  cAddr <- addConstant encConst
+  k (NCompoundSymbol False cAddr)
+
 -- There are three cases:
 --   - static symbols, which are completely in the sym table
 --   - dynamic symbols, which have some dynamic elements. A template for these can be
@@ -110,7 +114,7 @@ normalizeLambda params bodyExpr k = do
   con <- context
   let free = freeVars con
   leaveContext
-  addMissingFreeVarsToOwnContext free
+  pullUpFreeVars free
   k $ NLambda free params normalizedBody
 
 
@@ -137,9 +141,9 @@ normalizeMatch matchedExpr patterns k = do
           return (pattern, normExpr)
   k $ NNumber 0
 
--- Free variables in a lambda that can't be resolved in our context need to become
--- our free variables
-addMissingFreeVarsToOwnContext freeVs =
+-- Free variables in a used lambda which can't be resolved in our context need to become
+-- free variables in our context
+pullUpFreeVars freeVs =
   forM (reverse freeVs) $ \ name -> do
           hasB <- hasBinding name
           when (not hasB) $ addDynamicVar name
@@ -191,11 +195,13 @@ isDynamic expr = case expr of
 
 data NormState = NormState {
   symbolNames :: Map.Map String SymId
+, constTable :: ConstTable -- rename ConstTable to DataTable
 , contexts :: [Context] -- head is current context
 }
 
 emptyNormState = NormState {
   symbolNames = Map.empty
+, constTable = []
 , contexts = []
 }
 
@@ -295,6 +301,7 @@ hasBinding name = do
   con <- context
   return $ Map.member name (bindings con)
 
+
 --- Symbols
 
 addSymbolName :: String -> State NormState SymId
@@ -311,5 +318,32 @@ addSymbolName s = do
 
 getSymbolNames :: NormState -> SymbolNameList
 getSymbolNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . symbolNames
+
+
+--- Constants 
+-- TODO Split this into separate module? Together with constTable type ?
+
+addConstant :: Constant -> State NormState ConstAddr
+addConstant c = do
+  state <- get
+  let cTable = constTable state
+  let nextAddr = length cTable
+  let constTable' = cTable ++ [c] -- TODO can we cons + reverse?
+  put $ state { constTable = constTable' }
+  return $ fromIntegral nextAddr
+
+
+encodeConstant :: Expr -> State NormState Constant
+encodeConstant v =
+  case v of
+    LitNumber n -> return $ CNumber n
+    LitSymbol s [] -> do
+                sid <- addSymbolName s
+                return $ CPlainSymbol sid
+    LitSymbol s args -> do
+                symId <- addSymbolName s
+                encodedArgs <- mapM encodeConstant args
+                return $ CCompoundSymbol symId encodedArgs
+    _ -> error $ "Can only encode constant symbols for now"
 
 

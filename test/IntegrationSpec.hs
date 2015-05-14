@@ -32,10 +32,6 @@ spec = do
       let result = run "sub 7 3"
       result `shouldReturn` VMNumber 4
 
-    it "interprets a compound symbol" $ do
-      let result = run ":sym 2 3"
-      result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]
-
     it "stores a value in a variable" $ do
       let result = run " val a = 4\n\
                        \ a"
@@ -141,6 +137,13 @@ spec = do
 
     -- TODO test recursion, both top-level and inside a function
 
+    context "when using compound symbols" $ do
+
+      it "interprets a compound symbol" $ do
+        let result = run ":sym 2 3"
+        result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]
+
+
 
 {-
     context "when matching" $ do
@@ -229,7 +232,8 @@ spec = do
 {-
 What's missing:
 
-- Closures
+K Closures
+- Recursion (also mutual recursion)
 - Currying (also with underscore)
 - Creating symbols
 - Modules

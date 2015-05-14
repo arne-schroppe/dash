@@ -18,12 +18,13 @@ import qualified Data.Map as Map
 
 -- TODO when there is more time, do dataflow analysis to reuse registers
 
+-- TODO find better name than "code constant"
 
 
 compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
-compile expr _ symlist =
+compile expr cTable symlist =
   let result = execState (compileFunc [] [] expr) emptyCompState in
-  (toList (instructions result), dataTable result, symlist)
+  (toList (instructions result), cTable, symlist)
 
 
 compileFunc freeVars params expr = do
@@ -46,6 +47,9 @@ compileAtom reg atom name isResultValue = case atom of
   NPlainSymbol sid -> do
           addCodeConst name $ CConstPlainSymbol sid
           return [Tac_load_ps reg sid]
+  NCompoundSymbol False cAddr -> do
+          -- addCodeConst name $ CConstCompoundSymbol cAddr
+          return [Tac_load_cs reg cAddr] -- TODO codeConstant?
   NPrimOp (NPrimOpAdd a b) -> do
           ra <- getReg a
           rb <- getReg b
@@ -116,14 +120,6 @@ canBeCalledDirectly atom = case atom of
   NLambda ([]) _ _ -> True
   _ -> False
 
-{-
-isConstant atom = case atom of
-  NLambda [] _ _ -> True
-  NNumber _ -> True
-  NPlainSymbol _ -> True
-  -- NCompoundSymbol _ False _ -> True
-  _ -> False
--}
 
 compileClosure reg freeVars params expr = do
   funAddr <- compileFunc freeVars params expr
@@ -151,13 +147,11 @@ zipWithIndex l = zip l [0..(length l)]
 -- TODO introduce a proper symtable
 data CompState = CompState {
                    instructions :: Seq.Seq [Tac Reg]
-                 , dataTable :: ConstTable -- rename ConstTable to DataTable
                  , scopes :: [CompScope]
                  }
 
 emptyCompState = CompState {
                    instructions = Seq.fromList []
-                 , dataTable = []
                  , scopes = []
                  }
 
@@ -182,7 +176,7 @@ makeScope fps freeVars = CompScope {
 data CompCodeConst =
     CConstNumber VMWord
   | CConstPlainSymbol SymId
- -- | CConstCompoundSymbol ConstAddr
+  | CConstCompoundSymbol ConstAddr
   | CConstLambda FunAddr
 
 
@@ -237,12 +231,12 @@ addPlaceholderFunction = do
 getRegByName :: String -> State CompState Int
 getRegByName name = do
   lookup <- getRegN name
-  -- TODO make this less ugly
   -- TODO code duplication, handling of register offsets for free vars should be handled in one place only
   case lookup of
     Just index -> return index
     Nothing -> error $ "Unknown identifier " ++ name
   where getRegN name = do
+  -- TODO make this less ugly
           p <- param name
           case p of
                   Just i -> return $ Just i

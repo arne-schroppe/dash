@@ -5,6 +5,8 @@ module Language.Spot.IR.Norm where
 import Language.Spot.VM.Types
 import Language.Spot.IR.Ast
 
+import Language.Spot.IR.Tac (ConstAddr)
+
 -- How do we handle KnownFreeVars? Initial idea would be to add an initial function
 -- placeholder for each toplevel function (to get an address) and to immediately
 -- encode constants, and then use that information to replace NKnownFreeVar with its
@@ -23,7 +25,7 @@ data NormExpr =
 data NormAtomicExpr =
     NNumber Int
   | NPlainSymbol Int
---  | NCompoundSymbol Int Bool [NormVar]  -- this is somewhat complicated, as we have to distinguish between dynamic and static symbols
+  | NCompoundSymbol Bool ConstAddr  -- IsDynamic? SymbolAddr
   | NVar NormVar -- This is only for returning a var as a result
   | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body
   | NPrimOp NormPrimOp
