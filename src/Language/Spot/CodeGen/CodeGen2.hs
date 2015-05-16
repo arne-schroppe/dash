@@ -65,14 +65,8 @@ compileAtom reg atom name isResultValue = case atom of
   NLambda freeVars params expr -> compileClosure reg freeVars params expr
   NFunCall funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
-          rFun <- getReg funVar
-          direct <- isDirectCallReg rFun
-          if direct then do
-            let callInstr = [Tac_call reg rFun (length args)]
-            return $ argInstrs ++ callInstr
-          else do
-            let callInstr = [Tac_call_cl reg rFun (length args)]
-            return $ argInstrs ++ callInstr
+          callInstr <- compileCallInstr reg funVar args
+          return $ argInstrs ++ callInstr
   NVar var -> case var of
           NLocalVar varId _ -> do
                  r <- getReg var
@@ -82,9 +76,17 @@ compileAtom reg atom name isResultValue = case atom of
                  return [Tac_move reg r]
           NConstantFreeVar name -> compileConstantFreeVar reg name isResultValue
           _ -> error "fail"
-  NMatch maxCaptures subject patternAddr exprs  -> return [Tac_load_i reg 1]
-          -- compileMatch reg subject patternAddr isResultValue
+  NMatch maxCaptures subject patternAddr branchVars ->
+          compileMatch reg subject patternAddr branchVars
   x -> error $ "Unable to compile " ++ (show x)
+
+compileCallInstr reg funVar args = do
+          rFun <- getReg funVar
+          direct <- isDirectCallReg rFun
+          if direct then do
+            return [Tac_call reg rFun (length args)]
+          else do
+            return [Tac_call_cl reg rFun (length args)]
 
 compileConstantFreeVar :: Reg -> String -> Bool -> State CompState [Tac Reg]
 compileConstantFreeVar reg name isResultValue = do
@@ -131,15 +133,21 @@ compileClosure reg freeVars params expr = do
   return $ argInstrs ++ makeClosureInstr
 
 
-{-
-compileMatch reg subject patternAddr exprs isResultValue = do
+compileMatch reg subject patternAddr branchVars = do
   subjR <- getReg subject
   -- TODO use the next free register instead of hardcoded value
-  let matchCode = [Tac_load_addr 30 patternAddr, Tac_match ]
-  compiledExprs <- forM exprs compileExpr
-  -- bodyCode <- compileMatchBody compiledExprs
-  return [Tac_load_i reg 1]
--}
+  let handledBranches = [0 .. (length branchVars) - 1]
+  let remainingBranches = reverse handledBranches
+  let jumpTable = map (\(remaining, handled) ->
+                      -- Jump once for each remaining entry in jump table and twice for calls
+                      Tac_jmp (1 * remaining + 2 * handled)) $
+                      zip remainingBranches handledBranches
+  let matchCode = [Tac_load_addr 30 patternAddr, Tac_match subjR 30 0]
+  compiledBranches <- forM (zip remainingBranches branchVars) $ \ (remaining, funVar) -> do
+          callInstr <- compileCallInstr reg funVar []
+          return $ callInstr ++ [Tac_jmp (remaining * 2)]
+  let body = Prelude.concat compiledBranches
+  return $ matchCode ++ jumpTable ++ body
 
 
 compileSetArg var arg = do

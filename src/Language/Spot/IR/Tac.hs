@@ -40,7 +40,7 @@ data ThreeAddressCode var =
   | Tac_call_cl var var Int
   | Tac_make_cl var var Int
   | Tac_jmp Int
-  | Tac_match var var var
+  | Tac_match var var var     -- subj reg, pattern addr reg, start reg for captures
   | Tac_set_arg Int var Int
   deriving (Show)
 
