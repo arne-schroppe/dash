@@ -62,19 +62,25 @@ normalizeExpr expr = case expr of
 
 atomizeExpr :: Expr -> Cont -> State NormState NormExpr
 atomizeExpr expr k = case expr of
-  FunCall funExpr args -> normalizeFunCall funExpr args k
-  LitNumber n -> normalizeNumber n k
-  LitSymbol sid args -> normalizeSymbol sid args k
-  Var name -> normalizeVar name k
-  Lambda params bodyExpr -> normalizeLambda params bodyExpr k
-  Match matchedExpr patterns -> normalizeMatch matchedExpr patterns k
+  FunCall funExpr args ->
+          normalizeFunCall funExpr args k
+  LitNumber n ->
+          normalizeNumber n k
+  LitSymbol sid args ->
+          normalizeSymbol sid args k
+  Var name ->
+          normalizeVar name k
+  Lambda params bodyExpr ->
+          normalizeLambda params bodyExpr k
+  Match matchedExpr patterns ->
+          normalizeMatch matchedExpr patterns k
   LocalBinding (Binding name boundExpr) restExpr -> -- inner local binding ! (i.e. let a = let b = 2 in 1 + b)
-    atomizeExpr boundExpr $ \ aExpr -> do
-      var <- newTempVar name
-      addBinding name (var, False)
-      atomizeExpr restExpr $ \ boundExpr -> do
-        rest <- k boundExpr
-        return $ NLet var aExpr rest
+          atomizeExpr boundExpr $ \ aExpr -> do
+            var <- newTempVar name
+            addBinding name (var, False)
+            atomizeExpr restExpr $ \ boundExpr -> do
+              rest <- k boundExpr
+              return $ NLet var aExpr rest
   x -> error $ "Unable to normalize " ++ (show x)
 
 
@@ -134,12 +140,16 @@ normalizeMathPrimOp mathPrimOp a b k = do
       k $ NPrimOp $ mathPrimOp aVar bVar
 
 
-normalizeMatch matchedExpr patterns k = do
-  normalizedPatterns <- forM patterns $
-      \(pattern, expr) -> do
-          normExpr <- normalizeExpr expr
-          return (pattern, normExpr)
-  k $ NNumber 0
+normalizeMatch :: Expr -> [(Pattern, Expr)] -> Cont -> State NormState NormExpr
+normalizeMatch matchedExpr patternsAndExpressions k = do
+  matchedVarsAndEncodedPatterns <- forM (map fst patternsAndExpressions) $ encodeMatchPattern 0
+  patternAddr <- addConstant $ CMatchData $ map snd matchedVarsAndEncodedPatterns
+  let exprs = map snd patternsAndExpressions
+  -- we wrap each match branch in a lambda. This way we can handle them easier in the codegenerator
+  let lambdaizedExprs = map (\ expr -> Lambda [] expr) exprs
+  nameExpr matchedExpr "" $ \ subjVar ->
+          normalizeExprList lambdaizedExprs $ \ branchVars -> do
+                  k $ NMatch 0 subjVar patternAddr branchVars
 
 -- Free variables in a used lambda which can't be resolved in our context need to become
 -- free variables in our context
@@ -152,6 +162,7 @@ pullUpFreeVars freeVs =
 
 ----- Normalization helper functions -----
 
+-- TODO shouldn't this be called something like nameExprList ?
 normalizeExprList exprList k =
   normalizeExprList' exprList [] k
   where
@@ -165,6 +176,7 @@ normalizeExprList exprList k =
         return restExpr
 
 
+-- TODO rename this function to something more appropriate
 nameExpr expr originalName k = case expr of
   -- Some variable can be used directly and don't need to be let-bound
   Var name -> do
@@ -197,7 +209,7 @@ data NormState = NormState {
   symbolNames :: Map.Map String SymId
 , constTable :: ConstTable -- rename ConstTable to DataTable
 , contexts :: [Context] -- head is current context
-}
+} deriving (Eq, Show)
 
 emptyNormState = NormState {
   symbolNames = Map.empty
@@ -207,7 +219,7 @@ emptyNormState = NormState {
 
 data Context = Context {
   tempVarCounter :: Int
-, bindings :: Map.Map String (NormVar, Bool) -- Bool indicates if this is a dynamic var
+, bindings :: Map.Map String (NormVar, Bool) -- Bool indicates whether this is a dynamic var or not
 , freeVars :: [String]
 } deriving (Eq, Show)
 
@@ -346,4 +358,23 @@ encodeConstant v =
                 return $ CCompoundSymbol symId encodedArgs
     _ -> error $ "Can only encode constant symbols for now"
 
+
+encodeMatchPattern nextMatchVar pat =
+  case pat of
+    PatNumber n -> return ([], (CNumber n))
+    PatSymbol s [] -> do sid <- addSymbolName s
+                         return $ ([], CPlainSymbol sid)
+    PatSymbol s params -> do
+                  symId <- addSymbolName s
+                  (vars, pats) <- encodePatternCompoundSymbolArgs nextMatchVar params
+                  return (vars, CCompoundSymbol symId pats)
+    PatVar n -> return $ ([n], CMatchVar nextMatchVar)
+
+-- TODO use inner state
+encodePatternCompoundSymbolArgs nextMatchVar args = do
+  (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
+    (vars, encoded) <- encodeMatchPattern nextMV p
+    return (nextMV + (fromIntegral $ length vars), accVars ++ vars, pats ++ [encoded])
+    ) (nextMatchVar, [], []) args  -- TODO get that O(n*m) out and make it more clear what this does
+  return (vars, entries)
 

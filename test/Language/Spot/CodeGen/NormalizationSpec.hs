@@ -164,6 +164,49 @@ spec = do
                         NAtom $ NPrimOp $ NPrimOpAdd (NDynamicFreeVar "a") (NDynamicFreeVar "b")
         norm `shouldBe` expected
 
+
+      it "normalizes match-bodies to lambdas" $ do
+        let ast = Match (LitNumber 2) [
+                    (PatNumber 1, LitNumber 33),
+                    (PatNumber 2, LitNumber 44)
+                  ]
+        let norm = pureNorm ast
+        let expected = NLet (NLocalVar 0 "") (NNumber 2) $
+                       NLet (NLocalVar 1 "") (NLambda [] [] $ NAtom $ NNumber 33) $
+                       NLet (NLocalVar 2 "") (NLambda [] [] $ NAtom $ NNumber 44) $
+                       NAtom $ NMatch 0 (NLocalVar 0 "") 0 [NLocalVar 1 "", NLocalVar 2 ""]
+        norm `shouldBe` expected
+
+
+      it "captures constant free variables in match bodies" $ do
+        let ast = LocalBinding (Binding "a" $ LitNumber 77) $
+                  Match (LitNumber 2) [
+                    (PatNumber 1, Var "a"),
+                    (PatNumber 2, LitNumber 44)
+                  ]
+        let norm = pureNorm ast
+        let expected = NLet (NLocalVar 0 "a") (NNumber 77) $
+                       NLet (NLocalVar 1 "") (NNumber 2) $
+                       NLet (NLocalVar 2 "") (NLambda [] [] $ NAtom $ NVar $ NConstantFreeVar "a") $
+                       NLet (NLocalVar 3 "") (NLambda [] [] $ NAtom $ NNumber 44) $
+                       NAtom $ NMatch 0 (NLocalVar 1 "") 0 [NLocalVar 2 "", NLocalVar 3 ""]
+        norm `shouldBe` expected
+
+      it "captures dynamic free variables in match bodies" $ do
+        let ast = Lambda ["a"] $
+                  Match (LitNumber 2) [
+                    (PatNumber 1, Var "a"),
+                    (PatNumber 2, LitNumber 44)
+                  ]
+        let norm = pureNorm ast
+        let expected = NAtom $ NLambda [] ["a"] $
+                       NLet (NLocalVar 0 "") (NNumber 2) $
+                       NLet (NLocalVar 1 "") (NLambda ["a"] [] $ NAtom $ NVar $ NDynamicFreeVar "a") $
+                       NLet (NLocalVar 2 "") (NLambda [] [] $ NAtom $ NNumber 44) $
+                       NAtom $ NMatch 0 (NLocalVar 0 "") 0 [NLocalVar 1 "", NLocalVar 2 ""]
+        norm `shouldBe` expected
+
+
 -- TODO don't care about match for now
 {-
       -- TODO all named vars should also be put in a temp var

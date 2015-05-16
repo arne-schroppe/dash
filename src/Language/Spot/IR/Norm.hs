@@ -27,10 +27,10 @@ data NormAtomicExpr =
   | NPlainSymbol Int
   | NCompoundSymbol Bool ConstAddr  -- IsDynamic? SymbolAddr
   | NVar NormVar -- This is only for returning a var as a result
-  | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body
+  | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body -- TODO free vars and formal params should appear in the same order as later in assembly!
   | NPrimOp NormPrimOp
   | NFunCall NormVar [NormVar]
-  | NMatch Int NormVar [(Pattern, NormExpr)] -- MaxCaptures Subject (Patterns, Expr)
+  | NMatch Int NormVar ConstAddr [NormVar] -- MaxCaptures Subject PatternAddr [Expr]
   deriving (Eq, Show)
 
 

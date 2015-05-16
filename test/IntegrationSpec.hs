@@ -143,9 +143,11 @@ spec = do
         let result = run ":sym 2 3"
         result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]
 
+      -- TODO dynamic compound symbols
 
 
-{-
+
+
     context "when matching" $ do
 
       it "matches a value against a single number" $ do
@@ -226,7 +228,7 @@ spec = do
                     \ }"
         let result = run code
         result `shouldReturn` VMNumber 23
--}
+
 
 
 {-
@@ -246,9 +248,6 @@ TODO: Functions need a runtime tag!
 
 -}
 
-{-
-
--}
 
     {- TODO
       val make-sym (i) = 

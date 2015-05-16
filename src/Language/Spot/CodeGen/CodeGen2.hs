@@ -82,6 +82,8 @@ compileAtom reg atom name isResultValue = case atom of
                  return [Tac_move reg r]
           NConstantFreeVar name -> compileConstantFreeVar reg name isResultValue
           _ -> error "fail"
+  NMatch maxCaptures subject patternAddr exprs  -> return [Tac_load_i reg 1]
+          -- compileMatch reg subject patternAddr isResultValue
   x -> error $ "Unable to compile " ++ (show x)
 
 compileConstantFreeVar :: Reg -> String -> Bool -> State CompState [Tac Reg]
@@ -129,6 +131,16 @@ compileClosure reg freeVars params expr = do
   return $ argInstrs ++ makeClosureInstr
 
 
+{-
+compileMatch reg subject patternAddr exprs isResultValue = do
+  subjR <- getReg subject
+  -- TODO use the next free register instead of hardcoded value
+  let matchCode = [Tac_load_addr 30 patternAddr, Tac_match ]
+  compiledExprs <- forM exprs compileExpr
+  -- bodyCode <- compileMatchBody compiledExprs
+  return [Tac_load_i reg 1]
+-}
+
 
 compileSetArg var arg = do
   rVar <- getReg var
@@ -144,7 +156,6 @@ zipWithIndex l = zip l [0..(length l)]
 
 ----- State -----
 
--- TODO introduce a proper symtable
 data CompState = CompState {
                    instructions :: Seq.Seq [Tac Reg]
                  , scopes :: [CompScope]
@@ -308,5 +319,6 @@ getCodeConstInOuterScope name = do
       case Map.lookup name consts of
         Just c -> return c
         Nothing -> getCodeConst' name $ tail scps
+
 
 
