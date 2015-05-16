@@ -136,13 +136,13 @@ compileClosure reg freeVars params expr = do
 
 compileMatch reg subject maxCaptures patternAddr branches = do
   let branchMatchedVars = map fst branches
-  let branchLambdaVars = map snd branches
+  let branchLambdaVars = map snd branches -- the variables containing lambdas to call
   subjR <- getReg subject
   -- TODO use the next free register instead of hardcoded value
   let instrsPerBranch = 3 -- load args, call lambda, jump out
   let handledBranches = [0 .. (length branchLambdaVars) - 1]
   let remainingBranches = reverse handledBranches
-  let captureStartReg = 29 - maxCaptures + 1
+  let captureStartReg = 29 - maxCaptures + 1 -- TODO take the next n registers but don't reserve them. We don't need them afterwards
   let jumpTable = map (\(remaining, handled) ->
                       -- Jump 1 instr for each remaining entry in jump table
                       Tac_jmp (1 * remaining + instrsPerBranch * handled)) $
@@ -189,7 +189,7 @@ data CompScope = CompScope {
                  , freeVariables :: Map.Map String Int
 
                  -- these are all the registers that hold function values which
-                 -- can be called directly with Tac_call. Everything else is 
+                 -- can be called directly with Tac_call. Everything else is
                  -- called with Tac_call_cl
                  , directCallRegs :: [Int]
                  , codeConstants :: Map.Map String CompCodeConst

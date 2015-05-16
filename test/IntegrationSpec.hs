@@ -237,8 +237,14 @@ What's missing:
 K Closures
 - Recursion (also mutual recursion)
 - Currying (also with underscore)
+- Strings
 - Creating symbols
+- Lists
+- operators
 - Modules
+- indentation syntax
+
+
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
 - Faster, optimized match patterns (reduce number of comparisons)
 - Uniquely name vars in frontend (?)

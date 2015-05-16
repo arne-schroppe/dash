@@ -25,7 +25,7 @@ data NormExpr =
 data NormAtomicExpr =
     NNumber Int
   | NPlainSymbol Int
-  | NCompoundSymbol Bool ConstAddr  -- IsDynamic? SymbolAddr
+  | NCompoundSymbol Bool ConstAddr  -- IsDynamic SymbolAddr
   | NVar NormVar -- This is only for returning a var as a result
   | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body -- TODO free vars and formal params should appear in the same order as later in assembly!
   | NPrimOp NormPrimOp
