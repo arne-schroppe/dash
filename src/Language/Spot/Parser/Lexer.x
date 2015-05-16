@@ -33,11 +33,13 @@ tokens :-
   "module"      { mkTok TModule }
   "match"       { mkTok TMatch }
   "do"          { mkTok TDo }
+  "with"        { mkTok TWith }
+  "begin"       { mkTok TBegin }
+  "end"         { mkTok TEnd }
   ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
   "="           { mkTok TEqual }
   "->"          { mkTok TArrow_R }
   "<-"          { mkTok TArrow_L }
-  "with"        { mkTok TWith }
   @integer      { mkTokS (\s -> TInt (read s)) }
   @ident        { mkTokS (\s -> TId s) }
   "{"           { mkTok TIndent } -- Hack
@@ -90,7 +92,6 @@ data Token  = TEOL
             | TClose_Par
             | TVal
             | TModule
-            | TWith
             | TEqual
             | TSymbol String
             | TId String
@@ -102,6 +103,9 @@ data Token  = TEOL
             | TDo
             | TArrow_R
             | TArrow_L
+            | TWith
+            | TBegin
+            | TEnd
             | TIndent
             | TOutdent
   deriving (Show, Eq)

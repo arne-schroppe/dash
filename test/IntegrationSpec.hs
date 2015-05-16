@@ -151,14 +151,14 @@ spec = do
     context "when matching" $ do
 
       it "matches a value against a single number" $ do
-        let code = " match 1 with {\n\
+        let code = " match 1 begin\n\
                    \   1 -> :one \n\
-                   \ }"
+                   \ end"
         let result = run code
         result `shouldReturn` VMSymbol "one" []
 
       it "matches a value against numbers" $ do
-        let code = " match 7 with {\n\
+        let code = " match 7 begin\n\
                    \   1 -> :one \n\
                    \   2 -> :two \n\
                    \   3 -> :three \n\
@@ -167,24 +167,24 @@ spec = do
                    \   6 -> :six \n\
                    \   7 -> :seven \n\
                    \   8 -> :eight \n\
-                   \ }"
+                   \ end"
         let result = run code
         result `shouldReturn` VMSymbol "seven" []
 
       it "matches a value against symbols" $ do
-        let code = " match :two with {\n\
+        let code = " match :two begin\n\
                    \   :one -> 1 \n\
                    \   :two -> 2 \n\
-                   \ }"
+                   \ end"
         let result = run code
         result `shouldReturn` VMNumber 2
 
       it "matches a value against numbers inside a function" $ do
         let code = " val check (n) = { \n\
-                   \   match n with { \n\
+                   \   match n begin \n\
                    \     1 -> :one \n\
                    \     2 -> :two \n\
-                   \ } \n\
+                   \   end \n\
                    \ } \n\
                    \ check 2"
         let result = run code
@@ -192,40 +192,40 @@ spec = do
 
 
       it "binds an identifier in a match pattern" $ do
-        let code = " match 2 with { \n\
+        let code = " match 2 begin \n\
                    \   1 -> :one \n\
                    \   n -> add 5 n \n\
-                   \ }"
+                   \ end"
         let result = run code
         result `shouldReturn` VMNumber 7
 
 
       it "matches a compound symbol" $ do
-        let code =  " match (:test 4 8 15) with { \n\
+        let code =  " match (:test 4 8 15) begin \n\
                     \ :test 1 2 3 -> 1 \n\
                     \ :test 4 8 15 -> 2 \n\
                     \ :test 99 100 101 -> 3 \n\
-                    \ }"
+                    \ end"
         let result = run code
         result `shouldReturn` VMNumber 2
 
 
       it "binds a value inside a symbol" $ do
-        let code =  " match (:test 4 8 15) with { \n\
+        let code =  " match (:test 4 8 15) begin \n\
                     \ :test 1 2 3 -> 1 \n\
                     \ :test 4 n m -> add n m \n\
                     \ :test 99 100 101 -> 3 \n\
-                    \ }"
+                    \ end"
         let result = run code
         result `shouldReturn` VMNumber 23
 
 
       it "binds a value inside a nested symbol" $ do
-        let code =  " match :test 4 (:inner 8) 15 with { \n\
+        let code =  " match :test 4 (:inner 8) 15 begin \n\
                     \ :test 4 (:wrong n) m -> 1 \n\
                     \ :test 4 (:inner n) m -> add n m \n\
                     \ :test 4 (:wrong n) m -> 1 \n\
-                    \ }"
+                    \ end"
         let result = run code
         result `shouldReturn` VMNumber 23
 

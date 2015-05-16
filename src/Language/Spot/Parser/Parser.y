@@ -18,7 +18,6 @@ import Language.Spot.IR.Ast
   ')'       { TClose_Par }
   val       { TVal }
   module    { TModule }
-  with      { TWith }
   '='       { TEqual }
   symbol    { TSymbol $$ }
   id        { TId $$ }
@@ -30,6 +29,9 @@ import Language.Spot.IR.Ast
   do        { TDo }
   '->'      { TArrow_R }
   '<-'      { TArrow_L }
+  with      { TWith }
+  begin     { TBegin }
+  end       { TEnd }
   indent    { TIndent }
   outdent   { TOutdent }
 
@@ -48,6 +50,10 @@ star(p):
 plus(p):
   p star(p)       { $1 : $2 }
 
+body(e):
+    with indent opt(eol) e outdent eol { $4 }
+  | begin opt(eol) e end eol { $3 }
+-- | e eol { $1 }
 
 Prog:
     opt(eol) Expr opt(eol)  { $2 }
@@ -90,8 +96,11 @@ Anon_fun:
     val Fun_rest  { $2 }
 
 Fun_rest:
-    '(' opt(eol) plus(id) opt(eol) ')' Def_rest  { Lambda $3 $6 }
+    '(' opt(eol) plus(id) opt(eol) ')' '=' fun_body(Expr) { Lambda $3 $7 }
 
+fun_body(e):
+    opt(eol) indent opt(eol) e opt(eol) outdent opt(eol) { $4 }
+  | Expr eol { $1 }
 
 Body:
     Block_start Expr Block_end { $2 }
@@ -136,28 +145,10 @@ Fun_call:
 Fun_args:
     Simple_expr         { $1 }
 
-Do_expr:
-  {- TODO id should be a qid -}
-    do id with Do_body  { makeMonad $2 $4 }
 
-Do_body:
-    Block_start plus(Do_line) Block_end  { $2 }
-
-Do_line:
-    id '<-' Do_line_expr Line_end  { ($1, $3) }
-  | Do_line_expr Line_end          { ("_", $1) }
-
-Do_line_expr:
-    Fun_call            { $1 }
-  | Qid                 { $1 }
-  | Non_symbol_literal  { $1 }
-  | Complex_symbol      { $1 }
 
 Match_expr:
-    match Expr with Match_body { Match $2 $4 }
-
-Match_body:
-    Block_start plus(Match_line) Block_end  { $2 }
+    match Expr body( plus(Match_line) ) { Match $2 $3 }
 
 Match_line:
     Pattern '->' Expr Line_end { ($1, $3) }
@@ -177,6 +168,26 @@ Simple_pattern:
 
 Symbol_pattern:
     symbol star(Simple_pattern) { PatSymbol $1 $2 }
+
+
+
+Do_expr:
+  {- TODO id should be a qid -}
+    do id with Do_body  { makeMonad $2 $4 }
+
+Do_body:
+    Block_start plus(Do_line) Block_end  { $2 }
+
+Do_line:
+    id '<-' Do_line_expr Line_end  { ($1, $3) }
+  | Do_line_expr Line_end          { ("_", $1) }
+
+Do_line_expr:
+    Fun_call            { $1 }
+  | Qid                 { $1 }
+  | Non_symbol_literal  { $1 }
+  | Complex_symbol      { $1 }
+
 
 Qid:
     id  { Var $1 }
