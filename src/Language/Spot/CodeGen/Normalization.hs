@@ -143,13 +143,16 @@ normalizeMathPrimOp mathPrimOp a b k = do
 normalizeMatch :: Expr -> [(Pattern, Expr)] -> Cont -> State NormState NormExpr
 normalizeMatch matchedExpr patternsAndExpressions k = do
   matchedVarsAndEncodedPatterns <- forM (map fst patternsAndExpressions) $ encodeMatchPattern 0
+  let matchedVars = map fst matchedVarsAndEncodedPatterns
   patternAddr <- addConstant $ CMatchData $ map snd matchedVarsAndEncodedPatterns
   let exprs = map snd patternsAndExpressions
   -- we wrap each match branch in a lambda. This way we can handle them easier in the codegenerator
-  let lambdaizedExprs = map (\ expr -> Lambda [] expr) exprs
+  let maxMatchVars = maximum $ map length matchedVars
+  let lambdaizedExprs = map (\ (params, expr) -> Lambda params expr) $ zip matchedVars exprs
   nameExpr matchedExpr "" $ \ subjVar ->
           normalizeExprList lambdaizedExprs $ \ branchVars -> do
-                  k $ NMatch 0 subjVar patternAddr branchVars
+                  let branches = zip matchedVars branchVars
+                  k $ NMatch maxMatchVars subjVar patternAddr branches
 
 -- Free variables in a used lambda which can't be resolved in our context need to become
 -- free variables in our context

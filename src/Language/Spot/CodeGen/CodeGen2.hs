@@ -76,8 +76,9 @@ compileAtom reg atom name isResultValue = case atom of
                  return [Tac_move reg r]
           NConstantFreeVar name -> compileConstantFreeVar reg name isResultValue
           _ -> error "fail"
-  NMatch maxCaptures subject patternAddr branchVars ->
-          compileMatch reg subject patternAddr branchVars
+  -- TODO unify order of arguments
+  NMatch maxCaptures subject patternAddr branches ->
+          compileMatch reg subject maxCaptures patternAddr branches
   x -> error $ "Unable to compile " ++ (show x)
 
 compileCallInstr reg funVar args = do
@@ -133,22 +134,31 @@ compileClosure reg freeVars params expr = do
   return $ argInstrs ++ makeClosureInstr
 
 
-compileMatch reg subject patternAddr branchVars = do
+compileMatch reg subject maxCaptures patternAddr branches = do
+  let branchMatchedVars = map fst branches
+  let branchLambdaVars = map snd branches
   subjR <- getReg subject
   -- TODO use the next free register instead of hardcoded value
-  let handledBranches = [0 .. (length branchVars) - 1]
+  let instrsPerBranch = 3 -- load args, call lambda, jump out
+  let handledBranches = [0 .. (length branchLambdaVars) - 1]
   let remainingBranches = reverse handledBranches
+  let captureStartReg = 29 - maxCaptures + 1
   let jumpTable = map (\(remaining, handled) ->
-                      -- Jump once for each remaining entry in jump table and twice for calls
-                      Tac_jmp (1 * remaining + 2 * handled)) $
+                      -- Jump 1 instr for each remaining entry in jump table
+                      Tac_jmp (1 * remaining + instrsPerBranch * handled)) $
                       zip remainingBranches handledBranches
-  let matchCode = [Tac_load_addr 30 patternAddr, Tac_match subjR 30 0]
-  compiledBranches <- forM (zip remainingBranches branchVars) $ \ (remaining, funVar) -> do
-          callInstr <- compileCallInstr reg funVar []
-          return $ callInstr ++ [Tac_jmp (remaining * 2)]
+  -- TODO seriously, find a way to reserve registers
+  let matchCode = [Tac_load_addr 30 patternAddr, Tac_match subjR 30 captureStartReg]
+  compiledBranches <- forM (zip3 remainingBranches branchMatchedVars branchLambdaVars) $
+                              \ (remaining, matchedVars, funVar) -> do
+                                      let loadArgInstr = compileMatchBranchLoadArg captureStartReg matchedVars
+                                      callInstr <- compileCallInstr reg funVar matchedVars
+                                      return $ [loadArgInstr] ++ callInstr ++ [Tac_jmp (remaining * instrsPerBranch)]
   let body = Prelude.concat compiledBranches
   return $ matchCode ++ jumpTable ++ body
 
+compileMatchBranchLoadArg startReg matchedVars =
+  Tac_set_arg 0 startReg (max 0 $ (length matchedVars) - 1)
 
 compileSetArg var arg = do
   rVar <- getReg var

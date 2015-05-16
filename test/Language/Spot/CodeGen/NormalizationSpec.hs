@@ -3,6 +3,7 @@ module Language.Spot.CodeGen.NormalizationSpec where
 import Language.Spot.CodeGen.Normalization
 import Language.Spot.IR.Norm
 import Language.Spot.IR.Ast
+import Language.Spot.IR.Tac
 
 import Test.Hspec
 
@@ -174,7 +175,7 @@ spec = do
         let expected = NLet (NLocalVar 0 "") (NNumber 2) $
                        NLet (NLocalVar 1 "") (NLambda [] [] $ NAtom $ NNumber 33) $
                        NLet (NLocalVar 2 "") (NLambda [] [] $ NAtom $ NNumber 44) $
-                       NAtom $ NMatch 0 (NLocalVar 0 "") 0 [NLocalVar 1 "", NLocalVar 2 ""]
+                       NAtom $ NMatch 0 (NLocalVar 0 "") 0 [([], NLocalVar 1 ""), ([], NLocalVar 2 "")]
         norm `shouldBe` expected
 
 
@@ -189,7 +190,7 @@ spec = do
                        NLet (NLocalVar 1 "") (NNumber 2) $
                        NLet (NLocalVar 2 "") (NLambda [] [] $ NAtom $ NVar $ NConstantFreeVar "a") $
                        NLet (NLocalVar 3 "") (NLambda [] [] $ NAtom $ NNumber 44) $
-                       NAtom $ NMatch 0 (NLocalVar 1 "") 0 [NLocalVar 2 "", NLocalVar 3 ""]
+                       NAtom $ NMatch 0 (NLocalVar 1 "") 0 [([], NLocalVar 2 ""), ([], NLocalVar 3 "")]
         norm `shouldBe` expected
 
       it "captures dynamic free variables in match bodies" $ do
@@ -203,29 +204,37 @@ spec = do
                        NLet (NLocalVar 0 "") (NNumber 2) $
                        NLet (NLocalVar 1 "") (NLambda ["a"] [] $ NAtom $ NVar $ NDynamicFreeVar "a") $
                        NLet (NLocalVar 2 "") (NLambda [] [] $ NAtom $ NNumber 44) $
-                       NAtom $ NMatch 0 (NLocalVar 0 "") 0 [NLocalVar 1 "", NLocalVar 2 ""]
+                       NAtom $ NMatch 0 (NLocalVar 0 "") 0 [([], NLocalVar 1 ""), ([], NLocalVar 2 "")]
         norm `shouldBe` expected
 
-
--- TODO don't care about match for now
-{-
-      -- TODO all named vars should also be put in a temp var
-      it "normalizes a match expression" $ do
-        let ast = LocalBinding (Binding "a" $
-                Match (LitNumber 101) [
-                  (PatNumber 1, LitNumber 33),
-                  (PatNumber 2, LitNumber 44)
-                ]) $
-                FunCall (Var "func") [Var "a"]
+      it "handles vars in patterns as lambda parameters" $ do
+        let ast = Match (LitNumber 2) [
+                    (PatVar "n", Var "n"),
+                    (PatVar "m", Var "m")
+                  ]
         let norm = pureNorm ast
-        let expected =
-                NLet (NTempVar 0) (NNumber 101) $
-                NLet (NTempVar 1) (NMatch 0 (NTempVar 0) [
-                  (PatNumber 1, NAtom $ NNumber 33),
-                  (PatNumber 2, NAtom $ NNumber 44)
-                ]) $
-                NAtom $ NFunCall [NNamedVar "func", NTempVar 1]
+        let expected = NLet (NLocalVar 0 "") (NNumber 2) $
+                       NLet (NLocalVar 1 "") (NLambda [] ["n"] $ NAtom $ NVar $ NFunParam "n") $
+                       NLet (NLocalVar 2 "") (NLambda [] ["m"] $ NAtom $ NVar $ NFunParam "m") $
+                       NAtom $ NMatch 1 (NLocalVar 0 "") 0 [(["n"], NLocalVar 1 ""), (["m"], NLocalVar 2 "")]
         norm `shouldBe` expected
--}
+
+
+      it "identifies the maximum number of captures" $ do
+        let ast = Match (LitNumber 2) [
+                    (PatSymbol "y" [PatVar "n", PatVar "o", PatVar "p"], Var "n"),
+                    (PatSymbol "x" [PatVar "m", PatVar "l"], Var "m")
+                  ]
+        let (norm, ctable, _) = normalize ast
+        let expectedCTable = [ CMatchData [
+                               CCompoundSymbol 0 [CMatchVar 0, CMatchVar 1, CMatchVar 2],
+                               CCompoundSymbol 1 [CMatchVar 0, CMatchVar 1]
+                             ]]
+        let expected = NLet (NLocalVar 0 "") (NNumber 2) $
+                       NLet (NLocalVar 1 "") (NLambda [] ["n", "o", "p"] $ NAtom $ NVar $ NFunParam "n") $
+                       NLet (NLocalVar 2 "") (NLambda [] ["m", "l"] $ NAtom $ NVar $ NFunParam "m") $
+                       NAtom $ NMatch 3 (NLocalVar 0 "") 0 [(["n", "o", "p"], NLocalVar 1 ""), (["m", "l"], NLocalVar 2 "")]
+        ctable `shouldBe` expectedCTable
+        norm `shouldBe` expected
 
 
