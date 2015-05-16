@@ -35,15 +35,18 @@ library
                     , array
                     , containers
                     , mtl
-                    , lens >= 4.8
   include-dirs:       vm
   c-sources:          vm/vm.c
                     , vm/heap.c
 
 executable spot
   main-is:            Main.hs
-  build-depends:      spot >=0.1, base, array, containers
-  hs-source-dirs:     src
+  build-depends:      spot >=0.1
+                    , base
+                    , array
+                    , containers
+                    , mtl
+  hs-source-dirs:     interpret-src
   default-language:   Haskell2010
 
 test-suite test-spot
