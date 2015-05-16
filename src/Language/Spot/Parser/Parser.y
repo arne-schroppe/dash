@@ -99,8 +99,9 @@ Fun_rest:
     '(' opt(eol) plus(id) opt(eol) ')' '=' fun_body(Expr) { Lambda $3 $7 }
 
 fun_body(e):
-    opt(eol) indent opt(eol) e opt(eol) outdent opt(eol) { $4 }
-  | Expr eol { $1 }
+    -- opt(eol) indent opt(eol) e opt(eol) outdent opt(eol) { $4 }
+    eol Expr opt(eol) { $2 }
+  | Expr opt(eol) { $1 }
 
 Body:
     Block_start Expr Block_end { $2 }

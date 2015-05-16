@@ -45,17 +45,17 @@ spec = do
       result `shouldReturn` VMNumber 11
 
     it "applies a custom function" $ do
-      let code = " val add-two (a) = {\n\
+      let code = " val add-two (a) = \n\
                  \   add 2 a \n\
-                 \ } \n\
+                 \ \n\
                  \ add-two 5"
       let result = run code
       result `shouldReturn` VMNumber 7
 
     it "applies a local variable to a custom function" $ do
-      let code = " val add-two (a) = {\n\
+      let code = " val add-two (a) = \n\
                  \   add 2 a \n\
-                 \ } \n\
+                 \ \n\
                  \ val x = 10 \n\
                  \ val y = 5 \n\
                  \ add-two y"
@@ -64,9 +64,9 @@ spec = do
 
     -- TODO When returning a lambda from a function (as seen here) it would be more secure to have a tag for lambdas
     it "returns a simple lambda" $ do
-      let code =  " val make-adder (x) = { \n\
+      let code =  " val make-adder (x) = \n\
                   \   val (y) = add 22 y \n\
-                  \ } \n\
+                  \ \n\
                   \ val adder = make-adder :nil \n\
                   \ adder 55"
       let result = run code
@@ -74,9 +74,9 @@ spec = do
 
 
     it "returns a closure with a dynamic variable" $ do
-      let code =  " val make-sub (x) = { \n\
+      let code =  " val make-sub (x) = \n\
                   \   val (y) = sub x y \n\
-                  \ } \n\
+                  \ \n\
                   \ val subtractor = make-sub 55 \n\
                   \ subtractor 4"
       let result = run code
@@ -84,9 +84,9 @@ spec = do
 
     it "captures a constant number" $ do
       let code =  " val c = 30 \n\
-                  \ val make-sub (x) = { \n\
+                  \ val make-sub (x) = \n\
                   \   val (y) = sub c y \n\
-                  \ } \n\
+                  \ \n\
                   \ val subtractor = make-sub 10 \n\
                   \ subtractor 4"
       let result = run code
@@ -94,9 +94,9 @@ spec = do
 
     it "captures a constant plain symbol" $ do
       let code =  " val ps = :my-symbol \n\
-                  \ val make-sym (x) = { \n\
+                  \ val make-sym (x) = \n\
                   \   val (y) = ps \n\
-                  \ } \n\
+                  \ \n\
                   \ val symbolicator = make-sym 44 \n\
                   \ symbolicator 55"
       let result = run code
@@ -104,18 +104,18 @@ spec = do
 
     it "captures a constant function" $ do
       let code =  " val subsub (a b) = sub a b \n\
-                  \ val make-sub (x) = { \n\
+                  \ val make-sub (x) = \n\
                   \   val (y) = subsub x y \n\
-                  \ } \n\
+                  \ \n\
                   \ val subtractor = make-sub 10 \n\
                   \ subtractor 4"
       let result = run code
       result `shouldReturn` VMNumber 6
 
     it "captures several dynamic values" $ do
-      let code =  " val make-sub (x y z w) = { \n\
+      let code =  " val make-sub (x y z w) = \n\
                   \   val (a) = sub (sub z y) (sub x a)\n\
-                  \ } \n\
+                  \ \n\
                   \ val test = make-sub 33 55 99 160 \n\
                   \ test 24"
       let result = run code
@@ -124,13 +124,13 @@ spec = do
     it "supports nested closures" $ do
       let code = "\
       \ val outside = 1623 \n\
-      \ val make-adder-maker (x) = {\n\
-      \   val (y) = {\n\
-      \     val (z) = {\n\
+      \ val make-adder-maker (x) = \n\
+      \   val (y) = \n\
+      \     val (z) = \n\
       \       add (add x (add z y)) outside \n\
-      \ }\n\
-      \ }\n\
-      \ }\n\
+      \ \n\
+      \ \n\
+      \ \n\
       \ ((make-adder-maker 9) 80) 150"
       let result = run code
       result `shouldReturn` VMNumber 1862
@@ -180,12 +180,12 @@ spec = do
         result `shouldReturn` VMNumber 2
 
       it "matches a value against numbers inside a function" $ do
-        let code = " val check (n) = { \n\
+        let code = " val check (n) = \n\
                    \   match n begin \n\
                    \     1 -> :one \n\
                    \     2 -> :two \n\
                    \   end \n\
-                   \ } \n\
+                   \ \n\
                    \ check 2"
         let result = run code
         result `shouldReturn` VMSymbol "two" []
