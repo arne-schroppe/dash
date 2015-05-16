@@ -22,8 +22,6 @@ library
   exposed-modules:    Language.Spot.Parser.Lexer
                     , Language.Spot.Parser.Parser
                     , Language.Spot.CodeGen.CodeGen
-                    , Language.Spot.CodeGen.CodeGen2
-                    , Language.Spot.CodeGen.CodeGenState
                     , Language.Spot.CodeGen.Normalization
                     , Language.Spot.IR.Ast
                     , Language.Spot.IR.Tac

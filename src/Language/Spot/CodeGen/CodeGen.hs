@@ -2,242 +2,341 @@ module Language.Spot.CodeGen.CodeGen (
   compile
 ) where
 
-import Language.Spot.CodeGen.CodeGenState
-import Language.Spot.IR.Ast
+import Language.Spot.IR.Norm
 import Language.Spot.IR.Tac
-import Language.Spot.VM.Bits
 import Language.Spot.VM.Types
 
 import Control.Monad.State
+import qualified Data.Sequence as Seq
+import Data.Foldable
 import Control.Applicative
-import Data.Maybe
-import Data.Monoid
-import Control.Exception.Base
+
+import Debug.Trace
+
+import qualified Data.Sequence as Seq
+import qualified Data.Map as Map
+
+-- TODO when there is more time, do dataflow analysis to reuse registers
+
+-- TODO find better name than "code constant"
 
 
-
--- TODO unify usage of "args" and "params" (and "values" ?)
--- TODO add type to all functions (also in other modules)
--- TODO This module is becoming very difficult to understand. Refactor for ease of understanding
-
-compile :: Expr -> ([[Tac Reg]], ConstTable, SymbolNameList)
-compile ast = (getInstructions result, getConstantTable result, getSymbolNames result) --todo reverse most of this
-  where result = execState (addStartFunction ast) emptyCode
-
-addStartFunction e = do
-  beginFunction []
-  code <- compileExpression e
-  setFunctionCode 0 (code ++ [Tac_ret 0])
-  endFunction
+compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
+compile expr cTable symlist =
+  let result = execState (compileFunc [] [] expr) emptyCompState in
+  (toList (instructions result), cTable, symlist)
 
 
-
-compileExpression e = case e of
-  LitNumber n       -> compileLitNumber n
-  LitSymbol s vals  -> compileLitSymbol s vals
-  FunCall name args -> compileFunCall name args
-  LocalBinding (Binding name expr) body -> compileLocalBinding name expr body
-  Var a             -> compileVar a
-  Match e pats      -> compileMatch e pats
-  Lambda params expr -> compileLambda params expr
-  a -> error $ "Can't compile: " ++ show a
-
-compileLitNumber n = do
-  r <- resultReg
-  return [Tac_load_i r (fromIntegral n)]
-
-compileLitSymbol s []   = do
-  newId <- addSymbolName s
-  r <- resultReg
-  return [Tac_load_ps r newId]
-compileLitSymbol s args = do
-  c <- createConstant $ LitSymbol s args
-  addr <- addConstant c
-  r <- resultReg
-  return [Tac_load_cs r addr]
-
-compileFunCall (Var "add") (op1:op2:[]) = -- do we really need opcodes for math stuff? How about built-in functions?
-  compileMathFunc Tac_add op1 op2
-compileFunCall (Var "sub") (op1:op2:[]) =
-  compileMathFunc Tac_sub op1 op2
-compileFunCall (Var funName) args = do
-  resReg <- resultReg
-  fr <- regContainingVar funName -- TODO it would be more efficient if we would simply load_f in here
-  (code, nfr) <- ensureContinuousRegisters fr
-  argRegs <- replicateM (length args) reserveReg
-  let regsAndArgs = zip argRegs args
-  argCode <- forM regsAndArgs (\(aReg, arg) -> do
-    evalArgument arg aReg)
-  return $ code ++
-           (concat argCode) ++
-           [ Tac_call resReg nfr (fromIntegral $ length args) ]
-compileFunCall _ _ = error "Unknown function"
-
--- The registers for args must come immediately after the one for the
--- function address. Here we're making sure that that holds true.
-ensureContinuousRegisters funcReg = do
-  nextRegister <- peekReg
-  if (nextRegister /= (funcReg + 1)) then do
-    newFr <- reserveReg
-    let code = [ Tac_move newFr funcReg ]
-    return (code, newFr)
-  else
-    return ([], funcReg)
-
-compileLocalBinding name (Lambda args expr) body = do
-  r <- reserveReg
-  funAddr <- compileFunction args expr
-  addVar name r
-  let code = [Tac_load_f r funAddr]
-  bodyCode <- compileExpression body
-  return $ code ++ bodyCode
-compileLocalBinding name expr body = do
-  r <- reserveReg
-  pushResultReg r
-  exprCode <- compileExpression expr
-  popResultReg
-  addVar name r
-  bodyCode <- compileExpression body
-  return $ exprCode ++
-           bodyCode
-
-compileLambda params expr = do
-  funAddr <- compileFunction params expr
-  r <- resultReg
-  return [ Tac_load_f r funAddr ]
-
-compileFunction args expr = do
-  funAddr <- beginFunction args
-  code <- compileExpression expr
-  setFunctionCode funAddr (code ++ [Tac_ret 0])
-  endFunction
+compileFunc freeVars params expr = do
+  funAddr <- beginFunction freeVars params
+  funcCode <- compileExpr expr
+  endFunction funAddr funcCode
   return funAddr
 
-compileVar a = do
-  r <- resultReg
-  r1 <- regContainingVar a
-  return [ Tac_move r r1 ]
-
-compileMathFunc mf op1 op2 = do
-  r <- resultReg
-  regsAndCode <- forM [op1, op2] (\arg ->
-    case arg of
-      Var n -> do
-        reg <- regContainingVar n
-        return (reg, [])
-      a -> do
-        reg <- reserveReg
-        code <- evalArgument arg reg
-        return (reg, code)
-    )
-  let argRegs = map fst regsAndCode
-  let varCode = map snd regsAndCode
-  return $ (concat varCode) ++
-           [ mf r (argRegs !! 0) (argRegs !! 1) ]
+compileExpr expr = case expr of
+  NLet var atom body -> compileLet var atom body
+  NAtom a -> do
+          code <- compileAtom 0 a "" True
+          return $ code ++ [Tac_ret 0]
 
 
-compileMatch expr patsAndExprs = do
-  let numPats = length patsAndExprs
-  (matchVars, matchDataAddr) <- storeMatchPattern $ map fst patsAndExprs
-  matchStartInstrs <- createMatchCall expr matchDataAddr
-  exprInstrs <- mapM (uncurry compileSubExpression) (zip matchVars $ map snd patsAndExprs)
+compileAtom reg atom name isResultValue = case atom of
+  NNumber n -> do
+          addCodeConst name $ CConstNumber (fromIntegral n)
+          return [Tac_load_i reg (fromIntegral n)]
+  NPlainSymbol sid -> do
+          addCodeConst name $ CConstPlainSymbol sid
+          return [Tac_load_ps reg sid]
+  NCompoundSymbol False cAddr -> do
+          -- addCodeConst name $ CConstCompoundSymbol cAddr
+          return [Tac_load_cs reg cAddr] -- TODO codeConstant?
+  NPrimOp (NPrimOpAdd a b) -> do
+          ra <- getReg a
+          rb <- getReg b
+          return [Tac_add reg ra rb]
+  NPrimOp (NPrimOpSub a b) -> do
+          ra <- getReg a
+          rb <- getReg b
+          return [Tac_sub reg ra rb]
+  NLambda [] params expr -> do
+          funAddr <- compileFunc [] params expr
+          addCodeConst name $ CConstLambda funAddr
+          compileLoadLambda reg funAddr isResultValue
+  NLambda freeVars params expr -> compileClosure reg freeVars params expr
+  NFunCall funVar args -> do
+          argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
+          callInstr <- compileCallInstr reg funVar args
+          return $ argInstrs ++ callInstr
+  NVar var -> case var of
+          NLocalVar varId _ -> do
+                 r <- getReg var
+                 return [Tac_move reg r]
+          NFunParam name -> do
+                 r <- getReg var
+                 return [Tac_move reg r]
+          NConstantFreeVar name -> compileConstantFreeVar reg name isResultValue
+          _ -> error "fail"
+  -- TODO unify order of arguments
+  NMatch maxCaptures subject patternAddr branches ->
+          compileMatch reg subject maxCaptures patternAddr branches
+  x -> error $ "Unable to compile " ++ (show x)
 
-  let (exprJmpTargets, contJmpTargets) = unzip $ map (calcJumpTargets numPats exprInstrs) [0..(numPats - 1)]
-  let jmpTableInstrs = map (singletonList . Tac_jmp) exprJmpTargets
-  let bodyInstrs = map (uncurry (++)) $ zip exprInstrs $ map (singletonList . Tac_jmp) contJmpTargets
+compileCallInstr reg funVar args = do
+          rFun <- getReg funVar
+          direct <- isDirectCallReg rFun
+          if direct then do
+            return [Tac_call reg rFun (length args)]
+          else do
+            return [Tac_call_cl reg rFun (length args)]
 
-  let maxMatchVars = foldl (\a b -> max a (length b)) 0 matchVars
-  replicateM maxMatchVars reserveReg
+compileConstantFreeVar :: Reg -> String -> Bool -> State CompState [Tac Reg]
+compileConstantFreeVar reg name isResultValue = do
+  codeConst <- getCodeConstInOuterScope name
+  case codeConst of
+          CConstNumber n -> return [Tac_load_i reg (fromIntegral n)]
+          CConstPlainSymbol symId -> return [Tac_load_ps reg symId]
+          -- CConstCompoundSymbol ConstAddr
+          CConstLambda funAddr -> compileLoadLambda reg funAddr isResultValue
 
-  return $ matchStartInstrs ++
-           (concat jmpTableInstrs) ++
-           (concat bodyInstrs)
+compileLoadLambda reg funAddr isResultValue = do
+  let ldFunAddr = [Tac_load_f reg funAddr]
+  if isResultValue then
+      return $ ldFunAddr ++ [Tac_make_cl reg reg 0]
+  else
+      return $ ldFunAddr
+
+compileLet tmpVar@(NLocalVar tmpId name) atom body =
+  compileLet' tmpVar atom name body
+
+compileLet tmpVar atom body =
+  compileLet' tmpVar atom "" body
+
+compileLet' tmpVar atom name body = do
+  let callDirect = canBeCalledDirectly atom
+  rTmp <- getReg tmpVar
+  when callDirect $ addDirectCallReg rTmp
+  comp1 <- compileAtom rTmp atom name False
+  comp2 <- compileExpr body
+  return $ comp1 ++ comp2
+
+-- This determines whether we'll use Tac_call or Tac_call_cl later
+canBeCalledDirectly atom = case atom of
+  NVar (NConstantFreeVar _) -> True -- TODO we need a function tag for this case
+  NLambda ([]) _ _ -> True
+  _ -> False
+
+
+compileClosure reg freeVars params expr = do
+  funAddr <- compileFunc freeVars params expr
+  argInstrs <- mapM (uncurry compileSetArgN) $ zipWithIndex freeVars
+  -- TODO use the next free register instead of hardcoded value
+  let makeClosureInstr = [Tac_load_f 31 funAddr, Tac_make_cl reg 31 (length freeVars)]
+  return $ argInstrs ++ makeClosureInstr
+
+
+compileMatch reg subject maxCaptures patternAddr branches = do
+  let branchMatchedVars = map fst branches
+  let branchLambdaVars = map snd branches
+  subjR <- getReg subject
+  -- TODO use the next free register instead of hardcoded value
+  let instrsPerBranch = 3 -- load args, call lambda, jump out
+  let handledBranches = [0 .. (length branchLambdaVars) - 1]
+  let remainingBranches = reverse handledBranches
+  let captureStartReg = 29 - maxCaptures + 1
+  let jumpTable = map (\(remaining, handled) ->
+                      -- Jump 1 instr for each remaining entry in jump table
+                      Tac_jmp (1 * remaining + instrsPerBranch * handled)) $
+                      zip remainingBranches handledBranches
+  -- TODO seriously, find a way to reserve registers
+  let matchCode = [Tac_load_addr 30 patternAddr, Tac_match subjR 30 captureStartReg]
+  compiledBranches <- forM (zip3 remainingBranches branchMatchedVars branchLambdaVars) $
+                              \ (remaining, matchedVars, funVar) -> do
+                                      let loadArgInstr = compileMatchBranchLoadArg captureStartReg matchedVars
+                                      callInstr <- compileCallInstr reg funVar matchedVars
+                                      return $ [loadArgInstr] ++ callInstr ++ [Tac_jmp (remaining * instrsPerBranch)]
+  let body = Prelude.concat compiledBranches
+  return $ matchCode ++ jumpTable ++ body
+
+compileMatchBranchLoadArg startReg matchedVars =
+  Tac_set_arg 0 startReg (max 0 $ (length matchedVars) - 1)
+
+compileSetArg var arg = do
+  rVar <- getReg var
+  return $ Tac_set_arg arg rVar 0
+
+compileSetArgN name arg = do
+  rVar <- getRegByName name
+  return $ Tac_set_arg arg rVar 0
+
+
+zipWithIndex l = zip l [0..(length l)]
+
+
+----- State -----
+
+data CompState = CompState {
+                   instructions :: Seq.Seq [Tac Reg]
+                 , scopes :: [CompScope]
+                 }
+
+emptyCompState = CompState {
+                   instructions = Seq.fromList []
+                 , scopes = []
+                 }
+
+data CompScope = CompScope {
+                   functionParams :: Map.Map String Int
+                 , freeVariables :: Map.Map String Int
+
+                 -- these are all the registers that hold function values which
+                 -- can be called directly with Tac_call. Everything else is 
+                 -- called with Tac_call_cl
+                 , directCallRegs :: [Int]
+                 , codeConstants :: Map.Map String CompCodeConst
+                 }
+
+makeScope fps freeVars = CompScope {
+               functionParams = fps
+             , freeVariables = freeVars
+             , directCallRegs = []
+             , codeConstants = Map.empty
+             }
+
+data CompCodeConst =
+    CConstNumber VMWord
+  | CConstPlainSymbol SymId
+  | CConstCompoundSymbol ConstAddr
+  | CConstLambda FunAddr
+
+
+beginFunction freeVars params = do
+  state <- get
+  let localFreeVars = Map.fromList (zipWithIndex freeVars)
+  let paramBindings = Map.fromList (zipWithIndex params)
+  let newScope = makeScope paramBindings localFreeVars
+  put $ state { scopes = newScope : (scopes state) }
+  addr <- addPlaceholderFunction
+  return addr
+
+endFunction funAddr code = do
+  state <- get
+  let instrs = instructions state
+  let instrs' = Seq.update funAddr code instrs
+  put $ state { scopes = (tail $ scopes state),
+                instructions = instrs' }
+
+numParameters :: State CompState Int
+numParameters = do
+  localParams <- gets $ functionParams.head.scopes
+  return $ Map.size localParams
+
+param :: String -> State CompState (Maybe Int)
+param name = do
+  localParams <- gets $ functionParams.head.scopes
+  let res = Map.lookup name localParams
+  return res
+
+
+numFreeVars :: State CompState Int
+numFreeVars = do
+  localFreeVars <- gets $ freeVariables.head.scopes
+  return $ Map.size localFreeVars
+
+freeVar :: String -> State CompState (Maybe Int)
+freeVar name = do
+  localFreeVars <- gets $ freeVariables.head.scopes
+  let res = Map.lookup name localFreeVars
+  return res
+
+
+addPlaceholderFunction = do
+  state <- get
+  let instrs = instructions state
+  let nextFunAddr = Seq.length instrs
+  let instrs' = instrs Seq.|> []
+  put $ state { instructions = instrs' }
+  return nextFunAddr
+
+getRegByName :: String -> State CompState Int
+getRegByName name = do
+  lookup <- getRegN name
+  -- TODO code duplication, handling of register offsets for free vars should be handled in one place only
+  case lookup of
+    Just index -> return index
+    Nothing -> error $ "Unknown identifier " ++ name
+  where getRegN name = do
+  -- TODO make this less ugly
+          p <- param name
+          case p of
+                  Just i -> return $ Just i
+                  Nothing -> do
+                          f <- freeVar name
+                          numParams <- numParameters
+                          return $ (+) <$> f <*> Just numParams
+
+getReg :: NormVar -> State CompState Int
+getReg (NConstantFreeVar _) = error "Compiler error"
+
+getReg (NFunParam name) = do
+  lookup <- param name
+  case lookup of
+          Just index -> return index
+          Nothing -> error $ "Unknown parameter: " ++ name
+
+-- When calling a closure, the first n registers are formal arguments
+-- and the next m registers are closed-over variables
+-- TODO document this fact somewhere visible
+getReg (NDynamicFreeVar name) = do
+  numParams <- numParameters
+  lookup <- freeVar name
+  case lookup of
+          Just index -> return $ numParams + index
+          Nothing -> error $ "Unknown free var: " ++ name
+
+getReg (NLocalVar tmpVar name) = do
+  numFree <- numFreeVars
+  numParams <- numParameters
+  return $ numFree + numParams + tmpVar
+
+isDirectCallReg reg = do
+  scope <- getScope
+  let dCallRegs = directCallRegs scope
+  return $ Prelude.elem reg dCallRegs
+
+addDirectCallReg reg = do
+  scope <- getScope
+  let dCallRegs = directCallRegs scope
+  let dCallRegs' = reg : dCallRegs
+  putScope $ scope { directCallRegs = dCallRegs' }
+
+getScope = do
+  state <- get
+  return $ head (scopes state)
+
+putScope s = do
+  state <- get
+  put $ state { scopes = s : (tail $ scopes state) }
+
+
+addCodeConst "" _ = return ()
+addCodeConst name c = do
+  scope <- getScope
+  let consts = codeConstants scope
+  let consts' = Map.insert name c consts
+  putScope $ scope { codeConstants = consts' }
+
+-- This retrieves values for NConstantFreeVar. Those are never inside the current scope
+getCodeConstInOuterScope :: String -> State CompState CompCodeConst
+getCodeConstInOuterScope name = do
+  scps <- gets scopes
+  getCodeConst' name scps
   where
-    compileSubExpression args expr = do
-      pushSubContext
-      addArguments args
-      code <- compileExpression expr
-      popSubContext
-      return code
-
-    storeMatchPattern ps = do
-      -- TODO the following function is a complete train wreck. Use an inner state monad instead
-      (matchVars, encodedPatterns) <- foldM (\(accVars, accPats) p -> do
-        (vars, encoded) <- createConstPattern p 0
-        return (accVars ++ [vars], accPats ++ [encoded])
-        ) ([], []) ps  -- TODO get that O(n*m) out and make it more clear what this does
-
-      let pattern = CMatchData encodedPatterns
-      constAddr <- addConstant pattern
-      return (matchVars, constAddr)
-
-    createMatchCall expr matchDataAddr = do
-      subjReg <- reserveReg
-      argCode <- evalArgument expr subjReg
-      patReg <- reserveReg
-      return $ argCode ++
-               [ Tac_load_addr patReg matchDataAddr
-               , Tac_match subjReg patReg (patReg + 1) ]
-
-    calcJumpTargets numPats exprCodes idx =
-      let (pre, post) = splitAt idx exprCodes in
-      let jmpToFirstExpr = (numPats - idx - 1) in
-      let jmpToActualExpr = foldl (\acc ls -> acc + 1 + length ls) 0 pre in
-      let exprJmpTarget = jmpToFirstExpr + jmpToActualExpr in
-
-      -- contJmpTarget: relative address of code after the match body
-      let lenRemainingResultExprs = foldl ( flip $ (+) . length) 0 (tail post) in
-      let lenExtraJmps = (numPats - idx) - 1 in -- for every remaining result expr we need to add one jump expr
-      let contJmpTarget = lenRemainingResultExprs + lenExtraJmps in
-
-      (fromIntegral exprJmpTarget, fromIntegral contJmpTarget)
-
-    singletonList = (:[])
-
-
-
-
-createConstPattern pat nextMatchVar =
-  case pat of
-    PatNumber n -> return ([], (CNumber n))
-    PatSymbol s [] -> do sid <- addSymbolName s
-                         return $ ([], CPlainSymbol sid)
-    PatSymbol s params -> do
-                  symId <- addSymbolName s
-                  (vars, pats) <- encodePatternCompoundSymbolArgs params nextMatchVar
-                  return (vars, CCompoundSymbol symId pats)
-    PatVar n -> return $ ([n], CMatchVar nextMatchVar)
-
--- TODO use inner state
-encodePatternCompoundSymbolArgs args nextMatchVar = do
-  (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
-    (vars, encoded) <- createConstPattern p nextMV
-    return (nextMV + (fromIntegral $ length vars), accVars ++ vars, pats ++ [encoded])
-    ) (nextMatchVar, [], []) args  -- TODO get that O(n*m) out and make it more clear what this does
-  return (vars, entries)
-
-
-evalArgument (Var n) targetReg = do
-  vr <- regContainingVar n -- This is wasteful. In most cases, we'll just reserve two registers per var
-  if (vr /= targetReg) then do return [ Tac_move targetReg vr ]
-  else return []
-evalArgument arg r = do
-  pushResultReg r
-  code <- compileExpression arg
-  popResultReg
-  return code
-
-
-createConstant v =
-  case v of
-    LitNumber n -> return $ CNumber n
-    LitSymbol s [] -> do
-                sid <- addSymbolName s
-                return $ CPlainSymbol sid
-    LitSymbol s args -> do
-                symId <- addSymbolName s
-                encodedArgs <- mapM createConstant args
-                return $ CCompoundSymbol symId encodedArgs
+    getCodeConst' name [] = error $ "Compiler error: no constant named " ++ name
+    getCodeConst' name scps = do
+      let consts = codeConstants $ head scps
+      case Map.lookup name consts of
+        Just c -> return c
+        Nothing -> getCodeConst' name $ tail scps
 
 
 
