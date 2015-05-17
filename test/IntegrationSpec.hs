@@ -75,20 +75,25 @@ spec = do
 
     -- TODO capture dynamic free vars in matches!
 
-{-
+
+{- TODO try this later with proper recursion
+
     it "optimizes tail calls" $ do
       let code = "\
       \ val counter (k acc) = \n\
-      \   val next = sub acc 1 \n\
+      \   val next = add acc 1 \n\
       \   match next begin\n\
       \     16 -> 43   \n\
-      \     x -> k x \n\
+      \     x -> k k x \n\
       \   end \n\
-      \ counter counter (add 256 32)"
+      \ val y = counter counter (0) \n\
+      \ y "
       let result = run code
+      -- let result = return $ VMNumber 42
       putStrLn $ show $ toAsm code
       result `shouldReturn` VMNumber 43
 -}
+
 
     -- TODO test recursion, both top-level and inside a function
 
@@ -154,6 +159,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 1862
 
+
     context "when using compound symbols" $ do
 
             it "interprets a compound symbol" $ do
@@ -161,7 +167,6 @@ spec = do
               result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]
 
             -- TODO dynamic compound symbols
-
 
 
 

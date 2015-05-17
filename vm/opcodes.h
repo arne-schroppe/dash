@@ -17,7 +17,9 @@ typedef enum {
   OP_MAKECL = 10,
   OP_JMP = 11,
   OP_MATCH = 12,
-  OP_SETARG = 13
+  OP_SETARG = 13,
+  OP_TAIL_CALL = 14,
+  OP_TAIL_CALLCL = 15
   //OP_SPACE = 14, //Adds space for temporary values
 } vm_opcode;
 

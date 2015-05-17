@@ -1,8 +1,9 @@
 #include "heap.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 static vm_value *heap = 0;
-static size_t initial_heap_size = 1024;
+static size_t initial_heap_size = 4096;
 static heap_address next_free_address = 0;
 
 void init_heap() {
@@ -16,10 +17,18 @@ void init_heap() {
 heap_address heap_alloc(size_t size) {
   heap_address old = next_free_address;
   next_free_address += size;
+  if(next_free_address > initial_heap_size) {
+    printf("Out of memory!\n");
+    exit(-1);
+  }
   return old;
 }
 
 vm_value *heap_get_pointer(heap_address addr) {
+  if(addr > initial_heap_size) {
+    printf("Illegal memory address!\n");
+    exit(-1);
+  }
   return &heap[addr];
 }
 

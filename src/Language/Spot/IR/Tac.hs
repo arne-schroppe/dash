@@ -42,6 +42,8 @@ data ThreeAddressCode var =
   | Tac_jmp Int
   | Tac_match var var var     -- subj reg, pattern addr reg, start reg for captures
   | Tac_set_arg Int var Int
+  | Tac_tail_call var Int
+  | Tac_tail_call_cl var Int
   deriving (Show)
 
 type Tac = ThreeAddressCode

@@ -123,6 +123,8 @@ bool execute_instruction(vm_instruction instr) {
       }
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
+
+                    printf("CALL %i %i\n", func_address, program_pointer);
       int num_args = get_arg_r2(instr);
       memcpy(&next_frame.reg[0], &arg_reg[0], num_args * sizeof(vm_value));
       next_frame.return_address = program_pointer;
@@ -133,7 +135,23 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
+
+    case OP_TAIL_CALL: {
+                    printf("TAIL CALL %i %i \n", (current_frame.return_address), program_pointer);
+      int func_address_reg = get_arg_r1(instr);
+      int func_address = get_reg(func_address_reg);
+      int num_args = get_arg_r2(instr);
+      memcpy(&current_frame.reg[0], &arg_reg[0], num_args * sizeof(vm_value));
+      // next_frame.return_address = program_pointer;
+      // next_frame.result_register = get_arg_r0(instr);
+      debug( printf("TL CALL   r%02i r%02i r%02i\n", get_arg_r0(instr), func_address_reg, num_args) );
+      program_pointer = func_address;
+      // ++stack_pointer;
+    }
+    break;
+
     case OP_CALLCL: {
+                    printf("CALL CL\n");
       if (stack_pointer + 1 == STACK_SIZE) {
         printf("Stack overflow!\n");
         return false;
@@ -157,12 +175,35 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
+    case OP_TAIL_CALLCL: {
+                    printf("TAIL CALL CL %i %i \n", (current_frame.return_address), program_pointer);
+      int cl_address_reg = get_arg_r1(instr);
+      heap_address cl_address = (heap_address)get_reg(cl_address_reg);
+      int num_args = get_arg_r2(instr);
+
+      memcpy(&current_frame.reg[0], &arg_reg[0], num_args * sizeof(vm_value));
+      // next_frame.return_address = program_pointer;
+      // next_frame.result_register = get_arg_r0(instr);
+
+      vm_value *cl_pointer = heap_get_pointer(cl_address);
+      int num_env_args = *cl_pointer;
+      memcpy(&current_frame.reg[num_args], cl_pointer + 1, num_env_args * sizeof(vm_value));
+      vm_value func_address = *(cl_pointer + num_env_args + 1);
+
+      debug( printf("TL CALLCL r%02i r%02i r%02i\n", get_arg_r0(instr), cl_address_reg, num_args) );
+      program_pointer = func_address;
+      // ++stack_pointer;
+    }
+    break;
+
+
     case OP_MAKECL: {
       int reg0 = get_arg_r0(instr);
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
       int num_args = get_arg_r2(instr);
 
+                    printf("MAKE CL %i\n", func_address);
       heap_address cl_address = heap_alloc(num_args + 2); /* args + closure header + pointer to function */
       vm_value *cl_pointer = heap_get_pointer(cl_address);
       *cl_pointer = num_args; /* write header */
@@ -184,6 +225,7 @@ bool execute_instruction(vm_instruction instr) {
       current_frame.reg[next_frame.result_register] = next_frame.reg[return_val_reg];
       debug( printf("RET\n") );
       program_pointer = next_frame.return_address;
+      printf("RET %i\n", program_pointer);
     }
     break;
 
