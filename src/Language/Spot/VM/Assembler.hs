@@ -69,19 +69,19 @@ assembleTac funcAddrs addrConv opc =
 
 
 
-instSize = 32
+instBits = 32
+opcBits = 6
+regBits = 5
+
 
 instructionRI opcId register value =
-  (opcId `shiftL` (instSize - 4)) .|. (register `shiftL` (instSize - (4 + 5))) .|. value
+  (opcId `shiftL` (instBits - opcBits)) .|. (register `shiftL` (instBits - (opcBits + regBits))) .|. value
 
 instructionRRR opcId r0 r1 r2 =
-   (opcId `shiftL` (instSize - 4))
-  .|. (r0 `shiftL` (instSize - (4 + 5)))
-  .|. (r1 `shiftL` (instSize - (4 + 2 * 5)))
-  .|. (r2 `shiftL` (instSize - (4 + 3 * 5)))
-
-
-
+   (opcId `shiftL` (instBits - opcBits))
+  .|. (r0 `shiftL` (instBits - (opcBits + regBits)))
+  .|. (r1 `shiftL` (instBits - (opcBits + 2 * regBits)))
+  .|. (r2 `shiftL` (instBits - (opcBits + 3 * regBits)))
 
 
 

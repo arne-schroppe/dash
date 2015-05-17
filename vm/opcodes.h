@@ -23,18 +23,18 @@ typedef enum {
 
 #define instr_size (sizeof(vm_instruction) * 8)
 #define __regb 5  /* Number of bits for registers */
-#define __opcb 4 /* Number of bits for opcode */
+#define __opcb 6 /* Number of bits for opcode */
 
 
-#define get_opcode(instr) ((instr & 0xF0000000) >> (instr_size - __opcb))
+#define get_opcode(instr) ((instr & 0xFC000000) >> (instr_size - __opcb))
 
-#define get_arg_r0(instr) ((instr & 0x0F800000) >> (instr_size - (__opcb + __regb)))
-#define get_arg_r1(instr) ((instr & 0x007C0000) >> (instr_size - (__opcb + 2 * __regb)))
-#define get_arg_r2(instr) ((instr & 0x0003E000) >> (instr_size - (__opcb + 3 * __regb)))
-#define get_arg_i(instr)   (instr & 0x007FFFFF)
+#define get_arg_r0(instr) ((instr & 0x03E00000) >> (instr_size - (__opcb + __regb)))
+#define get_arg_r1(instr) ((instr & 0x001F0000) >> (instr_size - (__opcb + 2 * __regb)))
+#define get_arg_r2(instr) ((instr & 0x0000F800) >> (instr_size - (__opcb + 3 * __regb)))
+#define get_arg_i(instr)   (instr & 0x001FFFFF) //OBS! This is for opcode + reg0 + number
 
 
-/* Uses by tests */
+/* Used by tests */
 #define instr_ri(op, reg, i) ((op << (instr_size - __opcb)) + (reg << (instr_size - (__opcb + __regb))) + i)
 #define instr_rrr(op, reg0, reg1, reg2) ((op << (instr_size - __opcb)) + \
                                             (reg0 << (instr_size - (__opcb + __regb))) + \

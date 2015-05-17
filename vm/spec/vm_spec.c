@@ -19,13 +19,13 @@ it( load_as_a_number_into_a_register ) {
 
 it( adds_two_numbers ) {
   vm_instruction program[] = {
-    op_load_i(1, 5),
+    op_load_i(1, 11),
     op_load_i(2, 32),
     op_add(0, 1, 2),
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, 37);
+  is_equal(result, 43);
 }
 
 

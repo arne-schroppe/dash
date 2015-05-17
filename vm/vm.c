@@ -41,7 +41,7 @@ static vm_value arg_reg[NUM_REGS];
 #define current_frame stack[stack_pointer]
 #define next_frame stack[stack_pointer + 1]
 
-#define get_tag(x) (x >> (sizeof(vm_value) * 8 - 4))
+#define get_tag(x) (x >> (sizeof(vm_value) * 8 - __tag_bits))
 
 void print_registers(stack_frame frame);
 bool does_value_match(vm_value pat, vm_value subject, int start_reg);

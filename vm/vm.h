@@ -39,7 +39,10 @@ extern const vm_value vm_tag_compound_symbol;
 extern const vm_value vm_tag_match_data;
 
 //TODO !!! Unify Compound/Complex symbol !!!
-#define __tag_mask(t) ((t & 0xF) << (sizeof(vm_value) * 8 - 4))
+
+#define __tag_bits 4
+
+#define __tag_mask(t) ((t & 0xF) << (sizeof(vm_value) * 8 - __tag_bits))
 #define val(x, t) (x | __tag_mask(t))
 #define from_val(x, t) (x & ~__tag_mask(t)) //TODO mask instead
 
@@ -52,7 +55,7 @@ extern const vm_value vm_tag_match_data;
 #define compound_symbol_count(header) (header & 0xFFFF)
 
 
-#define __single_bit(v, n) ((v & 1) << (sizeof(vm_value) * 8 - n)) //this is super weird
+#define __single_bit(v, n) ((v & 1) << (sizeof(vm_value) * 8 - n)) //TODO this is super weird
 #define __match_data_mask(t, n) ( __tag_mask(vm_tag_match_data) | __single_bit(t, 5) | (n & 0x7FFFFFF) )
 #define match_header(n) __match_data_mask(1, n)
 #define match_wildcard __match_data_mask(0, 0xFFFFFFF)
