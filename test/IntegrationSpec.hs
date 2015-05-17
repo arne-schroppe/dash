@@ -129,8 +129,6 @@ spec = do
       \     val (z) = \n\
       \       add (add x (add z y)) outside \n\
       \ \n\
-      \ \n\
-      \ \n\
       \ ((make-adder-maker 9) 80) 150"
       let result = run code
       result `shouldReturn` VMNumber 1862
@@ -236,6 +234,7 @@ What's missing:
 
 K Closures
 - Recursion (also mutual recursion)
+- Tail call optimisation (isResultValue, add new opcodes)
 - Currying (also with underscore)
 - Strings
 - Creating symbols
