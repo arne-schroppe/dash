@@ -117,6 +117,10 @@ bool execute_instruction(vm_instruction instr) {
     break;
 
     case OP_CALL: {
+      if (stack_pointer + 1 == STACK_SIZE) {
+        printf("Stack overflow!\n");
+        return false;
+      }
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
       int num_args = get_arg_r2(instr);
@@ -130,6 +134,10 @@ bool execute_instruction(vm_instruction instr) {
     break;
 
     case OP_CALLCL: {
+      if (stack_pointer + 1 == STACK_SIZE) {
+        printf("Stack overflow!\n");
+        return false;
+      }
       int cl_address_reg = get_arg_r1(instr);
       heap_address cl_address = (heap_address)get_reg(cl_address_reg);
       int num_args = get_arg_r2(instr);

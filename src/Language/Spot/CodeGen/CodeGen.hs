@@ -129,8 +129,7 @@ canBeCalledDirectly atom = case atom of
 compileClosure reg freeVars params expr = do
   funAddr <- compileFunc freeVars params expr
   argInstrs <- mapM (uncurry compileSetArgN) $ zipWithIndex freeVars
-  -- TODO use the next free register instead of hardcoded value
-  let makeClosureInstr = [Tac_load_f 31 funAddr, Tac_make_cl reg 31 (length freeVars)]
+  let makeClosureInstr = [Tac_load_f reg funAddr, Tac_make_cl reg reg (length freeVars)]
   return $ argInstrs ++ makeClosureInstr
 
 
@@ -142,12 +141,16 @@ compileMatch reg subject maxCaptures patternAddr branches = do
   let instrsPerBranch = 3 -- load args, call lambda, jump out
   let handledBranches = [0 .. (length branchLambdaVars) - 1]
   let remainingBranches = reverse handledBranches
-  let captureStartReg = 29 - maxCaptures + 1 -- TODO take the next n registers but don't reserve them. We don't need them afterwards
+
+  -- We are using the fact that registers are used linearly from smallest to largest.
+  -- That way we can use the next n registers temporarily to capture match variables
+  -- TODO Make sure that this actually works and doesn't create false results
+  let captureStartReg = 29 - maxCaptures + 1 -- reg + 1
   let jumpTable = map (\(remaining, handled) ->
                       -- Jump 1 instr for each remaining entry in jump table
                       Tac_jmp (1 * remaining + instrsPerBranch * handled)) $
                       zip remainingBranches handledBranches
-  -- TODO seriously, find a way to reserve registers
+  -- We are using reg as a temporary register here
   let matchCode = [Tac_load_addr 30 patternAddr, Tac_match subjR 30 captureStartReg]
   compiledBranches <- forM (zip3 remainingBranches branchMatchedVars branchLambdaVars) $
                               \ (remaining, matchedVars, funVar) -> do
