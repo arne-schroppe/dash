@@ -6,6 +6,7 @@
 #include "opcodes.h"
 #include "heap.h"
 
+// #define VM_DEBUG 1
 
 #ifdef VM_DEBUG
 #  define debug(x) do { x; } while (0)
@@ -118,13 +119,13 @@ bool execute_instruction(vm_instruction instr) {
 
     case OP_CALL: {
       if (stack_pointer + 1 == STACK_SIZE) {
-        printf("Stack overflow!\n");
+        printf("Stack overflow (call)!\n");
+        exit(-1);
         return false;
       }
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
 
-                    printf("CALL %i %i\n", func_address, program_pointer);
       int num_args = get_arg_r2(instr);
       memcpy(&next_frame.reg[0], &arg_reg[0], num_args * sizeof(vm_value));
       next_frame.return_address = program_pointer;
@@ -137,23 +138,21 @@ bool execute_instruction(vm_instruction instr) {
 
 
     case OP_TAIL_CALL: {
-                    printf("TAIL CALL %i %i \n", (current_frame.return_address), program_pointer);
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
       int num_args = get_arg_r2(instr);
       memcpy(&current_frame.reg[0], &arg_reg[0], num_args * sizeof(vm_value));
       // next_frame.return_address = program_pointer;
       // next_frame.result_register = get_arg_r0(instr);
-      debug( printf("TL CALL   r%02i r%02i r%02i\n", get_arg_r0(instr), func_address_reg, num_args) );
+      debug( printf("TL CALL r%02i r%02i f=%04d n%02i\n", get_arg_r0(instr), func_address_reg, func_address, num_args) );
       program_pointer = func_address;
       // ++stack_pointer;
     }
     break;
 
     case OP_CALLCL: {
-                    printf("CALL CL\n");
       if (stack_pointer + 1 == STACK_SIZE) {
-        printf("Stack overflow!\n");
+        printf("Stack overflow (call cl)!\n");
         return false;
       }
       int cl_address_reg = get_arg_r1(instr);
@@ -176,7 +175,6 @@ bool execute_instruction(vm_instruction instr) {
     break;
 
     case OP_TAIL_CALLCL: {
-                    printf("TAIL CALL CL %i %i \n", (current_frame.return_address), program_pointer);
       int cl_address_reg = get_arg_r1(instr);
       heap_address cl_address = (heap_address)get_reg(cl_address_reg);
       int num_args = get_arg_r2(instr);
@@ -190,7 +188,7 @@ bool execute_instruction(vm_instruction instr) {
       memcpy(&current_frame.reg[num_args], cl_pointer + 1, num_env_args * sizeof(vm_value));
       vm_value func_address = *(cl_pointer + num_env_args + 1);
 
-      debug( printf("TL CALLCL r%02i r%02i r%02i\n", get_arg_r0(instr), cl_address_reg, num_args) );
+      debug( printf("TL CALLCL r%02i r%02i=%04zu f=%04i n%02i\n", get_arg_r0(instr), cl_address_reg, cl_address, func_address, num_args) );
       program_pointer = func_address;
       // ++stack_pointer;
     }
@@ -203,14 +201,13 @@ bool execute_instruction(vm_instruction instr) {
       int func_address = get_reg(func_address_reg);
       int num_args = get_arg_r2(instr);
 
-                    printf("MAKE CL %i\n", func_address);
       heap_address cl_address = heap_alloc(num_args + 2); /* args + closure header + pointer to function */
       vm_value *cl_pointer = heap_get_pointer(cl_address);
       *cl_pointer = num_args; /* write header */
       memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
       *(cl_pointer + num_args + 1) = func_address;
       get_reg(reg0) = (vm_value) cl_address;
-      debug( printf("MAKECL r%02i r%02i r%02i\n", reg0, func_address_reg, num_args) );
+      debug( printf("MAKECL r%02i r%02i f=%04i r%02i\n", reg0, func_address_reg, func_address, num_args) );
     }
     break;
 
@@ -225,13 +222,13 @@ bool execute_instruction(vm_instruction instr) {
       current_frame.reg[next_frame.result_register] = next_frame.reg[return_val_reg];
       debug( printf("RET\n") );
       program_pointer = next_frame.return_address;
-      printf("RET %i\n", program_pointer);
     }
     break;
 
     case OP_JMP: {
       int offset = get_arg_i(instr);
       program_pointer += offset;
+      debug( printf("JMP %i\n", offset) );
     }
     break;
 
@@ -245,6 +242,7 @@ bool execute_instruction(vm_instruction instr) {
       int number_of_patterns = from_match_value(match_header);
       int i = 0;
 
+      debug( printf("MATCH subj_reg=%04i pat_addr=%04d capt_reg=%02i\n", get_arg_r0(instr), patterns_addr, capture_reg) );
       for(i=0; i<number_of_patterns; ++i) {
         int rel_pat_addr = patterns_addr + 1 + i;
 
@@ -398,14 +396,14 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
   while(is_running && program_pointer < program_length) {
     debug( printf("-----\n") );
-    debug( print_registers(current_frame) );
+    //debug( print_registers(current_frame) );
     int old_program_pointer = program_pointer;
     ++program_pointer;
     is_running = execute_instruction(program[old_program_pointer]);
-    debug( print_registers(current_frame) );
+    //debug( print_registers(current_frame) );
   }
   vm_value result = stack[stack_pointer].reg[0];
-  debug( printf("Result: %llu\n", result) );
+  debug( printf("Result: %u\n", result) );
   return result;
 }
 

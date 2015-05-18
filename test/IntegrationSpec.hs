@@ -76,7 +76,6 @@ spec = do
     -- TODO capture dynamic free vars in matches!
 
 
-{- TODO try this later with proper recursion
 
     it "optimizes tail calls" $ do
       let code = "\
@@ -86,13 +85,12 @@ spec = do
       \     16 -> 43   \n\
       \     x -> k k x \n\
       \   end \n\
-      \ val y = counter counter (0) \n\
+      \ val y = counter counter 14 \n\
       \ y "
       let result = run code
       -- let result = return $ VMNumber 42
       putStrLn $ show $ toAsm code
       result `shouldReturn` VMNumber 43
--}
 
 
     -- TODO test recursion, both top-level and inside a function
@@ -258,7 +256,7 @@ What's missing:
 
 K Closures
 - Recursion (also mutual recursion)
-- Tail call optimisation (isResultValue, add new opcodes)
+? Tail call optimisation (isResultValue, add new opcodes)
 - Currying (also with underscore)
 - Strings
 - Creating symbols
@@ -267,6 +265,9 @@ K Closures
 - Modules
 - indentation syntax
 
+- Refactor VM
+  - bytecode
+  - stack
 
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
 - Faster, optimized match patterns (reduce number of comparisons)

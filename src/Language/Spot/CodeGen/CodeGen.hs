@@ -131,7 +131,7 @@ canBeCalledDirectly atom = case atom of
 compileClosure reg freeVars params expr = do
   funAddr <- compileFunc freeVars params expr
   argInstrs <- mapM (uncurry compileSetArgN) $ zipWithIndex freeVars
-  let makeClosureInstr = [Tac_load_f reg funAddr, Tac_make_cl reg reg (length freeVars)]
+  let makeClosureInstr = [Tac_load_f 31 funAddr, Tac_make_cl reg 31 (length freeVars)]
   return $ argInstrs ++ makeClosureInstr
 
 
