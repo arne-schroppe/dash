@@ -39,6 +39,7 @@ data NormVar =
   | NDynamicFreeVar String
   | NFunParam String
   | NConstantFreeVar String
+  | NRecursiveVar String
   deriving (Eq, Show)
 
 data NormPrimOp =

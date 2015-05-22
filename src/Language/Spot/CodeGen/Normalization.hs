@@ -57,11 +57,11 @@ normalizeExpr expr = case expr of
       rest <- normalizeExpr restExpr
       return $ rest
   _ -> do
-    atomizeExpr expr $ return . NAtom
+    atomizeExpr expr "" $ return . NAtom
 
 
-atomizeExpr :: Expr -> Cont -> State NormState NormExpr
-atomizeExpr expr k = case expr of
+atomizeExpr :: Expr -> String -> Cont -> State NormState NormExpr
+atomizeExpr expr name k = case expr of
   FunCall funExpr args ->
           normalizeFunCall funExpr args k
   LitNumber n ->
@@ -70,15 +70,15 @@ atomizeExpr expr k = case expr of
           normalizeSymbol sid args k
   Var name ->
           normalizeVar name k
-  Lambda params bodyExpr ->
-          normalizeLambda params bodyExpr k
   Match matchedExpr patterns ->
           normalizeMatch matchedExpr patterns k
+  Lambda params bodyExpr ->
+          normalizeLambda params bodyExpr name k
   LocalBinding (Binding name boundExpr) restExpr -> -- inner local binding ! (i.e. let a = let b = 2 in 1 + b)
-          atomizeExpr boundExpr $ \ aExpr -> do
+          atomizeExpr boundExpr name $ \ aExpr -> do
             var <- newTempVar name
             addBinding name (var, False)
-            atomizeExpr restExpr $ \ boundExpr -> do
+            atomizeExpr restExpr "" $ \ boundExpr -> do
               rest <- k boundExpr
               return $ NLet var aExpr rest
   x -> error $ "Unable to normalize " ++ (show x)
@@ -114,8 +114,9 @@ normalizeVar name k = do
   k $ NVar var
 
 
-normalizeLambda params bodyExpr k = do
+normalizeLambda params bodyExpr name k = do
   enterContext params
+  when (not $ null name) $ addBinding name (NRecursiveVar name, False) -- TODO we don't know whether this var is dynamic or not!
   normalizedBody <- normalizeExpr bodyExpr
   con <- context
   let free = freeVars con
@@ -195,14 +196,14 @@ nameExpr expr originalName k = case expr of
   _ -> letBind expr k originalName
   where
     letBind e k n = do
-      atomizeExpr e $ \ aExpr -> do
+      atomizeExpr e n $ \ aExpr -> do
         var <- newTempVar n
         restExpr <- k var
         return $ NLet var aExpr restExpr
 
 isDynamic expr = case expr of
   NLambda (h:[]) _ _ -> True
-  -- NCompoundSymbol True _ _ -> True
+  NCompoundSymbol True _ -> True
   _ -> False
 
 

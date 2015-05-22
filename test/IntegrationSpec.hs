@@ -92,6 +92,23 @@ spec = do
 
     -- TODO test recursion, both top-level and inside a function
 
+
+    context "when using recursion" $ do
+
+            it "handles self-recursion" $ do
+              let code = "\
+              \ val counter (acc) = \n\
+              \   val next = sub acc 1 \n\
+              \   match next begin\n\
+              \     0 -> 43   \n\
+              \     x -> counter x \n\
+              \   end \n\
+              \ counter 5"
+              let result = run code
+              putStrLn $ show $ toAsm code
+              result `shouldReturn` VMNumber 43
+
+
     context "when using closures" $ do
 
             it "returns a closure with a dynamic variable" $ do

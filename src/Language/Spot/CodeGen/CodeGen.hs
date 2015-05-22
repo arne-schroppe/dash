@@ -23,14 +23,17 @@ import qualified Data.Map as Map
 
 compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
-  let result = execState (compileFunc [] [] expr) emptyCompState in
+  let result = execState (compileFunc [] [] expr "") emptyCompState in
   (toList (instructions result), cTable, symlist)
 
 
-compileFunc freeVars params expr = do
+compileFunc freeVars params expr name = do
   funAddr <- beginFunction freeVars params
+  -- we add the name already here for recursion
+  addCompileTimeConst name $ CTConstLambda funAddr -- TODO this shouldn't really be in here
   funcCode <- compileExpr expr
   endFunction funAddr funcCode
+  addCompileTimeConst name $ CTConstLambda funAddr -- Have to re-add to outer scope    TODO this sucks
   return funAddr
 
 compileExpr expr = case expr of
@@ -42,13 +45,13 @@ compileExpr expr = case expr of
 
 compileAtom reg atom name isResultValue = case atom of
   NNumber n -> do
-          addCodeConst name $ CConstNumber (fromIntegral n)
+          addCompileTimeConst name $ CTConstNumber (fromIntegral n)
           return [Tac_load_i reg (fromIntegral n)]
   NPlainSymbol sid -> do
-          addCodeConst name $ CConstPlainSymbol sid
+          addCompileTimeConst name $ CTConstPlainSymbol sid
           return [Tac_load_ps reg sid]
   NCompoundSymbol False cAddr -> do
-          -- addCodeConst name $ CConstCompoundSymbol cAddr
+          -- addCompileTimeConst name $ CConstCompoundSymbol cAddr
           return [Tac_load_cs reg cAddr] -- TODO codeConstant?
   NPrimOp (NPrimOpAdd a b) -> do
           ra <- getReg a
@@ -59,10 +62,9 @@ compileAtom reg atom name isResultValue = case atom of
           rb <- getReg b
           return [Tac_sub reg ra rb]
   NLambda [] params expr -> do
-          funAddr <- compileFunc [] params expr
-          addCodeConst name $ CConstLambda funAddr
+          funAddr <- compileFunc [] params expr name
           compileLoadLambda reg funAddr isResultValue
-  NLambda freeVars params expr -> compileClosure reg freeVars params expr
+  NLambda freeVars params expr -> compileClosure reg freeVars params expr name
   NFunCall funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
           callInstr <- compileCallInstr reg funVar args
@@ -91,12 +93,12 @@ compileCallInstr reg funVar args = do
 
 compileConstantFreeVar :: Reg -> String -> Bool -> State CompState [Tac Reg]
 compileConstantFreeVar reg name isResultValue = do
-  codeConst <- getCodeConstInOuterScope name
-  case codeConst of
-          CConstNumber n -> return [Tac_load_i reg (fromIntegral n)]
-          CConstPlainSymbol symId -> return [Tac_load_ps reg symId]
+  compConst <- getCompileTimeConstInOuterScope name
+  case compConst of
+          CTConstNumber n -> return [Tac_load_i reg (fromIntegral n)]
+          CTConstPlainSymbol symId -> return [Tac_load_ps reg symId]
           -- CConstCompoundSymbol ConstAddr
-          CConstLambda funAddr -> compileLoadLambda reg funAddr isResultValue
+          CTConstLambda funAddr -> compileLoadLambda reg funAddr isResultValue
 
 compileLoadLambda reg funAddr isResultValue = do
   let ldFunAddr = [Tac_load_f reg funAddr]
@@ -126,8 +128,8 @@ canBeCalledDirectly atom = case atom of
   _ -> False
 
 
-compileClosure reg freeVars params expr = do
-  funAddr <- compileFunc freeVars params expr
+compileClosure reg freeVars params expr name = do
+  funAddr <- compileFunc freeVars params expr name
   argInstrs <- mapM (uncurry compileSetArgN) $ zipWithIndex freeVars
   let makeClosureInstr = [Tac_load_f reg funAddr, Tac_make_cl reg reg (length freeVars)]
   return $ argInstrs ++ makeClosureInstr
@@ -195,21 +197,21 @@ data CompScope = CompScope {
                  -- can be called directly with Tac_call. Everything else is
                  -- called with Tac_call_cl
                  , directCallRegs :: [Int]
-                 , codeConstants :: Map.Map String CompCodeConst
+                 , compileTimeConstants :: Map.Map String CompileTimeConstant
                  }
 
 makeScope fps freeVars = CompScope {
                functionParams = fps
              , freeVariables = freeVars
              , directCallRegs = []
-             , codeConstants = Map.empty
+             , compileTimeConstants = Map.empty
              }
 
-data CompCodeConst =
-    CConstNumber VMWord
-  | CConstPlainSymbol SymId
-  | CConstCompoundSymbol ConstAddr
-  | CConstLambda FunAddr
+data CompileTimeConstant =
+    CTConstNumber VMWord
+  | CTConstPlainSymbol SymId
+  | CTConstCompoundSymbol ConstAddr
+  | CTConstLambda FunAddr
 
 
 beginFunction freeVars params = do
@@ -301,6 +303,9 @@ getReg (NLocalVar tmpVar name) = do
   numParams <- numParameters
   return $ numFree + numParams + tmpVar
 
+
+
+
 isDirectCallReg reg = do
   scope <- getScope
   let dCallRegs = directCallRegs scope
@@ -321,25 +326,25 @@ putScope s = do
   put $ state { scopes = s : (tail $ scopes state) }
 
 
-addCodeConst "" _ = return ()
-addCodeConst name c = do
+addCompileTimeConst "" _ = return ()
+addCompileTimeConst name c = do
   scope <- getScope
-  let consts = codeConstants scope
+  let consts = compileTimeConstants scope
   let consts' = Map.insert name c consts
-  putScope $ scope { codeConstants = consts' }
+  putScope $ scope { compileTimeConstants = consts' }
 
 -- This retrieves values for NConstantFreeVar. Those are never inside the current scope
-getCodeConstInOuterScope :: String -> State CompState CompCodeConst
-getCodeConstInOuterScope name = do
+getCompileTimeConstInOuterScope :: String -> State CompState CompileTimeConstant
+getCompileTimeConstInOuterScope name = do
   scps <- gets scopes
-  getCodeConst' name scps
+  getCompConst name scps
   where
-    getCodeConst' name [] = error $ "Compiler error: no constant named " ++ name
-    getCodeConst' name scps = do
-      let consts = codeConstants $ head scps
+    getCompConst name [] = error $ "Compiler error: no compile time constant named " ++ name
+    getCompConst name scps = do
+      let consts = compileTimeConstants $ head scps
       case Map.lookup name consts of
         Just c -> return c
-        Nothing -> getCodeConst' name $ tail scps
+        Nothing -> getCompConst name $ tail scps
 
 
 
