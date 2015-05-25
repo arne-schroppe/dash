@@ -77,7 +77,7 @@ compileAtom reg atom name isResultValue = case atom of
                  r <- getReg var
                  return [Tac_move reg r]
           NConstantFreeVar name -> compileConstantFreeVar reg name isResultValue
-          _ -> error "fail"
+          x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   -- TODO unify order of arguments
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches

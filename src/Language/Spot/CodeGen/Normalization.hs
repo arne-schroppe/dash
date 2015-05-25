@@ -118,7 +118,7 @@ normalizeVar name k = do
 
 normalizeLambda params bodyExpr name k = do
   enterContext params
-  when (not $ null name) $ addBinding name (NRecursiveVar name, True) -- TODO we don't know whether this var is dynamic or not!
+  when (not $ null name) $ addBinding name (NRecursiveVar name, False) -- TODO we don't know whether this var is dynamic or not!
   normalizedBody <- normalizeExpr bodyExpr
   con <- context
   let free = freeVars con
@@ -253,14 +253,16 @@ lookupName name = do
   let ctxs = contexts state
   let localContext = head ctxs
   case Map.lookup name (bindings localContext)  of
-    Just bnd -> return $ fst bnd
+    Just (var, _) -> return var
     Nothing -> do
+           -- TODO this is super weird. Why don't we just return the var?
            (var, isDynamic) <- lookupNameInContext name (tail ctxs)
            if isDynamic then do
              addDynamicVar name
              return $ NDynamicFreeVar name
-           else
-             return $ NConstantFreeVar name
+           else case var of
+             NRecursiveVar name -> return var
+             _ -> return $ NConstantFreeVar name
 
 
 lookupNameInContext name [] = error $ "Identifier " ++ name ++ " not found"
