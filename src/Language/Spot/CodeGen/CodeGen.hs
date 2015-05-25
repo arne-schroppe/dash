@@ -76,6 +76,9 @@ compileAtom reg atom name isResultValue = case atom of
           NFunParam name -> do
                  r <- getReg var
                  return [Tac_move reg r]
+          NDynamicFreeVar name -> do
+                 r <- getReg var
+                 return [Tac_move reg r]
           NConstantFreeVar name -> compileConstantFreeVar reg name isResultValue
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   -- TODO unify order of arguments
