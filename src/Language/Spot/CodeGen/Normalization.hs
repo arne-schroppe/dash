@@ -31,23 +31,6 @@ TODO: Forget mutual recursion for now
 
 -}
 
-{-
-
-How to resolve recursion
-
-case 1: Non-mutual lambda recursion
-After normalizing a lambda:
-  If lambda is not a closure, go back down to resolve all
-  NRecursiveVar to NConstantFreeVar
-
-case 2: Non-mutual closure recursion
-After normalizing a lambda:
-  
-
-
-
--}
-
 
 type Cont = NormAtomicExpr -> State NormState NormExpr
 
@@ -408,15 +391,20 @@ encodePatternCompoundSymbolArgs nextMatchVar args = do
 
 ----- Recursion
 
+-- TODO split this off into a separate module
+-- TODO also move normalization state out into separate module
+
 
 -- state
 
 data RecursionState = RecursionState {
     lambdaStack :: [(String, NormVar)]
+  , extraFreeVars :: [[String]]
 }
 
 emptyRecursionState = RecursionState {
     lambdaStack = []
+  , extraFreeVars = []
 }
 
 
@@ -451,20 +439,35 @@ resolveRecAtom atom name = case atom of
 resolveRecLambda freeVars params expr name = do
   pushLambdaScope freeVars name
   resolvedBody <- resolveRecExpr expr
+  extraFreeVars <- gets extraFreeVars
+  let extra = head extraFreeVars
   popLambdaScope
-  return $ NLambda freeVars params resolvedBody
+  return $ NLambda (freeVars ++ extra) params resolvedBody
 
 resolveRecVar name = do
   state <- get
   let maybeVar = findName name (lambdaStack state)
   case maybeVar of
     Nothing -> error $ "Internal compiler error: Can't resolve recursive use of " ++ name
-    Just var -> return var
+    Just v@(NConstantFreeVar name) -> return v
+    Just v@(NDynamicFreeVar name) -> do
+      addExtraFreeVar name
+      return v
 
 findName name []        = Nothing
 findName name ((n, v):ns) =
   if n == name then Just v
                else findName name ns
+
+
+addExtraFreeVar name = do
+  state <- get
+  let extra = extraFreeVars state
+  let thisFreeVars = head $ extra
+  when (not $ name `elem` thisFreeVars) $ do
+          let free' = name : thisFreeVars
+          let state' = state { extraFreeVars = free' : (tail extra) }
+          put state'
 
 -- TODO this doesn't work for mutual recursion
 
@@ -477,11 +480,13 @@ pushLambdaScope fs n = pushLambdaScope' n (NDynamicFreeVar n)
 pushLambdaScope' name var = do
   state <- get
   let newStack = (name, var) : (lambdaStack state)
-  put $ state { lambdaStack = newStack }
+  let newExtraFreeVars = [] : (extraFreeVars state)
+  put $ state { lambdaStack = newStack, extraFreeVars = newExtraFreeVars }
 
 popLambdaScope = do
   state <- get
   let newStack = tail $ lambdaStack state
-  put $ state { lambdaStack = newStack }
+  let newExtraFreeVars = tail $ extraFreeVars state
+  put $ state { lambdaStack = newStack, extraFreeVars = newExtraFreeVars }
 
 

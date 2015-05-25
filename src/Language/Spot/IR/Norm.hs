@@ -38,7 +38,7 @@ data NormVar =
     NLocalVar Int String
   | NDynamicFreeVar String
   | NFunParam String
-  | NConstantFreeVar String
+  | NConstantFreeVar String -- We should rename this to StaticFreeVar
   | NRecursiveVar String
   deriving (Eq, Show)
 

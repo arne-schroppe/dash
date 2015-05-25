@@ -263,9 +263,10 @@ spec = do
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "outer") (NLambda [] ["b"] $
                          NLet (NLocalVar 0 "fun") (NLambda ["b", "fun"] ["a"] $
-                           NLet (NLocalVar 0 "") (NPrimOp $ NPrimOpAdd (NFunParam "a") (NDynamicFreeVar "b")) $
                            -- recursive use of "fun" will call the same closure again
-                           NAtom $ NFunCall (NDynamicFreeVar "fun") [NLocalVar 0 ""]) $
+                           NLet (NLocalVar 0 "") (NVar $ NDynamicFreeVar "fun") $
+                           NLet (NLocalVar 1 "") (NPrimOp $ NPrimOpAdd (NFunParam "a") (NDynamicFreeVar "b")) $
+                           NAtom $ NFunCall (NLocalVar 0 "") [NLocalVar 1 ""]) $
                          NLet (NLocalVar 1 "") (NNumber 10) $
                          NAtom $ NFunCall (NLocalVar 0 "fun") [NLocalVar 1 ""]) $
                        NLet (NLocalVar 1 "") (NNumber 2) $
