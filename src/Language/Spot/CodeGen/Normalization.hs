@@ -397,6 +397,9 @@ encodePatternCompoundSymbolArgs nextMatchVar args = do
 
 -- state
 
+-- TODO pull up new extra vars (if not resolved in that scope)
+-- avoid duplicate free vars by adding all current freevars when entering scope
+
 data RecursionState = RecursionState {
     lambdaStack :: [(String, NormVar)]
   , extraFreeVars :: [[String]]

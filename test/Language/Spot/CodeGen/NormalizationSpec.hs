@@ -273,6 +273,28 @@ spec = do
                        NAtom $ NFunCall (NLocalVar 0 "outer") [NLocalVar 1 ""]
         norm `shouldBe` expected
 
+      it "pulls up new free variables into outer scopes" $ do
+        let ast = LocalBinding (Binding "outer" $ Lambda ["b"] $
+                    LocalBinding (Binding "fun" $
+                      LocalBinding (Binding "inner" $ Lambda ["x"] $
+                        Lambda ["a"] $ FunCall (Var "fun") [FunCall (Var "add") [Var "a", Var "b"]]) $
+                      FunCall (Var "inner") [LitNumber 0]) $
+                    FunCall (Var "fun") [LitNumber 10]) $
+                  FunCall (Var "outer") [LitNumber 2]
+        let norm = pureNorm ast
+        let expected = NLet (NLocalVar 0 "outer") (NLambda [] ["b"] $
+                         NLet (NLocalVar 0 "fun") (NLambda ["b", "fun"] ["a"] $
+                           NLet (NLocalVar 0 "inner") (NLambda ["fun"] ["x"] $
+                             NLet (NLocalVar 0 "") (NVar $ NDynamicFreeVar "fun") $
+                             NLet (NLocalVar 1 "") (NPrimOp $ NPrimOpAdd (NFunParam "a") (NDynamicFreeVar "b")) $
+                             NAtom $ NFunCall (NLocalVar 0 "") [NLocalVar 1 ""]) $
+                           NLet (NLocalVar 1 "") (NNumber 0) $
+                           NAtom $ NFunCall (NLocalVar 0 "inner") [NLocalVar 1 ""]) $
+                         NLet (NLocalVar 1 "") (NNumber 10) $
+                         NAtom $ NFunCall (NLocalVar 0 "fun") [NLocalVar 1 ""]) $
+                       NLet (NLocalVar 1 "") (NNumber 2) $
+                       NAtom $ NFunCall (NLocalVar 0 "outer") [NLocalVar 1 ""]
+        norm `shouldBe` expected
 
 {-
  -    TODO test a lambda that becomes a closure only because of a recursive use of another closure

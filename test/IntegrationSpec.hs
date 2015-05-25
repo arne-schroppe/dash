@@ -95,6 +95,7 @@ spec = do
 
     context "when using recursion" $ do
 
+{-
             it "handles nested self-recursion" $ do
               let code = "\
               \ val counter (acc) = \n\
@@ -102,6 +103,7 @@ spec = do
               \   counter next \n\
               \ counter 5"
               putStrLn $ show $ toAsm code
+-}
 
 
             it "handles nested self-recursion" $ do
