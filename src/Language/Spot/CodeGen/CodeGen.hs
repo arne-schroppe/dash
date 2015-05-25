@@ -303,7 +303,7 @@ getReg (NLocalVar tmpVar name) = do
   numParams <- numParameters
   return $ numFree + numParams + tmpVar
 
-
+getReg (NRecursiveVar name) = error "test" -- TODO delete this
 
 
 isDirectCallReg reg = do

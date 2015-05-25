@@ -116,7 +116,7 @@ normalizeVar name k = do
 
 normalizeLambda params bodyExpr name k = do
   enterContext params
-  when (not $ null name) $ addBinding name (NRecursiveVar name, False) -- TODO we don't know whether this var is dynamic or not!
+  when (not $ null name) $ addBinding name (NRecursiveVar name, True) -- TODO we don't know whether this var is dynamic or not!
   normalizedBody <- normalizeExpr bodyExpr
   con <- context
   let free = freeVars con

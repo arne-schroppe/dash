@@ -95,7 +95,16 @@ spec = do
 
     context "when using recursion" $ do
 
-            it "handles self-recursion" $ do
+            it "handles nested self-recursion" $ do
+              let code = "\
+              \ val counter (acc) = \n\
+              \   val next = sub acc 1 \n\
+              \   counter next \n\
+              \ counter 5"
+              putStrLn $ show $ toAsm code
+
+
+            it "handles nested self-recursion" $ do
               let code = "\
               \ val counter (acc) = \n\
               \   val next = sub acc 1 \n\
@@ -104,10 +113,24 @@ spec = do
               \     x -> counter x \n\
               \   end \n\
               \ counter 5"
+              putStrLn $ show $ toNorm code
+              let result = run code
+              result `shouldReturn` VMNumber 43
+
+            it "handles nested self-recursion of closure" $ do
+              let code = "\
+              \ val outer (m) = \n\
+              \   val counter (acc) = \n\
+              \     val next = sub acc m \n\
+              \     match next begin\n\
+              \       0 -> 43   \n\
+              \       x -> counter x \n\
+              \     end \n\
+              \   counter 9 \n\
+              \ outer 3"
               let result = run code
               putStrLn $ show $ toAsm code
               result `shouldReturn` VMNumber 43
-
 
     context "when using closures" $ do
 

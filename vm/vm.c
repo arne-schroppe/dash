@@ -118,7 +118,7 @@ bool execute_instruction(vm_instruction instr) {
 
     case OP_CALL: {
       if (stack_pointer + 1 == STACK_SIZE) {
-        printf("Stack overflow!\n");
+        printf("STACK OVERFLOW!\n");
         return false;
       }
       int func_address_reg = get_arg_r1(instr);
