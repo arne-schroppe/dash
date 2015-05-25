@@ -27,6 +27,7 @@ import qualified Data.IntMap as IntMap
 -- don't bleed Word32 (and fromIntegral) out into the rest. Type Consttable as [[Int]] or [ConstTableEntry] where ConstTableEntry = [Int]
 -- Add better typing for several things, also for uncompiled asm
 
+-- TODO find a style and use it consistently
 
 toNorm :: String -> NormExpr
 toNorm prog =

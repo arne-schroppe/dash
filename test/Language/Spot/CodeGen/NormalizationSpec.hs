@@ -238,21 +238,23 @@ spec = do
         norm `shouldBe` expected
 
 
-      it "identifies recursive use of an identifier" $ do
+      it "resolves recursive use of an identifier" $ do
         let ast = LocalBinding (Binding "fun" $
                     Lambda ["a"] $ FunCall (Var "fun") [FunCall (Var "add") [Var "a", LitNumber 1]]) $
                   FunCall (Var "fun") [LitNumber 10]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "fun") (NLambda [] ["a"] $
-                         NLet (NLocalVar 0 "") (NNumber 1) $
-                         NLet (NLocalVar 1 "") (NPrimOp $ NPrimOpAdd (NFunParam "a") (NLocalVar 0 "")) $
-                         NAtom $ NFunCall (NRecursiveVar "fun") [NLocalVar 1 ""]) $
+                         NLet (NLocalVar 0 "") (NVar $ NConstantFreeVar "fun") $
+                         NLet (NLocalVar 1 "") (NNumber 1) $
+                         NLet (NLocalVar 2 "") (NPrimOp $ NPrimOpAdd (NFunParam "a") (NLocalVar 1 "")) $
+                         NAtom $ NFunCall (NLocalVar 0 "") [NLocalVar 2 ""]) $
                        NLet (NLocalVar 1 "") (NNumber 10) $
                        NAtom $ NFunCall (NLocalVar 0 "fun") [NLocalVar 1 ""]
         norm `shouldBe` expected
 
 
-      it "identifies recursive use of an identifier in a closure" $ do
+      -- TODO forget about this for now
+      it "resolves recursive use of an identifier in a closure" $ do
         let ast = LocalBinding (Binding "outer" $ Lambda ["b"] $
                     LocalBinding (Binding "fun" $
                       Lambda ["a"] $ FunCall (Var "fun") [FunCall (Var "add") [Var "a", Var "b"]]) $
@@ -260,12 +262,26 @@ spec = do
                   FunCall (Var "outer") [LitNumber 2]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "outer") (NLambda [] ["b"] $
-                         NLet (NLocalVar 0 "fun") (NLambda ["b"] ["a"] $
+                         NLet (NLocalVar 0 "fun") (NLambda ["b", "fun"] ["a"] $
                            NLet (NLocalVar 0 "") (NPrimOp $ NPrimOpAdd (NFunParam "a") (NDynamicFreeVar "b")) $
-                           NAtom $ NFunCall (NRecursiveVar "fun") [NLocalVar 0 ""]) $
+                           -- recursive use of "fun" will call the same closure again
+                           NAtom $ NFunCall (NDynamicFreeVar "fun") [NLocalVar 0 ""]) $
                          NLet (NLocalVar 1 "") (NNumber 10) $
                          NAtom $ NFunCall (NLocalVar 0 "fun") [NLocalVar 1 ""]) $
                        NLet (NLocalVar 1 "") (NNumber 2) $
                        NAtom $ NFunCall (NLocalVar 0 "outer") [NLocalVar 1 ""]
         norm `shouldBe` expected
 
+
+{-
+ -    TODO test a lambda that becomes a closure only because of a recursive use of another closure
+      it "resolves nested recursive lambdas that become closures by using recursion" $ do
+        let code = "
+              \ val outer (m) = \n\
+              \   val counter (acc) = \n\
+              \     val next = sub acc m \n\
+              \   counter 9 \n\
+              \ outer 3"
+-}
+
+      -- TODO a recursive closure which changes it's context (is that possible?)

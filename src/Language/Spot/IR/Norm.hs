@@ -30,7 +30,7 @@ data NormAtomicExpr =
   | NLambda [String] [String] NormExpr  -- FreeVars FormalParams Body -- TODO free vars and formal params should appear in the same order as later in assembly!
   | NPrimOp NormPrimOp
   | NFunCall NormVar [NormVar]
-  | NMatch Int NormVar ConstAddr [([String], NormVar)] -- MaxCaptures Subject PatternAddr [MatchedVars, Expr]
+  | NMatch Int NormVar ConstAddr [([String], NormVar)] -- MaxCaptures Subject PatternAddr [MatchedVars, Var-With-Lambda]
   deriving (Eq, Show)
 
 

@@ -31,13 +31,32 @@ TODO: Forget mutual recursion for now
 
 -}
 
+{-
+
+How to resolve recursion
+
+case 1: Non-mutual lambda recursion
+After normalizing a lambda:
+  If lambda is not a closure, go back down to resolve all
+  NRecursiveVar to NConstantFreeVar
+
+case 2: Non-mutual closure recursion
+After normalizing a lambda:
+  
+
+
+
+-}
+
 
 type Cont = NormAtomicExpr -> State NormState NormExpr
 
 normalize :: Expr -> (NormExpr, ConstTable, SymbolNameList)
 normalize expr =
   let (result, finalState) = runState (normalizeInContext expr) emptyNormState in
-  (result, constTable finalState, getSymbolNames finalState)
+  let result' = resolveRecursion result in
+  (result', constTable finalState, getSymbolNames finalState)
+
 
 
 
@@ -188,6 +207,8 @@ nameExpr expr originalName k = case expr of
     case var of
       -- Constant free vars are let-bound
       NConstantFreeVar n -> letBind expr k ""
+      -- Recursive vars are also let-bound. Not strictly necessary, but easier later on  (TODO loosen this restriction)
+      NRecursiveVar n -> letBind expr k ""
       -- All other vars are used directly (because they will be in a register later on)
       v -> do
             bodyExpr <- k v
@@ -381,4 +402,86 @@ encodePatternCompoundSymbolArgs nextMatchVar args = do
     return (nextMV + (fromIntegral $ length vars), accVars ++ vars, pats ++ [encoded])
     ) (nextMatchVar, [], []) args  -- TODO get that O(n*m) out and make it more clear what this does
   return (vars, entries)
+
+
+
+
+----- Recursion
+
+
+-- state
+
+data RecursionState = RecursionState {
+    lambdaStack :: [(String, NormVar)]
+}
+
+emptyRecursionState = RecursionState {
+    lambdaStack = []
+}
+
+
+resolveRecursion :: NormExpr -> NormExpr
+resolveRecursion normExpr = evalState (resolveRecExpr normExpr) emptyRecursionState
+
+
+resolveRecExpr normExpr = case normExpr of
+  NLet var atom expr -> resolveRecLet var atom expr
+  NAtom atom -> do
+    recAtom <- resolveRecAtom atom ""
+    return $ NAtom recAtom
+
+
+resolveRecLet var atom expr = do
+  resAtom <- resolveRecAtom atom (localVarName var)
+  resExpr <- resolveRecExpr expr
+  return $ NLet var resAtom resExpr
+
+localVarName (NLocalVar _ name) = name
+localVarName _ = error "Internal compiler error: Something else than a local var was let-bound"
+
+
+resolveRecAtom atom name = case atom of
+  -- Invariant: Recursive vars are always let-bound  (TODO loosen this restriction later)
+  NLambda freeVars params expr -> resolveRecLambda freeVars params expr name
+  NVar (NRecursiveVar name) -> do
+    var <- resolveRecVar name
+    return $ NVar var
+  a -> return a
+
+resolveRecLambda freeVars params expr name = do
+  pushLambdaScope freeVars name
+  resolvedBody <- resolveRecExpr expr
+  popLambdaScope
+  return $ NLambda freeVars params resolvedBody
+
+resolveRecVar name = do
+  state <- get
+  let maybeVar = findName name (lambdaStack state)
+  case maybeVar of
+    Nothing -> error $ "Internal compiler error: Can't resolve recursive use of " ++ name
+    Just var -> return var
+
+findName name []        = Nothing
+findName name ((n, v):ns) =
+  if n == name then Just v
+               else findName name ns
+
+-- TODO this doesn't work for mutual recursion
+
+-- The first case (for a lambda that isn't let-bound) is just a placeholder, so that we
+-- can easily pop the scope later. No recursive var will resolve to it anyway
+pushLambdaScope _ "" = pushLambdaScope' "$$$invalid$$$" (NConstantFreeVar "$$$invalid$$$")
+pushLambdaScope [] n = pushLambdaScope' n (NConstantFreeVar n)
+pushLambdaScope fs n = pushLambdaScope' n (NDynamicFreeVar n)
+
+pushLambdaScope' name var = do
+  state <- get
+  let newStack = (name, var) : (lambdaStack state)
+  put $ state { lambdaStack = newStack }
+
+popLambdaScope = do
+  state <- get
+  let newStack = tail $ lambdaStack state
+  put $ state { lambdaStack = newStack }
+
 
