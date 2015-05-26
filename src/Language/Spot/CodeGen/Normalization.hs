@@ -490,8 +490,19 @@ pushLambdaScope' name var = do
 
 popLambdaScope = do
   state <- get
-  let newStack = tail $ lambdaStack state
-  let newExtraFreeVars = tail $ extraFreeVars state
+  let lst = lambdaStack state
+  let efv = extraFreeVars state
+  let newStack = tail lst
+  let (nextScopeName, _) = head lst
+  let newExtraFreeVars = pullUpUnresolvedFreeVars nextScopeName efv
   put $ state { lambdaStack = newStack, extraFreeVars = newExtraFreeVars }
+
+pullUpUnresolvedFreeVars nextScopeName efvStack =
+  -- pull up all new free vars that are not resolved by this scope
+  let tailEfv = tail efvStack in
+  let cleanedEfv = delete nextScopeName $ head efvStack in
+  let nextScopeEfv = head $ tailEfv in
+  let nextScopeAllEfv = cleanedEfv ++ nextScopeEfv in
+  nextScopeAllEfv : (tail tailEfv)
 
 

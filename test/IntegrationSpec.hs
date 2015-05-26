@@ -115,7 +115,6 @@ spec = do
               \     x -> counter x \n\
               \   end \n\
               \ counter 5"
-              putStrLn $ show $ toNorm code
               let result = run code
               result `shouldReturn` VMNumber 43
 
@@ -131,7 +130,7 @@ spec = do
               \   counter 9 \n\
               \ outer 3"
               let result = run code
-              putStrLn $ show $ toAsm code
+              putStrLn $ show $ toNorm code
               result `shouldReturn` VMNumber 43
 
     context "when using closures" $ do
@@ -303,6 +302,7 @@ K Closures
 - operators
 - Modules
 - indentation syntax
+- I/O
 
 
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")

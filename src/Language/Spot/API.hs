@@ -28,6 +28,7 @@ import qualified Data.IntMap as IntMap
 -- Add better typing for several things, also for uncompiled asm
 
 -- TODO find a style and use it consistently
+-- TODO explain what each module does
 
 toNorm :: String -> NormExpr
 toNorm prog =
