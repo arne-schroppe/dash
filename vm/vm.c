@@ -235,11 +235,25 @@ bool execute_instruction(vm_instruction instr) {
     break;
 
     case OP_SETCLARG: {
+      int cl_address_reg = get_arg_r0(instr);
+      heap_address cl_address = (heap_address)get_reg(cl_address_reg);
+      vm_value new_value = get_reg(get_arg_r1(instr));
+      int arg_index = get_arg_r2(instr);
+
+      vm_value *cl_pointer = heap_get_pointer(cl_address);
+      int num_env_args = *cl_pointer;
+      if(arg_index >= num_env_args) {
+        fprintf(stderr, "Illegal closure modification (index: %i, num env vars: %i)\n", arg_index, num_env_args);
+        return false;
+      }
+      cl_pointer[arg_index + 1] = new_value;
+
+      debug( printf("SETCLARG r%02i r%02i n%02i\n", get_arg_r0(instr), get_arg_r1(instr), arg_index) );
     }
     break;
 
     default:
-      printf("UNKNOWN OPCODE: %04x\n", opcode);
+      fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);
       exit(-1); //TODO exit gracefully?
       break;
 

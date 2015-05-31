@@ -97,6 +97,29 @@ spec = do
                     Tac_ret 2 ]]
       (runProg prog) `shouldReturn` 56 -- 80 - 24
 
+    it "modifies a closure" $ do
+      let prog = [[ Tac_load_f 1 1,
+                    Tac_call 1 1 0,
+                    Tac_load_i 2 80,
+                    Tac_set_arg 0 2 0,
+                    Tac_call_cl 0 1 1,
+                    Tac_ret 0 ], [
+                    -- fun 1
+                    Tac_load_f 1 2,
+                    Tac_load_i 2 77,
+                    Tac_load_i 3 55,
+                    Tac_set_arg 0 2 1,
+                    Tac_make_cl 0 1 2,
+                    Tac_load_i 7 33,
+                    Tac_set_cl_arg 0 7 1,
+                    Tac_ret 0 ], [
+                    -- fun 2
+                    Tac_sub 3 1 2,
+                    Tac_ret 3 ]]
+      (runProg prog) `shouldReturn` 44 -- 77 - 33
+
+
+
 {-
     it "applies a number tag to a value" $ do
       let original = 44
