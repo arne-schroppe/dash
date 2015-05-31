@@ -133,6 +133,44 @@ spec = do
               putStrLn $ show $ toNorm code
               result `shouldReturn` VMNumber 43
 
+            it "handles mutual recursion of lambdas" $ do
+              let code = "\
+              \ val check (a) = \n\
+              \   match a begin\n\
+              \     10 -> 43   \n\
+              \     x -> add-one a \n\
+              \   end \n\
+              \ val add-one (v) = \n\
+              \   val x = add v 1 \n\
+              \   check x \n\
+              \ check 0"
+              let result = run code
+              result `shouldReturn` VMNumber 43
+
+            it "handles mutual recursion of closures" $ do
+              let code = "\
+              \ val make-checker (step res) = \n\
+              \   val check (a) = \n\
+              \     match a begin \n\
+              \       10 -> res   \n\
+              \       x -> add-n a \n\
+              \     end \n\
+              \   val add-n (v) = \n\
+              \     val x = add v step \n\
+              \     check x \n\
+              \   check \n\
+              \ val checker = make-checker 2 999 \n\
+              \ checker 0"
+              let result = run code
+              result `shouldReturn` VMNumber 999
+
+            -- it "returns an error for a closure that is used before it has been fully instantiated" $ do
+            -- 1. make closure with forward declaration
+            -- 2. call it to obtain value that is supposed to be used in forward declared lambda
+            -- 3. M.C. Escher would be proud of you
+
+            -- TODO can we call normal lambdas before they have been fully created?
+
     context "when using closures" $ do
 
             it "returns a closure with a dynamic variable" $ do

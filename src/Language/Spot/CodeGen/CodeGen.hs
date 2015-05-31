@@ -20,6 +20,27 @@ import qualified Data.Map as Map
 
 -- TODO 'atom' could be misleading. Rename to 'atomExpr' or something like that
 
+-- TODO after refactoring the VM, we need to change everything that is called
+-- something with 'register' to something like 'localVar' or so. Otherwise
+-- the uninitiated observer might think that we don't know what a register is.
+
+
+{-
+
+## How to compile recursive closures
+
+When entering a scope, all let-bindings in the scope are scanned. If a binding binds to a
+lambda, the name is stored as a forward-declaration. When a closure is encountered that
+contains a forward-declared name, then the value for that name is not added when creating
+the closure with make_cl but instead we note down that this variable needs to be resolved
+at a later time. After compiling a closure, its binding in the local context is changed
+from  a forward-declaration to the actual register that it is in now. We also check, if a
+forward-declared value can be resolved now. If it can, we add additional set_cl_val
+instructions. This must happen before the closure is used for the first time, which is
+something we are checking while compiling.
+
+-}
+
 
 compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
@@ -70,21 +91,20 @@ compileAtom reg atom name isResultValue = case atom of
           callInstr <- compileCallInstr reg funVar args
           return $ argInstrs ++ callInstr
   NVar var -> case var of
-          NLocalVar varId _ -> do
-                 r <- getReg var
-                 return [Tac_move reg r]
-          NFunParam name -> do
-                 r <- getReg var
-                 return [Tac_move reg r]
-          NDynamicFreeVar name -> do
-                 r <- getReg var
-                 return [Tac_move reg r]
+          NLocalVar varId _     -> moveVarToReg var reg
+          NFunParam name        -> moveVarToReg var reg
+          NDynamicFreeVar name  -> moveVarToReg var reg
           NConstantFreeVar name -> compileConstantFreeVar reg name isResultValue
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   -- TODO unify order of arguments
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches
   x -> error $ "Unable to compile " ++ (show x)
+
+moveVarToReg var reg = do
+          r <- getReg var
+          return [Tac_move reg r]
+
 
 compileCallInstr reg funVar args = do
           rFun <- getReg funVar
@@ -133,6 +153,7 @@ canBeCalledDirectly atom = case atom of
 
 compileClosure reg freeVars params expr name = do
   funAddr <- compileFunc freeVars params expr name
+  -- TODO optimize argInstrs by using last parameter in set_arg
   argInstrs <- mapM (uncurry compileSetArgN) $ zipWithIndex freeVars
   let makeClosureInstr = [Tac_load_f reg funAddr, Tac_make_cl reg reg (length freeVars)]
   return $ argInstrs ++ makeClosureInstr

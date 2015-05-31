@@ -36,8 +36,8 @@ data NormAtomicExpr =
 
 data NormVar =
     NLocalVar Int String
-  | NDynamicFreeVar String
   | NFunParam String
+  | NDynamicFreeVar String
   | NConstantFreeVar String -- We should rename this to StaticFreeVar
   | NRecursiveVar String
   deriving (Eq, Show)

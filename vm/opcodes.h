@@ -3,6 +3,8 @@
 
 #include "vm.h"
 
+// TODO we need an opcode that allows us to compare two values
+
 typedef enum {
   OP_RET = 0,
   OP_LOADi = 1,
@@ -18,7 +20,7 @@ typedef enum {
   OP_JMP = 11,
   OP_MATCH = 12,
   OP_SETARG = 13,
-  OP_SETCLARG = 14
+  OP_SETCLARG = 14 // TODO rename to set_cl_val
 } vm_opcode;
 
 #define instr_size (sizeof(vm_instruction) * 8)
