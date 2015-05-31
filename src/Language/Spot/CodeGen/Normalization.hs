@@ -502,7 +502,7 @@ pullUpUnresolvedFreeVars nextScopeName efvStack =
   let tailEfv = tail efvStack in
   let cleanedEfv = delete nextScopeName $ head efvStack in
   let nextScopeEfv = head $ tailEfv in
-  let nextScopeAllEfv = cleanedEfv ++ nextScopeEfv in
+  let nextScopeAllEfv = union cleanedEfv nextScopeEfv in
   nextScopeAllEfv : (tail tailEfv)
 
 

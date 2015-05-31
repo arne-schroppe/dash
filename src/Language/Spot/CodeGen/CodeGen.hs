@@ -18,7 +18,7 @@ import qualified Data.Map as Map
 
 -- TODO when there is more time, do dataflow analysis to reuse registers
 
--- TODO find better name than "code constant"
+-- TODO 'atom' could be misleading. Rename to 'atomExpr' or something like that
 
 
 compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
@@ -98,7 +98,7 @@ compileConstantFreeVar :: Reg -> String -> Bool -> State CompState [Tac Reg]
 compileConstantFreeVar reg name isResultValue = do
   compConst <- getCompileTimeConstInOuterScope name
   case compConst of
-          CTConstNumber n -> return [Tac_load_i reg (fromIntegral n)]
+          CTConstNumber n -> return [Tac_load_i reg (fromIntegral n)] -- how about storing the constant in const table and simply load_c it here?
           CTConstPlainSymbol symId -> return [Tac_load_ps reg symId]
           -- CConstCompoundSymbol ConstAddr
           CTConstLambda funAddr -> compileLoadLambda reg funAddr isResultValue
@@ -164,6 +164,7 @@ compileMatch reg subject maxCaptures patternAddr branches = do
                                       return $ [loadArgInstr] ++ callInstr ++ [Tac_jmp (remaining * instrsPerBranch)]
   let body = Prelude.concat compiledBranches
   return $ matchCode ++ jumpTable ++ body
+
 
 compileMatchBranchLoadArg startReg matchedVars =
   Tac_set_arg 0 startReg (max 0 $ (length matchedVars) - 1)
@@ -348,6 +349,7 @@ getCompileTimeConstInOuterScope name = do
       case Map.lookup name consts of
         Just c -> return c
         Nothing -> getCompConst name $ tail scps
+
 
 
 

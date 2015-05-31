@@ -234,6 +234,10 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
+    case OP_SETCLARG: {
+    }
+    break;
+
     default:
       printf("UNKNOWN OPCODE: %04x\n", opcode);
       exit(-1); //TODO exit gracefully?

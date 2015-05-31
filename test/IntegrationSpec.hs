@@ -304,6 +304,7 @@ K Closures
 - indentation syntax
 - I/O
 
+- Can we do partial compilation? Per module? Or just a single function or value in a repl?
 
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
 - Faster, optimized match patterns (reduce number of comparisons)

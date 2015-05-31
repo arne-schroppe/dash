@@ -117,6 +117,34 @@ it( calls_a_closure_upwards ) {
   is_equal(result, 56); //80 - 24
 }
 
+it( modifies_a_closure ) {
+  const int fun_address1 = 6;
+  const int fun_address2 = 14;
+  vm_instruction program[] = {
+    op_load_i(1, fun_address1),
+    op_call(1, 1, 0),
+    op_load_i(2, 80),
+    op_setarg(0, 2, 0),
+    op_callcl(0, 1, 1),
+    op_ret(0),
+
+    // fun 1
+    op_load_i(1, fun_address2),
+    op_load_i(2, 77),
+    op_load_i(3, 55),
+    op_setarg(0, 2, 1),
+    op_makecl(0, 1, 2),
+    op_load_i(7, 33),
+    op_setclarg(0, 7, 1),
+    op_ret(0),
+
+    // fun 2
+    op_sub(3, 1, 2),
+    op_ret(3)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, 44); //77 - 33
+}
 
 it( applies_a_number_tag_to_a_value ) {
   vm_value original = 44;
@@ -366,6 +394,7 @@ start_spec(vm_spec)
   example(directly_calls_a_function)
   example(calls_a_closure_downwards)
   example(calls_a_closure_upwards)
+  example(modifies_a_closure)
   example(applies_a_number_tag_to_a_value)
   example(applies_a_symbol_tag_to_a_value)
   example(load_as_a_symbol_into_a_register)
