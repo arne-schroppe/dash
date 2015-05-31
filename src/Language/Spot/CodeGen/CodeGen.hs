@@ -10,6 +10,7 @@ import Control.Monad.State
 import qualified Data.Sequence as Seq
 import Data.Foldable
 import Control.Applicative
+import Data.List
 
 import Debug.Trace
 
@@ -203,6 +204,7 @@ zipWithIndex l = zip l [0..(length l)]
 
 
 ----- State -----
+-- TODO put this into a separate file
 
 data CompState = CompState {
                    instructions :: Seq.Seq [Tac Reg]
@@ -217,17 +219,24 @@ emptyCompState = CompState {
 data CompScope = CompScope {
                    functionParams :: Map.Map String Int
                  , freeVariables :: Map.Map String Int
+                 , forwardDeclaredLambdas :: [String]
+
+                 -- Map: closure register -> list of currently unresolved forward-declared names
+                 , closuresWithUnresolvedForwardDeclarations :: Map.Map Int [String]
 
                  -- these are all the registers that hold function values which
                  -- can be called directly with Tac_call. Everything else is
                  -- called with Tac_call_cl
                  , directCallRegs :: [Int]
+
                  , compileTimeConstants :: Map.Map String CompileTimeConstant
                  }
 
 makeScope fps freeVars = CompScope {
                functionParams = fps
              , freeVariables = freeVars
+             , forwardDeclaredLambdas = []
+             , closuresWithUnresolvedForwardDeclarations = Map.empty
              , directCallRegs = []
              , compileTimeConstants = Map.empty
              }
@@ -341,6 +350,17 @@ addDirectCallReg reg = do
   let dCallRegs = directCallRegs scope
   let dCallRegs' = reg : dCallRegs
   putScope $ scope { directCallRegs = dCallRegs' }
+
+setForwardDeclaredLambdas lams = do
+  scope <- getScope
+  putScope $ scope { forwardDeclaredLambdas = lams }
+
+-- Used when a lambda is no longer forward-declared, but evaluated
+removeForwardDeclaredLambda name = do
+  scope <- getScope
+  let lams = forwardDeclaredLambdas scope
+  let lams' = delete name lams
+  putScope $ scope { forwardDeclaredLambdas = lams' }
 
 getScope = do
   state <- get

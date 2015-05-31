@@ -30,6 +30,8 @@ import qualified Data.IntMap as IntMap
 -- TODO find a style and use it consistently
 -- TODO explain what each module does
 
+
+
 toNorm :: String -> NormExpr
 toNorm prog =
   let (nExpr, ctable, symNames) = prog |> lex |> parse |> normalize in
