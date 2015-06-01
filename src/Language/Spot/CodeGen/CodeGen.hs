@@ -42,6 +42,8 @@ something we are checking while compiling.
 
 -}
 
+-- TODO To forward-declare lambdas, we need to assign functions addresses to them while
+-- forward-declaring them (and then update the content after they were compiled)
 
 compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile expr cTable symlist =

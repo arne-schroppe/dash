@@ -331,7 +331,7 @@ spec = do
 What's missing:
 
 K Closures
-- Recursion (also mutual recursion)
+- self-Recursion
 - Tail call optimisation (isResultValue, add new opcodes)
 - Currying (also with underscore)
 - Strings
@@ -339,6 +339,7 @@ K Closures
 - Lists
 - operators
 - Modules
+- Mutual recursion in module top-level
 - indentation syntax
 - I/O
 
