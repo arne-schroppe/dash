@@ -79,13 +79,13 @@ spec = do
 
     it "optimizes tail calls" $ do
       let code = "\
-      \ val counter (k acc) = \n\
+      \ val counter (acc) = \n\
       \   val next = add acc 1 \n\
       \   match next begin\n\
-      \     16 -> 43   \n\
-      \     x -> k k x \n\
+      \     1000 -> 43   \n\
+      \     x -> counter x \n\
       \   end \n\
-      \ val y = counter counter 14 \n\
+      \ val y = counter 1 \n\
       \ y "
       let result = run code
       -- let result = return $ VMNumber 42
@@ -96,8 +96,6 @@ spec = do
 
 
     context "when using recursion" $ do
-
-
 
             it "handles nested self-recursion" $ do
               let code = "\
