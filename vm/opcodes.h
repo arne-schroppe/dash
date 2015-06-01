@@ -20,7 +20,9 @@ typedef enum {
   OP_JMP = 11,
   OP_MATCH = 12,
   OP_SETARG = 13,
-  OP_SETCLARG = 14 // TODO rename to set_cl_val
+  OP_TAIL_CALL = 14,
+  OP_TAIL_CALLCL = 15,
+  OP_SETCLARG = 16 // TODO rename to set_cl_val
 } vm_opcode;
 
 #define instr_size (sizeof(vm_instruction) * 8)

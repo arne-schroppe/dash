@@ -74,7 +74,7 @@ compileAtom reg atom name isResultValue = case atom of
   NLambda freeVars params expr -> compileClosure reg freeVars params expr name
   NFunCall funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
-          callInstr <- compileCallInstr reg funVar args
+          callInstr <- compileCallInstr reg funVar args isResultValue
           return $ argInstrs ++ callInstr
   NVar var -> case var of
           NLocalVar varId _     -> moveVarToReg var reg
@@ -84,7 +84,7 @@ compileAtom reg atom name isResultValue = case atom of
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   -- TODO unify order of arguments
   NMatch maxCaptures subject patternAddr branches ->
-          compileMatch reg subject maxCaptures patternAddr branches
+          compileMatch reg subject maxCaptures patternAddr branches isResultValue
   x -> error $ "Unable to compile " ++ (show x)
 
 moveVarToReg var reg = do
@@ -92,13 +92,15 @@ moveVarToReg var reg = do
           return [Tac_move reg r]
 
 
-compileCallInstr reg funVar args = do
+compileCallInstr reg funVar args isResultValue = do
           rFun <- getReg funVar
           direct <- isDirectCallReg rFun
-          if direct then do
-            return [Tac_call reg rFun (length args)]
-          else do
-            return [Tac_call_cl reg rFun (length args)]
+          let instr = case (direct, isResultValue) of
+                  (True, False)  -> [Tac_call reg rFun (length args)]
+                  (True, True)   -> [Tac_tail_call rFun (length args)]
+                  (False, False) -> [Tac_call_cl reg rFun (length args)]
+                  (False, True)  -> [Tac_tail_call_cl rFun (length args)]
+          return instr
 
 compileConstantFreeVar :: Reg -> String -> Bool -> State CompState [Tac Reg]
 compileConstantFreeVar reg name isResultValue = do
@@ -159,7 +161,7 @@ createSelfRefInstrsIfNeeded clReg = do
     Just index -> return [Tac_set_cl_arg clReg clReg index]
 
 
-compileMatch reg subject maxCaptures patternAddr branches = do
+compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   let branchMatchedVars = map fst branches
   let branchLambdaVars = map snd branches -- the variables containing lambdas to call
   subjR <- getReg subject
@@ -181,7 +183,7 @@ compileMatch reg subject maxCaptures patternAddr branches = do
   compiledBranches <- forM (zip3 remainingBranches branchMatchedVars branchLambdaVars) $
                               \ (remaining, matchedVars, funVar) -> do
                                       let loadArgInstr = compileMatchBranchLoadArg captureStartReg matchedVars
-                                      callInstr <- compileCallInstr reg funVar matchedVars
+                                      callInstr <- compileCallInstr reg funVar matchedVars isResultValue
                                       return $ [loadArgInstr] ++ callInstr ++ [Tac_jmp (remaining * instrsPerBranch)]
   let body = Prelude.concat compiledBranches
   return $ matchCode ++ jumpTable ++ body

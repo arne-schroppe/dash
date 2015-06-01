@@ -75,35 +75,28 @@ spec = do
 
     -- TODO capture dynamic free vars in matches!
 
-{-
+
+
     it "optimizes tail calls" $ do
       let code = "\
       \ val counter (k acc) = \n\
-      \   val next = sub acc 1 \n\
+      \   val next = add acc 1 \n\
       \   match next begin\n\
       \     16 -> 43   \n\
-      \     x -> k x \n\
+      \     x -> k k x \n\
       \   end \n\
-      \ counter counter (add 256 32)"
+      \ val y = counter counter 14 \n\
+      \ y "
       let result = run code
-      putStrLn $ show $ toAsm code
+      -- let result = return $ VMNumber 42
       result `shouldReturn` VMNumber 43
--}
+
 
     -- TODO test recursion, both top-level and inside a function
 
 
     context "when using recursion" $ do
 
-{-
-            it "handles nested self-recursion" $ do
-              let code = "\
-              \ val counter (acc) = \n\
-              \   val next = sub acc 1 \n\
-              \   counter next \n\
-              \ counter 5"
-              putStrLn $ show $ toAsm code
--}
 
 
             it "handles nested self-recursion" $ do
@@ -235,6 +228,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 1862
 
+
     context "when using compound symbols" $ do
 
             it "interprets a compound symbol" $ do
@@ -242,7 +236,6 @@ spec = do
               result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]
 
             -- TODO dynamic compound symbols
-
 
 
 
@@ -333,8 +326,8 @@ spec = do
 What's missing:
 
 K Closures
-- self-Recursion
-- Tail call optimisation (isResultValue, add new opcodes)
+- Recursion (also mutual recursion)
+? Tail call optimisation (isResultValue, add new opcodes)
 - Currying (also with underscore)
 - Strings
 - Creating symbols
@@ -346,6 +339,10 @@ K Closures
 - I/O
 
 - Can we do partial compilation? Per module? Or just a single function or value in a repl?
+
+- Refactor VM
+  - bytecode
+  - stack
 
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
 - Faster, optimized match patterns (reduce number of comparisons)
