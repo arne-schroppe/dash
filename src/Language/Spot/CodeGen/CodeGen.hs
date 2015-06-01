@@ -10,7 +10,8 @@ import Control.Monad.State
 import qualified Data.Sequence as Seq
 import Data.Foldable
 import Control.Applicative
-import Data.List
+import Data.List (delete)
+import Data.Maybe (catMaybes)
 
 import Debug.Trace
 
@@ -26,24 +27,6 @@ import qualified Data.Map as Map
 -- the uninitiated observer might think that we don't know what a register is.
 
 
-{-
-
-## How to compile recursive closures
-
-When entering a scope, all let-bindings in the scope are scanned. If a binding binds to a
-lambda, the name is stored as a forward-declaration. When a closure is encountered that
-contains a forward-declared name, then the value for that name is not added when creating
-the closure with make_cl but instead we note down that this variable needs to be resolved
-at a later time. After compiling a closure, its binding in the local context is changed
-from  a forward-declaration to the actual register that it is in now. We also check, if a
-forward-declared value can be resolved now. If it can, we add additional set_cl_val
-instructions. This must happen before the closure is used for the first time, which is
-something we are checking while compiling.
-
--}
-
--- TODO To forward-declare lambdas, we need to assign functions addresses to them while
--- forward-declaring them (and then update the content after they were compiled)
 
 compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
@@ -157,9 +140,23 @@ canBeCalledDirectly atom = case atom of
 compileClosure reg freeVars params expr name = do
   funAddr <- compileFunc freeVars params expr name
   -- TODO optimize argInstrs by using last parameter in set_arg
-  argInstrs <- mapM (uncurry compileSetArgN) $ zipWithIndex freeVars
+  argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
+  let argInstrs = catMaybes argInstrsMaybes
   let makeClosureInstr = [Tac_load_f reg funAddr, Tac_make_cl reg reg (length freeVars)]
-  return $ argInstrs ++ makeClosureInstr
+  selfRefInstrs <- createSelfRefInstrsIfNeeded reg
+  return $ argInstrs ++ makeClosureInstr ++ selfRefInstrs
+
+compileClosureArg clName argName argIndex =
+  if argName == clName
+    then (setSelfReferenceSlot argIndex) >> return Nothing
+    else compileSetArgN argName argIndex >>= return . Just
+
+createSelfRefInstrsIfNeeded :: Reg -> State CompState [Tac Reg]
+createSelfRefInstrsIfNeeded clReg = do
+  scope <- getScope
+  case selfReferenceSlot scope of
+    Nothing -> return []
+    Just index -> return [Tac_set_cl_arg clReg clReg index]
 
 
 compileMatch reg subject maxCaptures patternAddr branches = do
@@ -193,6 +190,7 @@ compileMatch reg subject maxCaptures patternAddr branches = do
 compileMatchBranchLoadArg startReg matchedVars =
   Tac_set_arg 0 startReg (max 0 $ (length matchedVars) - 1)
 
+
 compileSetArg var arg = do
   rVar <- getReg var
   return $ Tac_set_arg arg rVar 0
@@ -222,9 +220,7 @@ data CompScope = CompScope {
                    functionParams :: Map.Map String Int
                  , freeVariables :: Map.Map String Int
                  , forwardDeclaredLambdas :: [String]
-
-                 -- Map: closure register -> list of currently unresolved forward-declared names
-                 , closuresWithUnresolvedForwardDeclarations :: Map.Map Int [String]
+                 , selfReferenceSlot :: Maybe Int
 
                  -- these are all the registers that hold function values which
                  -- can be called directly with Tac_call. Everything else is
@@ -238,7 +234,7 @@ makeScope fps freeVars = CompScope {
                functionParams = fps
              , freeVariables = freeVars
              , forwardDeclaredLambdas = []
-             , closuresWithUnresolvedForwardDeclarations = Map.empty
+             , selfReferenceSlot = Nothing
              , directCallRegs = []
              , compileTimeConstants = Map.empty
              }
@@ -353,16 +349,13 @@ addDirectCallReg reg = do
   let dCallRegs' = reg : dCallRegs
   putScope $ scope { directCallRegs = dCallRegs' }
 
-setForwardDeclaredLambdas lams = do
+setSelfReferenceSlot index = do
   scope <- getScope
-  putScope $ scope { forwardDeclaredLambdas = lams }
+  putScope $ scope { selfReferenceSlot = Just index }
 
--- Used when a lambda is no longer forward-declared, but evaluated
-removeForwardDeclaredLambda name = do
+resetSelfReferenceSlot = do
   scope <- getScope
-  let lams = forwardDeclaredLambdas scope
-  let lams' = delete name lams
-  putScope $ scope { forwardDeclaredLambdas = lams' }
+  putScope $ scope { selfReferenceSlot = Nothing }
 
 getScope = do
   state <- get

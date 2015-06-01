@@ -119,20 +119,27 @@ spec = do
               result `shouldReturn` VMNumber 43
 
             it "handles nested self-recursion of closure" $ do
+              -- We add the dummy closure so that it is the closure at memory index 0
+              -- This way we know that the inner use of `counter` is not simply using
+              -- an uninitialized value
               let code = "\
-              \ val outer (m) = \n\
+              \ val outer (m res) = \n\
+              \   val dummy-closure (y) = \n\
+              \     add res y    \n\
               \   val counter (acc) = \n\
               \     val next = sub acc m \n\
               \     match next begin\n\
-              \       0 -> 43   \n\
+              \       0 -> res   \n\
               \       x -> counter x \n\
               \     end \n\
               \   counter 9 \n\
-              \ outer 3"
+              \ outer 3 995"
               let result = run code
               putStrLn $ show $ toNorm code
-              result `shouldReturn` VMNumber 43
+              putStrLn $ show $ toAsm code
+              result `shouldReturn` VMNumber 995
 
+{- Note: Mutual recursion will only be possible in the top level of a module (and thus without closures)
             it "handles mutual recursion of lambdas" $ do
               let code = "\
               \ val check (a) = \n\
@@ -164,12 +171,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 999
 
-            -- it "returns an error for a closure that is used before it has been fully instantiated" $ do
-            -- 1. make closure with forward declaration
-            -- 2. call it to obtain value that is supposed to be used in forward declared lambda
-            -- 3. M.C. Escher would be proud of you
-
-            -- TODO can we call normal lambdas before they have been fully created?
+-}
 
     context "when using closures" $ do
 
