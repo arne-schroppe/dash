@@ -7,15 +7,6 @@ import Language.Spot.IR.Ast
 
 import Language.Spot.IR.Tac (ConstAddr)
 
--- How do we handle KnownFreeVars? Initial idea would be to add an initial function
--- placeholder for each toplevel function (to get an address) and to immediately
--- encode constants, and then use that information to replace NKnownFreeVar with its
--- respective value. For this to work we finally need a symbol table
-
--- Symbol table:
--- When entering a scope, scan through all definitions as explained above (known free
--- variables are not necessarily at the top-level). Note down the names and known
--- types but don't eval yet. This way we can also do mutual recursion.
 
 data NormExpr =
     NAtom NormAtomicExpr

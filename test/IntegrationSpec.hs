@@ -73,9 +73,6 @@ spec = do
       result `shouldReturn` VMNumber 77
 
 
-    -- TODO capture dynamic free vars in matches!
-
-
 
     it "optimizes tail calls" $ do
       let code = "\
@@ -88,11 +85,10 @@ spec = do
       \ val y = counter 1 \n\
       \ y "
       let result = run code
-      -- let result = return $ VMNumber 42
       result `shouldReturn` VMNumber 43
 
+    -- TODO when changing `counter x` to use `next`, there is a compiler error. Investigate (reason is that next is handled as a constant free var)
 
-    -- TODO test recursion, both top-level and inside a function
 
 
     context "when using recursion" $ do
@@ -110,9 +106,9 @@ spec = do
               result `shouldReturn` VMNumber 43
 
             it "handles nested self-recursion of closure" $ do
-              -- We add the dummy closure so that it is the closure at memory index 0
+              -- We add the dummy closure so that it is the closure at memory index 0.
               -- This way we know that the inner use of `counter` is not simply using
-              -- an uninitialized value
+              -- an uninitialized value.
               let code = "\
               \ val outer (m res) = \n\
               \   val dummy-closure (y) = \n\
@@ -126,8 +122,6 @@ spec = do
               \   counter 9 \n\
               \ outer 3 995"
               let result = run code
-              putStrLn $ show $ toNorm code
-              putStrLn $ show $ toAsm code
               result `shouldReturn` VMNumber 995
 
 {- Note: Mutual recursion will only be possible in the top level of a module (and thus without closures)
@@ -325,7 +319,7 @@ What's missing:
 
 K Closures
 - Recursion (also mutual recursion)
-? Tail call optimisation (isResultValue, add new opcodes)
+K Tail call optimisation (isResultValue, add new opcodes)
 - Currying (also with underscore)
 - Strings
 - Creating symbols

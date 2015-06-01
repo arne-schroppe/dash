@@ -381,7 +381,7 @@ getCompileTimeConstInOuterScope name = do
   scps <- gets scopes
   getCompConst name scps
   where
-    getCompConst name [] = error $ "Compiler error: no compile time constant named " ++ name
+    getCompConst name [] = error $ "Compiler error: no compile time constant named '" ++ name ++ "'"
     getCompConst name scps = do
       let consts = compileTimeConstants $ head scps
       case Map.lookup name consts of

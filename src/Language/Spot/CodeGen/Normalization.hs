@@ -226,10 +226,12 @@ nameExpr expr originalName k = case expr of
         restExpr <- k var
         return $ NLet var aExpr restExpr
 
-isDynamic expr = case expr of
+{-
+isAtomDynamic expr = case expr of
   NLambda (h:_) _ _ -> True
   NCompoundSymbol True _ -> True
   _ -> False
+-}
 
 
 ----- State -----
