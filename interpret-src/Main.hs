@@ -1,8 +1,8 @@
-import System.IO
-import System.Environment
-import Control.Monad
+import           Control.Monad
+import           System.Environment
+import           System.IO
 
-import Language.Spot.API
+import           Language.Spot.API
 
 main = do
   args <- getArgs

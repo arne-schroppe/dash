@@ -317,18 +317,27 @@ spec = do
 {-
 What's missing:
 
+immediate goals:
+- Refactoring
+- Proper error handling (Either result)
+
+missing language features:
 K Closures
-- Recursion (also mutual recursion)
+K Recursion (also mutual recursion)
 K Tail call optimisation (isResultValue, add new opcodes)
 - Currying (also with underscore)
+- Change order of free vars and formal parameters in function code so that we can use partial application as currying
 - Strings
 - Creating symbols
 - Lists
 - operators
+
+After release ?
 - Modules
 - Mutual recursion in module top-level
 - indentation syntax
 - I/O
+
 
 - Can we do partial compilation? Per module? Or just a single function or value in a repl?
 
@@ -338,18 +347,10 @@ K Tail call optimisation (isResultValue, add new opcodes)
 
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
 - Faster, optimized match patterns (reduce number of comparisons)
-- Uniquely name vars in frontend (?)
+- Uniquely name vars in frontend, i.e. data-flow analysis
 - Prevent duplicate var names in function definition (unless it's for pattern matching?)
 
 TODO: Functions need a runtime tag!
 
 -}
-
-
-    {- TODO
-      val make-sym (i) = 
-        :sym i
-
-      make-sym 4
-    -}
 

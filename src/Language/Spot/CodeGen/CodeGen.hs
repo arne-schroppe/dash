@@ -2,21 +2,18 @@ module Language.Spot.CodeGen.CodeGen (
   compile
 ) where
 
-import Language.Spot.IR.Norm
-import Language.Spot.IR.Tac
-import Language.Spot.VM.Types
+import           Control.Applicative
+import           Control.Monad.State
+import           Data.Foldable
+import           Data.List              (delete)
+import qualified Data.Map               as Map
+import           Data.Maybe             (catMaybes)
+import qualified Data.Sequence          as Seq
+import           Debug.Trace
+import           Language.Spot.IR.Norm
+import           Language.Spot.IR.Tac
+import           Language.Spot.VM.Types
 
-import Control.Monad.State
-import qualified Data.Sequence as Seq
-import Data.Foldable
-import Control.Applicative
-import Data.List (delete)
-import Data.Maybe (catMaybes)
-
-import Debug.Trace
-
-import qualified Data.Sequence as Seq
-import qualified Data.Map as Map
 
 -- TODO when there is more time, do dataflow analysis to reuse registers
 
@@ -27,13 +24,13 @@ import qualified Data.Map as Map
 -- the uninitiated observer might think that we don't know what a register is.
 
 
-
-compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac Reg]], ConstTable, SymbolNameList)
+compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
   let result = execState (compileFunc [] [] expr "") emptyCompState in
   (toList (instructions result), cTable, symlist)
 
 
+compileFunc :: [String] -> [String] -> NormExpr -> String -> CodeGenState Int
 compileFunc freeVars params expr name = do
   funAddr <- beginFunction freeVars params
   -- we add the name already here for recursion
@@ -43,6 +40,8 @@ compileFunc freeVars params expr name = do
   addCompileTimeConst name $ CTConstLambda funAddr -- Have to re-add to outer scope    TODO this sucks
   return funAddr
 
+
+compileExpr :: NormExpr -> CodeGenState [Tac]
 compileExpr expr = case expr of
   NLet var atom body -> compileLet var atom body
   NAtom a -> do
@@ -50,6 +49,7 @@ compileExpr expr = case expr of
           return $ code ++ [Tac_ret 0]
 
 
+compileAtom :: Reg -> NormAtomicExpr -> String -> Bool -> CodeGenState [Tac]
 compileAtom reg atom name isResultValue = case atom of
   NNumber n -> do
           addCompileTimeConst name $ CTConstNumber (fromIntegral n)
@@ -74,7 +74,7 @@ compileAtom reg atom name isResultValue = case atom of
   NLambda freeVars params expr -> compileClosure reg freeVars params expr name
   NFunCall funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
-          callInstr <- compileCallInstr reg funVar args isResultValue
+          callInstr <- compileCallInstr reg funVar (length args) isResultValue
           return $ argInstrs ++ callInstr
   NVar var -> case var of
           NLocalVar varId _     -> moveVarToReg var reg
@@ -86,23 +86,26 @@ compileAtom reg atom name isResultValue = case atom of
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches isResultValue
   x -> error $ "Unable to compile " ++ (show x)
+  where
+    moveVarToReg :: NormVar -> Reg -> CodeGenState [Tac]
+    moveVarToReg var reg = do
+              r <- getReg var
+              return [Tac_move reg r]
 
-moveVarToReg var reg = do
-          r <- getReg var
-          return [Tac_move reg r]
 
-
-compileCallInstr reg funVar args isResultValue = do
+compileCallInstr :: Reg -> NormVar -> Int -> Bool -> CodeGenState [Tac]
+compileCallInstr reg funVar numArgs isResultValue = do
           rFun <- getReg funVar
           direct <- isDirectCallReg rFun
           let instr = case (direct, isResultValue) of
-                  (True, False)  -> [Tac_call reg rFun (length args)]
-                  (True, True)   -> [Tac_tail_call rFun (length args)]
-                  (False, False) -> [Tac_call_cl reg rFun (length args)]
-                  (False, True)  -> [Tac_tail_call_cl rFun (length args)]
+                  (True, False)  -> [Tac_call reg rFun numArgs]
+                  (True, True)   -> [Tac_tail_call rFun numArgs]
+                  (False, False) -> [Tac_call_cl reg rFun numArgs]
+                  (False, True)  -> [Tac_tail_call_cl rFun numArgs]
           return instr
 
-compileConstantFreeVar :: Reg -> String -> Bool -> State CompState [Tac Reg]
+
+compileConstantFreeVar :: Reg -> String -> Bool -> State CompState [Tac]
 compileConstantFreeVar reg name isResultValue = do
   compConst <- getCompileTimeConstInOuterScope name
   case compConst of
@@ -111,6 +114,8 @@ compileConstantFreeVar reg name isResultValue = do
           -- CConstCompoundSymbol ConstAddr
           CTConstLambda funAddr -> compileLoadLambda reg funAddr isResultValue
 
+
+compileLoadLambda :: Reg -> Int -> Bool -> CodeGenState [Tac]
 compileLoadLambda reg funAddr isResultValue = do
   let ldFunAddr = [Tac_load_f reg funAddr]
   if isResultValue then
@@ -118,12 +123,15 @@ compileLoadLambda reg funAddr isResultValue = do
   else
       return $ ldFunAddr
 
+
+compileLet :: NormVar -> NormAtomicExpr -> NormExpr -> CodeGenState [Tac]
 compileLet tmpVar@(NLocalVar tmpId name) atom body =
   compileLet' tmpVar atom name body
 
 compileLet tmpVar atom body =
   compileLet' tmpVar atom "" body
 
+compileLet' :: NormVar -> NormAtomicExpr -> String -> NormExpr -> CodeGenState [Tac]
 compileLet' tmpVar atom name body = do
   let callDirect = canBeCalledDirectly atom
   rTmp <- getReg tmpVar
@@ -133,12 +141,14 @@ compileLet' tmpVar atom name body = do
   return $ comp1 ++ comp2
 
 -- This determines whether we'll use Tac_call or Tac_call_cl later
+canBeCalledDirectly :: NormAtomicExpr -> Bool
 canBeCalledDirectly atom = case atom of
   NVar (NConstantFreeVar _) -> True -- TODO we need a function tag for this case
   NLambda ([]) _ _ -> True
   _ -> False
 
 
+compileClosure :: Reg -> [String] -> [String] -> NormExpr -> String -> CodeGenState [Tac]
 compileClosure reg freeVars params expr name = do
   funAddr <- compileFunc freeVars params expr name
   -- TODO optimize argInstrs by using last parameter in set_arg
@@ -148,12 +158,13 @@ compileClosure reg freeVars params expr name = do
   selfRefInstrs <- createSelfRefInstrsIfNeeded reg
   return $ argInstrs ++ makeClosureInstr ++ selfRefInstrs
 
+compileClosureArg :: String -> String -> Int -> CodeGenState (Maybe Tac)
 compileClosureArg clName argName argIndex =
   if argName == clName
     then (setSelfReferenceSlot argIndex) >> return Nothing
     else compileSetArgN argName argIndex >>= return . Just
 
-createSelfRefInstrsIfNeeded :: Reg -> State CompState [Tac Reg]
+createSelfRefInstrsIfNeeded :: Reg -> State CompState [Tac]
 createSelfRefInstrsIfNeeded clReg = do
   scope <- getScope
   case selfReferenceSlot scope of
@@ -161,6 +172,7 @@ createSelfRefInstrsIfNeeded clReg = do
     Just index -> return [Tac_set_cl_arg clReg clReg index]
 
 
+compileMatch :: Reg -> NormVar -> Int -> Int -> [([String], NormVar)] -> Bool -> CodeGenState [Tac]
 compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   let branchMatchedVars = map fst branches
   let branchLambdaVars = map snd branches -- the variables containing lambdas to call
@@ -183,34 +195,40 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   compiledBranches <- forM (zip3 remainingBranches branchMatchedVars branchLambdaVars) $
                               \ (remaining, matchedVars, funVar) -> do
                                       let loadArgInstr = compileMatchBranchLoadArg captureStartReg matchedVars
-                                      callInstr <- compileCallInstr reg funVar matchedVars isResultValue
+                                      callInstr <- compileCallInstr reg funVar (length matchedVars) isResultValue
                                       return $ [loadArgInstr] ++ callInstr ++ [Tac_jmp (remaining * instrsPerBranch)]
   let body = Prelude.concat compiledBranches
   return $ matchCode ++ jumpTable ++ body
 
 
+compileMatchBranchLoadArg :: Reg -> [String] -> Tac
 compileMatchBranchLoadArg startReg matchedVars =
   Tac_set_arg 0 startReg (max 0 $ (length matchedVars) - 1)
 
 
+compileSetArg :: NormVar -> Int -> CodeGenState Tac
 compileSetArg var arg = do
   rVar <- getReg var
   return $ Tac_set_arg arg rVar 0
 
+compileSetArgN :: String -> Int -> CodeGenState Tac
 compileSetArgN name arg = do
   rVar <- getRegByName name
   return $ Tac_set_arg arg rVar 0
 
 
+zipWithIndex :: [a] -> [(a, Int)]
 zipWithIndex l = zip l [0..(length l)]
 
 
 ----- State -----
 -- TODO put this into a separate file
 
+type CodeGenState a = State CompState a
+
 data CompState = CompState {
-                   instructions :: Seq.Seq [Tac Reg]
-                 , scopes :: [CompScope]
+                   instructions :: Seq.Seq [Tac]
+                 , scopes       :: [CompScope]
                  }
 
 emptyCompState = CompState {
@@ -219,17 +237,17 @@ emptyCompState = CompState {
                  }
 
 data CompScope = CompScope {
-                   functionParams :: Map.Map String Int
-                 , freeVariables :: Map.Map String Int
+                   functionParams         :: Map.Map String Int
+                 , freeVariables          :: Map.Map String Int
                  , forwardDeclaredLambdas :: [String]
-                 , selfReferenceSlot :: Maybe Int
+                 , selfReferenceSlot      :: Maybe Int
 
                  -- these are all the registers that hold function values which
                  -- can be called directly with Tac_call. Everything else is
                  -- called with Tac_call_cl
-                 , directCallRegs :: [Int]
+                 , directCallRegs         :: [Int]
 
-                 , compileTimeConstants :: Map.Map String CompileTimeConstant
+                 , compileTimeConstants   :: Map.Map String CompileTimeConstant
                  }
 
 makeScope fps freeVars = CompScope {
@@ -248,6 +266,7 @@ data CompileTimeConstant =
   | CTConstLambda FunAddr
 
 
+beginFunction :: [String] -> [String] -> CodeGenState Int
 beginFunction freeVars params = do
   state <- get
   let localFreeVars = Map.fromList (zipWithIndex freeVars)
@@ -257,6 +276,8 @@ beginFunction freeVars params = do
   addr <- addPlaceholderFunction
   return addr
 
+
+endFunction :: Int -> [Tac] -> CodeGenState ()
 endFunction funAddr code = do
   state <- get
   let instrs = instructions state
@@ -264,30 +285,34 @@ endFunction funAddr code = do
   put $ state { scopes = (tail $ scopes state),
                 instructions = instrs' }
 
-numParameters :: State CompState Int
+
+numParameters :: CodeGenState Int
 numParameters = do
   localParams <- gets $ functionParams.head.scopes
   return $ Map.size localParams
 
-param :: String -> State CompState (Maybe Int)
+
+param :: String -> CodeGenState (Maybe Int)
 param name = do
   localParams <- gets $ functionParams.head.scopes
   let res = Map.lookup name localParams
   return res
 
 
-numFreeVars :: State CompState Int
+numFreeVars :: CodeGenState Int
 numFreeVars = do
   localFreeVars <- gets $ freeVariables.head.scopes
   return $ Map.size localFreeVars
 
-freeVar :: String -> State CompState (Maybe Int)
+
+freeVar :: String -> CodeGenState (Maybe Int)
 freeVar name = do
   localFreeVars <- gets $ freeVariables.head.scopes
   let res = Map.lookup name localFreeVars
   return res
 
 
+addPlaceholderFunction :: CodeGenState Int
 addPlaceholderFunction = do
   state <- get
   let instrs = instructions state
@@ -296,7 +321,8 @@ addPlaceholderFunction = do
   put $ state { instructions = instrs' }
   return nextFunAddr
 
-getRegByName :: String -> State CompState Int
+
+getRegByName :: String -> CodeGenState Int
 getRegByName name = do
   lookup <- getRegN name
   -- TODO code duplication, handling of register offsets for free vars should be handled in one place only
@@ -312,6 +338,7 @@ getRegByName name = do
                           f <- freeVar name
                           numParams <- numParameters
                           return $ (+) <$> f <*> Just numParams
+
 
 getReg :: NormVar -> State CompState Int
 getReg (NConstantFreeVar _) = error "Compiler error"
@@ -340,40 +367,53 @@ getReg (NLocalVar tmpVar name) = do
 getReg (NRecursiveVar name) = error "test" -- TODO delete this
 
 
+isDirectCallReg :: Reg -> CodeGenState Bool
 isDirectCallReg reg = do
   scope <- getScope
   let dCallRegs = directCallRegs scope
   return $ Prelude.elem reg dCallRegs
 
+
+addDirectCallReg :: Reg -> CodeGenState ()
 addDirectCallReg reg = do
   scope <- getScope
   let dCallRegs = directCallRegs scope
   let dCallRegs' = reg : dCallRegs
   putScope $ scope { directCallRegs = dCallRegs' }
 
+
+setSelfReferenceSlot :: Int -> CodeGenState ()
 setSelfReferenceSlot index = do
   scope <- getScope
   putScope $ scope { selfReferenceSlot = Just index }
 
+
+resetSelfReferenceSlot :: CodeGenState ()
 resetSelfReferenceSlot = do
   scope <- getScope
   putScope $ scope { selfReferenceSlot = Nothing }
 
+
+getScope :: CodeGenState CompScope
 getScope = do
   state <- get
   return $ head (scopes state)
 
+
+putScope :: CompScope -> CodeGenState ()
 putScope s = do
   state <- get
   put $ state { scopes = s : (tail $ scopes state) }
 
 
+addCompileTimeConst :: String -> CompileTimeConstant -> CodeGenState ()
 addCompileTimeConst "" _ = return ()
 addCompileTimeConst name c = do
   scope <- getScope
   let consts = compileTimeConstants scope
   let consts' = Map.insert name c consts
   putScope $ scope { compileTimeConstants = consts' }
+
 
 -- This retrieves values for NConstantFreeVar. Those are never inside the current scope
 getCompileTimeConstInOuterScope :: String -> State CompState CompileTimeConstant

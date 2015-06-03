@@ -1,12 +1,11 @@
 module Language.Spot.CodeGen.Normalization where
 
-import Language.Spot.IR.Ast
-import Language.Spot.IR.Norm
-import Language.Spot.IR.Tac
-import Control.Monad.State
-
-import Data.List
-import qualified Data.Map as Map
+import           Control.Monad.State
+import           Data.List
+import qualified Data.Map              as Map
+import           Language.Spot.IR.Ast
+import           Language.Spot.IR.Norm
+import           Language.Spot.IR.Tac
 
 
 {-
@@ -36,7 +35,7 @@ in a lambda.
 The more interesting one's are DynamicFreeVar and ConstantFreeVar. A ConstantFreeVar is a
 free variable in a lambda that is a constant known value in the surrounding scope. Lambdas
 that are not closures (i.e. don't have any free variables) count as constant values too.
-A ConstantFreeVar is resolved directly (by loading the function address or the constant) 
+A ConstantFreeVar is resolved directly (by loading the function address or the constant)
 and doesn't need any further support.
 
 A DynamicFreeVar is a free variable that is not a compile time constant. These are later
@@ -46,7 +45,7 @@ mentions them explicitly for every `Norm.Lambda`.
 
 ## Recursion
 
-This module works in two passes. The first pass is the normalization described earlier, 
+This module works in two passes. The first pass is the normalization described earlier,
 the second pass resolves recursion
 
 
@@ -61,9 +60,7 @@ normalize expr =
   let result' = resolveRecursion result in
   (result', constTable finalState, getSymbolNames finalState)
 
-
-
-
+normalizeInContext :: Expr -> State NormState NormExpr
 normalizeInContext expr = do
   enterContext []
   nExpr <- normalizeExpr expr
@@ -238,8 +235,8 @@ isAtomDynamic expr = case expr of
 
 data NormState = NormState {
   symbolNames :: Map.Map String SymId
-, constTable :: ConstTable -- rename ConstTable to DataTable
-, contexts :: [Context] -- head is current context
+, constTable  :: ConstTable -- rename ConstTable to DataTable
+, contexts    :: [Context] -- head is current context
 } deriving (Eq, Show)
 
 emptyNormState = NormState {
@@ -250,8 +247,8 @@ emptyNormState = NormState {
 
 data Context = Context {
   tempVarCounter :: Int
-, bindings :: Map.Map String (NormVar, Bool) -- Bool indicates whether this is a dynamic var or not
-, freeVars :: [String]
+, bindings       :: Map.Map String (NormVar, Bool) -- Bool indicates whether this is a dynamic var or not
+, freeVars       :: [String]
 } deriving (Eq, Show)
 
 emptyContext = Context {
@@ -367,7 +364,7 @@ getSymbolNames :: NormState -> SymbolNameList
 getSymbolNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . symbolNames
 
 
---- Constants 
+--- Constants
 -- TODO Split this into separate module? Together with constTable type ?
 
 addConstant :: Constant -> State NormState ConstAddr
@@ -428,7 +425,7 @@ encodePatternCompoundSymbolArgs nextMatchVar args = do
 -- avoid duplicate free vars by adding all current freevars when entering scope
 
 data RecursionState = RecursionState {
-    lambdaStack :: [(String, NormVar)]
+    lambdaStack   :: [(String, NormVar)]
   , extraFreeVars :: [[String]]
 }
 
