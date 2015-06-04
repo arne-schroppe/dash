@@ -1,9 +1,12 @@
-module Language.Spot.CodeGen.Normalization where
+module Language.Spot.CodeGen.Normalization (
+  normalize
+) where
 
 import           Control.Monad.State
 import           Data.List
 import qualified Data.Map              as Map
 import           Language.Spot.IR.Ast
+import           Language.Spot.IR.Data
 import           Language.Spot.IR.Norm
 import           Language.Spot.IR.Tac
 
@@ -52,15 +55,17 @@ the second pass resolves recursion
 -}
 
 
-type Cont = NormAtomicExpr -> State NormState NormExpr
+type NormState a = State NormEnv a
+type Cont = NormAtomicExpr -> NormState NormExpr
+type VCont = NormVar -> NormState NormExpr
 
 normalize :: Expr -> (NormExpr, ConstTable, SymbolNameList)
 normalize expr =
-  let (result, finalState) = runState (normalizeInContext expr) emptyNormState in
+  let (result, finalState) = runState (normalizeInContext expr) emptyNormEnv in
   let result' = resolveRecursion result in
   (result', constTable finalState, getSymbolNames finalState)
 
-normalizeInContext :: Expr -> State NormState NormExpr
+normalizeInContext :: Expr -> NormState NormExpr
 normalizeInContext expr = do
   enterContext []
   nExpr <- normalizeExpr expr
@@ -68,7 +73,7 @@ normalizeInContext expr = do
   return nExpr
 
 
-normalizeExpr :: Expr -> State NormState NormExpr
+normalizeExpr :: Expr -> NormState NormExpr
 normalizeExpr expr = case expr of
   LocalBinding (Binding name boundExpr) restExpr ->
     nameExpr boundExpr name $ \ var -> do
@@ -80,14 +85,14 @@ normalizeExpr expr = case expr of
     atomizeExpr expr "" $ return . NAtom
 
 
-atomizeExpr :: Expr -> String -> Cont -> State NormState NormExpr
+atomizeExpr :: Expr -> String -> Cont -> NormState NormExpr
 atomizeExpr expr name k = case expr of
   FunCall funExpr args ->
           normalizeFunCall funExpr args k
   LitNumber n ->
           normalizeNumber n k
-  LitSymbol sid args ->
-          normalizeSymbol sid args k
+  LitSymbol sname args ->
+          normalizeSymbol sname args k
   Var name ->
           normalizeVar name k
   Match matchedExpr patterns ->
@@ -104,10 +109,13 @@ atomizeExpr expr name k = case expr of
   x -> error $ "Unable to normalize " ++ (show x)
 
 
+normalizeNumber :: Int -> Cont -> NormState NormExpr
 normalizeNumber n k = k (NNumber n)
 
-normalizeSymbol sid [] k = do
-  symId <- addSymbolName sid
+
+normalizeSymbol :: String -> [Expr] -> Cont -> NormState NormExpr
+normalizeSymbol sname [] k = do
+  symId <- addSymbolName sname
   k (NPlainSymbol symId)
 
 normalizeSymbol sid args k = do
@@ -129,11 +137,13 @@ normalizeSymbol sid args k = do
 
 
 -- This is only direct usage of a var (as a "return value")
+normalizeVar :: String -> Cont -> NormState NormExpr
 normalizeVar name k = do
   var <- lookupName name
   k $ NVar var
 
 
+normalizeLambda :: [String] -> Expr -> String -> Cont -> NormState NormExpr
 normalizeLambda params bodyExpr name k = do
   enterContext params
   when (not $ null name) $ addBinding name (NRecursiveVar name, False) -- TODO we don't know whether this var is dynamic or not!
@@ -145,6 +155,7 @@ normalizeLambda params bodyExpr name k = do
   k $ NLambda free params normalizedBody
 
 
+normalizeFunCall :: Expr -> [Expr] -> Cont -> NormState NormExpr
 normalizeFunCall (Var "add") [a, b] k =
   normalizeMathPrimOp NPrimOpAdd a b k
 
@@ -156,12 +167,13 @@ normalizeFunCall funExpr args k = do
           normalizeExprList args $ \ normArgs ->
                   k $ NFunCall funVar normArgs
 
+normalizeMathPrimOp :: (NormVar -> NormVar -> NormPrimOp) -> Expr -> Expr -> Cont -> NormState NormExpr
 normalizeMathPrimOp mathPrimOp a b k = do
   normalizeExprList [a, b] $ \ [aVar, bVar] ->
       k $ NPrimOp $ mathPrimOp aVar bVar
 
 
-normalizeMatch :: Expr -> [(Pattern, Expr)] -> Cont -> State NormState NormExpr
+normalizeMatch :: Expr -> [(Pattern, Expr)] -> Cont -> NormState NormExpr
 normalizeMatch matchedExpr patternsAndExpressions k = do
   matchedVarsAndEncodedPatterns <- forM (map fst patternsAndExpressions) $ encodeMatchPattern 0
   let matchedVars = map fst matchedVarsAndEncodedPatterns
@@ -177,16 +189,20 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
 
 -- Free variables in a used lambda which can't be resolved in our context need to become
 -- free variables in our context
-pullUpFreeVars freeVs =
+pullUpFreeVars :: [String] -> NormState ()
+pullUpFreeVars freeVs = do
   forM (reverse freeVs) $ \ name -> do
           hasB <- hasBinding name
           when (not hasB) $ addDynamicVar name
+  return ()
 
 
 
 ----- Normalization helper functions -----
 
 -- TODO shouldn't this be called something like nameExprList ?
+
+normalizeExprList :: [Expr] -> ([NormVar] -> NormState NormExpr) -> NormState NormExpr
 normalizeExprList exprList k =
   normalizeExprList' exprList [] k
   where
@@ -201,23 +217,25 @@ normalizeExprList exprList k =
 
 
 -- TODO rename this function to something more appropriate
+nameExpr :: Expr -> String -> VCont -> NormState NormExpr
 nameExpr expr originalName k = case expr of
   -- Some variable can be used directly and don't need to be let-bound
   Var name -> do
     var <- lookupName name
     case var of
       -- Constant free vars are let-bound
-      NConstantFreeVar n -> letBind expr k ""
+      NConstantFreeVar n -> letBind expr "" k
       -- Recursive vars are also let-bound. Not strictly necessary, but easier later on  (TODO loosen this restriction)
-      NRecursiveVar n -> letBind expr k ""
+      NRecursiveVar n -> letBind expr "" k
       -- All other vars are used directly (because they will be in a register later on)
       v -> do
             bodyExpr <- k v
             return bodyExpr
   -- Everything that is not a Var needs to be let-bound
-  _ -> letBind expr k originalName
+  _ -> letBind expr originalName k
   where
-    letBind e k n = do
+    letBind :: Expr -> String -> VCont -> NormState NormExpr
+    letBind e n k = do
       atomizeExpr e n $ \ aExpr -> do
         var <- newTempVar n
         restExpr <- k var
@@ -233,13 +251,13 @@ isAtomDynamic expr = case expr of
 
 ----- State -----
 
-data NormState = NormState {
+data NormEnv = NormEnv {
   symbolNames :: Map.Map String SymId
 , constTable  :: ConstTable -- rename ConstTable to DataTable
 , contexts    :: [Context] -- head is current context
 } deriving (Eq, Show)
 
-emptyNormState = NormState {
+emptyNormEnv = NormEnv {
   symbolNames = Map.empty
 , constTable = []
 , contexts = []
@@ -270,6 +288,8 @@ A name lookup can have these outcomes:
    so that it can be resolved later.
 4. It is an unknown variable, which results in an error.
 -}
+
+lookupName :: String -> NormState NormVar
 lookupName name = do
   state <- get
   let ctxs = contexts state
@@ -285,7 +305,7 @@ lookupName name = do
              NRecursiveVar name -> return var
              _ -> return $ NConstantFreeVar name
 
-
+lookupNameInContext :: String -> [Context] -> NormState (NormVar, Bool)
 lookupNameInContext name [] = error $ "Identifier " ++ name ++ " not found"
 lookupNameInContext name conts = do
   let binds = bindings $ head conts
@@ -293,16 +313,21 @@ lookupNameInContext name conts = do
     Just bnd -> return bnd
     Nothing  -> lookupNameInContext name (tail conts)
 
+
+enterContext :: [String] -> NormState ()
 enterContext funParams = do
   pushContext emptyContext
   forM funParams $ \ paramName ->
     -- Function params are always dynamic
     addBinding paramName (NFunParam paramName, True)
+  return ()
 
+leaveContext :: NormState ()
 leaveContext = do
   popContext
 
-newTempVar :: String -> State NormState NormVar
+
+newTempVar :: String -> NormState NormVar
 newTempVar name = do
   con <- context
   let tmpVar = tempVarCounter con
@@ -311,21 +336,27 @@ newTempVar name = do
   return (NLocalVar tmpVar name)
 
 
+context :: NormState Context
 context = gets $ head.contexts
 
+pushContext :: Context -> NormState ()
 pushContext c = do
   state <- get
   put $ state { contexts = c : (contexts state) }
 
+popContext :: NormState ()
 popContext = do
   state <- get
   put $ state { contexts = tail.contexts $ state }
 
+putContext :: Context -> NormState ()
 putContext c = do
   state <- get
   put $ state { contexts = c : (tail.contexts $ state) }
 
+
 -- TODO more like addDynamicVarUsage ??
+addDynamicVar :: String -> NormState ()
 addDynamicVar name = do
   con <- context
   let free = freeVars con
@@ -335,12 +366,13 @@ addDynamicVar name = do
           putContext con'
   else return ()
 
-addBinding :: String -> (NormVar, Bool) -> State NormState ()
+addBinding :: String -> (NormVar, Bool) -> NormState ()
 addBinding name bnd = do
   con <- context
   let bindings' = Map.insert name bnd (bindings con)
   putContext $ con { bindings = bindings' }
 
+hasBinding :: String -> NormState Bool
 hasBinding name = do
   con <- context
   return $ Map.member name (bindings con)
@@ -348,7 +380,7 @@ hasBinding name = do
 
 --- Symbols
 
-addSymbolName :: String -> State NormState SymId
+addSymbolName :: String -> NormState SymId
 addSymbolName s = do
   state <- get
   let syms = symbolNames state
@@ -360,14 +392,14 @@ addSymbolName s = do
     put $ state { symbolNames = syms' }
     return nextId
 
-getSymbolNames :: NormState -> SymbolNameList
+getSymbolNames :: NormEnv -> SymbolNameList
 getSymbolNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . symbolNames
 
 
 --- Constants
 -- TODO Split this into separate module? Together with constTable type ?
 
-addConstant :: Constant -> State NormState ConstAddr
+addConstant :: Constant -> NormState ConstAddr
 addConstant c = do
   state <- get
   let cTable = constTable state
@@ -377,7 +409,7 @@ addConstant c = do
   return $ fromIntegral nextAddr
 
 
-encodeConstant :: Expr -> State NormState Constant
+encodeConstant :: Expr -> NormState Constant
 encodeConstant v =
   case v of
     LitNumber n -> return $ CNumber n
@@ -391,6 +423,7 @@ encodeConstant v =
     _ -> error $ "Can only encode constant symbols for now"
 
 
+encodeMatchPattern :: Int -> Pattern -> NormState ([String], Constant)
 encodeMatchPattern nextMatchVar pat =
   case pat of
     PatNumber n -> return ([], (CNumber n))
@@ -424,21 +457,23 @@ encodePatternCompoundSymbolArgs nextMatchVar args = do
 -- TODO pull up new extra vars (if not resolved in that scope)
 -- avoid duplicate free vars by adding all current freevars when entering scope
 
-data RecursionState = RecursionState {
+data RecursionEnv = RecursionEnv {
     lambdaStack   :: [(String, NormVar)]
   , extraFreeVars :: [[String]]
 }
 
-emptyRecursionState = RecursionState {
+emptyRecursionEnv = RecursionEnv {
     lambdaStack = []
   , extraFreeVars = []
 }
 
+type RecursionState a = State RecursionEnv a
 
 resolveRecursion :: NormExpr -> NormExpr
-resolveRecursion normExpr = evalState (resolveRecExpr normExpr) emptyRecursionState
+resolveRecursion normExpr = evalState (resolveRecExpr normExpr) emptyRecursionEnv
 
 
+resolveRecExpr :: NormExpr -> RecursionState NormExpr
 resolveRecExpr normExpr = case normExpr of
   NLet var atom expr -> resolveRecLet var atom expr
   NAtom atom -> do
@@ -446,15 +481,19 @@ resolveRecExpr normExpr = case normExpr of
     return $ NAtom recAtom
 
 
+resolveRecLet :: NormVar -> NormAtomicExpr -> NormExpr -> RecursionState NormExpr
 resolveRecLet var atom expr = do
   resAtom <- resolveRecAtom atom (localVarName var)
   resExpr <- resolveRecExpr expr
   return $ NLet var resAtom resExpr
 
+
+localVarName :: NormVar -> String
 localVarName (NLocalVar _ name) = name
 localVarName _ = error "Internal compiler error: Something else than a local var was let-bound"
 
 
+resolveRecAtom :: NormAtomicExpr -> String -> RecursionState NormAtomicExpr
 resolveRecAtom atom name = case atom of
   -- Invariant: Recursive vars are always let-bound  (TODO loosen this restriction later)
   NLambda freeVars params expr -> resolveRecLambda freeVars params expr name
@@ -463,6 +502,8 @@ resolveRecAtom atom name = case atom of
     return $ NVar var
   a -> return a
 
+
+resolveRecLambda :: [String] -> [String] -> NormExpr -> String -> RecursionState NormAtomicExpr
 resolveRecLambda freeVars params expr name = do
   pushLambdaScope freeVars name
   resolvedBody <- resolveRecExpr expr
@@ -471,6 +512,8 @@ resolveRecLambda freeVars params expr name = do
   popLambdaScope
   return $ NLambda (freeVars ++ extra) params resolvedBody
 
+
+resolveRecVar :: String -> RecursionState NormVar
 resolveRecVar name = do
   state <- get
   let maybeVar = findName name (lambdaStack state)
@@ -481,12 +524,15 @@ resolveRecVar name = do
       addExtraFreeVar name
       return v
 
-findName name []        = Nothing
+
+findName :: String -> [(String, a)] -> Maybe a
+findName name []          = Nothing
 findName name ((n, v):ns) =
   if n == name then Just v
                else findName name ns
 
 
+addExtraFreeVar :: String -> RecursionState ()
 addExtraFreeVar name = do
   state <- get
   let extra = extraFreeVars state
@@ -500,16 +546,21 @@ addExtraFreeVar name = do
 
 -- The first case (for a lambda that isn't let-bound) is just a placeholder, so that we
 -- can easily pop the scope later. No recursive var will resolve to it anyway
+pushLambdaScope :: [String] -> String -> RecursionState ()
 pushLambdaScope _ "" = pushLambdaScope' "$$$invalid$$$" (NConstantFreeVar "$$$invalid$$$")
 pushLambdaScope [] n = pushLambdaScope' n (NConstantFreeVar n)
 pushLambdaScope fs n = pushLambdaScope' n (NDynamicFreeVar n)
 
+
+pushLambdaScope' :: String -> NormVar -> RecursionState ()
 pushLambdaScope' name var = do
   state <- get
   let newStack = (name, var) : (lambdaStack state)
   let newExtraFreeVars = [] : (extraFreeVars state)
   put $ state { lambdaStack = newStack, extraFreeVars = newExtraFreeVars }
 
+
+popLambdaScope :: RecursionState ()
 popLambdaScope = do
   state <- get
   let lst = lambdaStack state
@@ -519,6 +570,8 @@ popLambdaScope = do
   let newExtraFreeVars = pullUpUnresolvedFreeVars nextScopeName efv
   put $ state { lambdaStack = newStack, extraFreeVars = newExtraFreeVars }
 
+
+pullUpUnresolvedFreeVars :: String -> [[String]] -> [[String]]
 pullUpUnresolvedFreeVars nextScopeName efvStack =
   -- pull up all new free vars that are not resolved by this scope
   let tailEfv = tail efvStack in

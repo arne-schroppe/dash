@@ -1,4 +1,8 @@
-module Language.Spot.IR.Ast where
+module Language.Spot.IR.Ast (
+  Pattern (..)
+, Binding (..)
+, Expr (..)
+) where
 
 
 data Pattern

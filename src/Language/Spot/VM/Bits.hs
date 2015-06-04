@@ -16,6 +16,7 @@ import Data.Bits
 
 import Language.Spot.VM.Types
 import Language.Spot.IR.Tac
+import Language.Spot.IR.Data
 
 
 decode :: VMWord -> [Word32] -> SymbolNameList -> VMValue

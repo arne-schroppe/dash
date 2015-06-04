@@ -1,17 +1,21 @@
-module Language.Spot.IR.Norm where
+module Language.Spot.IR.Norm (
+  NormExpr (..)
+, NormAtomicExpr (..)
+, NormVar (..)
+, NormPrimOp (..)
+) where
 
--- TODO this is not ANF anymore. Just call it Norm
 
-import Language.Spot.VM.Types
-import Language.Spot.IR.Ast
-
-import Language.Spot.IR.Tac (ConstAddr)
+import           Language.Spot.IR.Ast
+import           Language.Spot.IR.Data  (ConstAddr)
+import           Language.Spot.VM.Types
 
 
 data NormExpr =
     NAtom NormAtomicExpr
   | NLet NormVar NormAtomicExpr NormExpr
   deriving (Eq, Show)
+
 
 data NormAtomicExpr =
     NNumber Int

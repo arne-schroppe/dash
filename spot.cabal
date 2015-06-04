@@ -25,6 +25,7 @@ library
                     , Language.Spot.CodeGen.Normalization
                     , Language.Spot.IR.Ast
                     , Language.Spot.IR.Tac
+                    , Language.Spot.IR.Data
                     , Language.Spot.IR.Norm
                     , Language.Spot.VM.Assembler
                     , Language.Spot.VM.VM

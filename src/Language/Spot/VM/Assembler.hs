@@ -5,19 +5,22 @@ module Language.Spot.VM.Assembler (
 , AtomicConstant(..)
 ) where
 
+-- TODO put this into its own namespace
+
 -- Translates [[Tac]] to data for the virtual machine
 
-import Control.Monad.State
-import Data.Word
-import Data.List
-import Data.Bits
-import Data.Maybe
-import Language.Spot.IR.Tac
-import Language.Spot.VM.Types
-import Language.Spot.VM.Bits
-import qualified Data.IntMap as IntMap
+import           Control.Monad.State
+import           Data.Bits
+import qualified Data.IntMap            as IntMap
+import           Data.List
+import           Data.Maybe
+import           Data.Word
+import           Language.Spot.IR.Data
+import           Language.Spot.IR.Tac
+import           Language.Spot.VM.Bits
+import           Language.Spot.VM.Types
 
-import Debug.Trace
+import           Debug.Trace
 
 -- TODO do we encode nested symbols depth-first or breadth-first? Try both and measure performance!
 
@@ -92,6 +95,7 @@ instructionRRR opcId r0 r1 r2 =
 ------ CONST ENCODING -----------
 
 
+-- TODO put into separate module
 -- TODO explain the algorithm (here and elsewhere with complicated algorithms)
 
 
@@ -114,11 +118,11 @@ encodeConstant c = case c of
 
 
 data ConstAtomizationState = ConstAtomizationState {
-  constants :: [Constant]
-, workQueue :: [Constant]
-, addrMap :: IntMap.IntMap VMWord
-, atomized :: [AtomicConstant] -- should be a Sequence
-, reservedSpace :: Int
+  constants         :: [Constant]
+, workQueue         :: [Constant]
+, addrMap           :: IntMap.IntMap VMWord
+, atomized          :: [AtomicConstant] -- should be a Sequence
+, reservedSpace     :: Int
 , numAtomizedConsts :: Int
 }
 

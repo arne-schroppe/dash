@@ -10,6 +10,7 @@ import qualified Data.Map               as Map
 import           Data.Maybe             (catMaybes)
 import qualified Data.Sequence          as Seq
 import           Debug.Trace
+import           Language.Spot.IR.Data
 import           Language.Spot.IR.Norm
 import           Language.Spot.IR.Tac
 import           Language.Spot.VM.Types

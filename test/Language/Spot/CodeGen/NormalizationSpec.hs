@@ -4,6 +4,7 @@ import Language.Spot.CodeGen.Normalization
 import Language.Spot.IR.Norm
 import Language.Spot.IR.Ast
 import Language.Spot.IR.Tac
+import Language.Spot.IR.Data
 
 import Test.Hspec
 

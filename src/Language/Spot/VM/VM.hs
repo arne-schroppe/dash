@@ -1,15 +1,15 @@
 module Language.Spot.VM.VM (
-execute
+  execute
 ) where
 
-import Language.Spot.VM.Bits
-import Language.Spot.VM.Types
-import Language.Spot.IR.Tac
-import Data.Word
-
-import Foreign.Marshal.Array
-import Foreign.Ptr
-import Foreign.C
+import           Data.Word
+import           Foreign.C
+import           Foreign.Marshal.Array
+import           Foreign.Ptr
+import           Language.Spot.IR.Data  (SymbolNameList)
+import           Language.Spot.IR.Tac
+import           Language.Spot.VM.Bits
+import           Language.Spot.VM.Types
 
 
 
