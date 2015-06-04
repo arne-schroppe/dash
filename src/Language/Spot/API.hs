@@ -1,4 +1,4 @@
-module Language.Spot.API 
+module Language.Spot.API
 (
   run
 , toNorm
@@ -6,20 +6,20 @@ module Language.Spot.API
 , toAtomicConstants
 ) where
 
-import           Prelude                              hiding (lex)
+import qualified Data.IntMap                         as IntMap
+import           Data.Word
+import           Language.Spot.Asm.Assembler
+import           Language.Spot.Asm.DataAssembler
+import           Language.Spot.CodeGen.CodeGen
+import           Language.Spot.CodeGen.Normalization
+import           Language.Spot.IR.Norm
+import           Language.Spot.IR.Tac
 import           Language.Spot.Parser.Lexer
 import           Language.Spot.Parser.Parser
-import           Language.Spot.CodeGen.Normalization
-import           Language.Spot.CodeGen.CodeGen
-import           Language.Spot.VM.Assembler
-import           Language.Spot.VM.Types
 import           Language.Spot.VM.Bits
+import           Language.Spot.VM.Types
 import           Language.Spot.VM.VM
-import           Language.Spot.IR.Tac
-import           Language.Spot.IR.Norm
-
-import           Data.Word
-import qualified Data.IntMap                          as IntMap
+import           Prelude                             hiding (lex)
 
 (|>) = flip ($)
 
@@ -43,10 +43,12 @@ toNorm prog =
   let (nExpr, ctable, symNames) = prog |> lex |> parse |> normalize in
   nExpr
 
+
 toAsm :: String -> [[Tac]]
 toAsm prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> normalize ||> compile in
   asm
+
 
 toAtomicConstants :: String -> ([AtomicConstant], IntMap.IntMap VMWord)
 toAtomicConstants prog =

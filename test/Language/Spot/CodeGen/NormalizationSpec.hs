@@ -1,12 +1,11 @@
 module Language.Spot.CodeGen.NormalizationSpec where
 
-import Language.Spot.CodeGen.Normalization
-import Language.Spot.IR.Norm
-import Language.Spot.IR.Ast
-import Language.Spot.IR.Tac
-import Language.Spot.IR.Data
-
-import Test.Hspec
+import           Language.Spot.CodeGen.Normalization
+import           Language.Spot.IR.Ast
+import           Language.Spot.IR.Data
+import           Language.Spot.IR.Norm
+import           Language.Spot.IR.Tac
+import           Test.Hspec
 
 pureNorm ast =
   let (norm, _, _) = normalize ast in
@@ -29,7 +28,7 @@ spec = do
         norm `shouldBe` (NAtom $ NPlainSymbol 0)
 
       it "splits a complex addition operation" $ do
-        let ast = FunCall (Var "add") 
+        let ast = FunCall (Var "add")
                       [(FunCall (Var "sub")
                           [LitNumber 2, LitNumber 3]),
                        LitNumber 4]
@@ -46,7 +45,7 @@ spec = do
         let dummyFunc = Lambda ["a"] $ LitNumber 0
         let ast = LocalBinding (Binding "fun1" dummyFunc) $
                   LocalBinding (Binding "fun2" dummyFunc) $
-                  FunCall (Var "fun1") 
+                  FunCall (Var "fun1")
                       [(FunCall (Var "fun2")
                           [LitNumber 1, LitNumber 2]),
                        LitNumber 3,

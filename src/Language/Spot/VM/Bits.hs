@@ -11,12 +11,11 @@ module Language.Spot.VM.Bits (
 
 ) where
 
-import Data.Word
-import Data.Bits
-
-import Language.Spot.VM.Types
-import Language.Spot.IR.Tac
-import Language.Spot.IR.Data
+import           Data.Bits
+import           Data.Word
+import           Language.Spot.IR.Data
+import           Language.Spot.IR.Tac
+import           Language.Spot.VM.Types
 
 
 decode :: VMWord -> [Word32] -> SymbolNameList -> VMValue
@@ -35,8 +34,6 @@ decodeCompoundSymbol addr ctable symNames =
   let decoded = map (\v -> decode v ctable symNames) (take (fromIntegral nArgs) $ tail subCTable) in
   let symName = symNames !! (fromIntegral symId) in
   VMSymbol symName decoded
-
-
 
 
 encodeNumber :: VMWord -> VMWord

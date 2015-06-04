@@ -1,14 +1,12 @@
 module Language.Spot.VM.VMSpec where
 
-import Test.Hspec
-import Test.QuickCheck
-
-import Data.Word
-
-import Language.Spot.IR.Tac
-import Language.Spot.VM.Assembler
-import Language.Spot.VM.VM
-import Language.Spot.VM.Bits
+import           Data.Word
+import           Language.Spot.Asm.Assembler
+import           Language.Spot.IR.Tac
+import           Language.Spot.VM.Bits
+import           Language.Spot.VM.VM
+import           Test.Hspec
+import           Test.QuickCheck
 
 runProg :: [[Tac]] -> IO Word32
 runProg = runProgTbl []

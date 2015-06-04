@@ -1,8 +1,7 @@
 module Language.Spot.Parser.LexerSpec where
 
-import Language.Spot.Parser.Lexer as L
-
-import Test.Hspec
+import           Language.Spot.Parser.Lexer as L
+import           Test.Hspec
 
 
 spec :: Spec
@@ -44,7 +43,7 @@ spec = do
         L.lex ":a \n /-- \n \n :ignored \n --/ \n\n :b" `shouldBe` [TSymbol "a", TEOL, TSymbol "b", TEOL]
 
       it "doesn't insert additional newlines around several delimited comments" $ do
-        L.lex ":a \n /-- bla --/ \n /-- \n \n :ignored \n --/ \n\n /-- \n\n\n --/ \n /-- bla --/ \n :b" `shouldBe` 
+        L.lex ":a \n /-- bla --/ \n /-- \n \n :ignored \n --/ \n\n /-- \n\n\n --/ \n /-- bla --/ \n :b" `shouldBe`
           [TSymbol "a", TEOL, TSymbol "b", TEOL]
 
       it "doesn't insert EOL if a delimited comment spans several lines but isn't surrounded by EOL" $ do

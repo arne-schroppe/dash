@@ -1,14 +1,13 @@
 module IntegrationSpec where
 
-import Test.Hspec
+import           Test.Hspec
 
 -- This is mainly a test of the code generator. But it is an integration test because
 -- we don't care about the instructions it churns out, as long as everything behaves as expected.
 
-import Language.Spot.API
-import Language.Spot.VM.Bits
-
-import Numeric
+import           Language.Spot.API
+import           Language.Spot.VM.Bits
+import           Numeric
 
 
 spec :: Spec

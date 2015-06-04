@@ -1,11 +1,11 @@
 module Language.Spot.Parser.ParserSpec where
 
-import Language.Spot.Parser.Parser
-import Language.Spot.Parser.Lexer as L
-import Language.Spot.IR.Ast
+import           Language.Spot.IR.Ast
+import           Language.Spot.Parser.Lexer  as L
+import           Language.Spot.Parser.Parser
+import           Test.Hspec
 
-import Test.Hspec
-import Debug.Trace
+import           Debug.Trace
 
 parse_string :: String -> Expr
 parse_string = parse . L.lex
