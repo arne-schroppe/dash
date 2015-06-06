@@ -7,22 +7,22 @@
 
 typedef enum {
   OP_RET = 0,
-  OP_LOADi = 1,
-  OP_LOADps = 2,
-  OP_LOADcs = 3,
-  OP_LOADc = 4,
+  OP_LOAD_i = 1,
+  OP_LOAD_ps = 2,
+  OP_LOAD_cs = 3,
+  OP_LOAD_c = 4,
   OP_ADD = 5,
   OP_SUB = 6,
   OP_MOVE = 7, //Maybe we don't need this, could be add with a zero (see MIPS instruction set)
   OP_CALL = 8,
-  OP_CALLCL = 9,
-  OP_MAKECL = 10,
+  OP_CALL_CL = 9,
+  OP_MAKE_CL = 10,
   OP_JMP = 11,
   OP_MATCH = 12,
-  OP_SETARG = 13,
+  OP_SET_ARG = 13,
   OP_TAIL_CALL = 14,
-  OP_TAIL_CALLCL = 15,
-  OP_SETCLARG = 16 // TODO rename to set_cl_val
+  OP_TAIL_CALL_CL = 15,
+  OP_SET_CL_VAL = 16
 } vm_opcode;
 
 #define instr_size (sizeof(vm_instruction) * 8)
@@ -45,22 +45,21 @@ typedef enum {
                                             (reg1 << (instr_size - (__opcb + 2 * __regb))) + \
                                             (reg2 << (instr_size - (__opcb + 3 * __regb))))
 
-//TODO unify our use of underscores
-#define op_load_i(r0, i) (instr_ri(OP_LOADi, r0, i))
-#define op_load_ps(r0, i) (instr_ri(OP_LOADps, r0, i))
-#define op_load_cs(r0, i) (instr_ri(OP_LOADcs, r0, i))
-#define op_load_c(r0, i) (instr_ri(OP_LOADc, r0, i))
+#define op_load_i(r0, i) (instr_ri(OP_LOAD_i, r0, i))
+#define op_load_ps(r0, i) (instr_ri(OP_LOAD_ps, r0, i))
+#define op_load_cs(r0, i) (instr_ri(OP_LOAD_cs, r0, i))
+#define op_load_c(r0, i) (instr_ri(OP_LOAD_c, r0, i))
 #define op_add(r0, r1, r2) (instr_rrr(OP_ADD, r0, r1, r2))
 #define op_sub(r0, r1, r2) (instr_rrr(OP_SUB, r0, r1, r2))
 #define op_move(r0, r1) (instr_rrr(OP_MOVE, r0, r1, 0))
 #define op_call(r0, fr, n) (instr_rrr(OP_CALL, r0, fr, n)) // result reg, reg with function addr, num arguments
-#define op_callcl(r0, fr, n) (instr_rrr(OP_CALLCL, r0, fr, n)) // result reg, reg with function addr, num arguments
+#define op_call_cl(r0, fr, n) (instr_rrr(OP_CALL_CL, r0, fr, n)) // result reg, reg with function addr, num arguments
 #define op_ret(r0) (instr_ri(OP_RET, r0, 0))
-#define op_makecl(r0, fr, n) (instr_rrr(OP_MAKECL, r0, fr, n)) // result reg, function reg, num args
+#define op_make_cl(r0, fr, n) (instr_rrr(OP_MAKE_CL, r0, fr, n)) // result reg, function reg, num args
 #define op_jmp(n) (instr_ri(OP_JMP, 0, n))
 #define op_match(r1, r2, r3) (instr_rrr(OP_MATCH, r1, r2, r3)) // reg with subject, reg with pattern addr, start reg for captures
-#define op_setarg(arg, r, n) (instr_rrr(OP_SETARG, arg, r, n)) // target argument, value reg, number of extra args/regs to copy (when copying just one argument, set this to 0)
-#define op_setclarg(clreg, r1, n) (instr_rrr(OP_SETCLARG, clreg, r1, n)) // closure, value reg, argument index
+#define op_set_arg(arg, r, n) (instr_rrr(OP_SET_ARG, arg, r, n)) // target argument, value reg, number of extra args/regs to copy (when copying just one argument, set this to 0)
+#define op_set_cl_val(clreg, r1, n) (instr_rrr(OP_SET_CL_VAL, clreg, r1, n)) // closure, value reg, argument index
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))
 
 #endif

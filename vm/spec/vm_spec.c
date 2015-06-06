@@ -47,7 +47,7 @@ it( directly_calls_a_function ) {
     op_load_i(2, 23),
     op_add(4, 1, 2),
     op_load_i(3, fun_address),
-    op_setarg(0, 4, 0),
+    op_set_arg(0, 4, 0),
     op_call(0, 3, 1), /* result reg, reg with function address, num parameters */
     op_ret(0),
     op_load_i(1, 100),
@@ -63,12 +63,12 @@ it( calls_a_closure_downwards ) {
   const int fun_address1 = 8;
   const int fun_address2 = 14;
   vm_instruction program[] = {
-    op_load_i(2, fun_address2), //TODO this shouldn't be load_i
+    op_load_i(2, fun_address2),
     op_load_i(3, 80),
-    op_setarg(0, 3, 0),
-    op_makecl(2, 2, 1),
+    op_set_arg(0, 3, 0),
+    op_make_cl(2, 2, 1),
     op_load_i(1, fun_address1),
-    op_setarg(0, 2, 0),
+    op_set_arg(0, 2, 0),
     op_call(0, 1, 1), //call fun1 with a closure to fun2
     op_ret(0),
 
@@ -76,8 +76,8 @@ it( calls_a_closure_downwards ) {
     op_load_i(2, 115), // addr 6
     op_load_i(3, 23),
     op_add(2, 2, 3),
-    op_setarg(0, 2, 0),
-    op_callcl(3, 0, 1), //closure at register 1 with 1 argument
+    op_set_arg(0, 2, 0),
+    op_call_cl(3, 0, 1), //closure at register 1 with 1 argument
     op_ret(3),
 
     // fun2
@@ -95,18 +95,18 @@ it( calls_a_closure_upwards ) {
   const int fun_address2 = 12;
   vm_instruction program[] = {
     op_load_i(1, fun_address1),
-    op_setarg(0, 2, 0),
+    op_set_arg(0, 2, 0),
     op_call(1, 1, 1),
     op_load_i(2, 80),
-    op_setarg(0, 2, 0),
-    op_callcl(0, 1, 1),
+    op_set_arg(0, 2, 0),
+    op_call_cl(0, 1, 1),
     op_ret(0),
 
     // fun 1
     op_load_i(1, fun_address2),
     op_load_i(2, 24),
-    op_setarg(0, 2, 0),
-    op_makecl(0, 1, 1),
+    op_set_arg(0, 2, 0),
+    op_make_cl(0, 1, 1),
     op_ret(0),
 
     // fun 2
@@ -124,18 +124,18 @@ it( modifies_a_closure ) {
     op_load_i(1, fun_address1),
     op_call(1, 1, 0),
     op_load_i(2, 80),
-    op_setarg(0, 2, 0),
-    op_callcl(0, 1, 1),
+    op_set_arg(0, 2, 0),
+    op_call_cl(0, 1, 1),
     op_ret(0),
 
     // fun 1
     op_load_i(1, fun_address2),
     op_load_i(2, 77),
     op_load_i(3, 55),
-    op_setarg(0, 2, 1),
-    op_makecl(0, 1, 2),
+    op_set_arg(0, 2, 1),
+    op_make_cl(0, 1, 2),
     op_load_i(7, 33),
-    op_setclarg(0, 7, 1),
+    op_set_cl_val(0, 7, 1),
     op_ret(0),
 
     // fun 2
@@ -381,11 +381,6 @@ it( binds_a_value_in_a_nested_symbol ) {
   is_equal(result, val(11, vm_tag_number));
 }
 
-
-//TODO
-//Fix heap/constant table loading
-//create library
-//integrate into ocaml part
 
 start_spec(vm_spec)
 	example(load_as_a_number_into_a_register)

@@ -110,7 +110,7 @@ spec = do
                     Tac_set_arg 0 2 1,
                     Tac_make_cl 0 1 2,
                     Tac_load_i 7 33,
-                    Tac_set_cl_arg 0 7 1,
+                    Tac_set_cl_val 0 7 1,
                     Tac_ret 0 ], [
                     -- fun 2
                     Tac_sub 3 1 2,

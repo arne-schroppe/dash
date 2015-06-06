@@ -17,9 +17,6 @@ struct _stack_frame {
 typedef struct _stack_frame stack_frame;
 
 
-
-
-//TODO add size parameters
 vm_value vm_execute(vm_instruction *program, int program_length, vm_value *const_table, int const_table_length);
 
 
@@ -38,13 +35,12 @@ extern const vm_value vm_tag_compound_symbol;
 
 extern const vm_value vm_tag_match_data;
 
-//TODO !!! Unify Compound/Complex symbol !!!
 
 #define __tag_bits 4
 
 #define __tag_mask(t) ((t & 0xF) << (sizeof(vm_value) * 8 - __tag_bits))
 #define val(x, t) (x | __tag_mask(t))
-#define from_val(x, t) (x & ~__tag_mask(t)) //TODO mask instead
+#define from_val(x, t) (x & ~__tag_mask(t))
 
 #define number(x) val(x, vm_type_number)
 #define plain_symbol(x) val(x, vm_type_plain_symbol)

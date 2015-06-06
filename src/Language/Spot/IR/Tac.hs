@@ -27,7 +27,7 @@ data ThreeAddressCode =
   | Tac_set_arg Int Reg Int
   | Tac_tail_call Reg Int
   | Tac_tail_call_cl Reg Int
-  | Tac_set_cl_arg Reg Reg Int
+  | Tac_set_cl_val Reg Reg Int
   deriving (Show)
 
 type Tac = ThreeAddressCode

@@ -167,7 +167,7 @@ createSelfRefInstrsIfNeeded clReg = do
   scope <- getScope
   case selfReferenceSlot scope of
     Nothing -> return []
-    Just index -> return [Tac_set_cl_arg clReg clReg index]
+    Just index -> return [Tac_set_cl_val clReg clReg index]
 
 
 compileMatch :: Reg -> NormVar -> Int -> Int -> [([String], NormVar)] -> Bool -> CodeGenState [Tac]

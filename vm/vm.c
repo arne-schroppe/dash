@@ -53,7 +53,7 @@ bool execute_instruction(vm_instruction instr) {
 
   switch (opcode) {
 
-    case OP_LOADi: {
+    case OP_LOAD_i: {
       int reg0 = get_arg_r0(instr);
       int val = get_arg_i(instr);
       get_reg(reg0) = val;
@@ -61,7 +61,7 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
-    case OP_LOADps: {
+    case OP_LOAD_ps: {
       int reg0 = get_arg_r0(instr);
       int value = get_arg_i(instr);
       get_reg(reg0) = val(value, vm_tag_plain_symbol);
@@ -69,7 +69,7 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
-    case OP_LOADcs: {
+    case OP_LOAD_cs: {
       int reg0 = get_arg_r0(instr);
       int value = get_arg_i(instr);
       get_reg(reg0) = val(value, vm_tag_compound_symbol);
@@ -77,7 +77,7 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
-    case OP_LOADc: {
+    case OP_LOAD_c: {
       int reg1 = get_arg_r0(instr);
       int table_index = get_arg_i(instr);
 
@@ -149,7 +149,7 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
-    case OP_CALLCL: {
+    case OP_CALL_CL: {
       if (stack_pointer + 1 == STACK_SIZE) {
         printf("Stack overflow (call cl)!\n");
         return false;
@@ -173,7 +173,7 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
-    case OP_TAIL_CALLCL: {
+    case OP_TAIL_CALL_CL: {
       int cl_address_reg = get_arg_r1(instr);
       heap_address cl_address = (heap_address)get_reg(cl_address_reg);
       int num_args = get_arg_r2(instr);
@@ -194,7 +194,7 @@ bool execute_instruction(vm_instruction instr) {
     break;
 
 
-    case OP_MAKECL: {
+    case OP_MAKE_CL: {
       int reg0 = get_arg_r0(instr);
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
@@ -264,7 +264,7 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
-    case OP_SETARG: {
+    case OP_SET_ARG: {
       int target_arg = get_arg_r0(instr);
       int source_reg = get_arg_r1(instr);
       int extra_amount = get_arg_r2(instr);
@@ -273,7 +273,7 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
-    case OP_SETCLARG: {
+    case OP_SET_CL_VAL: {
       int cl_address_reg = get_arg_r0(instr);
       heap_address cl_address = (heap_address)get_reg(cl_address_reg);
       vm_value new_value = get_reg(get_arg_r1(instr));
@@ -293,7 +293,7 @@ bool execute_instruction(vm_instruction instr) {
 
     default:
       fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);
-      exit(-1); //TODO exit gracefully?
+      return false;
       break;
 
   }
@@ -301,6 +301,7 @@ bool execute_instruction(vm_instruction instr) {
   return true;
 
 }
+
 
 bool does_value_match(vm_value pat, vm_value subject, int start_register) {
 
@@ -313,7 +314,6 @@ bool does_value_match(vm_value pat, vm_value subject, int start_register) {
     get_reg(start_register + relative_reg) = subject;
     return true;
   }
-
 
   if(pat_tag != get_tag(subject)) {
     return false;
