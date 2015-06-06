@@ -74,7 +74,7 @@ spec = do
                     Tac_ret 2 ], [
                     -- fun2
                     -- fun_header 1 1, -- (* 1 closed over value, 1 parameter *)
-                    Tac_sub 2 0 1,
+                    Tac_sub 2 1 0,
                     Tac_ret 2 ]]
       (runProg prog) `shouldReturn` 58 -- 115 + 23 - 80
 
@@ -92,7 +92,7 @@ spec = do
                     Tac_make_cl 0 1 1,
                     Tac_ret 0 ], [
                     -- fun 2
-                    Tac_sub 2 0 1,
+                    Tac_sub 2 1 0,
                     Tac_ret 2 ]]
       (runProg prog) `shouldReturn` 56 -- 80 - 24
 
@@ -113,7 +113,7 @@ spec = do
                     Tac_set_cl_val 0 7 1,
                     Tac_ret 0 ], [
                     -- fun 2
-                    Tac_sub 3 1 2,
+                    Tac_sub 3 0 1,
                     Tac_ret 3 ]]
       (runProg prog) `shouldReturn` 44 -- 77 - 33
 

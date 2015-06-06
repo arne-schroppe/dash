@@ -80,7 +80,6 @@ compileAtom reg atom name isResultValue = case atom of
           NDynamicFreeVar name  -> moveVarToReg var reg
           NConstantFreeVar name -> compileConstantFreeVar reg name isResultValue
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
-  -- TODO unify order of arguments
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches isResultValue
   x -> error $ "Unable to compile " ++ (show x)
@@ -138,6 +137,7 @@ compileLet' tmpVar atom name body = do
   comp2 <- compileExpr body
   return $ comp1 ++ comp2
 
+
 -- This determines whether we'll use Tac_call or Tac_call_cl later
 canBeCalledDirectly :: NormAtomicExpr -> Bool
 canBeCalledDirectly atom = case atom of
@@ -152,15 +152,18 @@ compileClosure reg freeVars params expr name = do
   -- TODO optimize argInstrs by using last parameter in set_arg
   argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
   let argInstrs = catMaybes argInstrsMaybes
-  let makeClosureInstr = [Tac_load_f reg funAddr, Tac_make_cl reg reg (length freeVars)]
+  let makeClosureInstr = [Tac_load_f reg funAddr,
+                          Tac_make_cl reg reg (length freeVars)]
   selfRefInstrs <- createSelfRefInstrsIfNeeded reg
   return $ argInstrs ++ makeClosureInstr ++ selfRefInstrs
+
 
 compileClosureArg :: String -> String -> Int -> CodeGenState (Maybe Tac)
 compileClosureArg clName argName argIndex =
   if argName == clName
     then (setSelfReferenceSlot argIndex) >> return Nothing
     else compileSetArgN argName argIndex >>= return . Just
+
 
 createSelfRefInstrsIfNeeded :: Reg -> CodeGenState [Tac]
 createSelfRefInstrsIfNeeded clReg = do
@@ -208,6 +211,7 @@ compileSetArg :: NormVar -> Int -> CodeGenState Tac
 compileSetArg var arg = do
   rVar <- getReg var
   return $ Tac_set_arg arg rVar 0
+
 
 compileSetArgN :: String -> Int -> CodeGenState Tac
 compileSetArgN name arg = do

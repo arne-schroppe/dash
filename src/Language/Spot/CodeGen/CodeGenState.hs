@@ -40,8 +40,8 @@ data CompScope = CompScope {
                  , compileTimeConstants   :: Map.Map String CompileTimeConstant
                  }
 
-makeScope fps freeVars = CompScope {
-               functionParams = fps
+makeScope freeVars params = CompScope {
+               functionParams = params
              , freeVariables = freeVars
              , forwardDeclaredLambdas = []
              , selfReferenceSlot = Nothing
@@ -61,7 +61,7 @@ beginFunction freeVars params = do
   state <- get
   let localFreeVars = Map.fromList (zipWithIndex freeVars)
   let paramBindings = Map.fromList (zipWithIndex params)
-  let newScope = makeScope paramBindings localFreeVars
+  let newScope = makeScope localFreeVars paramBindings
   put $ state { scopes = newScope : (scopes state) }
   addr <- addPlaceholderFunction
   return addr
@@ -115,38 +115,37 @@ addPlaceholderFunction = do
 getRegByName :: String -> CodeGenState Int
 getRegByName name = do
   lookup <- getRegN name
-  -- TODO code duplication, handling of register offsets for free vars should be handled in one place only
   case lookup of
     Just index -> return index
     Nothing -> error $ "Unknown identifier " ++ name
   where getRegN name = do
   -- TODO make this less ugly
-          p <- param name
+          p <- freeVar name
           case p of
                   Just i -> return $ Just i
                   Nothing -> do
-                          f <- freeVar name
-                          numParams <- numParameters
-                          return $ (+) <$> f <*> Just numParams
+                          p <- param name
+                          numFree <- numFreeVars
+                          return $ (+) <$> p <*> Just numFree
 
 
 getReg :: NormVar -> CodeGenState Int
 getReg (NConstantFreeVar _) = error "Compiler error"
 
 getReg (NFunParam name) = do
+  numFree <- numFreeVars
   lookup <- param name
   case lookup of
-          Just index -> return index
+          Just index -> return $ numFree + index
           Nothing -> error $ "Unknown parameter: " ++ name
 
 -- When calling a closure, the first n registers are formal arguments
 -- and the next m registers are closed-over variables
 -- TODO document this fact somewhere visible
 getReg (NDynamicFreeVar name) = do
-  numParams <- numParameters
   lookup <- freeVar name
   case lookup of
-          Just index -> return $ numParams + index
+          Just index -> return index
           Nothing -> error $ "Unknown free var: " ++ name
 
 getReg (NLocalVar tmpVar name) = do
@@ -154,7 +153,7 @@ getReg (NLocalVar tmpVar name) = do
   numParams <- numParameters
   return $ numFree + numParams + tmpVar
 
-getReg (NRecursiveVar name) = error "test" -- TODO delete this
+getReg (NRecursiveVar name) = error "Compiler error: Unexpected recursive var"
 
 
 isDirectCallReg :: Reg -> CodeGenState Bool

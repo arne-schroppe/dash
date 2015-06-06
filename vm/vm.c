@@ -158,14 +158,16 @@ bool execute_instruction(vm_instruction instr) {
       heap_address cl_address = (heap_address)get_reg(cl_address_reg);
       int num_args = get_arg_r2(instr);
 
-      memcpy(&next_frame.reg[0], &arg_reg[0], num_args * sizeof(vm_value));
-      next_frame.return_address = program_pointer;
-      next_frame.result_register = get_arg_r0(instr);
 
       vm_value *cl_pointer = heap_get_pointer(cl_address);
       int num_env_args = *cl_pointer;
-      memcpy(&next_frame.reg[num_args], cl_pointer + 1, num_env_args * sizeof(vm_value));
+      memcpy(&next_frame.reg[0], cl_pointer + 1, num_env_args * sizeof(vm_value));
       vm_value func_address = *(cl_pointer + num_env_args + 1);
+
+      memcpy(&next_frame.reg[num_env_args], &arg_reg[0], num_args * sizeof(vm_value));
+      next_frame.return_address = program_pointer;
+      next_frame.result_register = get_arg_r0(instr);
+
 
       debug( printf("CALLCL r%02i r%02i r%02i\n", get_arg_r0(instr), cl_address_reg, num_args) );
       program_pointer = func_address;
@@ -178,14 +180,15 @@ bool execute_instruction(vm_instruction instr) {
       heap_address cl_address = (heap_address)get_reg(cl_address_reg);
       int num_args = get_arg_r2(instr);
 
-      memcpy(&current_frame.reg[0], &arg_reg[0], num_args * sizeof(vm_value));
+      vm_value *cl_pointer = heap_get_pointer(cl_address);
+      int num_env_args = *cl_pointer;
+      memcpy(&current_frame.reg[0], cl_pointer + 1, num_env_args * sizeof(vm_value));
+      vm_value func_address = *(cl_pointer + num_env_args + 1);
+
+      memcpy(&current_frame.reg[num_env_args], &arg_reg[0], num_args * sizeof(vm_value));
       // next_frame.return_address = program_pointer;
       // next_frame.result_register = get_arg_r0(instr);
 
-      vm_value *cl_pointer = heap_get_pointer(cl_address);
-      int num_env_args = *cl_pointer;
-      memcpy(&current_frame.reg[num_args], cl_pointer + 1, num_env_args * sizeof(vm_value));
-      vm_value func_address = *(cl_pointer + num_env_args + 1);
 
       debug( printf("TL CALLCL r%02i r%02i=%04zu f=%04i n%02i\n", get_arg_r0(instr), cl_address_reg, cl_address, func_address, num_args) );
       program_pointer = func_address;

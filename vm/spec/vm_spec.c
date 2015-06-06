@@ -82,7 +82,7 @@ it( calls_a_closure_downwards ) {
 
     // fun2
     //fun_header(1, 1), /* 1 closed over value, 1 parameter */
-    op_sub(2, 0, 1), // addr 11 // reg1 holds the function argument, reg2 is the single env value
+    op_sub(2, 1, 0), // addr 11 // reg1 holds the function argument, reg0 is the single env value
     op_ret(2)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
@@ -110,7 +110,7 @@ it( calls_a_closure_upwards ) {
     op_ret(0),
 
     // fun 2
-    op_sub(2, 0, 1),
+    op_sub(2, 1, 0),
     op_ret(2)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
@@ -139,7 +139,7 @@ it( modifies_a_closure ) {
     op_ret(0),
 
     // fun 2
-    op_sub(3, 1, 2),
+    op_sub(3, 0, 1),
     op_ret(3)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);

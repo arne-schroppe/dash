@@ -88,7 +88,7 @@ spec = do
 
     -- TODO when changing `counter x` to use `next`, there is a compiler error. Investigate (reason is that next is handled as a constant free var)
 
-
+{-
 
     context "when using recursion" $ do
 
@@ -123,7 +123,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 995
 
-{- Note: Mutual recursion will only be possible in the top level of a module (and thus without closures)
+{ - Note: Mutual recursion will only be possible in the top level of a module (and thus without closures)
             it "handles mutual recursion of lambdas" $ do
               let code = "\
               \ val check (a) = \n\
@@ -317,7 +317,7 @@ spec = do
 What's missing:
 
 immediate goals:
-- Refactoring
+K Refactoring
 - Proper error handling (Either result)
 
 missing language features:
@@ -336,6 +336,7 @@ After release ?
 - Mutual recursion in module top-level
 - indentation syntax
 - I/O
+- Multiple files
 
 
 - Can we do partial compilation? Per module? Or just a single function or value in a repl?
