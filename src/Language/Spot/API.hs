@@ -36,6 +36,7 @@ import           Prelude                             hiding (lex)
 -- TODO find a style and use it consistently
 -- TODO explain what each module does
 
+-- TODO don't call this "API", unless it re-exports functions and types
 
 
 toNorm :: String -> NormExpr
