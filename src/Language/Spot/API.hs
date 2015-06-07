@@ -11,7 +11,7 @@ import           Data.Word
 import           Language.Spot.Asm.Assembler
 import           Language.Spot.Asm.DataAssembler
 import           Language.Spot.CodeGen.CodeGen
-import           Language.Spot.CodeGen.Normalization
+import           Language.Spot.Normalization.Normalization
 import           Language.Spot.IR.Norm
 import           Language.Spot.IR.Tac
 import           Language.Spot.Parser.Lexer
@@ -39,6 +39,15 @@ import           Prelude                             hiding (lex)
 -- TODO don't call this "API", unless it re-exports functions and types
 
 
+
+run :: String -> IO VMValue
+run prog = do
+  (value, ctable, symNames) <-  prog |> lex |> parse |> normalize ||> compile ||> assemble ||> execute
+  return $ decode value ctable symNames
+
+
+-- Debugging functions
+
 toNorm :: String -> NormExpr
 toNorm prog =
   let (nExpr, ctable, symNames) = prog |> lex |> parse |> normalize in
@@ -56,9 +65,4 @@ toAtomicConstants prog =
   let (asm, ctable, symNames) = prog |> lex |> parse |> normalize ||> compile in
   atomizeConstTable ctable
 
-
-run :: String -> IO VMValue
-run prog = do
-  (value, ctable, symNames) <-  prog |> lex |> parse |> normalize ||> compile ||> assemble ||> execute
-  return $ decode value ctable symNames
 

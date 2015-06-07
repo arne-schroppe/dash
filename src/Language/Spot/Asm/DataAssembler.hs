@@ -10,7 +10,20 @@ import qualified Data.IntMap            as IntMap
 import qualified Language.Spot.VM.Bits  as Bits
 import           Language.Spot.VM.Types
 
--- TODO explain the algorithm or simplify it
+
+{-
+
+Data Assembler
+~~~~~~~~~~~~~~
+
+Encodes data of type Constant for the virtual machine.
+
+
+-}
+
+
+
+-- TODO explain the algorithm or simplify it (the latter is probably better)
 
 
 
@@ -142,6 +155,7 @@ nextFreeAddress = do
   let pendingItems = workQueue state
   let pending = foldl (\acc c -> acc + (spaceNeededByConstant c)) 0 pendingItems
   return $ used + reserved + pending
+
 
 spaceNeededByConstant :: Constant -> Int
 spaceNeededByConstant c = case c of

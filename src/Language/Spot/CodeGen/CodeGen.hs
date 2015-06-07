@@ -32,7 +32,7 @@ compileFunc :: [String] -> [String] -> NormExpr -> String -> CodeGenState Int
 compileFunc freeVars params expr name = do
   funAddr <- beginFunction freeVars params
   -- we add the name already here for recursion
-  addCompileTimeConst name $ CTConstLambda funAddr -- TODO this shouldn't really be in here
+  addCompileTimeConst name $ CTConstLambda funAddr
   funcCode <- compileExpr expr
   endFunction funAddr funcCode
   addCompileTimeConst name $ CTConstLambda funAddr -- Have to re-add to outer scope    TODO this sucks

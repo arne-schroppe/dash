@@ -1,13 +1,12 @@
 module IntegrationSpec where
 
 import           Test.Hspec
-
--- This is mainly a test of the code generator. But it is an integration test because
--- we don't care about the instructions it churns out, as long as everything behaves as expected.
-
 import           Language.Spot.API
 import           Language.Spot.VM.Bits
 import           Numeric
+
+-- This is mainly a test of the code generator. But it is an integration test because
+-- we don't care about the instructions it churns out, as long as everything behaves as expected.
 
 
 spec :: Spec
@@ -88,7 +87,7 @@ spec = do
 
     -- TODO when changing `counter x` to use `next`, there is a compiler error. Investigate (reason is that next is handled as a constant free var)
 
-{-
+
 
     context "when using recursion" $ do
 
@@ -123,7 +122,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 995
 
-{ - Note: Mutual recursion will only be possible in the top level of a module (and thus without closures)
+{- Note: Mutual recursion will only be possible in the top level of a module (and thus without closures)
             it "handles mutual recursion of lambdas" $ do
               let code = "\
               \ val check (a) = \n\
@@ -219,6 +218,18 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 1862
 
+
+{- TODO do this later when VM has currying
+    context "when using currying" $ do
+
+            it "evaluates a curried function" $ do
+              let code = "\
+              \ val my-sub (a b) = sub a b \n\
+              \ val curry = my-sub 10  \n\
+              \ curry 3"
+              let result = run code
+              result `shouldReturn` VMNumber 7
+-}
 
     context "when using compound symbols" $ do
 

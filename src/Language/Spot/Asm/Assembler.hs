@@ -3,9 +3,6 @@ module Language.Spot.Asm.Assembler (
 , assembleWithEncodedConstTable
 ) where
 
--- TODO put this into its own namespace
-
--- Translates [[Tac]] to data for the virtual machine
 
 import           Control.Monad.State
 import           Data.Bits
@@ -19,6 +16,23 @@ import           Language.Spot.VM.Types
 import           Language.Spot.Asm.DataAssembler
 
 import           Debug.Trace
+
+{-
+
+Assembler
+~~~~~~~~~
+
+The assembler takes lists of three address codes and generates the actual byte code for
+the virtual machine. It also encodes all static objects used at runtime (the const table).
+
+The code generator stores each function as a list so that the input type for the assembler
+is [[tac]]. Function addresses in the input code are indices of the outer list. They are
+turned into real addresses by the assembler.
+
+-}
+
+
+
 
 -- TODO do we encode nested symbols depth-first or breadth-first? Try both and measure performance!
 
@@ -78,11 +92,12 @@ opcBits = 6
 regBits = 5
 
 
+-- an instruction containing a register and a number
 instructionRI :: VMWord -> VMWord -> VMWord -> VMWord
 instructionRI opcId register value =
   (opcId `shiftL` (instBits - opcBits)) .|. (register `shiftL` (instBits - (opcBits + regBits))) .|. value
 
-
+-- an instruction containing three registers
 instructionRRR :: VMWord -> VMWord -> VMWord -> VMWord -> VMWord
 instructionRRR opcId r0 r1 r2 =
    (opcId `shiftL` (instBits - opcBits))
