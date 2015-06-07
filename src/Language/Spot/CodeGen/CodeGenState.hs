@@ -6,7 +6,7 @@ import           Control.Monad.State
 import qualified Data.Map               as Map
 import qualified Data.Sequence          as Seq
 import           Language.Spot.IR.Data
-import           Language.Spot.IR.Norm
+import           Language.Spot.IR.Nst
 import           Language.Spot.IR.Tac
 import           Language.Spot.VM.Types
 
@@ -129,7 +129,7 @@ getRegByName name = do
                           return $ (+) <$> p <*> Just numFree
 
 
-getReg :: NormVar -> CodeGenState Int
+getReg :: NstVar -> CodeGenState Int
 getReg (NConstantFreeVar _) = error "Compiler error"
 
 getReg (NFunParam name) = do

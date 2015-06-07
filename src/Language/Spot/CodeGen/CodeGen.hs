@@ -7,7 +7,7 @@ import           Data.List                          (delete)
 import           Data.Maybe                         (catMaybes)
 import           Language.Spot.CodeGen.CodeGenState
 import           Language.Spot.IR.Data
-import           Language.Spot.IR.Norm
+import           Language.Spot.IR.Nst
 import           Language.Spot.IR.Tac
 import           Language.Spot.VM.Types
 import           Control.Monad.State
@@ -22,13 +22,13 @@ import           Control.Monad.State
 -- the uninitiated observer might think that we don't know what a register is.
 
 
-compile :: NormExpr -> ConstTable -> SymbolNameList -> ([[Tac]], ConstTable, SymbolNameList)
+compile :: NstExpr -> ConstTable -> SymbolNameList -> ([[Tac]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
   let result = execState (compileFunc [] [] expr "") emptyCompEnv in
   (toList (instructions result), cTable, symlist)
 
 
-compileFunc :: [String] -> [String] -> NormExpr -> String -> CodeGenState Int
+compileFunc :: [String] -> [String] -> NstExpr -> String -> CodeGenState Int
 compileFunc freeVars params expr name = do
   funAddr <- beginFunction freeVars params
   -- we add the name already here for recursion
@@ -39,7 +39,7 @@ compileFunc freeVars params expr name = do
   return funAddr
 
 
-compileExpr :: NormExpr -> CodeGenState [Tac]
+compileExpr :: NstExpr -> CodeGenState [Tac]
 compileExpr expr = case expr of
   NLet var atom body -> compileLet var atom body
   NAtom a -> do
@@ -47,7 +47,7 @@ compileExpr expr = case expr of
           return $ code ++ [Tac_ret 0]
 
 
-compileAtom :: Reg -> NormAtomicExpr -> String -> Bool -> CodeGenState [Tac]
+compileAtom :: Reg -> NstAtomicExpr -> String -> Bool -> CodeGenState [Tac]
 compileAtom reg atom name isResultValue = case atom of
   NNumber n -> do
           addCompileTimeConst name $ CTConstNumber (fromIntegral n)
@@ -84,13 +84,13 @@ compileAtom reg atom name isResultValue = case atom of
           compileMatch reg subject maxCaptures patternAddr branches isResultValue
   x -> error $ "Unable to compile " ++ (show x)
   where
-    moveVarToReg :: NormVar -> Reg -> CodeGenState [Tac]
+    moveVarToReg :: NstVar -> Reg -> CodeGenState [Tac]
     moveVarToReg var reg = do
               r <- getReg var
               return [Tac_move reg r]
 
 
-compileCallInstr :: Reg -> NormVar -> Int -> Bool -> CodeGenState [Tac]
+compileCallInstr :: Reg -> NstVar -> Int -> Bool -> CodeGenState [Tac]
 compileCallInstr reg funVar numArgs isResultValue = do
           rFun <- getReg funVar
           direct <- isDirectCallReg rFun
@@ -121,14 +121,14 @@ compileLoadLambda reg funAddr isResultValue = do
       return $ ldFunAddr
 
 
-compileLet :: NormVar -> NormAtomicExpr -> NormExpr -> CodeGenState [Tac]
+compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Tac]
 compileLet tmpVar@(NLocalVar tmpId name) atom body =
   compileLet' tmpVar atom name body
 
 compileLet tmpVar atom body =
   compileLet' tmpVar atom "" body
 
-compileLet' :: NormVar -> NormAtomicExpr -> String -> NormExpr -> CodeGenState [Tac]
+compileLet' :: NstVar -> NstAtomicExpr -> String -> NstExpr -> CodeGenState [Tac]
 compileLet' tmpVar atom name body = do
   let callDirect = canBeCalledDirectly atom
   rTmp <- getReg tmpVar
@@ -139,14 +139,14 @@ compileLet' tmpVar atom name body = do
 
 
 -- This determines whether we'll use Tac_call or Tac_call_cl later
-canBeCalledDirectly :: NormAtomicExpr -> Bool
+canBeCalledDirectly :: NstAtomicExpr -> Bool
 canBeCalledDirectly atom = case atom of
   NVar (NConstantFreeVar _) -> True -- TODO we need a function tag for this case
   NLambda ([]) _ _ -> True
   _ -> False
 
 
-compileClosure :: Reg -> [String] -> [String] -> NormExpr -> String -> CodeGenState [Tac]
+compileClosure :: Reg -> [String] -> [String] -> NstExpr -> String -> CodeGenState [Tac]
 compileClosure reg freeVars params expr name = do
   funAddr <- compileFunc freeVars params expr name
   -- TODO optimize argInstrs by using last parameter in set_arg
@@ -173,7 +173,7 @@ createSelfRefInstrsIfNeeded clReg = do
     Just index -> return [Tac_set_cl_val clReg clReg index]
 
 
-compileMatch :: Reg -> NormVar -> Int -> Int -> [([String], NormVar)] -> Bool -> CodeGenState [Tac]
+compileMatch :: Reg -> NstVar -> Int -> Int -> [([String], NstVar)] -> Bool -> CodeGenState [Tac]
 compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   let branchMatchedVars = map fst branches
   let branchLambdaVars = map snd branches -- the variables containing lambdas to call
@@ -207,7 +207,7 @@ compileMatchBranchLoadArg startReg matchedVars =
   Tac_set_arg 0 startReg (max 0 $ (length matchedVars) - 1)
 
 
-compileSetArg :: NormVar -> Int -> CodeGenState Tac
+compileSetArg :: NstVar -> Int -> CodeGenState Tac
 compileSetArg var arg = do
   rVar <- getReg var
   return $ Tac_set_arg arg rVar 0

@@ -29,8 +29,7 @@ import           Data.List
 import qualified Data.Map              as Map
 import           Language.Spot.IR.Ast
 import           Language.Spot.IR.Data
-import           Language.Spot.IR.Norm
-import           Language.Spot.IR.Norm
+import           Language.Spot.IR.Nst
 
 -- TODO this module's interface is way too fat !
 
@@ -51,7 +50,7 @@ emptyNormEnv = NormEnv {
 
 data Context = Context {
   tempVarCounter :: Int
-, bindings       :: Map.Map String (NormVar, Bool) -- Bool indicates whether this is a dynamic var or not
+, bindings       :: Map.Map String (NstVar, Bool) -- Bool indicates whether this is a dynamic var or not
 , freeVars       :: [String]
 } deriving (Eq, Show)
 
@@ -75,7 +74,7 @@ A name lookup can have these outcomes:
 4. It is an unknown variable, which results in an error.
 -}
 
-lookupName :: String -> NormState NormVar
+lookupName :: String -> NormState NstVar
 lookupName name = do
   state <- get
   let ctxs = contexts state
@@ -91,7 +90,7 @@ lookupName name = do
              NRecursiveVar name -> return var
              _ -> return $ NConstantFreeVar name
 
-lookupNameInContext :: String -> [Context] -> NormState (NormVar, Bool)
+lookupNameInContext :: String -> [Context] -> NormState (NstVar, Bool)
 lookupNameInContext name [] = error $ "Identifier " ++ name ++ " not found"
 lookupNameInContext name conts = do
   let binds = bindings $ head conts
@@ -113,7 +112,7 @@ leaveContext = do
   popContext
 
 
-newTempVar :: String -> NormState NormVar
+newTempVar :: String -> NormState NstVar
 newTempVar name = do
   con <- context
   let tmpVar = tempVarCounter con
@@ -152,7 +151,7 @@ addDynamicVar name = do
           putContext con'
   else return ()
 
-addBinding :: String -> (NormVar, Bool) -> NormState ()
+addBinding :: String -> (NstVar, Bool) -> NormState ()
 addBinding name bnd = do
   con <- context
   let bindings' = Map.insert name bnd (bindings con)

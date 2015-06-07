@@ -12,7 +12,7 @@ import           Language.Spot.Asm.Assembler
 import           Language.Spot.Asm.DataAssembler
 import           Language.Spot.CodeGen.CodeGen
 import           Language.Spot.Normalization.Normalization
-import           Language.Spot.IR.Norm
+import           Language.Spot.IR.Nst
 import           Language.Spot.IR.Tac
 import           Language.Spot.Parser.Lexer
 import           Language.Spot.Parser.Parser
@@ -48,7 +48,7 @@ run prog = do
 
 -- Debugging functions
 
-toNorm :: String -> NormExpr
+toNorm :: String -> NstExpr
 toNorm prog =
   let (nExpr, ctable, symNames) = prog |> lex |> parse |> normalize in
   nExpr

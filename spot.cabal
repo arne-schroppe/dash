@@ -25,7 +25,7 @@ library
                     , Language.Spot.IR.Ast
                     , Language.Spot.IR.Tac
                     , Language.Spot.IR.Data
-                    , Language.Spot.IR.Norm
+                    , Language.Spot.IR.Nst
                     , Language.Spot.Asm.Assembler
                     , Language.Spot.Asm.DataAssembler
                     , Language.Spot.VM.VM
