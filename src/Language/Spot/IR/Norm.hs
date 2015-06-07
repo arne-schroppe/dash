@@ -10,6 +10,7 @@ import           Language.Spot.IR.Ast
 import           Language.Spot.IR.Data  (ConstAddr)
 import           Language.Spot.VM.Types
 
+-- TODO rename to NST (NormalizedSyntaxTree) or something
 
 data NormExpr =
     NAtom NormAtomicExpr
