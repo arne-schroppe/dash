@@ -9,9 +9,7 @@ module Language.Spot.Normalization.NormalizationState (
 , addDynamicVar
 , lookupName
 , newTempVar
-, freeVars
-
-, context
+, freeVariables
 
 , addSymbolName
 , getSymbolNames
@@ -24,7 +22,7 @@ module Language.Spot.Normalization.NormalizationState (
 ) where
 
 
-import           Control.Monad.State
+import           Control.Monad.State hiding (state)
 import           Data.List
 import qualified Data.Map              as Map
 import           Language.Spot.IR.Ast
@@ -42,11 +40,14 @@ data NormEnv = NormEnv {
 , contexts    :: [Context] -- head is current context
 } deriving (Eq, Show)
 
+
+emptyNormEnv :: NormEnv
 emptyNormEnv = NormEnv {
   symbolNames = Map.empty
 , constTable = []
 , contexts = []
 }
+
 
 data Context = Context {
   tempVarCounter :: Int
@@ -54,6 +55,8 @@ data Context = Context {
 , freeVars       :: [String]
 } deriving (Eq, Show)
 
+
+emptyContext :: Context
 emptyContext = Context {
   tempVarCounter = 0
 , bindings = Map.empty
@@ -79,7 +82,7 @@ lookupName name = do
   state <- get
   let ctxs = contexts state
   let localContext = head ctxs
-  case Map.lookup name (bindings localContext)  of
+  case Map.lookup name (bindings localContext) of
     Just (var, _) -> return var
     Nothing -> do
            (var, isDynamic) <- lookupNameInContext name (tail ctxs)
@@ -87,8 +90,9 @@ lookupName name = do
              addDynamicVar name
              return $ NDynamicFreeVar name
            else case var of
-             NRecursiveVar name -> return var
+             NRecursiveVar _ -> return var
              _ -> return $ NConstantFreeVar name
+
 
 lookupNameInContext :: String -> [Context] -> NormState (NstVar, Bool)
 lookupNameInContext name [] = error $ "Identifier " ++ name ++ " not found"
@@ -102,7 +106,7 @@ lookupNameInContext name conts = do
 enterContext :: [String] -> NormState ()
 enterContext funParams = do
   pushContext emptyContext
-  forM funParams $ \ paramName ->
+  void $ forM funParams $ \ paramName ->
     -- Function params are always dynamic
     addBinding paramName (NFunParam paramName, True)
   return ()
@@ -162,6 +166,10 @@ hasBinding name = do
   con <- context
   return $ Map.member name (bindings con)
 
+freeVariables :: NormState [String]
+freeVariables = do
+  con <- context
+  return $ freeVars con
 
 --- Symbols
 
@@ -220,7 +228,8 @@ encodeMatchPattern nextMatchVar pat =
                   return (vars, CCompoundSymbol symId pats)
     PatVar n -> return $ ([n], CMatchVar nextMatchVar)
 
--- TODO use inner state
+-- TODO use inner state ?
+encodePatternCompoundSymbolArgs :: Int -> [Pattern] -> NormState ([String], [Constant])
 encodePatternCompoundSymbolArgs nextMatchVar args = do
   (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
     (vars, encoded) <- encodeMatchPattern nextMV p

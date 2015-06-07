@@ -7,7 +7,6 @@ module Language.Spot.API
 ) where
 
 import qualified Data.IntMap                         as IntMap
-import           Data.Word
 import           Language.Spot.Asm.Assembler
 import           Language.Spot.Asm.DataAssembler
 import           Language.Spot.CodeGen.CodeGen
@@ -21,8 +20,10 @@ import           Language.Spot.VM.Types
 import           Language.Spot.VM.VM
 import           Prelude                             hiding (lex)
 
+(|>) :: a -> (a -> b) -> b
 (|>) = flip ($)
 
+(||>) :: (t1, t2, t3) -> (t1 -> t2 -> t3 -> a) -> a
 (||>) (a, b, c) d = d a b c
 
 -- TODO have separate compile and run and add methods (add is for repl)
@@ -39,7 +40,6 @@ import           Prelude                             hiding (lex)
 -- TODO don't call this "API", unless it re-exports functions and types
 
 
-
 run :: String -> IO VMValue
 run prog = do
   (value, ctable, symNames) <-  prog |> lex |> parse |> normalize ||> compile ||> assemble ||> execute
@@ -50,19 +50,19 @@ run prog = do
 
 toNorm :: String -> NstExpr
 toNorm prog =
-  let (nExpr, ctable, symNames) = prog |> lex |> parse |> normalize in
+  let (nExpr, _, _) = prog |> lex |> parse |> normalize in
   nExpr
 
 
 toAsm :: String -> [[Tac]]
 toAsm prog =
-  let (asm, ctable, symNames) = prog |> lex |> parse |> normalize ||> compile in
+  let (asm, _, _) = prog |> lex |> parse |> normalize ||> compile in
   asm
 
 
 toAtomicConstants :: String -> ([AtomicConstant], IntMap.IntMap VMWord)
 toAtomicConstants prog =
-  let (asm, ctable, symNames) = prog |> lex |> parse |> normalize ||> compile in
+  let (_, ctable, _) = prog |> lex |> parse |> normalize ||> compile in
   atomizeConstTable ctable
 
 

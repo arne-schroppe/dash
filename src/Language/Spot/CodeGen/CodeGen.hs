@@ -3,14 +3,13 @@ module Language.Spot.CodeGen.CodeGen (
 ) where
 
 import           Data.Foldable
-import           Data.List                          (delete)
 import           Data.Maybe                         (catMaybes)
 import           Language.Spot.CodeGen.CodeGenState
 import           Language.Spot.IR.Data
 import           Language.Spot.IR.Nst
 import           Language.Spot.IR.Tac
-import           Language.Spot.VM.Types
 import           Control.Monad.State
+
 
 
 -- TODO when there is more time, do dataflow analysis to reuse registers
@@ -75,19 +74,19 @@ compileAtom reg atom name isResultValue = case atom of
           callInstr <- compileCallInstr reg funVar (length args) isResultValue
           return $ argInstrs ++ callInstr
   NVar var -> case var of
-          NLocalVar varId _     -> moveVarToReg var reg
-          NFunParam name        -> moveVarToReg var reg
-          NDynamicFreeVar name  -> moveVarToReg var reg
-          NConstantFreeVar name -> compileConstantFreeVar reg name isResultValue
+          NLocalVar _ _          -> moveVarToReg var reg
+          NFunParam _            -> moveVarToReg var reg
+          NDynamicFreeVar _      -> moveVarToReg var reg
+          NConstantFreeVar vname -> compileConstantFreeVar reg vname isResultValue
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches isResultValue
   x -> error $ "Unable to compile " ++ (show x)
   where
     moveVarToReg :: NstVar -> Reg -> CodeGenState [Tac]
-    moveVarToReg var reg = do
+    moveVarToReg var dest = do
               r <- getReg var
-              return [Tac_move reg r]
+              return [Tac_move dest r]
 
 
 compileCallInstr :: Reg -> NstVar -> Int -> Bool -> CodeGenState [Tac]
@@ -110,6 +109,7 @@ compileConstantFreeVar reg name isResultValue = do
           CTConstPlainSymbol symId -> return [Tac_load_ps reg symId]
           -- CConstCompoundSymbol ConstAddr
           CTConstLambda funAddr -> compileLoadLambda reg funAddr isResultValue
+          _ -> error "compileConstantFreeVar"
 
 
 compileLoadLambda :: Reg -> Int -> Bool -> CodeGenState [Tac]
@@ -122,7 +122,7 @@ compileLoadLambda reg funAddr isResultValue = do
 
 
 compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Tac]
-compileLet tmpVar@(NLocalVar tmpId name) atom body =
+compileLet tmpVar@(NLocalVar _ name) atom body =
   compileLet' tmpVar atom name body
 
 compileLet tmpVar atom body =

@@ -4,9 +4,9 @@ module Language.Spot.Asm.DataAssembler (
 , AtomicConstant(..)
 ) where
 
-import           Language.Spot.IR.Data
-import Control.Monad.State
+import           Control.Monad.State    hiding (state)
 import qualified Data.IntMap            as IntMap
+import           Language.Spot.IR.Data
 import qualified Language.Spot.VM.Bits  as Bits
 import           Language.Spot.VM.Types
 
@@ -39,10 +39,10 @@ encodeConstTable ctable =
 
 atomizeConstTable :: ConstTable -> ([AtomicConstant], IntMap.IntMap VMWord)
 atomizeConstTable ctable =
-  let state = execState (encTable ctable) (emptyConstAtomizationEnv ctable) in
+  let state = execState encTable (emptyConstAtomizationEnv ctable) in
   (atomized state, addrMap state)
   where
-    encTable ctable = whileJust atomizeConstant popWorkItem
+    encTable = whileJust atomizeConstant popWorkItem
 
 
 whileJust :: (b -> ConstAtomizationState a) -> ConstAtomizationState (Maybe b) -> ConstAtomizationState ()
@@ -51,7 +51,7 @@ whileJust f source = do
   case next of
     Nothing -> return ()
     Just x -> do
-      f x
+      _ <- f x
       whileJust f source
 
 
@@ -107,6 +107,7 @@ data ConstAtomizationEnv = ConstAtomizationEnv {
 , numAtomizedConsts :: Int
 }
 
+emptyConstAtomizationEnv :: [Constant] -> ConstAtomizationEnv
 emptyConstAtomizationEnv ctable = ConstAtomizationEnv {
   constants         = ctable
 , workQueue         = []

@@ -6,7 +6,7 @@
 #include "opcodes.h"
 #include "heap.h"
 
-// #define VM_DEBUG 1
+//#define VM_DEBUG 1
 
 #ifdef VM_DEBUG
 #  define debug(x) do { x; } while (0)

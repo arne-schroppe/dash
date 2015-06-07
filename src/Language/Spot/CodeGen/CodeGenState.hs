@@ -2,7 +2,7 @@ module Language.Spot.CodeGen.CodeGenState where
 
 
 import           Control.Applicative
-import           Control.Monad.State
+import           Control.Monad.State hiding (state)
 import qualified Data.Map               as Map
 import qualified Data.Sequence          as Seq
 import           Language.Spot.IR.Data
@@ -12,7 +12,6 @@ import           Language.Spot.VM.Types
 
 
 ----- State -----
--- TODO put this into a separate file
 
 type CodeGenState a = State CompEnv a
 
@@ -21,10 +20,13 @@ data CompEnv = CompEnv {
                  , scopes       :: [CompScope]
                  }
 
+
+emptyCompEnv :: CompEnv
 emptyCompEnv = CompEnv {
                    instructions = Seq.fromList []
                  , scopes = []
                  }
+
 
 data CompScope = CompScope {
                    functionParams         :: Map.Map String Int
@@ -40,6 +42,8 @@ data CompScope = CompScope {
                  , compileTimeConstants   :: Map.Map String CompileTimeConstant
                  }
 
+
+makeScope :: Map.Map String Int -> Map.Map String Int -> CompScope
 makeScope freeVars params = CompScope {
                functionParams = params
              , freeVariables = freeVars
@@ -48,6 +52,7 @@ makeScope freeVars params = CompScope {
              , directCallRegs = []
              , compileTimeConstants = Map.empty
              }
+
 
 data CompileTimeConstant =
     CTConstNumber VMWord
@@ -114,14 +119,14 @@ addPlaceholderFunction = do
 
 getRegByName :: String -> CodeGenState Int
 getRegByName name = do
-  lookup <- getRegN name
-  case lookup of
+  maybeReg <- getRegN
+  case maybeReg of
     Just index -> return index
     Nothing -> error $ "Unknown identifier " ++ name
-  where getRegN name = do
+  where getRegN = do
   -- TODO make this less ugly
-          p <- freeVar name
-          case p of
+          f <- freeVar name
+          case f of
                   Just i -> return $ Just i
                   Nothing -> do
                           p <- param name
@@ -134,8 +139,8 @@ getReg (NConstantFreeVar _) = error "Compiler error"
 
 getReg (NFunParam name) = do
   numFree <- numFreeVars
-  lookup <- param name
-  case lookup of
+  maybeReg <- param name
+  case maybeReg of
           Just index -> return $ numFree + index
           Nothing -> error $ "Unknown parameter: " ++ name
 
@@ -143,17 +148,17 @@ getReg (NFunParam name) = do
 -- and the next m registers are closed-over variables
 -- TODO document this fact somewhere visible
 getReg (NDynamicFreeVar name) = do
-  lookup <- freeVar name
-  case lookup of
+  maybeReg <- freeVar name
+  case maybeReg of
           Just index -> return index
           Nothing -> error $ "Unknown free var: " ++ name
 
-getReg (NLocalVar tmpVar name) = do
+getReg (NLocalVar tmpVar _) = do
   numFree <- numFreeVars
   numParams <- numParameters
   return $ numFree + numParams + tmpVar
 
-getReg (NRecursiveVar name) = error "Compiler error: Unexpected recursive var"
+getReg (NRecursiveVar _) = error "Compiler error: Unexpected recursive var"
 
 
 isDirectCallReg :: Reg -> CodeGenState Bool
@@ -210,12 +215,12 @@ getCompileTimeConstInOuterScope name = do
   scps <- gets scopes
   getCompConst name scps
   where
-    getCompConst name [] = error $ "Compiler error: no compile time constant named '" ++ name ++ "'"
-    getCompConst name scps = do
+    getCompConst _ [] = error $ "Compiler error: no compile time constant named '" ++ name ++ "'"
+    getCompConst constName scps = do
       let consts = compileTimeConstants $ head scps
-      case Map.lookup name consts of
+      case Map.lookup constName consts of
         Just c -> return c
-        Nothing -> getCompConst name $ tail scps
+        Nothing -> getCompConst constName $ tail scps
 
 
 

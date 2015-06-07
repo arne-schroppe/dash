@@ -219,7 +219,7 @@ spec = do
               result `shouldReturn` VMNumber 1862
 
 
-{- TODO do this later when VM has currying
+{-
     context "when using currying" $ do
 
             it "evaluates a curried function" $ do
@@ -227,9 +227,11 @@ spec = do
               \ val my-sub (a b) = sub a b \n\
               \ val curry = my-sub 10  \n\
               \ curry 3"
+              putStrLn $ show $ toAsm code
               let result = run code
               result `shouldReturn` VMNumber 7
 -}
+
 
     context "when using compound symbols" $ do
 

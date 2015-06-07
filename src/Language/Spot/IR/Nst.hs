@@ -6,9 +6,7 @@ module Language.Spot.IR.Nst (
 ) where
 
 
-import           Language.Spot.IR.Ast
 import           Language.Spot.IR.Data  (ConstAddr)
-import           Language.Spot.VM.Types
 
 -- TODO rename to NST (NstalizedSyntaxTree) or something
 

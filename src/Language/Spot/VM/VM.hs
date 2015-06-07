@@ -7,8 +7,6 @@ import           Foreign.C
 import           Foreign.Marshal.Array
 import           Foreign.Ptr
 import           Language.Spot.IR.Data  (SymbolNameList)
-import           Language.Spot.IR.Tac
-import           Language.Spot.VM.Bits
 import           Language.Spot.VM.Types
 
 

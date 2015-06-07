@@ -4,18 +4,13 @@ module Language.Spot.Asm.Assembler (
 ) where
 
 
-import           Control.Monad.State
 import           Data.Bits
-import           Data.List
-import           Data.Maybe
 import           Data.Word
 import           Language.Spot.IR.Data
 import           Language.Spot.IR.Tac
-import           Language.Spot.VM.Bits
 import           Language.Spot.VM.Types
 import           Language.Spot.Asm.DataAssembler
 
-import           Debug.Trace
 
 {-
 
@@ -66,7 +61,7 @@ assembleTac funcAddrs addrConv opc =
   let i = fromIntegral in
   case opc of
     Tac_ret r0              -> instructionRI   0 (r r0) 0
-    Tac_load_i r0 i         -> instructionRI   1 (r r0) i
+    Tac_load_i r0 n         -> instructionRI   1 (r r0) n
     Tac_load_addr r0 a      -> instructionRI   1 (r r0) (addrConv a)
     Tac_load_f r0 fi        -> instructionRI   1 (r r0) (funcAddrs !! fi)
     Tac_load_ps r0 s        -> instructionRI   2 (r r0) (i s)
@@ -87,6 +82,7 @@ assembleTac funcAddrs addrConv opc =
 
 
 
+instBits, opcBits, regBits :: Int
 instBits = 32
 opcBits = 6
 regBits = 5

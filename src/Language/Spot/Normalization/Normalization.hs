@@ -2,7 +2,7 @@ module Language.Spot.Normalization.Normalization (
   normalize
 ) where
 
-import           Control.Monad.State
+import           Control.Monad.State hiding (state)
 import           Language.Spot.IR.Ast
 import           Language.Spot.IR.Data
 import           Language.Spot.IR.Nst
@@ -97,18 +97,18 @@ atomizeExpr expr name k = case expr of
           normalizeNumber n k
   LitSymbol sname args ->
           normalizeSymbol sname args k
-  Var name ->
-          normalizeVar name k
+  Var vname ->
+          normalizeVar vname k
   Match matchedExpr patterns ->
           normalizeMatch matchedExpr patterns k
   Lambda params bodyExpr ->
           normalizeLambda params bodyExpr name k
-  LocalBinding (Binding name boundExpr) restExpr -> -- inner local binding ! (i.e. let a = let b = 2 in 1 + b)
-          atomizeExpr boundExpr name $ \ aExpr -> do
-            var <- newTempVar name
-            addBinding name (var, False)
-            atomizeExpr restExpr "" $ \ boundExpr -> do
-              rest <- k boundExpr
+  LocalBinding (Binding bname boundExpr) restExpr -> -- inner local binding ! (i.e. let a = let b = 2 in 1 + b)
+          atomizeExpr boundExpr bname $ \ aExpr -> do
+            var <- newTempVar bname
+            addBinding bname (var, False)
+            atomizeExpr restExpr "" $ \ normBoundExpr -> do
+              rest <- k normBoundExpr
               return $ NLet var aExpr rest
   x -> error $ "Unable to normalize " ++ (show x)
 
@@ -152,11 +152,10 @@ normalizeLambda params bodyExpr name k = do
   enterContext params
   when (not $ null name) $ addBinding name (NRecursiveVar name, False) -- TODO we don't know whether this var is dynamic or not!
   normalizedBody <- normalizeExpr bodyExpr
-  con <- context
-  let free = freeVars con
+  freeVars <- freeVariables
   leaveContext
-  pullUpFreeVars free
-  k $ NLambda free params normalizedBody
+  pullUpFreeVars freeVars
+  k $ NLambda freeVars params normalizedBody
 
 
 normalizeFunCall :: Expr -> [Expr] -> Cont -> NormState NstExpr
@@ -194,8 +193,8 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
 -- Free variables in a used lambda which can't be resolved in our context need to become
 -- free variables in our context
 pullUpFreeVars :: [String] -> NormState ()
-pullUpFreeVars freeVs = do
-  forM (reverse freeVs) $ \ name -> do
+pullUpFreeVars freeVars = do
+  _ <- forM (reverse freeVars) $ \ name -> do
           hasB <- hasBinding name
           when (not hasB) $ addDynamicVar name
   return ()
@@ -210,13 +209,13 @@ normalizeExprList :: [Expr] -> ([NstVar] -> NormState NstExpr) -> NormState NstE
 normalizeExprList exprList k =
   normalizeExprList' exprList [] k
   where
-    normalizeExprList' [] acc k = do
-      expr <- k $ reverse acc
+    normalizeExprList' [] acc k' = do
+      expr <- k' $ reverse acc
       return expr
-    normalizeExprList' exprList acc k = do
-      let hd = head exprList
+    normalizeExprList' expLs acc k' = do
+      let hd = head expLs
       nameExpr hd "" $ \ var -> do
-        restExpr <- normalizeExprList' (tail exprList) (var : acc) k
+        restExpr <- normalizeExprList' (tail expLs) (var : acc) k'
         return restExpr
 
 
@@ -228,9 +227,9 @@ nameExpr expr originalName k = case expr of
     var <- lookupName name
     case var of
       -- Constant free vars are let-bound
-      NConstantFreeVar n -> letBind expr "" k
+      NConstantFreeVar _ -> letBind expr "" k
       -- Recursive vars are also let-bound. Not strictly necessary, but easier later on  (TODO loosen this restriction)
-      NRecursiveVar n -> letBind expr "" k
+      NRecursiveVar _ -> letBind expr "" k
       -- All other vars are used directly (because they will be in a register later on)
       v -> do
             bodyExpr <- k v
@@ -239,10 +238,10 @@ nameExpr expr originalName k = case expr of
   _ -> letBind expr originalName k
   where
     letBind :: Expr -> String -> VCont -> NormState NstExpr
-    letBind e n k = do
+    letBind e n k' = do
       atomizeExpr e n $ \ aExpr -> do
         var <- newTempVar n
-        restExpr <- k var
+        restExpr <- k' var
         return $ NLet var aExpr restExpr
 
 {-
@@ -267,14 +266,20 @@ isAtomDynamic expr = case expr of
 -- avoid duplicate free vars by adding all current freevars when entering scope
 
 data RecursionEnv = RecursionEnv {
-    lambdaStack   :: [(String, NstVar)]
-  , extraFreeVars :: [[String]]
+  lambdaStack   :: [(String, NstVar)]
+
+  -- 'extra free vars' are the additional free variables that are created when 
+  -- resolving recursion that involves closures or unknown functions
+, extraFreeVars :: [[String]]
 }
 
+
+emptyRecursionEnv :: RecursionEnv
 emptyRecursionEnv = RecursionEnv {
-    lambdaStack = []
-  , extraFreeVars = []
+  lambdaStack = []
+, extraFreeVars = []
 }
+
 
 type RecursionState a = State RecursionEnv a
 
@@ -306,8 +311,8 @@ resolveRecAtom :: NstAtomicExpr -> String -> RecursionState NstAtomicExpr
 resolveRecAtom atom name = case atom of
   -- Invariant: Recursive vars are always let-bound  (TODO loosen this restriction later)
   NLambda freeVars params expr -> resolveRecLambda freeVars params expr name
-  NVar (NRecursiveVar name) -> do
-    var <- resolveRecVar name
+  NVar (NRecursiveVar vname) -> do
+    var <- resolveRecVar vname
     return $ NVar var
   a -> return a
 
@@ -316,8 +321,8 @@ resolveRecLambda :: [String] -> [String] -> NstExpr -> String -> RecursionState 
 resolveRecLambda freeVars params expr name = do
   pushLambdaScope freeVars name
   resolvedBody <- resolveRecExpr expr
-  extraFreeVars <- gets extraFreeVars
-  let extra = head extraFreeVars
+  extraFree <- gets extraFreeVars
+  let extra = head extraFree
   popLambdaScope
   return $ NLambda (freeVars ++ extra) params resolvedBody
 
@@ -328,14 +333,15 @@ resolveRecVar name = do
   let maybeVar = findName name (lambdaStack state)
   case maybeVar of
     Nothing -> error $ "Internal compiler error: Can't resolve recursive use of " ++ name
-    Just v@(NConstantFreeVar name) -> return v
-    Just v@(NDynamicFreeVar name) -> do
-      addExtraFreeVar name
+    Just v@(NConstantFreeVar _)    -> return v
+    Just v@(NDynamicFreeVar vname) -> do
+      addExtraFreeVar vname
       return v
+    _ -> error "resolveRecVar"
 
 
 findName :: String -> [(String, a)] -> Maybe a
-findName name []          = Nothing
+findName _ []             = Nothing
 findName name ((n, v):ns) =
   if n == name then Just v
                else findName name ns
@@ -358,7 +364,7 @@ addExtraFreeVar name = do
 pushLambdaScope :: [String] -> String -> RecursionState ()
 pushLambdaScope _ "" = pushLambdaScope' "$$$invalid$$$" (NConstantFreeVar "$$$invalid$$$")
 pushLambdaScope [] n = pushLambdaScope' n (NConstantFreeVar n)
-pushLambdaScope fs n = pushLambdaScope' n (NDynamicFreeVar n)
+pushLambdaScope _  n = pushLambdaScope' n (NDynamicFreeVar n)
 
 
 pushLambdaScope' :: String -> NstVar -> RecursionState ()
