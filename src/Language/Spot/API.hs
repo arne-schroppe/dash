@@ -1,6 +1,5 @@
 module Language.Spot.API
-(
-  run
+( run
 , toNorm
 , toAsm
 , toAtomicConstants
@@ -58,6 +57,7 @@ toAsm :: String -> [[Tac]]
 toAsm prog =
   let (asm, _, _) = prog |> lex |> parse |> normalize ||> compile in
   asm
+
 
 
 toAtomicConstants :: String -> ([AtomicConstant], IntMap.IntMap VMWord)

@@ -71,14 +71,15 @@ assembleTac funcAddrs addrConv opc =
     Tac_sub r0 r1 r2        -> instructionRRR  6 (r r0) (r r1) (r r2)
     Tac_move r0 r1          -> instructionRRR  7 (r r0) (r r1) (i 0)
     Tac_call r0 fr n        -> instructionRRR  8 (r r0) (r fr) (i n)
-    Tac_call_cl r0 fr n     -> instructionRRR  9 (r r0) (r fr) (i n)
+    Tac_gen_ap r0 fr n      -> instructionRRR  9 (r r0) (r fr) (i n)
     Tac_make_cl r0 fr n     -> instructionRRR 10 (r r0) (r fr) (i n)
     Tac_jmp n               -> instructionRI  11 0 (i n)
     Tac_match r0 r1 r2      -> instructionRRR 12 (r r0) (r r1) (r r2)
     Tac_set_arg arg r1 n    -> instructionRRR 13 (i arg) (r r1) (i n)
     Tac_tail_call fr n      -> instructionRRR 14 (i 0) (r fr) (i n)
-    Tac_tail_call_cl fr n   -> instructionRRR 15 (i 0) (r fr) (i n)
+    Tac_tail_gen_ap r0 fr n -> instructionRRR 15 (r r0) (r fr) (i n)
     Tac_set_cl_val clr r1 n -> instructionRRR 16 (r clr) (r r1) (i n)
+    Tac_part_ap r0 fr n     -> instructionRRR 17 (r r0) (r fr) (i n)
 
 
 

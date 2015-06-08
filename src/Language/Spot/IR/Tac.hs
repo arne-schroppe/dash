@@ -20,14 +20,15 @@ data ThreeAddressCode =
   | Tac_sub Reg Reg Reg
   | Tac_move Reg Reg
   | Tac_call Reg Reg Int
-  | Tac_call_cl Reg Reg Int
+  | Tac_gen_ap Reg Reg Int
   | Tac_make_cl Reg Reg Int
   | Tac_jmp Int
   | Tac_match Reg Reg Reg     -- subj reg, pattern addr reg, start reg for captures
   | Tac_set_arg Int Reg Int
   | Tac_tail_call Reg Int
-  | Tac_tail_call_cl Reg Int
+  | Tac_tail_gen_ap Reg Reg Int  -- result reg (since this might do partial application), function reg, num args
   | Tac_set_cl_val Reg Reg Int
+  | Tac_part_ap Reg Reg Int   -- result, reg with function address, num args
   deriving (Show)
 
 type Tac = ThreeAddressCode

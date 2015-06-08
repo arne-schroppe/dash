@@ -219,7 +219,7 @@ spec = do
               result `shouldReturn` VMNumber 1862
 
 
-{-
+
     context "when using currying" $ do
 
             it "evaluates a curried function" $ do
@@ -227,10 +227,10 @@ spec = do
               \ val my-sub (a b) = sub a b \n\
               \ val curry = my-sub 10  \n\
               \ curry 3"
-              putStrLn $ show $ toAsm code
               let result = run code
               result `shouldReturn` VMNumber 7
--}
+              -- 1 `shouldBe` 2
+
 
 
     context "when using compound symbols" $ do
@@ -338,7 +338,7 @@ K Closures
 K Recursion (also mutual recursion)
 K Tail call optimisation (isResultValue, add new opcodes)
 - Currying (also with underscore)
-- Change order of free vars and formal parameters in function code so that we can use partial application as currying
+K Change order of free vars and formal parameters in function code so that we can use partial application as currying
 - Strings
 - Creating symbols
 - Lists

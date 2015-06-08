@@ -96,8 +96,8 @@ compileCallInstr reg funVar numArgs isResultValue = do
           let instr = case (direct, isResultValue) of
                   (True, False)  -> [Tac_call reg rFun numArgs]
                   (True, True)   -> [Tac_tail_call rFun numArgs]
-                  (False, False) -> [Tac_call_cl reg rFun numArgs]
-                  (False, True)  -> [Tac_tail_call_cl rFun numArgs]
+                  (False, False) -> [Tac_gen_ap reg rFun numArgs]
+                  (False, True)  -> [Tac_tail_gen_ap reg rFun numArgs]
           return instr
 
 

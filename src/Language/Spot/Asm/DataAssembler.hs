@@ -10,6 +10,7 @@ import           Language.Spot.IR.Data
 import qualified Language.Spot.VM.Bits  as Bits
 import           Language.Spot.VM.Types
 
+import Debug.Trace
 
 {-
 

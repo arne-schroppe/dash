@@ -22,6 +22,7 @@ const vm_value vm_tag_match_data = 0xF;
 static vm_value *const_table = 0;
 static int const_table_length = 0;
 
+int counter = 0;
 
 #define STACK_SIZE 255
 static stack_frame stack[STACK_SIZE];
@@ -145,11 +146,14 @@ bool execute_instruction(vm_instruction instr) {
       // next_frame.result_register = get_arg_r0(instr);
       debug( printf("TL CALL r%02i r%02i f=%04d n%02i\n", get_arg_r0(instr), func_address_reg, func_address, num_args) );
       program_pointer = func_address;
+
+      ++ counter;
+      if(counter > 10000) return false;
       // ++stack_pointer;
     }
     break;
 
-    case OP_CALL_CL: {
+    case OP_GEN_AP: {
       if (stack_pointer + 1 == STACK_SIZE) {
         printf("Stack overflow (call cl)!\n");
         return false;
@@ -175,7 +179,7 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
-    case OP_TAIL_CALL_CL: {
+    case OP_TAIL_GEN_AP: {
       int cl_address_reg = get_arg_r1(instr);
       heap_address cl_address = (heap_address)get_reg(cl_address_reg);
       int num_args = get_arg_r2(instr);
@@ -193,6 +197,8 @@ bool execute_instruction(vm_instruction instr) {
       debug( printf("TL CALLCL r%02i r%02i=%04zu f=%04i n%02i\n", get_arg_r0(instr), cl_address_reg, cl_address, func_address, num_args) );
       program_pointer = func_address;
       // ++stack_pointer;
+      ++ counter;
+      if(counter > 10000) return false;
     }
     break;
 
@@ -395,6 +401,8 @@ void reset() {
   memset(stack, 0, sizeof(stack_frame) * STACK_SIZE);
   memset(arg_reg, 0, sizeof(vm_value) * NUM_REGS);
   init_heap();
+
+  counter = 0; //TODO delete (also the counter variable)
 }
 
 void print_program(vm_instruction *program) {

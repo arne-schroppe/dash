@@ -77,7 +77,7 @@ it( calls_a_closure_downwards ) {
     op_load_i(3, 23),
     op_add(2, 2, 3),
     op_set_arg(0, 2, 0),
-    op_call_cl(3, 0, 1), //closure at register 1 with 1 argument
+    op_gen_ap(3, 0, 1), //closure at register 1 with 1 argument
     op_ret(3),
 
     // fun2
@@ -99,7 +99,7 @@ it( calls_a_closure_upwards ) {
     op_call(1, 1, 1),
     op_load_i(2, 80),
     op_set_arg(0, 2, 0),
-    op_call_cl(0, 1, 1),
+    op_gen_ap(0, 1, 1),
     op_ret(0),
 
     // fun 1
@@ -125,7 +125,7 @@ it( modifies_a_closure ) {
     op_call(1, 1, 0),
     op_load_i(2, 80),
     op_set_arg(0, 2, 0),
-    op_call_cl(0, 1, 1),
+    op_gen_ap(0, 1, 1),
     op_ret(0),
 
     // fun 1

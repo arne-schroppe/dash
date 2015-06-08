@@ -70,7 +70,7 @@ spec = do
                     Tac_load_i 3 23,
                     Tac_add 2 2 3,
                     Tac_set_arg 0 2 0,
-                    Tac_call_cl 2 0 1,
+                    Tac_gen_ap 2 0 1,
                     Tac_ret 2 ], [
                     -- fun2
                     -- fun_header 1 1, -- (* 1 closed over value, 1 parameter *)
@@ -83,7 +83,7 @@ spec = do
                     Tac_call 1 1 0,
                     Tac_load_i 2 80,
                     Tac_set_arg 0 2 0,
-                    Tac_call_cl 0 1 1,
+                    Tac_gen_ap 0 1 1,
                     Tac_ret 0 ], [
                     -- fun 1
                     Tac_load_f 1 2,
@@ -101,7 +101,7 @@ spec = do
                     Tac_call 1 1 0,
                     Tac_load_i 2 80,
                     Tac_set_arg 0 2 0,
-                    Tac_call_cl 0 1 1,
+                    Tac_gen_ap 0 1 1,
                     Tac_ret 0 ], [
                     -- fun 1
                     Tac_load_f 1 2,
