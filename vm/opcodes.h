@@ -56,7 +56,7 @@ typedef enum {
 #define op_sub(r0, r1, r2) (instr_rrr(OP_SUB, r0, r1, r2))
 #define op_move(r0, r1) (instr_rrr(OP_MOVE, r0, r1, 0))
 #define op_call(r0, fr, n) (instr_rrr(OP_CALL, r0, fr, n)) // result reg, reg with function addr, num arguments
-#define op_gen_ap(r0, fr, n) (instr_rrr(OP_CALL_CL, r0, fr, n)) // result reg, reg with function addr, num arguments
+#define op_gen_ap(r0, fr, n) (instr_rrr(OP_GEN_AP, r0, fr, n)) // result reg, reg with function addr, num arguments
 #define op_ret(r0) (instr_ri(OP_RET, r0, 0))
 #define op_make_cl(r0, fr, n) (instr_rrr(OP_MAKE_CL, r0, fr, n)) // result reg, function reg, num args
 #define op_jmp(n) (instr_ri(OP_JMP, 0, n))
