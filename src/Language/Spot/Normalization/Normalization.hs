@@ -20,14 +20,15 @@ a normalized form (Nst) that is easier for the code generator to compile. Mainly
 the normalized form assigns all intermediate results to a name (let-binding). For
 example, the code
 
-set-value (at list 2) (3 * 6)
+    read-position csv (row-length * 5 + 7)
 
 would be normalized to something like
 
-let temp1 = 2
-let temp2 = at [list, temp1]
-let temp3 = 3 * 6
-set-value [temp2, temp3]
+    let temp1 = 5
+    let temp2 = (*) [row-length, temp1]
+    let temp3 = 7
+    let temp4 = (+) [temp2, temp3]
+    read-position [csv, temp4]
 
 
 Types of variables
@@ -46,7 +47,7 @@ and doesn't need any further support.
 
 A DynamicFreeVar is a free variable that is not a compile time constant. These are later
 added to a lambda as additional parameters. This module traces dynamic free variables and
-mentions them explicitly for every `Nst.Lambda`.
+adds them explicitly to every `Nst.Lambda`.
 
 
 Recursion
@@ -54,7 +55,7 @@ Recursion
 
 This module works in two passes. The first pass is the normalization described earlier,
 the second pass resolves recursion. The resulting normalized code will not contain any
-RecursiveVar
+`Nst.RecursiveVar`
 
 
 -}
@@ -103,7 +104,9 @@ atomizeExpr expr name k = case expr of
           normalizeMatch matchedExpr patterns k
   Lambda params bodyExpr ->
           normalizeLambda params bodyExpr name k
-  LocalBinding (Binding bname boundExpr) restExpr -> -- inner local binding ! (i.e. let a = let b = 2 in 1 + b)
+  LocalBinding (Binding bname boundExpr) restExpr ->
+          -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
+          -- (So in that example "let b = ..." is the inner local binding
           atomizeExpr boundExpr bname $ \ aExpr -> do
             var <- newTempVar bname
             addBinding bname (var, False)
