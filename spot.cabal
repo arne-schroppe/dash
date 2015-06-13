@@ -23,6 +23,7 @@ library
                     , Language.Spot.CodeGen.CodeGenState
                     , Language.Spot.Normalization.Normalization
                     , Language.Spot.Normalization.NormalizationState
+                    , Language.Spot.Normalization.Recursion
                     , Language.Spot.IR.Ast
                     , Language.Spot.IR.Tac
                     , Language.Spot.IR.Data

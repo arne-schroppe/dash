@@ -8,23 +8,27 @@ module Language.Spot.IR.Nst (
 
 import           Language.Spot.IR.Data  (ConstAddr)
 
--- TODO rename to NST (NstalizedSyntaxTree) or something
+-- NST, the Normalized Syntax Tree
+
+-- TODO Should every code branch in a match expression really be a closure?
 
 data NstExpr =
     NAtom NstAtomicExpr
   | NLet NstVar NstAtomicExpr NstExpr
   deriving (Eq, Show)
 
+type VarName = String
+type ParamName = String
 
 data NstAtomicExpr =
     NNumber Int
   | NPlainSymbol Int
   | NCompoundSymbol Bool ConstAddr  -- IsDynamic SymbolAddr
   | NVar NstVar -- This is only for returning a var as a result
-  | NLambda [String] [String] NstExpr  -- FreeVars FormalParams Body -- TODO free vars and formal params should appear in the same order as later in assembly!
+  | NLambda [VarName] [ParamName] NstExpr  -- FreeVars FormalParams Body
   | NPrimOp NstPrimOp
   | NFunCall NstVar [NstVar]
-  | NMatch Int NstVar ConstAddr [([String], NstVar)] -- MaxCaptures Subject PatternAddr [MatchedVars, Var-With-Lambda]
+  | NMatch Int NstVar ConstAddr [([VarName], NstVar)] -- MaxCaptures Subject PatternAddr [MatchedVars, Var-That-Holds-Closure]
   deriving (Eq, Show)
 
 

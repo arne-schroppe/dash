@@ -13,6 +13,7 @@ struct _stack_frame {
   vm_value reg[NUM_REGS];
   int return_address;
   int result_register;
+  int spilled_arguments_addr; // Used for over-saturated calls. TODO find a better way to handle this! (stack, vm refactoring,e tc)
 };
 typedef struct _stack_frame stack_frame;
 

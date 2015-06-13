@@ -298,7 +298,6 @@ spec = do
 
 
 
-{- TODO revisit after refactoring VM
       it "does not oversaturate a call to a known function" $ do
         let ast = LocalBinding (Binding "fun" $ Lambda ["a", "b"] $
                     Lambda ["c"] $ Lambda ["d", "e", "f"] $ LitNumber 42) $
@@ -322,7 +321,6 @@ spec = do
                        NAtom $ NFunCall (NLocalVar 3 "") [NLocalVar 4 "", NLocalVar 5 "", NLocalVar 6 "", NLocalVar 7 ""]
         norm `shouldBe` expected
 
--}
 
 
 {-
