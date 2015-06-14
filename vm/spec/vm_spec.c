@@ -13,7 +13,6 @@ it( load_as_a_number_into_a_register ) {
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, val(55, vm_tag_number));
-  is_equal(type_of_value(result), vm_type_number);
 }
 
 
@@ -158,8 +157,6 @@ it( modifies_a_closure ) {
 it( applies_a_number_tag_to_a_value ) {
   vm_value original = 44;
   vm_value number = val(original, vm_tag_number);
-  is_equal(type_of_value(number), vm_type_number);
-  is_not_equal(type_of_value(number), vm_type_plain_symbol);
   is_equal(from_val(number, vm_tag_number), original);
 }
 
@@ -167,8 +164,6 @@ it( applies_a_number_tag_to_a_value ) {
 it( applies_a_symbol_tag_to_a_value ) {
   vm_value original = 12;
   vm_value symbol = val(original, vm_tag_plain_symbol);
-  is_equal(type_of_value(symbol), vm_type_plain_symbol);
-  is_not_equal(type_of_value(symbol), vm_type_number);
   is_equal(from_val(symbol, vm_tag_plain_symbol), original);
 }
 
@@ -180,7 +175,6 @@ it( load_as_a_symbol_into_a_register ) {
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, val(12, vm_tag_plain_symbol));
-  is_equal(type_of_value(result), vm_type_plain_symbol);
 }
 
 
@@ -195,7 +189,6 @@ it( load_as_a_constant ) {
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, val(33, vm_tag_plain_symbol));
-  is_equal(type_of_value(result), vm_type_plain_symbol);
 }
 
 
@@ -210,7 +203,6 @@ it( load_as_a_compound_symbol ) {
   };
   vm_value result = vm_execute(program, array_length(program), const_table, 0);
   is_equal(result, val(1, vm_tag_compound_symbol));
-  is_equal(type_of_value(result), vm_type_compound_symbol);
 }
 
 

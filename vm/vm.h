@@ -21,17 +21,6 @@ typedef struct _stack_frame stack_frame;
 vm_value vm_execute(vm_instruction *program, int program_length, vm_value *const_table, int const_table_length);
 
 
-typedef enum {
-  vm_type_invalid = 0,
-  vm_type_number = 1,
-  vm_type_plain_symbol = 2,
-  vm_type_compound_symbol = 3,
-  vm_type_closure = 4,
-  vm_type_function = 5
-} vm_type;
-
-vm_type type_of_value(vm_value value);
-
 extern const vm_value vm_tag_number;
 extern const vm_value vm_tag_plain_symbol;
 extern const vm_value vm_tag_compound_symbol;

@@ -561,20 +561,4 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
 
 
-vm_type type_of_value(vm_value value) {
-  switch (get_tag(value)) {
-    case vm_tag_number:
-      return vm_type_number;
-
-    case vm_tag_plain_symbol:
-      return vm_type_plain_symbol;
-
-    case vm_tag_compound_symbol:
-      return vm_type_compound_symbol;
-
-    default:
-      return vm_type_invalid;
-  }
-}
-
 
