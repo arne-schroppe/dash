@@ -45,7 +45,6 @@ typedef enum {
 #define get_arg_r0(instr) ((instr & 0x03E00000) >> (instr_size - (__opcb + __regb)))
 #define get_arg_r1(instr) ((instr & 0x001F0000) >> (instr_size - (__opcb + 2 * __regb)))
 #define get_arg_r2(instr) ((instr & 0x0000F800) >> (instr_size - (__opcb + 3 * __regb)))
-#define get_arg_r3(instr) ((instr & 0x000007C0) >> (instr_size - (__opcb + 4 * __regb)))
 #define get_arg_i(instr)   (instr & 0x001FFFFF) //Obs! This is for opcode + reg0 + number
 
 
@@ -53,15 +52,12 @@ typedef enum {
 #define instr_ri(op, reg, i) ((op << (instr_size - __opcb)) + (reg << (instr_size - (__opcb + __regb))) + i)
 
 // TODO we only use the 4 argument form for partial applications. Should we use a function header to each function instead?
-#define instr_rrrr(op, reg0, reg1, reg2, reg3) ((op << (instr_size - __opcb)) + \
+#define instr_rrr(op, reg0, reg1, reg2) ((op << (instr_size - __opcb)) + \
                                             (reg0 << (instr_size - (__opcb + __regb))) + \
                                             (reg1 << (instr_size - (__opcb + 2 * __regb))) + \
-                                            (reg2 << (instr_size - (__opcb + 3 * __regb))) + \
-                                            (reg3 << (instr_size - (__opcb + 4 * __regb))))
-#define instr_rrr(op, reg0, reg1, reg2) instr_rrrr(op, reg0, reg1, reg2, 0)
+                                            (reg2 << (instr_size - (__opcb + 3 * __regb))))
 
 // TODO make it clear which opcodes expect a function address and which expect a closure!!
-// TODO instead of rrrr opcodes, use a function header
 #define op_load_i(r0, i) (instr_ri(OP_LOAD_i, r0, i))
 #define op_load_ps(r0, i) (instr_ri(OP_LOAD_ps, r0, i))
 #define op_load_cs(r0, i) (instr_ri(OP_LOAD_cs, r0, i))
@@ -72,12 +68,12 @@ typedef enum {
 #define op_call(r0, fr, n) (instr_rrr(OP_CALL, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 #define op_gen_ap(r0, clr, n) (instr_rrr(OP_GEN_AP, r0, clr, n)) // result reg, reg with closure addr (heap), num arguments
 #define op_ret(r0) (instr_ri(OP_RET, r0, 0))
-#define op_make_cl(r0, fr, n, numFP) (instr_rrrr(OP_MAKE_CL, r0, fr, n, numFP)) // result reg, reg with function addr (code), num args
+#define op_make_cl(r0, fr, n) (instr_rrr(OP_MAKE_CL, r0, fr, n)) // result reg, reg with function addr (code), num args
 #define op_jmp(n) (instr_ri(OP_JMP, 0, n))
 #define op_match(r1, r2, r3) (instr_rrr(OP_MATCH, r1, r2, r3)) // reg with subject, reg with pattern addr, start reg for captures
 #define op_set_arg(arg, r, n) (instr_rrr(OP_SET_ARG, arg, r, n)) // target argument, value reg, number of extra args/regs to copy (when copying just one argument, set this to 0)
 #define op_set_cl_val(clr, r1, n) (instr_rrr(OP_SET_CL_VAL, clr, r1, n)) // reg with closure addr (heap), value reg, argument index
-#define op_part_ap(r0, fr, n, numFP) (instr_rrrr(OP_PART_AP, r0, fr, n, numFP)) // result reg, reg with function addr (code), num arguments, num formal params
+#define op_part_ap(r0, fr, n) (instr_rrr(OP_PART_AP, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))

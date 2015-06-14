@@ -8,11 +8,16 @@
 
 // #define VM_DEBUG 1
 
+
+// TODO unify func vs fun
+
 #ifdef VM_DEBUG
 #  define debug(x) do { x; } while (0)
 #else
 #  define debug(x) do {} while (0)
 #endif
+
+
 
 const vm_value vm_tag_number = 0x0;
 const vm_value vm_tag_plain_symbol = 0x4;
@@ -31,6 +36,8 @@ static int program_pointer = 0;
 
 static vm_value arg_reg[NUM_REGS];
 
+
+static const int fun_header_size = 1;
 
 
 #define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
@@ -64,7 +71,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr) {
     // do the call
     vm_value func_address = *(cl_pointer + num_cl_vars + 1);
     int return_pointer = program_pointer;
-    program_pointer = func_address;
+    program_pointer = func_address + fun_header_size;
     return return_pointer;
   }
   else if (num_args < arity) {
@@ -98,7 +105,7 @@ int do_call(stack_frame *frame, vm_value instr) {
   int num_args = get_arg_r2(instr);
   memcpy(&(frame->reg[0]), &arg_reg[0], num_args * sizeof(vm_value));
   int return_pointer = program_pointer;
-  program_pointer = func_address;
+  program_pointer = func_address + fun_header_size;
   return return_pointer;
 }
 
@@ -106,7 +113,7 @@ void print_registers(stack_frame frame);
 bool does_value_match(vm_value pat, vm_value subject, int start_reg);
 
 
-bool execute_instruction(vm_instruction instr) {
+bool execute_instruction(vm_instruction instr, vm_instruction *program) {
   vm_opcode opcode = get_opcode(instr);
 
   switch (opcode) {
@@ -247,7 +254,10 @@ bool execute_instruction(vm_instruction instr) {
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
       int num_args = get_arg_r2(instr);
-      int num_params = get_arg_r3(instr);
+
+      vm_value function_header = program[func_address];
+      //TODO check that it's actually a function
+      int num_params = get_arg_i(function_header);
 
       if(num_args >= num_params) {
         fprintf(stderr, "Illegal partial application (num args: %i, num params: %i)\n", num_args, num_params);
@@ -360,7 +370,10 @@ bool execute_instruction(vm_instruction instr) {
       int func_address_reg = get_arg_r1(instr);
       int func_address = get_reg(func_address_reg);
       int num_args = get_arg_r2(instr);
-      int num_params = get_arg_r3(instr);
+
+      vm_value function_header = program[func_address];
+      //TODO check that it's actually a function
+      int num_params = get_arg_i(function_header);
 
       if(num_args >= num_params) {
         fprintf(stderr, "Illegal partial application (num args: %i, num params: %i)\n", num_args, num_params);
@@ -504,7 +517,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
     //debug( print_registers(current_frame) );
     int old_program_pointer = program_pointer;
     ++program_pointer;
-    is_running = execute_instruction(program[old_program_pointer]);
+    is_running = execute_instruction(program[old_program_pointer], program);
     //debug( print_registers(current_frame) );
   }
   vm_value result = stack[stack_pointer].reg[0];
