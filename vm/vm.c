@@ -17,6 +17,7 @@
 #  define debug(x) do {} while (0)
 #endif
 
+static int invocation = 0;
 
 
 const vm_value vm_tag_number = 0x0;
@@ -74,7 +75,8 @@ int do_call(stack_frame *frame, vm_value instr) {
 }
 
 
-//TODO turn this into a macro
+// TODO turn this into a macro
+// TODO add a result register to the tail-call variety of this opcode!! (right now it's pure coincidence that things work, because we set the missing return reg to 0 by default)
 int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
   // find a better term for "function or closure" than lambda
@@ -125,16 +127,39 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
   }
   else if (tag == vm_tag_function) {
 
-    int fun_addr = from_val(lambda, vm_tag_function);
-    vm_instruction fun_header = program[fun_addr];
+    int func_address = from_val(lambda, vm_tag_function);
+    vm_instruction fun_header = program[func_address];
     //TODO check fun header "opcode"
     int arity = get_arg_i(fun_header);
 
     if (num_args == arity) {
       do_call(frame, instr);
     }
-    else {
-      fprintf(stderr, "over- or under-saturated call %i %i\n", num_args, arity);
+    else if (num_args < arity) {
+
+      // same case as part_ap TODO use same code
+
+      int reg0 = get_arg_r0(instr);
+
+
+      vm_value function_header = program[func_address];
+      //TODO check that it's actually a function
+
+      if(num_args >= arity) {
+        fprintf(stderr, "Illegal partial application (num args: %i, num params: %i)\n", num_args, arity);
+        return false;
+      }
+
+      heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
+      vm_value *cl_pointer = heap_get_pointer(cl_address);
+      *cl_pointer = closure_header((arity - num_args), num_args); /* write header */
+      memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
+      *(cl_pointer + num_args + 1) = func_address;
+      get_reg(reg0) = val( (vm_value) cl_address, vm_tag_closure);
+
+    }
+    else { // over-saturated call
+      fprintf(stderr, "over-saturated call %i %i\n", num_args, arity);
     }
 
   }
@@ -541,6 +566,7 @@ void print_program(vm_instruction *program) {
 
 vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctable, int ctable_length) {
   //print_program(program);
+  ++ invocation;
   reset();
   const_table = ctable;
   const_table_length = ctable_length;
@@ -554,6 +580,9 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
     is_running = execute_instruction(program[old_program_pointer], program);
     //debug( print_registers(current_frame) );
   }
+
+  //fprintf(stderr, "End invocation: %i\n", invocation);
+
   vm_value result = stack[stack_pointer].reg[0];
   debug( printf("Result: %u\n", result) );
   return result;

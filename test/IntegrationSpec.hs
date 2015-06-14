@@ -60,6 +60,15 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 7
 
+    it "does a generic application of a function" $ do
+      let code = "\
+      \ val my-sub (a b) = sub a b \n\
+      \ val apply (f) = \n\
+      \   f 123 3 \n\
+      \ apply my-sub"
+      let result = run code
+      result `shouldReturn` VMNumber 120
+
     -- TODO When returning a lambda from a function (as seen here) it would be more secure to have a tag for lambdas
     it "returns a simple lambda" $ do
       let code =  " val make-adder (x) = \n\
@@ -103,6 +112,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 43
 
+            -- TODO this test triggers an illegal partial application but still manages to pass
             it "handles nested self-recursion of closure" $ do
               -- We add the dummy closure so that it is the closure at memory index 0.
               -- This way we know that the inner use of `counter` is not simply using
@@ -252,6 +262,7 @@ spec = do
               let result = run code
               putStrLn $ show $ toAsm code
               result `shouldReturn` VMNumber 120
+
 
     context "when using compound symbols" $ do
 
