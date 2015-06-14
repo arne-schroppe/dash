@@ -363,12 +363,15 @@ What's missing:
 immediate goals:
 K Refactoring
 - Proper error handling (Either result)
+- Negative integers
+- General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
 
 missing language features:
 K Closures
 K Recursion (also mutual recursion)
 K Tail call optimisation (isResultValue, add new opcodes)
-- Currying (also with underscore ?)
+K Currying (also with underscore ?)
+- Over-saturated calls!
 K Change order of free vars and formal parameters in function code so that we can use partial application as currying
 - Strings
 - Creating symbols
