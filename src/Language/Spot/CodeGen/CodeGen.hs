@@ -81,6 +81,12 @@ compileAtom reg atom name isResultValue = case atom of
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches isResultValue
+  NPartAp funVar args -> do
+          argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
+          rFun <- getReg funVar
+          let numArgs = length args
+          let partApInst = [Tac_part_ap reg rFun numArgs]
+          return $ argInstrs ++ partApInst
   x -> error $ "Unable to compile " ++ (show x)
   where
     moveVarToReg :: NstVar -> Reg -> CodeGenState [Tac]

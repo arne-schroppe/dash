@@ -6,6 +6,7 @@
 // TODO we need an opcode that allows us to compare two values
 // TODO add more mathematical operators
 // TODO group opcodes in meaningful way
+// TODO if we're keeping set_arg, then how about versions that allow to set values directly? (instead of from registers)
 
 typedef enum {
   OP_RET = 0,
@@ -63,6 +64,7 @@ typedef enum {
 #define op_match(r1, r2, r3) (instr_rrr(OP_MATCH, r1, r2, r3)) // reg with subject, reg with pattern addr, start reg for captures
 #define op_set_arg(arg, r, n) (instr_rrr(OP_SET_ARG, arg, r, n)) // target argument, value reg, number of extra args/regs to copy (when copying just one argument, set this to 0)
 #define op_set_cl_val(clreg, r1, n) (instr_rrr(OP_SET_CL_VAL, clreg, r1, n)) // closure, value reg, argument index
+#define op_part_ap(r0, fr, n) (instr_rrr(OP_PART_AP, r0, fr, n)) // result reg, reg with function addr, num arguments
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))
 
 #endif

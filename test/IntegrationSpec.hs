@@ -220,19 +220,16 @@ spec = do
 
 
 
-{- TODO revisit after refactoring VM
     context "when using currying" $ do
 
-            it "evaluates a curried function" $ do
+            it "evaluates a known curried function" $ do
               let code = "\
               \ val my-sub (a b) = sub a b \n\
-              \ val curry = my-sub 10  \n\
+              \ val curry = my-sub 123  \n\
               \ curry 3"
               let result = run code
-              result `shouldReturn` VMNumber 7
+              result `shouldReturn` VMNumber 120
               -- 1 `shouldBe` 2
-
--}
 
 
     context "when using compound symbols" $ do

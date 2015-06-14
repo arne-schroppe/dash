@@ -300,6 +300,25 @@ bool execute_instruction(vm_instruction instr) {
     }
     break;
 
+    // TODO delete make_cl and use this instead
+    case OP_PART_AP: {
+      int reg0 = get_arg_r0(instr);
+      int func_address_reg = get_arg_r1(instr);
+      int func_address = get_reg(func_address_reg);
+      int num_args = get_arg_r2(instr);
+
+      heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
+      vm_value *cl_pointer = heap_get_pointer(cl_address);
+      *cl_pointer = num_args; /* write header */
+      memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
+      *(cl_pointer + num_args + 1) = func_address;
+      get_reg(reg0) = (vm_value) cl_address;
+      debug( printf("PART_AP r%02i r%02i f=%04i r%02i\n", reg0, func_address_reg, func_address, num_args) );
+
+
+    }
+    break;
+
     default:
       fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);
       return false;
