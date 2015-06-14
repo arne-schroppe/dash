@@ -8,8 +8,10 @@
 
 // #define VM_DEBUG 1
 
+// TODO this code needs some cleaning up
 
 // TODO unify func vs fun
+// TODO unify addr vs address
 
 #ifdef VM_DEBUG
 #  define debug(x) do { x; } while (0)
