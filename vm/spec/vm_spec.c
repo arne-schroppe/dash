@@ -381,7 +381,7 @@ it( binds_a_value_in_a_nested_symbol ) {
   is_equal(result, val(11, vm_tag_number));
 }
 
-it( creates_a_partial_application ) {
+it( creates_an_explicit_partial_application ) {
   const int fun_address = 8;
   vm_instruction program[] = {
     op_load_i(1, 66),
@@ -400,6 +400,32 @@ it( creates_a_partial_application ) {
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, val(32, vm_tag_number));
 }
+
+it( creates_a_partial_application_with_a_generic_application ) {
+  const int fun_address = 11;
+  vm_instruction program[] = {
+    op_load_i(1, 33), // arg a
+    op_set_arg(0, 1, 1),
+    op_load_i(2, fun_address),
+    op_make_cl(3, 2, 1),
+    op_load_i(4, 98), // arg b
+    op_set_arg(0, 4, 1),
+    op_gen_ap(5, 3, 1), // result register holds a partial application now
+    op_load_i(6, 100), // arg c
+    op_set_arg(0, 6, 1),
+    op_gen_ap(0, 5, 1),
+    op_ret(0),
+
+    //other function
+    // .\ a b c = c + (b - a)
+    op_sub(3, 1, 0),
+    op_add(0, 2, 3),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, val(165, vm_tag_number));
+}
+
 
 start_spec(vm_spec)
 	example(load_as_a_number_into_a_register)
@@ -420,6 +446,7 @@ start_spec(vm_spec)
   example(matches_a_compound_symbol)
   example(binds_a_value_in_a_match)
   example(binds_a_value_in_a_nested_symbol)
-  example(creates_a_partial_application)
+  example(creates_an_explicit_partial_application)
+  example(creates_a_partial_application_with_a_generic_application)
 end_spec
 

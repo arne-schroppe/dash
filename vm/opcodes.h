@@ -7,6 +7,7 @@
 // TODO add more mathematical operators
 // TODO group opcodes in meaningful way
 // TODO if we're keeping set_arg, then how about versions that allow to set values directly? (instead of from registers)
+// TODO really lrge numbers spill over into the tag. prevent that (in compiler and when adding)
 
 typedef enum {
   OP_RET = 0,
@@ -49,6 +50,7 @@ typedef enum {
                                             (reg1 << (instr_size - (__opcb + 2 * __regb))) + \
                                             (reg2 << (instr_size - (__opcb + 3 * __regb))))
 
+// TODO make it clear which opcodes expect a function address and which expect a closure!!
 #define op_load_i(r0, i) (instr_ri(OP_LOAD_i, r0, i))
 #define op_load_ps(r0, i) (instr_ri(OP_LOAD_ps, r0, i))
 #define op_load_cs(r0, i) (instr_ri(OP_LOAD_cs, r0, i))

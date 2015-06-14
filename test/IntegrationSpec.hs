@@ -229,7 +229,16 @@ spec = do
               \ curry 3"
               let result = run code
               result `shouldReturn` VMNumber 120
-              -- 1 `shouldBe` 2
+
+            it "evaluates an unknown curried function" $ do
+              let code = "\
+              \ val my-sub (a b) = sub a b \n\
+              \ val apply (f) = \n\
+              \   val curry = f 123  \n\
+              \   curry 3 \n\
+              \ apply my-sub"
+              let result = run code
+              result `shouldReturn` VMNumber 120
 
 
     context "when using compound symbols" $ do
