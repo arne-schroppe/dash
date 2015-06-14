@@ -22,14 +22,15 @@ data ThreeAddressCode =
   | Tac_move Reg Reg
   | Tac_call Reg Reg Int          -- expects a function address (code)
   | Tac_gen_ap Reg Reg Int        -- expects a closure address (heap)
-  | Tac_make_cl Reg Reg Int Int   -- expects a function address (code)
+  | Tac_make_cl Reg Reg Int       -- expects a function address (code)
   | Tac_jmp Int
   | Tac_match Reg Reg Reg         -- subj reg, pattern addr reg, start reg for captures
   | Tac_set_arg Int Reg Int
   | Tac_tail_call Reg Int         -- expects a function address (code)
   | Tac_tail_gen_ap Reg Reg Int   -- result reg (since this might do partial application), closure reg (heap), num args
   | Tac_set_cl_val Reg Reg Int    -- expects closure address (heap)
-  | Tac_part_ap Reg Reg Int Int   -- result, reg with function address (code), num args, num formal params
+  | Tac_part_ap Reg Reg Int       -- result, reg with function address (code), num args
+  | Tac_fun_header Int            -- arity
   deriving (Show)
 
 type Tac = ThreeAddressCode

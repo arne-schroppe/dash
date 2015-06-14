@@ -50,6 +50,7 @@ spec = do
                     Tac_set_arg 0 4 0,
                     Tac_call 0 3 1,
                     Tac_ret 0 ], [
+                    Tac_fun_header 1,
                     Tac_load_i  1 100,
                     Tac_add  2 0 1,
                     Tac_ret 2]]
@@ -60,12 +61,13 @@ spec = do
       let prog = [[ Tac_load_f 2 2,
                     Tac_load_i 3 80,
                     Tac_set_arg 0 3 0,
-                    Tac_make_cl 2 2 1 2,
+                    Tac_make_cl 2 2 1,
                     Tac_load_f 1 1,
                     Tac_set_arg 0 2 0,
                     Tac_call 0 1 1,
                     Tac_ret 0 ], [
                     -- fun1
+                    Tac_fun_header 2,
                     Tac_load_i 2 115,
                     Tac_load_i 3 23,
                     Tac_add 2 2 3,
@@ -74,6 +76,7 @@ spec = do
                     Tac_ret 2 ], [
                     -- fun2
                     -- fun_header 1 1, -- (* 1 closed over value, 1 parameter *)
+                    Tac_fun_header 2,
                     Tac_sub 2 1 0,
                     Tac_ret 2 ]]
       (runProg prog) `shouldReturn` 58 -- 115 + 23 - 80
@@ -86,12 +89,14 @@ spec = do
                     Tac_gen_ap 0 1 1,
                     Tac_ret 0 ], [
                     -- fun 1
+                    Tac_fun_header 1,
                     Tac_load_f 1 2,
                     Tac_load_i 2 24,
                     Tac_set_arg 0 2 0,
-                    Tac_make_cl 0 1 1 2,
+                    Tac_make_cl 0 1 1,
                     Tac_ret 0 ], [
                     -- fun 2
+                    Tac_fun_header 2,
                     Tac_sub 2 1 0,
                     Tac_ret 2 ]]
       (runProg prog) `shouldReturn` 56 -- 80 - 24
@@ -104,15 +109,17 @@ spec = do
                     Tac_gen_ap 0 1 1,
                     Tac_ret 0 ], [
                     -- fun 1
+                    Tac_fun_header 1,
                     Tac_load_f 1 2,
                     Tac_load_i 2 77,
                     Tac_load_i 3 55,
                     Tac_set_arg 0 2 1,
-                    Tac_make_cl 0 1 2 3,
+                    Tac_make_cl 0 1 2,
                     Tac_load_i 7 33,
                     Tac_set_cl_val 0 7 1,
                     Tac_ret 0 ], [
                     -- fun 2
+                    Tac_fun_header 3,
                     Tac_sub 3 0 1,
                     Tac_ret 3 ]]
       (runProg prog) `shouldReturn` 44 -- 77 - 33

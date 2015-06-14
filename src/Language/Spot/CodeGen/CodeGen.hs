@@ -23,19 +23,25 @@ import           Control.Monad.State
 
 compile :: NstExpr -> ConstTable -> SymbolNameList -> ([[Tac]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
-  let result = execState (compileFunc [] [] expr "") emptyCompEnv in
+  let result = execState (compileFunc [] [] expr "" False) emptyCompEnv in
   (toList (instructions result), cTable, symlist)
 
 
-compileFunc :: [String] -> [String] -> NstExpr -> String -> CodeGenState Int
-compileFunc freeVars params expr name = do
+compileFunc :: [String] -> [String] -> NstExpr -> String -> Bool -> CodeGenState Int
+compileFunc freeVars params expr name shouldAddHeader = do
   funAddr <- beginFunction freeVars params
-  let arity = length freeVars + length params
   -- we add the name already here for recursion
-  addCompileTimeConst name $ CTConstLambda funAddr arity
+  addCompileTimeConst name $ CTConstLambda funAddr
   funcCode <- compileExpr expr
-  endFunction funAddr funcCode
-  addCompileTimeConst name $ CTConstLambda funAddr arity -- Have to re-add to outer scope    TODO this sucks
+
+  if shouldAddHeader then do
+    let arity = length freeVars + length params
+    let funcCode' = (Tac_fun_header arity) : funcCode
+    endFunction funAddr funcCode'
+  else
+    endFunction funAddr funcCode
+
+  addCompileTimeConst name $ CTConstLambda funAddr -- Have to re-add to outer scope    TODO this sucks
   return funAddr
 
 
@@ -67,8 +73,8 @@ compileAtom reg atom name isResultValue = case atom of
           rb <- getReg b
           return [Tac_sub reg ra rb]
   NLambda [] params expr -> do
-          funAddr <- compileFunc [] params expr name
-          compileLoadLambda reg funAddr (length params) isResultValue
+          funAddr <- compileFunc [] params expr name True
+          compileLoadLambda reg funAddr isResultValue
   NLambda freeVars params expr -> compileClosure reg freeVars params expr name
   NFunCall funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
@@ -82,11 +88,11 @@ compileAtom reg atom name isResultValue = case atom of
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches isResultValue
-  NPartAp funVar args arity -> do
+  NPartAp funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
           rFun <- getReg funVar
           let numArgs = length args
-          let partApInst = [Tac_part_ap reg rFun numArgs arity]
+          let partApInst = [Tac_part_ap reg rFun numArgs]
           return $ argInstrs ++ partApInst
   x -> error $ "Unable to compile " ++ (show x)
   where
@@ -115,15 +121,15 @@ compileConstantFreeVar reg name isResultValue = do
           CTConstNumber n -> return [Tac_load_i reg (fromIntegral n)] -- how about storing the constant in const table and simply load_c it here?
           CTConstPlainSymbol symId -> return [Tac_load_ps reg symId]
           -- CConstCompoundSymbol ConstAddr
-          CTConstLambda funAddr arity -> compileLoadLambda reg funAddr arity isResultValue
+          CTConstLambda funAddr -> compileLoadLambda reg funAddr isResultValue
           _ -> error "compileConstantFreeVar"
 
 
-compileLoadLambda :: Reg -> Int -> Int -> Bool -> CodeGenState [Tac]
-compileLoadLambda reg funAddr arity isResultValue = do
+compileLoadLambda :: Reg -> Int -> Bool -> CodeGenState [Tac]
+compileLoadLambda reg funAddr isResultValue = do
   let ldFunAddr = [Tac_load_f reg funAddr]
   if isResultValue then
-      return $ ldFunAddr ++ [Tac_make_cl reg reg 0 arity]
+      return $ ldFunAddr ++ [Tac_make_cl reg reg 0]
   else
       return $ ldFunAddr
 
@@ -155,12 +161,12 @@ canBeCalledDirectly atom = case atom of
 
 compileClosure :: Reg -> [String] -> [String] -> NstExpr -> String -> CodeGenState [Tac]
 compileClosure reg freeVars params expr name = do
-  funAddr <- compileFunc freeVars params expr name
+  funAddr <- compileFunc freeVars params expr name True
   -- TODO optimize argInstrs by using last parameter in set_arg
   argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
   let argInstrs = catMaybes argInstrsMaybes
   let makeClosureInstr = [Tac_load_f reg funAddr,
-                          Tac_make_cl reg reg (length freeVars) (length freeVars + length params)]
+                          Tac_make_cl reg reg (length freeVars)]
   selfRefInstrs <- createSelfRefInstrsIfNeeded reg
   return $ argInstrs ++ makeClosureInstr ++ selfRefInstrs
 

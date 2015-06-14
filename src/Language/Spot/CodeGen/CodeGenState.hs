@@ -58,7 +58,7 @@ data CompileTimeConstant =
     CTConstNumber VMWord
   | CTConstPlainSymbol SymId
   | CTConstCompoundSymbol ConstAddr
-  | CTConstLambda FunAddr Int -- address, arity
+  | CTConstLambda FunAddr
 
 
 beginFunction :: [String] -> [String] -> CodeGenState Int
