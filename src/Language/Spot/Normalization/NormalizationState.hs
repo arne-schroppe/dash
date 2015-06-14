@@ -19,6 +19,9 @@ module Language.Spot.Normalization.NormalizationState (
 , addConstant
 , encodeMatchPattern
 
+, arity
+, addArity
+
 ) where
 
 
@@ -30,14 +33,17 @@ import           Language.Spot.IR.Data
 import           Language.Spot.IR.Nst
 
 -- TODO this module's interface is way too fat !
+-- TODO give all values unique names
+-- TODO explicitly name *all* variables, even temp ones (maybe we should drop the localvar thing)
 
 type NormState a = State NormEnv a
 
 
 data NormEnv = NormEnv {
   symbolNames :: Map.Map String SymId
-, constTable  :: ConstTable -- rename ConstTable to DataTable
+, constTable  :: ConstTable -- TODO rename ConstTable to DataTable
 , contexts    :: [Context] -- head is current context
+, arities     :: Map.Map String Int -- TODO for this we *really* need unique names
 } deriving (Eq, Show)
 
 
@@ -46,6 +52,7 @@ emptyNormEnv = NormEnv {
   symbolNames = Map.empty
 , constTable = []
 , contexts = []
+, arities = Map.empty
 }
 
 
@@ -65,17 +72,26 @@ emptyContext = Context {
 
 {-
 A name lookup can have these outcomes:
-1. It is a local temp var or fun param. In this case, just use NLocalVar or NFunParam
+1. It is a local temp var or fun param. In this case, just use LocalVar or FunParam
 2. It is a variable from a surrounding context. In this case there are two possibilities:
-2.1. It is a static variable (i.e. a lambda or compound symbol with no free vars or
+2.1. It is a static value (i.e. a lambda or compound symbol with no free vars or
      another constant expression, e.g. a number). In this case, add a new temp that has a
-     NConstantFreeVar assigned to it. The code generator will resolve this directly.
-2.2. It is a dynamic variable. In this case add it as an NDynamicFreeVar. The code
+     ConstantFreeVar assigned to it. The code generator will resolve this directly.
+2.2. It is a dynamic variable. In this case add it as a DynamicFreeVar. The code
      generator will assign a register for it.
 3. It is a recursive variable. Only lambdas and closures can be recursive. Return it as-is
    so that it can be resolved later.
-4. It is an unknown variable, which results in an error.
+4. The name is unknown, which results in an error.
 -}
+
+newTempVar :: String -> NormState NstVar
+newTempVar name = do
+  con <- context
+  let tmpVar = tempVarCounter con
+  let nextTmpVar = tmpVar + 1
+  putContext $ con { tempVarCounter = nextTmpVar }
+  return (NLocalVar tmpVar name)
+
 
 lookupName :: String -> NormState NstVar
 lookupName name = do
@@ -114,15 +130,6 @@ enterContext funParams = do
 leaveContext :: NormState ()
 leaveContext = do
   popContext
-
-
-newTempVar :: String -> NormState NstVar
-newTempVar name = do
-  con <- context
-  let tmpVar = tempVarCounter con
-  let nextTmpVar = tmpVar + 1
-  putContext $ con { tempVarCounter = nextTmpVar }
-  return (NLocalVar tmpVar name)
 
 
 context :: NormState Context
@@ -170,6 +177,30 @@ freeVariables :: NormState [String]
 freeVariables = do
   con <- context
   return $ freeVars con
+
+
+addArity :: String -> Int -> NormState ()
+addArity "" _ = return ()
+addArity funName ar = do
+  env <- get
+  let arities' = Map.insert funName ar (arities env)
+  put $ env { arities = arities' }
+
+-- If we don't know the arity, we return Nothing here
+arity :: NstVar -> NormState (Maybe Int)
+arity var = do
+  let vname = varName var
+  env <- get
+  return $ Map.lookup vname (arities env)
+
+varName :: NstVar -> String
+varName var = case var of
+  NLocalVar _ name      -> name
+  NFunParam name        -> name
+  NDynamicFreeVar name  -> name
+  NConstantFreeVar name -> name
+  NRecursiveVar name    -> name
+
 
 --- Symbols
 

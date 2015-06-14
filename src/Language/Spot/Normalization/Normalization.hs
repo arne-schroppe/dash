@@ -154,6 +154,8 @@ normalizeLambda :: [String] -> Expr -> String -> Cont -> NormState NstExpr
 normalizeLambda params bodyExpr name k = do
   enterContext params
   when (not $ null name) $ addBinding name (NRecursiveVar name, False) -- TODO we don't know whether this var is dynamic or not!
+  addArity name (length params)
+  -- TODO add arity for recursive var?
   normalizedBody <- normalizeExpr bodyExpr
   freeVars <- freeVariables
   leaveContext
@@ -161,18 +163,40 @@ normalizeLambda params bodyExpr name k = do
   k $ NLambda freeVars params normalizedBody
 
 
+-- TODO throw an error if the thing being called is obviously not callable
 normalizeFunCall :: Expr -> [Expr] -> Cont -> NormState NstExpr
 normalizeFunCall funExpr args k = case (funExpr, args) of
-  (Var "add", [a, b]) -> normalizeMathPrimOp NPrimOpAdd a b k
-  (Var "sub", [a, b]) -> normalizeMathPrimOp NPrimOpSub a b k
-  _ -> do nameExpr funExpr "" $ \ funVar ->
-            normalizeExprList args $ \ normArgs ->
-              k $ NFunCall funVar normArgs
+  (Var "add", [a, b]) -> normalizeMathPrimOp NPrimOpAdd a b
+  (Var "sub", [a, b]) -> normalizeMathPrimOp NPrimOpSub a b
+  _ -> do nameExpr funExpr "" $ \ funVar -> do
+            maybeAr <- arity funVar
+            case maybeAr of
+              Nothing -> do normalizeExprList args $ \ normArgs ->
+                             k $ NFunCall funVar normArgs
+              Just ar -> callToKnownFunction funVar ar
   where
-    normalizeMathPrimOp :: (NstVar -> NstVar -> NstPrimOp) -> Expr -> Expr -> Cont -> NormState NstExpr
-    normalizeMathPrimOp mathPrimOp a b kk = do
+    normalizeMathPrimOp :: (NstVar -> NstVar -> NstPrimOp) -> Expr -> Expr -> NormState NstExpr
+    normalizeMathPrimOp mathPrimOp a b = do
       normalizeExprList [a, b] $ \ [aVar, bVar] ->
-          kk $ NPrimOp $ mathPrimOp aVar bVar
+          k $ NPrimOp $ mathPrimOp aVar bVar
+
+    callToKnownFunction :: NstVar -> Int -> NormState NstExpr
+    callToKnownFunction funVar funArity =
+      let numArgs = length args in
+      if numArgs == funArity then do
+        normalizeExprList args $ \ normArgs ->
+            k $ NFunCall funVar normArgs
+      else if numArgs < funArity then -- under-saturated call
+        error "Undersaturared call" -- TODO handle this
+      else do -- over-saturated call
+        let (knownFunArgs, remainingArgs) = splitAt funArity args
+        normalizeExprList knownFunArgs $ \ normKnownFunArgs -> do
+            knownFunResult <- newTempVar ""
+            let knownFunCall = NFunCall funVar normKnownFunArgs
+            normalizeExprList remainingArgs $ \ normRemArgs -> do
+                -- call to result of the previous call to a known function
+                rest <- k $ NFunCall knownFunResult normRemArgs
+                return $ NLet knownFunResult knownFunCall rest
 
 
 normalizeMatch :: Expr -> [(Pattern, Expr)] -> Cont -> NormState NstExpr
@@ -191,11 +215,8 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
 
 
 
-
-
 ----- Normalization helper functions -----
 
--- TODO shouldn't this be called something like nameExprList ?
 
 -- Free variables in a used lambda which can't be resolved in our context need to become
 -- free variables in our context
@@ -207,6 +228,7 @@ pullUpFreeVars freeVars = do
   return ()
 
 
+-- TODO shouldn't this be called something like nameExprList ?
 normalizeExprList :: [Expr] -> ([NstVar] -> NormState NstExpr) -> NormState NstExpr
 normalizeExprList exprList k =
   normalizeExprList' exprList [] k
@@ -256,5 +278,4 @@ isAtomDynamic expr = case expr of
 
 
 
------ Recursion
 

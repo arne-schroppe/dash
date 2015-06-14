@@ -42,9 +42,8 @@ spec = do
         norm `shouldBe` expected
 
       it "normalizes general function calls" $ do
-        let dummyFunc = Lambda ["a"] $ LitNumber 0
-        let ast = LocalBinding (Binding "fun1" dummyFunc) $
-                  LocalBinding (Binding "fun2" dummyFunc) $
+        let ast = LocalBinding (Binding "fun1" $ Lambda ["a", "b", "c", "d"] $ LitNumber 0) $
+                  LocalBinding (Binding "fun2" $ Lambda ["a", "b"] $ LitNumber 0) $
                   FunCall (Var "fun1")
                       [(FunCall (Var "fun2")
                           [LitNumber 1, LitNumber 2]),
@@ -54,8 +53,8 @@ spec = do
                        LitNumber 6]
         let norm = pureNorm ast
         let expected =
-                NLet (NLocalVar 0 "fun1") (NLambda [] ["a"] $ NAtom $ NNumber 0) $
-                NLet (NLocalVar 1 "fun2") (NLambda [] ["a"] $ NAtom $ NNumber 0) $
+                NLet (NLocalVar 0 "fun1") (NLambda [] ["a", "b", "c", "d"] $ NAtom $ NNumber 0) $
+                NLet (NLocalVar 1 "fun2") (NLambda [] ["a", "b"] $ NAtom $ NNumber 0) $
                 NLet (NLocalVar 2 "") (NNumber 1) $
                 NLet (NLocalVar 3 "") (NNumber 2) $
                 NLet (NLocalVar 4 "") (NFunCall (NLocalVar 1 "fun2") [(NLocalVar 2 ""), (NLocalVar 3 "")]) $
@@ -310,14 +309,15 @@ spec = do
                             NAtom $ (NNumber 42)))) $
                        NLet (NLocalVar 1 "") (NNumber 1) $
                        NLet (NLocalVar 2 "") (NNumber 2) $
-                       NLet (NLocalVar 3 "") (NFunCall (NLocalVar 0 "fun") [NLocalVar 1 "", NLocalVar 2 ""]) $
 
-                       -- The two returned functions are no known functions anymore, so generic apply needs to
-                       -- deal with them at runtime
                        NLet (NLocalVar 4 "") (NNumber 33) $
                        NLet (NLocalVar 5 "") (NNumber 444) $
                        NLet (NLocalVar 6 "") (NNumber 555) $
                        NLet (NLocalVar 7 "") (NNumber 666) $
+                       NLet (NLocalVar 3 "") (NFunCall (NLocalVar 0 "fun") [NLocalVar 1 "", NLocalVar 2 ""]) $
+
+                       -- The two returned functions are no known functions anymore, so generic apply needs to
+                       -- deal with them at runtime
                        NAtom $ NFunCall (NLocalVar 3 "") [NLocalVar 4 "", NLocalVar 5 "", NLocalVar 6 "", NLocalVar 7 ""]
         norm `shouldBe` expected
 

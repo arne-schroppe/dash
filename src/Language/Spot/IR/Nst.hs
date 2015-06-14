@@ -15,7 +15,7 @@ import           Language.Spot.IR.Data  (ConstAddr)
 data NstExpr =
     NAtom NstAtomicExpr
   | NLet NstVar NstAtomicExpr NstExpr
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 type VarName = String
 type ParamName = String
@@ -29,7 +29,7 @@ data NstAtomicExpr =
   | NPrimOp NstPrimOp
   | NFunCall NstVar [NstVar]
   | NMatch Int NstVar ConstAddr [([VarName], NstVar)] -- MaxCaptures Subject PatternAddr [MatchedVars, Var-That-Holds-Closure]
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 
 data NstVar =
@@ -38,12 +38,12 @@ data NstVar =
   | NDynamicFreeVar String
   | NConstantFreeVar String -- We should rename this to StaticFreeVar
   | NRecursiveVar String
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 data NstPrimOp =
     NPrimOpAdd NstVar NstVar
   | NPrimOpSub NstVar NstVar
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 
 

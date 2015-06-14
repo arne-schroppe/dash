@@ -2,7 +2,7 @@ module Language.Spot.Normalization.Recursion (
   resolveRecursion
 ) where
 
-import           Control.Monad.State                   hiding (state)
+import           Control.Monad.State  hiding (state)
 import           Data.List
 import           Language.Spot.IR.Nst
 
