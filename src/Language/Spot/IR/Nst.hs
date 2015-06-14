@@ -27,6 +27,7 @@ data NstAtomicExpr =
   | NVar NstVar -- This is only for returning a var as a result
   | NLambda [VarName] [ParamName] NstExpr  -- FreeVars FormalParams Body
   | NPrimOp NstPrimOp
+  | NPartAp NstVar [NstVar] -- partial application
   | NFunCall NstVar [NstVar]
   | NMatch Int NstVar ConstAddr [([VarName], NstVar)] -- MaxCaptures Subject PatternAddr [MatchedVars, Var-That-Holds-Closure]
   deriving (Eq, Ord, Show)

@@ -321,6 +321,43 @@ spec = do
                        NAtom $ NFunCall (NLocalVar 3 "") [NLocalVar 4 "", NLocalVar 5 "", NLocalVar 6 "", NLocalVar 7 ""]
         norm `shouldBe` expected
 
+{-
+      -- TODO fix this (by giving all temp vars a name)
+      it "does not oversaturate a call to a known anonymous function" $ do
+        let ast = FunCall (Lambda ["a", "b"] $ Lambda ["c"] $ Lambda ["d", "e", "f"] $ LitNumber 42) $
+                      [ LitNumber 1, LitNumber 2,
+                        LitNumber 33,
+                        LitNumber 444, LitNumber 555, LitNumber 666]
+        let norm = pureNorm ast
+        let expected = NLet (NLocalVar 0 "") (NLambda [] ["a", "b"] $
+                         NAtom $ (NLambda [] ["c"] $ NAtom $ (NLambda [] ["d", "e", "f"] $
+                            NAtom $ (NNumber 42)))) $
+                       NLet (NLocalVar 1 "") (NNumber 1) $
+                       NLet (NLocalVar 2 "") (NNumber 2) $
+
+                       NLet (NLocalVar 4 "") (NNumber 33) $
+                       NLet (NLocalVar 5 "") (NNumber 444) $
+                       NLet (NLocalVar 6 "") (NNumber 555) $
+                       NLet (NLocalVar 7 "") (NNumber 666) $
+                       NLet (NLocalVar 3 "") (NFunCall (NLocalVar 0 "") [NLocalVar 1 "", NLocalVar 2 ""]) $
+
+                       -- The two returned functions are no known functions anymore, so generic apply needs to
+                       -- deal with them at runtime
+                       NAtom $ NFunCall (NLocalVar 3 "") [NLocalVar 4 "", NLocalVar 5 "", NLocalVar 6 "", NLocalVar 7 ""]
+        norm `shouldBe` expected
+-}
+
+      it "identifies an under-saturated call to a known function" $ do
+        let ast = LocalBinding (Binding "fun" $ Lambda ["a", "b", "c"] $
+                                                LitNumber 42) $
+                  FunCall (Var "fun") [LitNumber 1, LitNumber 2]
+        let norm = pureNorm ast
+        let expected = NLet (NLocalVar 0 "fun") (NLambda [] ["a", "b", "c"] $
+                            NAtom $ (NNumber 42)) $
+                       NLet (NLocalVar 1 "") (NNumber 1) $
+                       NLet (NLocalVar 2 "") (NNumber 2) $
+                       NAtom $ NPartAp (NLocalVar 0 "fun") [NLocalVar 1 "", NLocalVar 2 ""]
+        norm `shouldBe` expected
 
 
 {-

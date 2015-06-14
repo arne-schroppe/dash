@@ -186,9 +186,12 @@ normalizeFunCall funExpr args k = case (funExpr, args) of
       if numArgs == funArity then do
         normalizeExprList args $ \ normArgs ->
             k $ NFunCall funVar normArgs
-      else if numArgs < funArity then -- under-saturated call
-        error "Undersaturared call" -- TODO handle this
-      else do -- over-saturated call
+      else if numArgs < funArity then 
+        -- under-saturated call
+        normalizeExprList args $ \ normArgs ->
+            k $ NPartAp funVar normArgs
+      else do
+        -- over-saturated call
         let (knownFunArgs, remainingArgs) = splitAt funArity args
         normalizeExprList knownFunArgs $ \ normKnownFunArgs -> do
             knownFunResult <- newTempVar ""
