@@ -26,7 +26,8 @@ typedef enum {
   vm_type_number = 1,
   vm_type_plain_symbol = 2,
   vm_type_compound_symbol = 3,
-  vm_type_function_header = 15 //Important! Keep this in sync with the FUN_HEADER pseudo opcode
+  vm_type_closure = 4,
+  vm_type_function = 5
 } vm_type;
 
 vm_type type_of_value(vm_value value);
@@ -35,6 +36,9 @@ extern const vm_value vm_tag_number;
 extern const vm_value vm_tag_plain_symbol;
 extern const vm_value vm_tag_compound_symbol;
 
+extern const vm_value vm_tag_closure;
+extern const vm_value vm_tag_function;
+
 extern const vm_value vm_tag_match_data;
 
 
@@ -42,11 +46,14 @@ extern const vm_value vm_tag_match_data;
 
 #define __tag_mask(t) ((t & 0xF) << (sizeof(vm_value) * 8 - __tag_bits))
 #define val(x, t) (x | __tag_mask(t))
-#define from_val(x, t) (x & ~__tag_mask(t))
+#define from_val(x, t) (x & ~__tag_mask(t))   // TODO change from_val so that it just cuts away the tag
+#define get_tag(x) (x >> (sizeof(vm_value) * 8 - __tag_bits))
+
 
 #define number(x) val(x, vm_type_number)
 #define plain_symbol(x) val(x, vm_type_plain_symbol)
 #define compound_symbol(x) val(x, vm_type_compound_symbol)
+
 
 #define closure_header(arity, num_vars) ((arity << 16) | num_vars)
 #define closure_arity(header) ((header & 0xFFFF0000) >> 16)

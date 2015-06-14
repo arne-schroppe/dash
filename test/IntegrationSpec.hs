@@ -250,6 +250,7 @@ spec = do
               \   curry 3 \n\
               \ apply my-sub"
               let result = run code
+              putStrLn $ show $ toAsm code
               result `shouldReturn` VMNumber 120
 
     context "when using compound symbols" $ do

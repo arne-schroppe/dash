@@ -46,7 +46,7 @@ it( directly_calls_a_function ) {
     op_load_i(1, 15),
     op_load_i(2, 23),
     op_add(4, 1, 2),
-    op_load_i(3, fun_address),
+    op_load_f(3, fun_address),
     op_set_arg(0, 4, 0),
     op_call(0, 3, 1), /* result reg, reg with function address, num parameters */
     op_ret(0),
@@ -65,11 +65,11 @@ it( calls_a_closure_downwards ) {
   const int fun_address1 = 8;
   const int fun_address2 = 15;
   vm_instruction program[] = {
-    op_load_i(2, fun_address2),
+    op_load_f(2, fun_address2),
     op_load_i(3, 80),
     op_set_arg(0, 3, 0),
     op_make_cl(2, 2, 1),
-    op_load_i(1, fun_address1),
+    op_load_f(1, fun_address1),
     op_set_arg(0, 2, 0),
     op_call(0, 1, 1), //call fun1 with a closure to fun2
     op_ret(0),
@@ -97,7 +97,7 @@ it( calls_a_closure_upwards ) {
   const int fun_address1 = 7;
   const int fun_address2 = 13;
   vm_instruction program[] = {
-    op_load_i(1, fun_address1),
+    op_load_f(1, fun_address1),
     op_set_arg(0, 2, 0),
     op_call(1, 1, 1),
     op_load_i(2, 80),
@@ -107,7 +107,7 @@ it( calls_a_closure_upwards ) {
 
     // fun 1
     fun_header(1),
-    op_load_i(1, fun_address2),
+    op_load_f(1, fun_address2),
     op_load_i(2, 24),
     op_set_arg(0, 2, 0),
     op_make_cl(0, 1, 1),
@@ -127,7 +127,7 @@ it( modifies_a_closure ) {
   const int fun_address1 = 6;
   const int fun_address2 = 15;
   vm_instruction program[] = {
-    op_load_i(1, fun_address1),
+    op_load_f(1, fun_address1),
     op_call(1, 1, 0),
     op_load_i(2, 80),
     op_set_arg(0, 2, 0),
@@ -136,7 +136,7 @@ it( modifies_a_closure ) {
 
     // fun 1
     fun_header(0),
-    op_load_i(1, fun_address2),
+    op_load_f(1, fun_address2),
     op_load_i(2, 77),
     op_load_i(3, 55),
     op_set_arg(0, 2, 1),
@@ -395,7 +395,7 @@ it( creates_an_explicit_partial_application ) {
   vm_instruction program[] = {
     op_load_i(1, 66),
     op_set_arg(0, 1, 0),
-    op_load_i(2, fun_address),
+    op_load_f(2, fun_address),
     op_part_ap(3, 2, 1),
     op_load_i(4, 98),
     op_set_arg(0, 4, 0),
@@ -416,7 +416,7 @@ it( creates_a_partial_application_with_a_generic_application ) {
   vm_instruction program[] = {
     op_load_i(1, 33), // arg a
     op_set_arg(0, 1, 0),
-    op_load_i(2, fun_address),
+    op_load_f(2, fun_address),
     op_make_cl(3, 2, 1),
     op_load_i(4, 98), // arg b
     op_set_arg(0, 4, 0),
@@ -437,6 +437,25 @@ it( creates_a_partial_application_with_a_generic_application ) {
   is_equal(result, val(165, vm_tag_number));
 }
 
+
+it( does_a_generic_application_of_a_function ) {
+  const int fun_address = 6;
+  vm_instruction program[] = {
+    op_load_i(1, 21),
+    op_load_i(2, 33),
+    op_set_arg(0, 1, 1),
+    op_load_f(3, fun_address),
+    op_gen_ap(0, 3, 2),
+    op_ret(0),
+
+    //other function
+    fun_header(2),
+    op_sub(0, 1, 0),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, val(21, vm_tag_number));
+}
 
 start_spec(vm_spec)
 	example(load_as_a_number_into_a_register)
@@ -459,5 +478,6 @@ start_spec(vm_spec)
   example(binds_a_value_in_a_nested_symbol)
   example(creates_an_explicit_partial_application)
   example(creates_a_partial_application_with_a_generic_application)
+  example(does_a_generic_application_of_a_function)
 end_spec
 

@@ -26,7 +26,7 @@ heap_address heap_alloc(size_t size) {
 
 vm_value *heap_get_pointer(heap_address addr) {
   if(addr > initial_heap_size) {
-    printf("Illegal memory address!\n");
+    printf("Illegal memory address: %zu!\n", addr);
     exit(-1);
   }
   return &heap[addr];

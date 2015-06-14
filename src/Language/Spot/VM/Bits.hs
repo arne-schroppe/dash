@@ -25,6 +25,8 @@ decode w ctable symNames =
   where decode' t v | t==tagNumber     = VMNumber v
                     | t==tagPlainSymbol   = VMSymbol (symNames !! (fromIntegral v)) []
                     | t==tagCompoundSymbol = decodeCompoundSymbol v ctable symNames
+                    | t==tagClosure = VMClosure
+                    | t==tagFunction = VMFunction
                     | otherwise        = error $ "Unknown tag " ++ (show t)
 
 
@@ -84,6 +86,8 @@ tagNumber, tagPlainSymbol, tagCompoundSymbol, tagMatchData :: VMWord
 tagNumber = 0x0
 tagPlainSymbol = 0x4
 tagCompoundSymbol = 0x5
+tagClosure = 0x6
+tagFunction = 0x7
 tagMatchData = 0xF
 
 

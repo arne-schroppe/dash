@@ -28,10 +28,9 @@ typedef enum {
   OP_TAIL_GEN_AP = 15,
   OP_SET_CL_VAL = 16,
   OP_PART_AP = 17,      // Do partial application of known function
+  OP_LOAD_f = 18,
 
-  // 60 to 63 is reserved for fun header. It also acts as a tag, which currently only have 4 bits
-  // Important! Keep this in sync with the function header tag!
-  FUN_HEADER = 60
+  FUN_HEADER = 63
 } vm_opcode;
 
 #define instr_size (sizeof(vm_instruction) * 8)
@@ -62,6 +61,7 @@ typedef enum {
 #define op_load_ps(r0, i) (instr_ri(OP_LOAD_ps, r0, i))
 #define op_load_cs(r0, i) (instr_ri(OP_LOAD_cs, r0, i))
 #define op_load_c(r0, i) (instr_ri(OP_LOAD_c, r0, i))
+#define op_load_f(r0, i) (instr_ri(OP_LOAD_f, r0, i))
 #define op_add(r0, r1, r2) (instr_rrr(OP_ADD, r0, r1, r2))
 #define op_sub(r0, r1, r2) (instr_rrr(OP_SUB, r0, r1, r2))
 #define op_move(r0, r1) (instr_rrr(OP_MOVE, r0, r1, 0))

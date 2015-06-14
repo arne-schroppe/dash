@@ -63,7 +63,7 @@ assembleTac funcAddrs addrConv opc =
     Tac_ret r0              -> instructionRI   0 (r r0) 0
     Tac_load_i r0 n         -> instructionRI   1 (r r0) n
     Tac_load_addr r0 a      -> instructionRI   1 (r r0) (addrConv a)
-    Tac_load_f r0 fi        -> instructionRI   1 (r r0) (funcAddrs !! fi)
+    Tac_load_f r0 fi        -> instructionRI  18 (r r0) (funcAddrs !! fi)
     Tac_load_ps r0 s        -> instructionRI   2 (r r0) (i s)
     Tac_load_cs r0 a        -> instructionRI   3 (r r0) (addrConv a)
     Tac_load_c r0 a         -> instructionRI   4 (r r0) (addrConv a)
@@ -80,7 +80,7 @@ assembleTac funcAddrs addrConv opc =
     Tac_tail_gen_ap r0 fr n -> instructionRRR 15 (r r0) (r fr) (i n)
     Tac_set_cl_val clr r1 n -> instructionRRR 16 (r clr) (r r1) (i n)
     Tac_part_ap r0 fr n     -> instructionRRR 17 (r r0) (r fr) (i n)
-    Tac_fun_header arity    -> instructionRI  60 (r 0) (i arity)
+    Tac_fun_header arity    -> instructionRI  63 (r 0) (i arity)
 
 
 
