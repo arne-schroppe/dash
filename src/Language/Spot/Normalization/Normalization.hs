@@ -154,16 +154,17 @@ normalizeLambda :: [String] -> Expr -> String -> Cont -> NormState NstExpr
 normalizeLambda params bodyExpr name k = do
   enterContext params
   when (not $ null name) $ addBinding name (NRecursiveVar name, False) -- TODO we don't know whether this var is dynamic or not!
-  addArity name (length params)
   -- TODO add arity for recursive var?
   normalizedBody <- normalizeExpr bodyExpr
   freeVars <- freeVariables
   leaveContext
   pullUpFreeVars freeVars
+  addArity name (length freeVars) (length params)
   k $ NLambda freeVars params normalizedBody
 
 
 -- TODO throw an error if the thing being called is obviously not callable
+-- TODO it gets a bit confusing in which cases we expect a closure and where we expect a simple function
 normalizeFunCall :: Expr -> [Expr] -> Cont -> NormState NstExpr
 normalizeFunCall funExpr args k = case (funExpr, args) of
   (Var "add", [a, b]) -> normalizeMathPrimOp NPrimOpAdd a b
@@ -173,25 +174,29 @@ normalizeFunCall funExpr args k = case (funExpr, args) of
             case maybeAr of
               Nothing -> do normalizeExprList args $ \ normArgs ->
                              k $ NFunCall funVar normArgs
-              Just ar -> callToKnownFunction funVar ar
+              Just (numFree, ar) -> callToKnownFunction funVar numFree ar
   where
     normalizeMathPrimOp :: (NstVar -> NstVar -> NstPrimOp) -> Expr -> Expr -> NormState NstExpr
     normalizeMathPrimOp mathPrimOp a b = do
       normalizeExprList [a, b] $ \ [aVar, bVar] ->
           k $ NPrimOp $ mathPrimOp aVar bVar
 
-    callToKnownFunction :: NstVar -> Int -> NormState NstExpr
-    callToKnownFunction funVar funArity =
+    callToKnownFunction :: NstVar -> Int -> Int -> NormState NstExpr
+    callToKnownFunction funVar numFreeVars funArity =
       let numArgs = length args in
       if numArgs == funArity then do
         normalizeExprList args $ \ normArgs ->
             k $ NFunCall funVar normArgs
       else if numArgs < funArity then 
         -- under-saturated call
-        normalizeExprList args $ \ normArgs ->
-            k $ NPartAp funVar normArgs
+        -- We already know at this point, that this *must* be a simple function, not a closure
+        if numFreeVars > 0 then error "Internal compiler error, trying to do static partial application of closure" 
+        else
+          normalizeExprList args $ \ normArgs ->
+              k $ NPartAp funVar normArgs
       else do
         -- over-saturated call
+        -- TODO should we also check for closures here?
         let (knownFunArgs, remainingArgs) = splitAt funArity args
         normalizeExprList knownFunArgs $ \ normKnownFunArgs -> do
             knownFunResult <- newTempVar ""

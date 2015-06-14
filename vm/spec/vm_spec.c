@@ -66,7 +66,7 @@ it( calls_a_closure_downwards ) {
     op_load_i(2, fun_address2),
     op_load_i(3, 80),
     op_set_arg(0, 3, 0),
-    op_make_cl(2, 2, 1),
+    op_make_cl(2, 2, 1, 2),
     op_load_i(1, fun_address1),
     op_set_arg(0, 2, 0),
     op_call(0, 1, 1), //call fun1 with a closure to fun2
@@ -106,7 +106,7 @@ it( calls_a_closure_upwards ) {
     op_load_i(1, fun_address2),
     op_load_i(2, 24),
     op_set_arg(0, 2, 0),
-    op_make_cl(0, 1, 1),
+    op_make_cl(0, 1, 1, 2),
     op_ret(0),
 
     // fun 2
@@ -133,7 +133,7 @@ it( modifies_a_closure ) {
     op_load_i(2, 77),
     op_load_i(3, 55),
     op_set_arg(0, 2, 1),
-    op_make_cl(0, 1, 2),
+    op_make_cl(0, 1, 2, 3),
     op_load_i(7, 33),
     op_set_cl_val(0, 7, 1),
     op_ret(0),
@@ -385,11 +385,11 @@ it( creates_an_explicit_partial_application ) {
   const int fun_address = 8;
   vm_instruction program[] = {
     op_load_i(1, 66),
-    op_set_arg(0, 1, 1),
+    op_set_arg(0, 1, 0),
     op_load_i(2, fun_address),
-    op_part_ap(3, 2, 1),
+    op_part_ap(3, 2, 1, 2),
     op_load_i(4, 98),
-    op_set_arg(0, 4, 1),
+    op_set_arg(0, 4, 0),
     op_gen_ap(0, 3, 1),
     op_ret(0),
 
@@ -405,14 +405,14 @@ it( creates_a_partial_application_with_a_generic_application ) {
   const int fun_address = 11;
   vm_instruction program[] = {
     op_load_i(1, 33), // arg a
-    op_set_arg(0, 1, 1),
+    op_set_arg(0, 1, 0),
     op_load_i(2, fun_address),
-    op_make_cl(3, 2, 1),
+    op_make_cl(3, 2, 1, 3),
     op_load_i(4, 98), // arg b
-    op_set_arg(0, 4, 1),
+    op_set_arg(0, 4, 0),
     op_gen_ap(5, 3, 1), // result register holds a partial application now
     op_load_i(6, 100), // arg c
-    op_set_arg(0, 6, 1),
+    op_set_arg(0, 6, 0),
     op_gen_ap(0, 5, 1),
     op_ret(0),
 

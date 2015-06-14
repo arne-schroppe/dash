@@ -43,7 +43,7 @@ data NormEnv = NormEnv {
   symbolNames :: Map.Map String SymId
 , constTable  :: ConstTable -- TODO rename ConstTable to DataTable
 , contexts    :: [Context] -- head is current context
-, arities     :: Map.Map String Int -- TODO for this we *really* need unique names
+, arities     :: Map.Map String (Int, Int) -- (Num free vars, num formal params) -- TODO for this we *really* need unique names
 } deriving (Eq, Show)
 
 
@@ -179,15 +179,15 @@ freeVariables = do
   return $ freeVars con
 
 
-addArity :: String -> Int -> NormState ()
-addArity "" _ = return ()
-addArity funName ar = do
+addArity :: String -> Int -> Int -> NormState ()
+addArity "" _ _ = return ()
+addArity funName numFreeVars ar = do
   env <- get
-  let arities' = Map.insert funName ar (arities env)
+  let arities' = Map.insert funName (numFreeVars, ar) (arities env)
   put $ env { arities = arities' }
 
 -- If we don't know the arity, we return Nothing here
-arity :: NstVar -> NormState (Maybe Int)
+arity :: NstVar -> NormState (Maybe (Int, Int))
 arity var = do
   let vname = varName var
   env <- get
