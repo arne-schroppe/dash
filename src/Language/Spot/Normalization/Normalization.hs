@@ -193,7 +193,7 @@ normalizeFunCall funExpr args k = case (funExpr, args) of
         if numFreeVars > 0 then error "Internal compiler error, trying to do static partial application of closure" 
         else
           normalizeExprList args $ \ normArgs ->
-              k $ NPartAp funVar normArgs
+              k $ NPartAp funVar normArgs funArity
       else do
         -- over-saturated call
         -- TODO should we also check for closures here?

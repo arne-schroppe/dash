@@ -72,14 +72,14 @@ assembleTac funcAddrs addrConv opc =
     Tac_move r0 r1          -> instructionRRR  7 (r r0) (r r1) (i 0)
     Tac_call r0 fr n        -> instructionRRR  8 (r r0) (r fr) (i n)
     Tac_gen_ap r0 fr n      -> instructionRRR  9 (r r0) (r fr) (i n)
-    Tac_make_cl r0 fr n     -> instructionRRR 10 (r r0) (r fr) (i n)
+    Tac_make_cl r0 fr n fp  -> instructionRRRR 10 (r r0) (r fr) (i n) (i fp)
     Tac_jmp n               -> instructionRI  11 0 (i n)
     Tac_match r0 r1 r2      -> instructionRRR 12 (r r0) (r r1) (r r2)
     Tac_set_arg arg r1 n    -> instructionRRR 13 (i arg) (r r1) (i n)
     Tac_tail_call fr n      -> instructionRRR 14 (i 0) (r fr) (i n)
     Tac_tail_gen_ap r0 fr n -> instructionRRR 15 (r r0) (r fr) (i n)
     Tac_set_cl_val clr r1 n -> instructionRRR 16 (r clr) (r r1) (i n)
-    Tac_part_ap r0 fr n     -> instructionRRR 17 (r r0) (r fr) (i n)
+    Tac_part_ap r0 fr n fp  -> instructionRRRR 17 (r r0) (r fr) (i n) (i fp)
 
 
 
@@ -95,12 +95,18 @@ instructionRI opcId register value =
   (opcId `shiftL` (instBits - opcBits)) .|. (register `shiftL` (instBits - (opcBits + regBits))) .|. value
 
 -- an instruction containing three registers
+
 instructionRRR :: VMWord -> VMWord -> VMWord -> VMWord -> VMWord
-instructionRRR opcId r0 r1 r2 =
+instructionRRR opcId r0 r1 r2 = instructionRRRR opcId r0 r1 r2 0
+
+
+instructionRRRR :: VMWord -> VMWord -> VMWord -> VMWord -> VMWord -> VMWord
+instructionRRRR opcId r0 r1 r2 r3 =
    (opcId `shiftL` (instBits - opcBits))
   .|. (r0 `shiftL` (instBits - (opcBits + regBits)))
   .|. (r1 `shiftL` (instBits - (opcBits + 2 * regBits)))
   .|. (r2 `shiftL` (instBits - (opcBits + 3 * regBits)))
+  .|. (r3 `shiftL` (instBits - (opcBits + 4 * regBits)))
 
 
 

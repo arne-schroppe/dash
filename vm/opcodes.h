@@ -27,7 +27,11 @@ typedef enum {
   OP_TAIL_CALL = 14,
   OP_TAIL_GEN_AP = 15,
   OP_SET_CL_VAL = 16,
-  OP_PART_AP = 17      // Do partial application of known function
+  OP_PART_AP = 17,      // Do partial application of known function
+
+  // 60 to 63 is reserved for fun header. It also acts as a tag, which currently only have 4 bits
+  // Important! Keep this in sync with the function header tag!
+  FUN_HEADER = 60
 } vm_opcode;
 
 #define instr_size (sizeof(vm_instruction) * 8)
@@ -57,6 +61,7 @@ typedef enum {
 #define instr_rrr(op, reg0, reg1, reg2) instr_rrrr(op, reg0, reg1, reg2, 0)
 
 // TODO make it clear which opcodes expect a function address and which expect a closure!!
+// TODO instead of rrrr opcodes, use a function header
 #define op_load_i(r0, i) (instr_ri(OP_LOAD_i, r0, i))
 #define op_load_ps(r0, i) (instr_ri(OP_LOAD_ps, r0, i))
 #define op_load_cs(r0, i) (instr_ri(OP_LOAD_cs, r0, i))
@@ -73,6 +78,8 @@ typedef enum {
 #define op_set_arg(arg, r, n) (instr_rrr(OP_SET_ARG, arg, r, n)) // target argument, value reg, number of extra args/regs to copy (when copying just one argument, set this to 0)
 #define op_set_cl_val(clr, r1, n) (instr_rrr(OP_SET_CL_VAL, clr, r1, n)) // reg with closure addr (heap), value reg, argument index
 #define op_part_ap(r0, fr, n, numFP) (instr_rrrr(OP_PART_AP, r0, fr, n, numFP)) // result reg, reg with function addr (code), num arguments, num formal params
+
+#define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))
 
 #endif

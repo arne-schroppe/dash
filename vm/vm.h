@@ -22,10 +22,11 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *const
 
 
 typedef enum {
-  vm_type_invalid,
-  vm_type_number,
-  vm_type_plain_symbol,
-  vm_type_compound_symbol,
+  vm_type_invalid = 0,
+  vm_type_number = 1,
+  vm_type_plain_symbol = 2,
+  vm_type_compound_symbol = 3,
+  vm_type_function_header = 15 //Important! Keep this in sync with the FUN_HEADER pseudo opcode
 } vm_type;
 
 vm_type type_of_value(vm_value value);

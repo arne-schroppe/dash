@@ -230,6 +230,18 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 120
 
+            it "evaluates an unknown curried closure" $ do
+              let code = "\
+              \ val get-cl (x) = \n\
+              \   val (a b) = sub a b \n\
+              \ val apply (f) = \n\
+              \   val curry = f 123  \n\
+              \   curry 3 \n\
+              \ val cl = get-cl 0 \n\
+              \ apply cl"
+              let result = run code
+              result `shouldReturn` VMNumber 120
+
             it "evaluates an unknown curried function" $ do
               let code = "\
               \ val my-sub (a b) = sub a b \n\
@@ -239,7 +251,6 @@ spec = do
               \ apply my-sub"
               let result = run code
               result `shouldReturn` VMNumber 120
-
 
     context "when using compound symbols" $ do
 
@@ -345,7 +356,7 @@ missing language features:
 K Closures
 K Recursion (also mutual recursion)
 K Tail call optimisation (isResultValue, add new opcodes)
-- Currying (also with underscore)
+- Currying (also with underscore ?)
 K Change order of free vars and formal parameters in function code so that we can use partial application as currying
 - Strings
 - Creating symbols

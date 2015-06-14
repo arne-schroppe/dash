@@ -356,7 +356,7 @@ spec = do
                             NAtom $ (NNumber 42)) $
                        NLet (NLocalVar 1 "") (NNumber 1) $
                        NLet (NLocalVar 2 "") (NNumber 2) $
-                       NAtom $ NPartAp (NLocalVar 0 "fun") [NLocalVar 1 "", NLocalVar 2 ""]
+                       NAtom $ NPartAp (NLocalVar 0 "fun") [NLocalVar 1 "", NLocalVar 2 ""] 3
         norm `shouldBe` expected
 
 

@@ -30,11 +30,12 @@ compile expr cTable symlist =
 compileFunc :: [String] -> [String] -> NstExpr -> String -> CodeGenState Int
 compileFunc freeVars params expr name = do
   funAddr <- beginFunction freeVars params
+  let arity = length freeVars + length params
   -- we add the name already here for recursion
-  addCompileTimeConst name $ CTConstLambda funAddr
+  addCompileTimeConst name $ CTConstLambda funAddr arity
   funcCode <- compileExpr expr
   endFunction funAddr funcCode
-  addCompileTimeConst name $ CTConstLambda funAddr -- Have to re-add to outer scope    TODO this sucks
+  addCompileTimeConst name $ CTConstLambda funAddr arity -- Have to re-add to outer scope    TODO this sucks
   return funAddr
 
 
@@ -67,7 +68,7 @@ compileAtom reg atom name isResultValue = case atom of
           return [Tac_sub reg ra rb]
   NLambda [] params expr -> do
           funAddr <- compileFunc [] params expr name
-          compileLoadLambda reg funAddr isResultValue
+          compileLoadLambda reg funAddr (length params) isResultValue
   NLambda freeVars params expr -> compileClosure reg freeVars params expr name
   NFunCall funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
@@ -81,11 +82,11 @@ compileAtom reg atom name isResultValue = case atom of
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches isResultValue
-  NPartAp funVar args -> do
+  NPartAp funVar args arity -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
           rFun <- getReg funVar
           let numArgs = length args
-          let partApInst = [Tac_part_ap reg rFun numArgs]
+          let partApInst = [Tac_part_ap reg rFun numArgs arity]
           return $ argInstrs ++ partApInst
   x -> error $ "Unable to compile " ++ (show x)
   where
@@ -114,15 +115,15 @@ compileConstantFreeVar reg name isResultValue = do
           CTConstNumber n -> return [Tac_load_i reg (fromIntegral n)] -- how about storing the constant in const table and simply load_c it here?
           CTConstPlainSymbol symId -> return [Tac_load_ps reg symId]
           -- CConstCompoundSymbol ConstAddr
-          CTConstLambda funAddr -> compileLoadLambda reg funAddr isResultValue
+          CTConstLambda funAddr arity -> compileLoadLambda reg funAddr arity isResultValue
           _ -> error "compileConstantFreeVar"
 
 
-compileLoadLambda :: Reg -> Int -> Bool -> CodeGenState [Tac]
-compileLoadLambda reg funAddr isResultValue = do
+compileLoadLambda :: Reg -> Int -> Int -> Bool -> CodeGenState [Tac]
+compileLoadLambda reg funAddr arity isResultValue = do
   let ldFunAddr = [Tac_load_f reg funAddr]
   if isResultValue then
-      return $ ldFunAddr ++ [Tac_make_cl reg reg 0]
+      return $ ldFunAddr ++ [Tac_make_cl reg reg 0 arity]
   else
       return $ ldFunAddr
 
@@ -159,7 +160,7 @@ compileClosure reg freeVars params expr name = do
   argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
   let argInstrs = catMaybes argInstrsMaybes
   let makeClosureInstr = [Tac_load_f reg funAddr,
-                          Tac_make_cl reg reg (length freeVars)]
+                          Tac_make_cl reg reg (length freeVars) (length freeVars + length params)]
   selfRefInstrs <- createSelfRefInstrsIfNeeded reg
   return $ argInstrs ++ makeClosureInstr ++ selfRefInstrs
 
