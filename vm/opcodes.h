@@ -58,15 +58,15 @@ typedef enum {
 #define op_add(r0, r1, r2) (instr_rrr(OP_ADD, r0, r1, r2))
 #define op_sub(r0, r1, r2) (instr_rrr(OP_SUB, r0, r1, r2))
 #define op_move(r0, r1) (instr_rrr(OP_MOVE, r0, r1, 0))
-#define op_call(r0, fr, n) (instr_rrr(OP_CALL, r0, fr, n)) // result reg, reg with function addr, num arguments
-#define op_gen_ap(r0, fr, n) (instr_rrr(OP_GEN_AP, r0, fr, n)) // result reg, reg with function addr, num arguments
+#define op_call(r0, fr, n) (instr_rrr(OP_CALL, r0, fr, n)) // result reg, reg with function addr (code), num arguments
+#define op_gen_ap(r0, clr, n) (instr_rrr(OP_GEN_AP, r0, clr, n)) // result reg, reg with closure addr (heap), num arguments
 #define op_ret(r0) (instr_ri(OP_RET, r0, 0))
-#define op_make_cl(r0, fr, n) (instr_rrr(OP_MAKE_CL, r0, fr, n)) // result reg, function reg, num args
+#define op_make_cl(r0, fr, n) (instr_rrr(OP_MAKE_CL, r0, fr, n)) // result reg, reg with function addr (code), num args
 #define op_jmp(n) (instr_ri(OP_JMP, 0, n))
 #define op_match(r1, r2, r3) (instr_rrr(OP_MATCH, r1, r2, r3)) // reg with subject, reg with pattern addr, start reg for captures
 #define op_set_arg(arg, r, n) (instr_rrr(OP_SET_ARG, arg, r, n)) // target argument, value reg, number of extra args/regs to copy (when copying just one argument, set this to 0)
-#define op_set_cl_val(clreg, r1, n) (instr_rrr(OP_SET_CL_VAL, clreg, r1, n)) // closure, value reg, argument index
-#define op_part_ap(r0, fr, n) (instr_rrr(OP_PART_AP, r0, fr, n)) // result reg, reg with function addr, num arguments
+#define op_set_cl_val(clr, r1, n) (instr_rrr(OP_SET_CL_VAL, clr, r1, n)) // reg with closure addr (heap), value reg, argument index
+#define op_part_ap(r0, fr, n) (instr_rrr(OP_PART_AP, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))
 
 #endif
