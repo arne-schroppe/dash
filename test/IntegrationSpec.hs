@@ -379,7 +379,10 @@ K Change order of free vars and formal parameters in function code so that we ca
 - Lists
 - operators
 - maps/dictionaries as built-in type (because that's fairly useful)
-  - Could be the same as modules
+  - under the hood these could be somewhat similar to modules, maybe. Or modules can't be modified at runtime,
+    but then we're not very dynamic
+
+
 
 After release ?
 - Modules

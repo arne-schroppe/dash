@@ -16,7 +16,7 @@ import Language.Spot.IR.Ast
   eof       { TEOF }
   '('       { TOpen_Par }
   ')'       { TClose_Par }
-  val       { TVal }
+  let       { TLet }
   module    { TModule }
   '='       { TEqual }
   symbol    { TSymbol $$ }
@@ -34,9 +34,11 @@ import Language.Spot.IR.Ast
   end       { TEnd }
   indent    { TIndent }
   outdent   { TOutdent }
+  lam       { TLambda }
 
 
 %%
+
 
 opt(p):
     p                   { Just $1 }
@@ -49,6 +51,54 @@ star(p):
 
 plus(p):
   p star(p)       { $1 : $2 }
+
+
+
+Prog:
+    opt(eol) Expr opt(eol)  { $2 }
+
+NonIdentSimpleExpr:
+    int            { LitNumber $1 }
+  -- simple expr
+
+SimpleExpr:
+    Ident               { $1 }
+  | NonIdentSimpleExpr  { $1 }
+
+
+Expr:
+    Ident          { $1 }
+  | Binding        { $1 }
+  | FunDefOrAp     { $1 }
+  | NonIdentSimpleExpr { $1 }
+
+
+FunDefOrAp:
+    Ident NonIdentSimpleExpr star(SimpleExpr) { FunCall $1 ($2 : $3)  }
+  | Ident Ident FunDefOrCallNext { let args = $2 : (fst $3) in (snd $3) $1 args }
+
+
+FunDefOrCallNext:
+    Ident FunDefOrCallNext                     { ($1 : (fst $2), (snd $2)) } -- could still be a fun def or a call
+  | NonIdentSimpleExpr star(SimpleExpr)     { ($1 : $2, \ a args -> FunCall a args)   }  -- fun call
+  | '=' opt(eol) Expr eol Expr { let varName (Var vn) = vn in
+                         ([], \ a args -> LocalBinding (Binding (varName a) (Lambda (map varName args) $3)) $5) } -- fun def
+  |                                         { ([], \ a args -> FunCall a args) }
+
+
+
+SeveralIdentifiers:
+    id plus(id)     { ($1, $2) }
+
+
+Binding:
+    id '=' Expr eol Expr  { LocalBinding (Binding $1 $3) $5 }
+
+Ident:
+    id    { Var $1 }
+
+
+{-
 
 body(e):
     with indent opt(eol) e outdent eol { $4 }
@@ -87,16 +137,16 @@ Definition:
   | Def_start Fun_rest { Binding $1 $2 }
 
 Def_start:
-    val id { $2 }
+    let id { $2 }
 
 Def_rest:
     '=' Body { $2 }
 
 Anon_fun:
-    val Fun_rest  { $2 }
+    lam Fun_rest  { $2 }
 
 Fun_rest:
-    '(' opt(eol) plus(id) opt(eol) ')' '=' fun_body(Expr) { Lambda $3 $7 }
+    plus(id) opt(eol) '=' fun_body(Expr) { Lambda $1 $4 }
 
 fun_body(e):
     -- opt(eol) indent opt(eol) e opt(eol) outdent opt(eol) { $4 }
@@ -197,6 +247,7 @@ Qid:
         }
 
 
+-}
 
 
 {

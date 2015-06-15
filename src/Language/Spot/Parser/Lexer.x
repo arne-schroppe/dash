@@ -11,6 +11,7 @@ $alphanum   = [a-zA-Z0-9]
 $alpha      = [a-zA-Z]
 $digit      = [0-9]
 $space      = [\ \t]
+$endline    = [\; $newl]
 
 @ident      = $alpha( ($alphanum+ \-)* $alphanum+ )?
 @namespaces = (@ident \/)*
@@ -25,17 +26,18 @@ tokens :-
    (. | \n)*
    "--/"        ;
   "--" .*       ;
-  ($space* $newl $space*)+
+  ($space* $endline $newl* $space*)+
                 { mkTok TEOL }
   "("           { mkTok TOpen_Par }
   ")"           { mkTok TClose_Par }
-  "val"         { mkTok TVal }
+  "let"         { mkTok TLet }
   "module"      { mkTok TModule }
   "match"       { mkTok TMatch }
   "do"          { mkTok TDo }
   "with"        { mkTok TWith }
   "begin"       { mkTok TBegin }
   "end"         { mkTok TEnd }
+  ".\"          { mkTok TLambda }
   ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
   "="           { mkTok TEqual }
   "->"          { mkTok TArrow_R }
@@ -90,7 +92,7 @@ data Token  = TEOL
             | TEOF
             | TOpen_Par
             | TClose_Par
-            | TVal
+            | TLet
             | TModule
             | TEqual
             | TSymbol String
@@ -108,6 +110,7 @@ data Token  = TEOL
             | TEnd
             | TIndent
             | TOutdent
+            | TLambda
   deriving (Show, Eq)
 
 

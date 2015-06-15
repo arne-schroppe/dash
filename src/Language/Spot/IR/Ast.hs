@@ -16,6 +16,7 @@ data Binding
     = Binding String Expr        -- name, body
     deriving (Show, Eq)
 
+-- TODO rename 'FunCall' to Application or FunApplication?
 
 data Expr
     = LitNumber Int
