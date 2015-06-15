@@ -57,20 +57,24 @@ plus(p):
 Prog:
     opt(eol) Expr opt(eol)  { $2 }
 
-NonIdentSimpleExpr:
-    int            { LitNumber $1 }
-  -- simple expr
+
+
+Expr:
+    Ident          { $1 }
+  | NonIdentSimpleExpr { $1 }
+  | Binding        { $1 }
+  | FunDefOrAp     { $1 }
+
 
 SimpleExpr:
     Ident               { $1 }
   | NonIdentSimpleExpr  { $1 }
 
-
-Expr:
-    Ident          { $1 }
-  | Binding        { $1 }
-  | FunDefOrAp     { $1 }
-  | NonIdentSimpleExpr { $1 }
+NonIdentSimpleExpr:
+    int            { LitNumber $1 }
+  | symbol         { LitSymbol $1 [] }
+  | string         { LitString $1 }
+  | '(' Expr ')'   { $2 }
 
 
 FunDefOrAp:

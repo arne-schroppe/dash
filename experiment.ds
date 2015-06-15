@@ -1,0 +1,29 @@
+
+
+/--
+let slow-sum n =
+  match n begin
+    0 -> 0
+    x -> add x (slow-sum (sub x 1))
+  end
+
+let sum1 n acc =
+  match n begin
+    0 -> acc
+    x -> let acc1 = add n acc
+         let n1 = sub n 1
+         sum1 n1 acc1
+  end
+
+
+(.\ n = sum1 n 0) 550
+--/
+
+x = 5
+add-numbers b =
+  do-stuff n = sub 10 n
+  add (f = 7; do-stuff f) b
+
+
+add-numbers 100
+
