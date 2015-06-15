@@ -78,16 +78,18 @@ NonIdentSimpleExpr:
 
 
 FunDefOrAp:
-    Ident NonIdentSimpleExpr star(SimpleExpr) { FunCall $1 ($2 : $3)  }
-  | Ident Ident FunDefOrCallNext { let args = $2 : (fst $3) in (snd $3) $1 args }
+    NonIdentSimpleExpr plus(SimpleExpr)       { FunCall $1 $2 }
+  | Ident NonIdentSimpleExpr star(SimpleExpr) { FunCall $1 ($2 : $3)  }
+  | Ident Ident FunDefOrCallNext              { let args = $2 : (fst $3) in (snd $3) $1 args }
 
 
 FunDefOrCallNext:
     Ident FunDefOrCallNext                     { ($1 : (fst $2), (snd $2)) } -- could still be a fun def or a call
-  | NonIdentSimpleExpr star(SimpleExpr)     { ($1 : $2, \ a args -> FunCall a args)   }  -- fun call
-  | '=' opt(eol) Expr eol Expr { let varName (Var vn) = vn in
-                         ([], \ a args -> LocalBinding (Binding (varName a) (Lambda (map varName args) $3)) $5) } -- fun def
-  |                                         { ([], \ a args -> FunCall a args) }
+  | NonIdentSimpleExpr star(SimpleExpr)        { ($1 : $2, \ a args -> FunCall a args)   }  -- fun call
+  | '=' opt(eol) Expr eol Expr                 { let varName (Var vn) = vn in
+                                                 ([], \ a args -> 
+                                                        LocalBinding (Binding (varName a) (Lambda (map varName args) $3)) $5) } -- fun def
+  |                                            { ([], \ a args -> FunCall a args) }
 
 
 

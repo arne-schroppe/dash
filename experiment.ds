@@ -25,5 +25,5 @@ add-numbers b =
   add (f = 7; do-stuff f) b
 
 
-add-numbers 100
+(add-numbers) 100
 
