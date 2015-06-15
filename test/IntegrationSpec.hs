@@ -365,6 +365,7 @@ K Refactoring
 - Proper error handling (Either result)
 - Negative integers
 - General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
+- Inline match branches !!!
 
 missing language features:
 K Closures
@@ -377,6 +378,8 @@ K Change order of free vars and formal parameters in function code so that we ca
 - Creating symbols
 - Lists
 - operators
+- maps/dictionaries as built-in type (because that's fairly useful)
+  - Could be the same as modules
 
 After release ?
 - Modules

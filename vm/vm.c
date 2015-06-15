@@ -147,10 +147,6 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       vm_value function_header = program[func_address];
       //TODO check that it's actually a function
 
-      if(num_args >= arity) {
-        fprintf(stderr, "Illegal partial application (num args: %i, num params: %i)\n", num_args, arity);
-        return false;
-      }
 
       heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
       vm_value *cl_pointer = heap_get_pointer(cl_address);
@@ -436,7 +432,8 @@ bool execute_instruction(vm_instruction instr, vm_instruction *program) {
       //TODO check that it's actually a function
       int num_params = get_arg_i(function_header);
 
-      if(num_args >= num_params) {
+      // TODO this was >= earlier, which apparently gave false positives. Find out why, and find out if > is the correct choice
+      if(num_args > num_params) {
         fprintf(stderr, "Illegal partial application (num args: %i, num params: %i)\n", num_args, num_params);
         return false;
       }
