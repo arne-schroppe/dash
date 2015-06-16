@@ -114,7 +114,7 @@ Ident:
     id    { Var $1 }
 
 Lambda:
-    lam plus(id) '=' Expr  { Lambda $2 $4 }
+    lam plus(id) '=' opt(eol) Expr  { Lambda $2 $5 }
 
 
 CompoundOrSimpleSymbol:
