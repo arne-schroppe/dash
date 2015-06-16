@@ -13,27 +13,27 @@ import Language.Spot.IR.Ast
 
 %token
   eol       { TEOL }
-  eof       { TEOF }
+  -- eof       { TEOF }
   '('       { TOpen_Par }
   ')'       { TClose_Par }
-  let       { TLet }
-  module    { TModule }
+  -- let       { TLet }
+  -- TODO module    { TModule }
   '='       { TEqual }
   symbol    { TSymbol $$ }
   id        { TId $$ }
-  qid       { TQId $$ }
+  -- TODO qid       { TQId $$ }
   string    { TString $$ }
   int       { TInt $$ }
-  ';'       { TSemicolon }
+  -- ';'       { TSemicolon }
   match     { TMatch }
   do        { TDo }
   '->'      { TArrow_R }
   '<-'      { TArrow_L }
-  with      { TWith }
+  -- with      { TWith }
   begin     { TBegin }
   end       { TEnd }
-  indent    { TIndent }
-  outdent   { TOutdent }
+  -- indent    { TIndent }
+  -- outdent   { TOutdent }
   lam       { TLambda }
 
 
@@ -64,6 +64,9 @@ Expr:
   | NonIdentSimpleExpr { $1 }
   | Binding        { $1 }
   | FunDefOrAp     { $1 }
+  | Lambda         { $1 }
+  | Match_expr     { $1 }
+  | Do_expr        { $1 }
 
 
 SimpleExpr:
@@ -93,15 +96,52 @@ FunDefOrCallNext:
 
 
 
-SeveralIdentifiers:
-    id plus(id)     { ($1, $2) }
 
 
 Binding:
-    id '=' Expr eol Expr  { LocalBinding (Binding $1 $3) $5 }
+    id '=' opt(eol) Expr eol Expr  { LocalBinding (Binding $1 $4) $6 }
 
 Ident:
     id    { Var $1 }
+
+Lambda:
+    lam plus(id) '=' Expr  { Lambda $2 $4 }
+
+
+Match_expr:
+    -- TODO also allow indentation syntax
+    match Expr begin opt(eol) plus(Match_line) end { Match $2 $5 }
+
+Match_line:
+    Pattern '->' Expr eol { ($1, $3) }
+
+Pattern:
+    Simple_pattern { $1 }
+  | Symbol_pattern { $1 }
+
+Simple_pattern:
+    int { PatNumber $1 }
+  | id  { PatVar $1 }
+  | '(' Pattern ')' { $2 }
+
+Symbol_pattern:
+    symbol star(Simple_pattern) { PatSymbol $1 $2 }
+
+
+
+
+Do_expr:
+    do id Do_body  { makeMonad $2 $3 }
+
+Do_body:
+    begin opt(eol) plus(Do_line) end eol  { $3 }
+
+Do_line:
+    id '<-' Do_line_expr eol  { ($1, $3) }
+  | Do_line_expr eol          { ("_", $1) }
+
+Do_line_expr:
+    Expr { $1 }
 
 
 {-

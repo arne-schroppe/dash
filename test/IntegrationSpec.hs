@@ -366,6 +366,7 @@ K Refactoring
 - Negative integers
 - General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
 - Inline match branches !!!
+- TODO make it impossible to reassign values (d'oh!)
 
 missing language features:
 K Closures

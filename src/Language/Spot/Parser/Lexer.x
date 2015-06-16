@@ -13,11 +13,13 @@ $digit      = [0-9]
 $space      = [\ \t]
 $endline    = [\; $newl]
 
+
 @ident      = $alpha( ($alphanum+ \-)* $alphanum+ )?
 @namespaces = (@ident \/)*
 
 @integer    = $digit $digit*
 
+-- TODO strings
 
 
 tokens :-
@@ -43,6 +45,7 @@ tokens :-
   "->"          { mkTok TArrow_R }
   "<-"          { mkTok TArrow_L }
   @integer      { mkTokS (\s -> TInt (read s)) }
+  @ident        { mkTokS (\s -> TId s) }
   @ident        { mkTokS (\s -> TId s) }
   "{"           { mkTok TIndent } -- Hack
   "}"           { mkTok TOutdent } -- Hack

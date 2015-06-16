@@ -20,10 +20,32 @@ let sum1 n acc =
 --/
 
 x = 5
+x = 33
+
+stuff = 
+  .\ n = sub 11 n
+
+
 add-numbers b =
-  do-stuff n = sub 10 n
-  add (f = 7; do-stuff f) b
+  add (f = 7; stuff f) b
 
+compare b =
+  match b begin
+    3 -> 42
+    x -> 55
+  end
 
-(add-numbers) 100
+-- (add-numbers) (( .\ n = sub n 3) 7)
 
+-- compare 3
+
+do io begin
+  name <- read-ln
+  print-ln (concat :hello name)
+  number <- read-ln
+  message = match number begin
+    32 -> :win
+    x  -> :fail
+  end
+  print-ln message
+end
