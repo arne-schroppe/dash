@@ -35,6 +35,25 @@ compare b =
     x -> 55
   end
 
+
+/--
+my-mod = module
+
+  a = 33
+
+  b = :sym
+
+  perform a b c =
+    x = 5
+    a
+
+  verify x =
+    add a b
+
+end
+--/
+
+
 -- (add-numbers) (( .\ n = sub n 3) 7)
 
 -- compare 3
@@ -43,9 +62,5 @@ do io begin
   name <- read-ln
   print-ln (concat :hello name)
   number <- read-ln
-  message = match number begin
-    32 -> :win
-    x  -> :fail
-  end
   print-ln message
 end

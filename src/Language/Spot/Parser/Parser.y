@@ -17,7 +17,7 @@ import Language.Spot.IR.Ast
   '('       { TOpen_Par }
   ')'       { TClose_Par }
   -- let       { TLet }
-  -- TODO module    { TModule }
+  module    { TModule }
   '='       { TEqual }
   symbol    { TSymbol $$ }
   id        { TId $$ }
@@ -62,11 +62,12 @@ Prog:
 Expr:
     Ident          { $1 }
   | NonIdentSimpleExpr { $1 }
-  | Binding        { $1 }
+  | LocalBinding   { $1 }
   | FunDefOrAp     { $1 }
   | Lambda         { $1 }
-  | Match_expr     { $1 }
-  | Do_expr        { $1 }
+  | MatchExpr     { $1 }
+  | DoExpr        { $1 }
+  | Module         { $1 }
 
 
 SimpleExpr:
@@ -98,8 +99,12 @@ FunDefOrCallNext:
 
 
 
+LocalBinding:
+    Binding Expr  { LocalBinding $1 $2 }
+
 Binding:
-    id '=' opt(eol) Expr eol Expr  { LocalBinding (Binding $1 $4) $6 }
+    id '=' opt(eol) Expr eol   { Binding $1 $4 }
+
 
 Ident:
     id    { Var $1 }
@@ -108,40 +113,66 @@ Lambda:
     lam plus(id) '=' Expr  { Lambda $2 $4 }
 
 
-Match_expr:
-    -- TODO also allow indentation syntax
-    match Expr begin opt(eol) plus(Match_line) end { Match $2 $5 }
 
-Match_line:
+
+Module:
+    module opt(eol) star(Definition) end  { Module $3 }
+
+Definition:
+    Binding        { $1 }
+  | ModuleFunDef   { $1 }
+
+ModuleFunDef:
+    id plus(id) '=' opt(eol) Expr eol  { Binding $1 (Lambda $2 $5) }
+
+
+
+MatchExpr:
+    -- TODO also allow indentation syntax
+    match Expr begin opt(eol) plus(MatchLine) end { Match $2 $5 }
+
+MatchLine:
     Pattern '->' Expr eol { ($1, $3) }
 
 Pattern:
-    Simple_pattern { $1 }
-  | Symbol_pattern { $1 }
+    SimplePattern { $1 }
+  | SymbolPattern { $1 }
 
-Simple_pattern:
+SimplePattern:
     int { PatNumber $1 }
   | id  { PatVar $1 }
   | '(' Pattern ')' { $2 }
 
-Symbol_pattern:
-    symbol star(Simple_pattern) { PatSymbol $1 $2 }
+SymbolPattern:
+    symbol star(SimplePattern) { PatSymbol $1 $2 }
 
 
 
 
-Do_expr:
-    do id Do_body  { makeMonad $2 $3 }
+DoExpr:
+    do id DoBody  { makeMonad $2 $3 }
 
-Do_body:
-    begin opt(eol) plus(Do_line) end eol  { $3 }
+DoBody:
+    begin opt(eol) plus(DoLine) end eol  { $3 }
 
-Do_line:
-    id '<-' Do_line_expr eol  { ($1, $3) }
-  | Do_line_expr eol          { ("_", $1) }
+DoLine:
+    id '<-' DoLineExpr eol  { ($1, $3) }
+  | DoLineExpr eol          { ("_", $1) }
 
-Do_line_expr:
-    Expr { $1 }
+
+DoLineExpr:
+    Ident          { $1 }
+  | NonIdentSimpleExpr { $1 }
+  | LocalDoBinding        { $1 }  
+  | MatchExpr     { $1 }
+  | FunAp          { $1 }
+
+
+FunAp:
+    SimpleExpr plus(SimpleExpr) { FunCall $1 $2 }
+
+LocalDoBinding:
+    Binding DoLineExpr  { LocalBinding $1 $2 }
 
 
 {-
