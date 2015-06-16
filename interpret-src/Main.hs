@@ -2,7 +2,7 @@ import           Control.Monad
 import           System.Environment
 import           System.IO
 
-import           Language.Spot.API
+import           Language.Dash.API
 
 main = do
   args <- getArgs

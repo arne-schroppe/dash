@@ -1,0 +1,68 @@
+name:                 dash
+version:              0.1.0.0
+synopsis:             A dynamically typed, purely functional programming language
+-- description:
+license:              MIT
+license-file:         LICENSE
+author:               Arne Schroppe
+maintainer:           arne.schroppe@gmx.de
+-- copyright:
+category:             Language
+build-type:           Simple
+-- extra-source-files:
+cabal-version:        >=1.10
+
+library
+  hs-source-dirs:     src
+  GHC-Options:        -Wall
+  default-language:   Haskell2010
+  build-tools:        alex, happy
+  exposed-modules:    Language.Dash.Parser.Lexer
+                    , Language.Dash.Parser.Parser
+                    , Language.Dash.CodeGen.CodeGen
+                    , Language.Dash.CodeGen.CodeGenState
+                    , Language.Dash.Normalization.Normalization
+                    , Language.Dash.Normalization.NormalizationState
+                    , Language.Dash.Normalization.Recursion
+                    , Language.Dash.IR.Ast
+                    , Language.Dash.IR.Tac
+                    , Language.Dash.IR.Data
+                    , Language.Dash.IR.Nst
+                    , Language.Dash.Asm.Assembler
+                    , Language.Dash.Asm.DataAssembler
+                    , Language.Dash.VM.VM
+                    , Language.Dash.VM.Bits
+                    , Language.Dash.VM.Types
+                    , Language.Dash.API
+  build-depends:      base
+                    , array
+                    , containers
+                    , mtl
+  include-dirs:       vm
+  c-sources:          vm/vm.c
+                    , vm/heap.c
+
+executable dash
+  main-is:            Main.hs
+  build-depends:      dash >=0.1
+                    , base
+                    , array
+                    , containers
+                    , mtl
+  hs-source-dirs:     interpret-src
+  default-language:   Haskell2010
+
+test-suite test-dash
+  type:               exitcode-stdio-1.0
+  main-is:            SpecMain.hs
+  hs-source-dirs:     test
+  default-language:   Haskell2010
+  build-tools:        alex, happy
+  build-depends:      dash >=0.1
+                    , base
+                    , hspec
+                    , hspec-core
+                    , containers
+                    , QuickCheck
+
+

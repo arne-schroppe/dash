@@ -1,8 +1,8 @@
 module IntegrationSpec where
 
 import           Test.Hspec
-import           Language.Spot.API
-import           Language.Spot.VM.Bits
+import           Language.Dash.API
+import           Language.Dash.VM.Bits
 import           Numeric
 
 -- This is mainly a test of the code generator. But it is an integration test because
@@ -11,7 +11,7 @@ import           Numeric
 
 spec :: Spec
 spec = do
-  describe "Spot" $ do
+  describe "Dash" $ do
 
 
     it "evaluates an integer" $ do
@@ -19,8 +19,8 @@ spec = do
       result `shouldReturn` VMNumber 4815
 
     it "evaluates a symbol" $ do
-      let result = run ":spot"
-      result `shouldReturn` VMSymbol "spot" []
+      let result = run ":dash"
+      result `shouldReturn` VMSymbol "dash" []
 
     it "applies built-in add function" $ do
       let result = run "add 2 3"
