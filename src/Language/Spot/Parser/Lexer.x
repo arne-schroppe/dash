@@ -32,7 +32,6 @@ tokens :-
                 { mkTok TEOL }
   "("           { mkTok TOpen_Par }
   ")"           { mkTok TClose_Par }
-  "let"         { mkTok TLet }
   "module"      { mkTok TModule }
   "match"       { mkTok TMatch }
   "do"          { mkTok TDo }
@@ -46,10 +45,6 @@ tokens :-
   "<-"          { mkTok TArrow_L }
   @integer      { mkTokS (\s -> TInt (read s)) }
   @ident        { mkTokS (\s -> TId s) }
-  @ident        { mkTokS (\s -> TId s) }
-  "{"           { mkTok TIndent } -- Hack
-  "}"           { mkTok TOutdent } -- Hack
-  eof           { mkTok TEOF }
 
 
 
@@ -95,15 +90,13 @@ data Token  = TEOL
             | TEOF
             | TOpen_Par
             | TClose_Par
-            | TLet
             | TModule
             | TEqual
             | TSymbol String
             | TId String
-            | TQId ([String], String)
+            -- | TQId ([String], String)
             | TString String
             | TInt Int
-            | TSemicolon
             | TMatch
             | TDo
             | TArrow_R
@@ -111,8 +104,6 @@ data Token  = TEOL
             | TWith
             | TBegin
             | TEnd
-            | TIndent
-            | TOutdent
             | TLambda
   deriving (Show, Eq)
 

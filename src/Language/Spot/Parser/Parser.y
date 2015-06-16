@@ -13,10 +13,8 @@ import Language.Spot.IR.Ast
 
 %token
   eol       { TEOL }
-  -- eof       { TEOF }
   '('       { TOpen_Par }
   ')'       { TClose_Par }
-  -- let       { TLet }
   module    { TModule }
   '='       { TEqual }
   symbol    { TSymbol $$ }
@@ -24,7 +22,6 @@ import Language.Spot.IR.Ast
   -- TODO qid       { TQId $$ }
   string    { TString $$ }
   int       { TInt $$ }
-  -- ';'       { TSemicolon }
   match     { TMatch }
   do        { TDo }
   '->'      { TArrow_R }
@@ -32,12 +29,12 @@ import Language.Spot.IR.Ast
   -- with      { TWith }
   begin     { TBegin }
   end       { TEnd }
-  -- indent    { TIndent }
-  -- outdent   { TOutdent }
   lam       { TLambda }
 
 
 %%
+
+-- TODO for some reason we can't have a comment as our last element in a file
 
 
 opt(p):
@@ -55,7 +52,7 @@ plus(p):
 
 
 Prog:
-    opt(eol) Expr opt(eol)  { $2 }
+    opt(eol) Expr star(eol) { $2 }
 
 
 
@@ -175,156 +172,6 @@ LocalDoBinding:
     Binding DoLineExpr  { LocalBinding $1 $2 }
 
 
-{-
-
-body(e):
-    with indent opt(eol) e outdent eol { $4 }
-  | begin opt(eol) e end eol { $3 }
--- | e eol { $1 }
-
-Prog:
-    opt(eol) Expr opt(eol)  { $2 }
-
-Expr:
-    Local_binding      { $1 }
-  | Anon_fun           { $1 }
-  | Anon_module        { $1 }
-  | Fun_call           { $1 }
-  | Match_expr         { $1 }
-  | Do_expr            { $1 }
-  | Complex_symbol     { $1 }
-  | Non_symbol_literal { $1 }
-  | Qid_or_parenthesis_expr { $1 }
-
-Simple_expr:
-    Literal                 { $1 }
-  | Qid_or_parenthesis_expr { $1 }
-
-Qid_or_parenthesis_expr:
-    Qid                     { $1 }
-  | '(' Expr ')' { $2 }
-
-Local_binding:
-    Definition Expr  { LocalBinding $1 $2 }
-  | Definition Block_start Expr Block_end  { LocalBinding $1 $3 }
-
-
-Definition:
-    Def_start Def_rest  { Binding $1 $2 }
-  | Def_start Fun_rest { Binding $1 $2 }
-
-Def_start:
-    let id { $2 }
-
-Def_rest:
-    '=' Body { $2 }
-
-Anon_fun:
-    lam Fun_rest  { $2 }
-
-Fun_rest:
-    plus(id) opt(eol) '=' fun_body(Expr) { Lambda $1 $4 }
-
-fun_body(e):
-    -- opt(eol) indent opt(eol) e opt(eol) outdent opt(eol) { $4 }
-    eol Expr opt(eol) { $2 }
-  | Expr opt(eol) { $1 }
-
-Body:
-    Block_start Expr Block_end { $2 }
-  | Expr eol { $1 }
-
-Block_start:
-    opt(eol) indent opt(eol) { () }
-
-Block_end:
-    opt(eol) outdent opt(eol) { () } -- the second opt(eol) creates shift/reduce conflict
-
-Anon_module:
-    module Block_start star(Definition) Block_end  { Module $3 }
-
-Literal:
-    Symbol_literal      { $1 }
-  | Non_symbol_literal  { $1 }
-
-Non_symbol_literal:
-    Number_literal  { $1  }
-  | String_literal  { $1 }
-
-Complex_symbol:
-    symbol star(Simple_expr) { LitSymbol $1 $2 }
-
-Symbol_literal:
-    symbol                   { LitSymbol $1 [] }
-
-Number_literal:
-    int             { LitNumber $1 }
-
-String_literal:
-    string          { LitString $1 }
-
-
-Fun_call:
-    Qid_or_parenthesis_expr plus(Fun_args) opt(Anon_fun)  { let af' = case $3 of
-                                                                Just a  -> [a]
-                                                                Nothing -> [] in
-                                                            FunCall $1 ($2 ++ af') }
-
-Fun_args:
-    Simple_expr         { $1 }
-
-
-
-Match_expr:
-    match Expr body( plus(Match_line) ) { Match $2 $3 }
-
-Match_line:
-    Pattern '->' Expr Line_end { ($1, $3) }
-
-Line_end:
-    eol  {}
-  | ';'  {}
-
-Pattern:
-    Simple_pattern { $1 }
-  | Symbol_pattern { $1 }
-
-Simple_pattern:
-    int { PatNumber $1 }
-  | id  { PatVar $1 }
-  | '(' Pattern ')' { $2 }
-
-Symbol_pattern:
-    symbol star(Simple_pattern) { PatSymbol $1 $2 }
-
-
-
-Do_expr:
-  {- TODO id should be a qid -}
-    do id with Do_body  { makeMonad $2 $4 }
-
-Do_body:
-    Block_start plus(Do_line) Block_end  { $2 }
-
-Do_line:
-    id '<-' Do_line_expr Line_end  { ($1, $3) }
-  | Do_line_expr Line_end          { ("_", $1) }
-
-Do_line_expr:
-    Fun_call            { $1 }
-  | Qid                 { $1 }
-  | Non_symbol_literal  { $1 }
-  | Complex_symbol      { $1 }
-
-
-Qid:
-    id  { Var $1 }
-  | qid { let (nss, id) = $1 in
-          foldl (\ e ns -> Namespace ns e) (Var id) (reverse nss)
-        }
-
-
--}
 
 
 {
