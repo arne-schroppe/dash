@@ -35,5 +35,5 @@ compare b =
     x -> 55
   end
 
-compare 3
+compare (:sym 1 2 3)
 

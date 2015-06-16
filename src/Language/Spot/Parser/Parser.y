@@ -58,13 +58,14 @@ Prog:
 
 Expr:
     Ident          { $1 }
-  | NonIdentSimpleExpr { $1 }
+  | NonIdentNonSymbolSimpleExpr { $1 }
   | LocalBinding   { $1 }
   | FunDefOrAp     { $1 }
   | Lambda         { $1 }
   | MatchExpr     { $1 }
   | DoExpr        { $1 }
   | Module         { $1 }
+  | CompoundOrSimpleSymbol  { $1 }
 
 
 SimpleExpr:
@@ -77,9 +78,15 @@ NonIdentSimpleExpr:
   | string         { LitString $1 }
   | '(' Expr ')'   { $2 }
 
+NonIdentNonSymbolSimpleExpr:
+    int            { LitNumber $1 }
+  | string         { LitString $1 }
+  | '(' Expr ')'   { $2 }
+
+
 
 FunDefOrAp:
-    NonIdentSimpleExpr plus(SimpleExpr)       { FunCall $1 $2 }
+    NonIdentNonSymbolSimpleExpr plus(SimpleExpr)       { FunCall $1 $2 }
   | Ident NonIdentSimpleExpr star(SimpleExpr) { FunCall $1 ($2 : $3)  }
   | Ident Ident FunDefOrCallNext              { let args = $2 : (fst $3) in (snd $3) $1 args }
 
@@ -109,6 +116,9 @@ Ident:
 Lambda:
     lam plus(id) '=' Expr  { Lambda $2 $4 }
 
+
+CompoundOrSimpleSymbol:
+    symbol star(SimpleExpr) { LitSymbol $1 $2 }
 
 
 
