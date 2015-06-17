@@ -1,40 +1,13 @@
 
 
-/--
-let slow-sum n =
-  match n begin
-    0 -> 0
-    x -> add x (slow-sum (sub x 1))
-  end
-
-let sum1 n acc =
-  match n begin
-    0 -> acc
-    x -> let acc1 = add n acc
-         let n1 = sub n 1
-         sum1 n1 acc1
-  end
+fib' n = match n begin
+  0 -> 0
+  1 -> 1
+  x -> (fib' (n - 1)) + (fib' (n - 2))
+end
 
 
-(.\ n = sum1 n 0) 550
---/
 
-x = 5
-x = 33
+fib' 13
 
-stuff =
-  .\ n = (11 - n) + 3
--- .\ n >> 11 - n
-
-
-add-numbers b =
-  add (f = 7; stuff f) b
-
-compare b =
-  match b begin
-    3 -> 42 + 22
-    x -> 55 - 11
-  end
-
-compare (:sym 1 2 3)
 

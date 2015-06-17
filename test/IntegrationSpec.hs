@@ -375,9 +375,10 @@ K Tail call optimisation (isResultValue, add new opcodes)
 K Currying (also with underscore ?)
 - Over-saturated calls!
 K Change order of free vars and formal parameters in function code so that we can use partial application as currying
-- Equality operator
+- Equality operator (needs built-in :true and :false symbols)
+- if-then-else
 - More math operators
-- infix operators
+K infix operators
 - Strings
 - Creating symbols
 - Lists
@@ -385,15 +386,20 @@ K Change order of free vars and formal parameters in function code so that we ca
 - maps/dictionaries as built-in type (because that's fairly useful)
   - under the hood these could be somewhat similar to modules, maybe. Or modules can't be modified at runtime,
     but then we're not very dynamic
+- I/O (without modules, just io-bind and return)
+
+- Garbage collection
+- Reducing the amount of created garbage
 
 
 
 After release ?
 - Modules
-- I/O
+- I/O (with modules)
 - indentation syntax
 - Mutual recursion in module top-level
 - Multiple files
+- Operator precedence
 
 - private/secret symbols
 

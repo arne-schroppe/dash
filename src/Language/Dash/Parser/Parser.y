@@ -57,6 +57,7 @@ plus(p):
 
 Prog:
     opt(eol) Expr star(eol) { $2 }
+  | star(eol)               { LitString "" }
 
 
 
