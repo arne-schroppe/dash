@@ -30,11 +30,15 @@ import Language.Dash.IR.Ast
   begin     { TBegin }
   end       { TEnd }
   lam       { TLambda }
+  operator  { TOperator $$ }
 
 
 %%
 
 -- TODO for some reason we can't have a comment as our last element in a file
+
+-- TODO distinguish between eol and sep (separator)
+-- TODO also, this parser will not be able to handle a mix of eol and sep
 
 
 opt(p):
@@ -62,10 +66,11 @@ Expr:
   | LocalBinding   { $1 }
   | FunDefOrAp     { $1 }
   | Lambda         { $1 }
-  | MatchExpr     { $1 }
-  | DoExpr        { $1 }
+  | MatchExpr      { $1 }
+  | DoExpr         { $1 }
   | Module         { $1 }
   | CompoundOrSimpleSymbol  { $1 }
+  | InfixOperation   { $1 }
 
 
 SimpleExpr:
@@ -100,6 +105,8 @@ FunDefOrCallNext:
   |                                            { ([], \ a args -> FunCall a args) }
 
 
+InfixOperation:
+    SimpleExpr operator SimpleExpr             { FunCall (Var $2) [$1, $3] }
 
 
 

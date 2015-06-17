@@ -22,8 +22,9 @@ let sum1 n acc =
 x = 5
 x = 33
 
-stuff = 
-  .\ n = sub 11 n
+stuff =
+  .\ n = (11 - n) + 3
+-- .\ n >> 11 - n
 
 
 add-numbers b =
@@ -31,8 +32,8 @@ add-numbers b =
 
 compare b =
   match b begin
-    3 -> 42
-    x -> 55
+    3 -> 42 + 22
+    x -> 55 - 11
   end
 
 compare (:sym 1 2 3)

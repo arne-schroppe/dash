@@ -12,6 +12,7 @@ $alpha      = [a-zA-Z]
 $digit      = [0-9]
 $space      = [\ \t]
 $endline    = [\; $newl]
+$operator   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \^]
 
 
 @ident      = $alpha( ($alphanum+ \-)* $alphanum+ )?
@@ -45,6 +46,7 @@ tokens :-
   "<-"          { mkTok TArrow_L }
   @integer      { mkTokS (\s -> TInt (read s)) }
   @ident        { mkTokS (\s -> TId s) }
+  $operator+    { mkTokS (\s -> TOperator s) }
 
 
 
@@ -105,6 +107,7 @@ data Token  = TEOL
             | TBegin
             | TEnd
             | TLambda
+            | TOperator String
   deriving (Show, Eq)
 
 

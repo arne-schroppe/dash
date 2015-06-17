@@ -167,8 +167,8 @@ normalizeLambda params bodyExpr name k = do
 -- TODO it gets a bit confusing in which cases we expect a closure and where we expect a simple function
 normalizeFunCall :: Expr -> [Expr] -> Cont -> NormState NstExpr
 normalizeFunCall funExpr args k = case (funExpr, args) of
-  (Var "add", [a, b]) -> normalizeMathPrimOp NPrimOpAdd a b
-  (Var "sub", [a, b]) -> normalizeMathPrimOp NPrimOpSub a b
+  (Var "+", [a, b]) -> normalizeMathPrimOp NPrimOpAdd a b
+  (Var "-", [a, b]) -> normalizeMathPrimOp NPrimOpSub a b
   _ -> do nameExpr funExpr "" $ \ funVar -> do
             maybeAr <- arity funVar
             case maybeAr of

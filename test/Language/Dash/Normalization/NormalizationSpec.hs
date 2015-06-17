@@ -28,8 +28,8 @@ spec = do
         norm `shouldBe` (NAtom $ NPlainSymbol 0)
 
       it "splits a complex addition operation" $ do
-        let ast = FunCall (Var "add")
-                      [(FunCall (Var "sub")
+        let ast = FunCall (Var "+")
+                      [(FunCall (Var "-")
                           [LitNumber 2, LitNumber 3]),
                        LitNumber 4]
         let norm = pureNorm ast
@@ -48,7 +48,7 @@ spec = do
                       [(FunCall (Var "fun2")
                           [LitNumber 1, LitNumber 2]),
                        LitNumber 3,
-                       (FunCall (Var "add")
+                       (FunCall (Var "+")
                           [LitNumber 4, LitNumber 5]),
                        LitNumber 6]
         let norm = pureNorm ast
@@ -85,7 +85,7 @@ spec = do
 
       it "reuses named variables" $ do
         let ast = LocalBinding (Binding "x" $ LitNumber 3) $
-                  FunCall (Var "add") [Var "x", Var "x"]
+                  FunCall (Var "+") [Var "x", Var "x"]
         let norm = pureNorm ast
         let expected =
                 NLet (NLocalVar 0 "x") (NNumber 3) $
@@ -111,8 +111,8 @@ spec = do
       it "normalizes nested bindings" $ do
         let ast = LocalBinding (Binding "a" $
                     LocalBinding (Binding "b" $ LitNumber 22) $
-                    FunCall (Var "add") [Var "b", LitNumber 4] ) $
-                  FunCall (Var "sub") [Var "a", LitNumber 55]
+                    FunCall (Var "+") [Var "b", LitNumber 4] ) $
+                  FunCall (Var "-") [Var "a", LitNumber 55]
         let norm = pureNorm ast
         let expected =
                 NLet (NLocalVar 1 "") (NNumber 4) $
@@ -134,7 +134,7 @@ spec = do
 
       it "identifies constant free variables" $ do
         let ast = LocalBinding (Binding "b" (LitNumber 4)) $
-                     Lambda ["a"] $ FunCall (Var "add") [Var "a", Var "b"]
+                     Lambda ["a"] $ FunCall (Var "+") [Var "a", Var "b"]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "b") (NNumber 4) $
                        NAtom $ NLambda [] ["a"] $
@@ -144,7 +144,7 @@ spec = do
 
       it "identifies dynamic free variables" $ do
         let ast = Lambda ["b"] $
-                     Lambda ["a"] $ FunCall (Var "add") [Var "a", Var "b"]
+                     Lambda ["a"] $ FunCall (Var "+") [Var "a", Var "b"]
         let norm = pureNorm ast
         let expected = NAtom $ NLambda [] ["b"] $
                        NAtom $ NLambda ["b"] ["a"] $
@@ -155,7 +155,7 @@ spec = do
         let ast = Lambda ["a"] $
                   Lambda ["b"] $
                   Lambda ["c"] $
-                  Lambda ["d"] $ FunCall (Var "add") [Var "a", Var "b"]
+                  Lambda ["d"] $ FunCall (Var "+") [Var "a", Var "b"]
         let norm = pureNorm ast
         let expected = NAtom $ NLambda [] ["a"] $
                        NAtom $ NLambda ["a"] ["b"] $
@@ -239,7 +239,7 @@ spec = do
 
       it "resolves recursive use of an identifier" $ do
         let ast = LocalBinding (Binding "fun" $
-                    Lambda ["a"] $ FunCall (Var "fun") [FunCall (Var "add") [Var "a", LitNumber 1]]) $
+                    Lambda ["a"] $ FunCall (Var "fun") [FunCall (Var "+") [Var "a", LitNumber 1]]) $
                   FunCall (Var "fun") [LitNumber 10]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "fun") (NLambda [] ["a"] $
@@ -256,7 +256,7 @@ spec = do
       it "resolves recursive use of an identifier in a closure" $ do
         let ast = LocalBinding (Binding "outer" $ Lambda ["b"] $
                     LocalBinding (Binding "fun" $
-                      Lambda ["a"] $ FunCall (Var "fun") [FunCall (Var "add") [Var "a", Var "b"]]) $
+                      Lambda ["a"] $ FunCall (Var "fun") [FunCall (Var "+") [Var "a", Var "b"]]) $
                     FunCall (Var "fun") [LitNumber 10]) $
                   FunCall (Var "outer") [LitNumber 2]
         let norm = pureNorm ast
@@ -276,7 +276,7 @@ spec = do
         let ast = LocalBinding (Binding "outer" $ Lambda ["b"] $
                     LocalBinding (Binding "fun" $ Lambda ["a"] $
                       LocalBinding (Binding "inner" $ Lambda ["x"] $
-                        FunCall (Var "fun") [FunCall (Var "add") [Var "a", Var "b"]]) $
+                        FunCall (Var "fun") [FunCall (Var "+") [Var "a", Var "b"]]) $
                       FunCall (Var "inner") [LitNumber 0]) $
                     FunCall (Var "fun") [LitNumber 10]) $
                   FunCall (Var "outer") [LitNumber 2]

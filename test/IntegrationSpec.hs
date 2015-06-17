@@ -23,11 +23,11 @@ spec = do
       result `shouldReturn` VMSymbol "dash" []
 
     it "applies built-in add function" $ do
-      let result = run "add 2 3"
+      let result = run "2 + 3"
       result `shouldReturn` VMNumber 5
 
     it "applies built-in subtract function" $ do
-      let result = run "sub 7 3"
+      let result = run "7 - 3"
       result `shouldReturn` VMNumber 4
 
     it "stores a value in a variable" $ do
@@ -38,13 +38,13 @@ spec = do
     it "uses local bindings in function call" $ do
       let code = " a = 4 \n\
                  \ b = 7 \n\
-                 \ add a b"
+                 \ a + b"
       let result = run code
       result `shouldReturn` VMNumber 11
 
     it "applies a custom function" $ do
       let code = " add-two a = \n\
-                 \   add 2 a \n\
+                 \   2 + a \n\
                  \ \n\
                  \ add-two 5"
       let result = run code
@@ -52,7 +52,7 @@ spec = do
 
     it "applies a local variable to a custom function" $ do
       let code = " add-two a = \n\
-                 \   add 2 a \n\
+                 \   2 + a \n\
                  \ \n\
                  \ x = 10 \n\
                  \ y = 5 \n\
@@ -62,7 +62,7 @@ spec = do
 
     it "does a generic application of a function" $ do
       let code = "\
-      \ my-sub a b = sub a b \n\
+      \ my-sub a b = a - b \n\
       \ apply f = \n\
       \   f 123 3 \n\
       \ apply my-sub"
@@ -72,7 +72,7 @@ spec = do
     -- TODO When returning a lambda from a function (as seen here) it would be more secure to have a tag for lambdas
     it "returns a simple lambda" $ do
       let code =  " make-adder x = \n\
-                  \   .\\ y = add 22 y \n\
+                  \   .\\ y = 22 + y \n\
                   \ \n\
                   \ adder = make-adder :nil \n\
                   \ adder 55"
@@ -84,7 +84,7 @@ spec = do
     it "optimizes tail calls" $ do
       let code = "\
       \ counter acc = \n\
-      \   next = add acc 1 \n\
+      \   next = acc + 1 \n\
       \   match next begin\n\
       \     1000 -> 43   \n\
       \     x -> counter x \n\
@@ -103,7 +103,7 @@ spec = do
             it "handles nested self-recursion" $ do
               let code = "\
               \ counter acc = \n\
-              \   next = sub acc 1 \n\
+              \   next = acc - 1 \n\
               \   match next begin\n\
               \     0 -> 43   \n\
               \     x -> counter x \n\
@@ -120,9 +120,9 @@ spec = do
               let code = "\
               \ outer m res = \n\
               \   dummy-closure y = \n\
-              \     add res y    \n\
+              \     res + y    \n\
               \   counter acc = \n\
-              \     next = sub acc m \n\
+              \     next = acc - m \n\
               \     match next begin\n\
               \       0 -> res   \n\
               \       x -> counter x \n\
@@ -141,7 +141,7 @@ spec = do
               \     x -> add-one a \n\
               \   end \n\
               \ val add-one (v) = \n\
-              \   val x = add v 1 \n\
+              \   val x = v + 1 \n\
               \   check x \n\
               \ check 0"
               let result = run code
@@ -170,7 +170,7 @@ spec = do
 
             it "returns a closure with a dynamic variable" $ do
               let code =  " make-sub x = \n\
-                          \   .\\ y = sub x y \n\
+                          \   .\\ y = x - y \n\
                           \ \n\
                           \ subtractor = make-sub 55 \n\
                           \ subtractor 4"
@@ -180,7 +180,7 @@ spec = do
             it "captures a constant number" $ do
               let code =  " c = 30 \n\
                           \ make-sub x = \n\
-                          \   .\\ y = sub c y \n\
+                          \   .\\ y = c - y \n\
                           \ \n\
                           \ subtractor = make-sub 10 \n\
                           \ subtractor 4"
@@ -198,7 +198,7 @@ spec = do
               result `shouldReturn` VMSymbol "my-symbol" []
 
             it "captures a constant function" $ do
-              let code =  " subsub a b = sub a b \n\
+              let code =  " subsub a b = a - b \n\
                           \ make-sub x = \n\
                           \   .\\ y = subsub x y \n\
                           \ \n\
@@ -209,7 +209,7 @@ spec = do
 
             it "captures several dynamic values" $ do
               let code =  " make-sub x y z w = \n\
-                          \   .\\ a = sub (sub z y) (sub x a)\n\
+                          \   .\\ a = (z - y) - (x - a)\n\
                           \ \n\
                           \ test = make-sub 33 55 99 160 \n\
                           \ test 24"
@@ -222,7 +222,7 @@ spec = do
               \ make-adder-maker x = \n\
               \   .\\ y = \n\
               \     .\\ z = \n\
-              \       add (add x (add z y)) outside \n\
+              \       (x + (z + y)) + outside \n\
               \ \n\
               \ ((make-adder-maker 9) 80) 150"
               let result = run code
@@ -234,7 +234,7 @@ spec = do
 
             it "evaluates a known curried function" $ do
               let code = "\
-              \ my-sub a b = sub a b \n\
+              \ my-sub a b = a - b \n\
               \ curry = my-sub 123  \n\
               \ curry 3"
               let result = run code
@@ -243,7 +243,7 @@ spec = do
             it "evaluates an unknown curried closure" $ do
               let code = "\
               \ get-cl x = \n\
-              \   .\\ a b = sub a b \n\
+              \   .\\ a b = a - b \n\
               \ apply f = \n\
               \   curry = f 123  \n\
               \   curry 3 \n\
@@ -254,7 +254,7 @@ spec = do
 
             it "evaluates an unknown curried function" $ do
               let code = "\
-              \ my-sub a b = sub a b \n\
+              \ my-sub a b = a - b \n\
               \ apply f = \n\
               \   curry = f 123  \n\
               \   curry 3 \n\
@@ -320,7 +320,7 @@ spec = do
             it "binds an identifier in a match pattern" $ do
               let code = " match 2 begin \n\
                          \   1 -> :one \n\
-                         \   n -> add 5 n \n\
+                         \   n -> 5 + n \n\
                          \ end"
               let result = run code
               result `shouldReturn` VMNumber 7
@@ -339,7 +339,7 @@ spec = do
             it "binds a value inside a symbol" $ do
               let code =  " match :test 4 8 15 begin \n\
                           \ :test 1 2 3 -> 1 \n\
-                          \ :test 4 n m -> add n m \n\
+                          \ :test 4 n m -> n + m \n\
                           \ :test 99 100 101 -> 3 \n\
                           \ end"
               let result = run code
@@ -349,7 +349,7 @@ spec = do
             it "binds a value inside a nested symbol" $ do
               let code =  " match :test 4 (:inner 8) 15 begin \n\
                           \ :test 4 (:wrong n) m -> 1 \n\
-                          \ :test 4 (:inner n) m -> add n m \n\
+                          \ :test 4 (:inner n) m -> n + m \n\
                           \ :test 4 (:wrong n) m -> 1 \n\
                           \ end"
               let result = run code
@@ -375,6 +375,9 @@ K Tail call optimisation (isResultValue, add new opcodes)
 K Currying (also with underscore ?)
 - Over-saturated calls!
 K Change order of free vars and formal parameters in function code so that we can use partial application as currying
+- Equality operator
+- More math operators
+- infix operators
 - Strings
 - Creating symbols
 - Lists
@@ -387,10 +390,12 @@ K Change order of free vars and formal parameters in function code so that we ca
 
 After release ?
 - Modules
-- Mutual recursion in module top-level
-- indentation syntax
 - I/O
+- indentation syntax
+- Mutual recursion in module top-level
 - Multiple files
+
+- private/secret symbols
 
 
 - Can we do partial compilation? Per module? Or just a single function or value in a repl?
@@ -402,7 +407,7 @@ After release ?
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
 - Faster, optimized match patterns (reduce number of comparisons)
 - Uniquely name vars in frontend, i.e. data-flow analysis
-- Prevent duplicate var names in function definition (unless it's for pattern matching?)
+- Prevent duplicate var names in function definition (unless it's for pattern matching? No, that would be useless)
 
 TODO: Functions need a runtime tag!
 
