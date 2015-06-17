@@ -176,18 +176,19 @@ normalizeFunCall funExpr args k = case (funExpr, args) of
     callToKnownFunction :: NstVar -> Int -> Int -> NormState NstExpr
     callToKnownFunction funVar numFreeVars funArity =
       let numArgs = length args in
+      -- saturated call
       if numArgs == funArity then do
         normalizeExprList args $ \ normArgs ->
             k $ NFunCall funVar normArgs
+      -- under-saturated call
       else if numArgs < funArity then 
-        -- under-saturated call
         -- We already know at this point, that this *must* be a simple function, not a closure
         if numFreeVars > 0 then error "Internal compiler error, trying to do static partial application of closure" 
         else
           normalizeExprList args $ \ normArgs ->
               k $ NPartAp funVar normArgs
+      -- over-saturated call
       else do
-        -- over-saturated call
         -- TODO should we also check for closures here?
         let (knownFunArgs, remainingArgs) = splitAt funArity args
         normalizeExprList knownFunArgs $ \ normKnownFunArgs -> do
