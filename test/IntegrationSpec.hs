@@ -377,6 +377,7 @@ K Currying (also with underscore ?)
 K Change order of free vars and formal parameters in function code so that we can use partial application as currying
 - Equality operator (needs built-in :true and :false symbols)
 - if-then-else
+- pattern wildcard (can be used multiple times)
 - More math operators
 K infix operators
 - Strings

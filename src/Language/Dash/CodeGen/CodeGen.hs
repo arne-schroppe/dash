@@ -11,6 +11,10 @@ import           Language.Dash.IR.Tac
 import           Control.Monad.State
 
 
+-- TODO explain what the code generator does and how it does it !
+
+
+
 
 -- TODO when there is more time, do dataflow analysis to reuse registers
 
@@ -186,9 +190,10 @@ createSelfRefInstrsIfNeeded clReg = do
     Just index -> return [Tac_set_cl_val clReg clReg index]
 
 
+-- Every branch in the match-expression has been converted to a lambda by the normalizer. (TODO inline these branches!)
 compileMatch :: Reg -> NstVar -> Int -> Int -> [([String], NstVar)] -> Bool -> CodeGenState [Tac]
 compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
-  let branchMatchedVars = map fst branches
+  let branchCaptures = map fst branches
   let branchLambdaVars = map snd branches -- the variables containing lambdas to call
   subjR <- getReg subject
   -- TODO use the next free register instead of hardcoded value
@@ -206,18 +211,23 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
                       zip remainingBranches handledBranches
   -- We are using reg as a temporary register here
   let matchCode = [Tac_load_addr 30 patternAddr, Tac_match subjR 30 captureStartReg]
-  compiledBranches <- forM (zip3 remainingBranches branchMatchedVars branchLambdaVars) $
-                              \ (remaining, matchedVars, funVar) -> do
-                                      let loadArgInstr = compileMatchBranchLoadArg captureStartReg matchedVars
-                                      callInstr <- compileCallInstr reg funVar (length matchedVars) isResultValue
+  compiledBranches <- forM (zip3 remainingBranches branchCaptures branchLambdaVars) $
+                              \ (remaining, capturedVars, funVar) -> do
+                                      let loadArgInstr = compileMatchBranchLoadArg captureStartReg capturedVars
+                                      callInstr <- compileCallInstr reg funVar (length capturedVars) isResultValue
                                       return $ [loadArgInstr] ++ callInstr ++ [Tac_jmp (remaining * instrsPerBranch)]
   let body = Prelude.concat compiledBranches
   return $ matchCode ++ jumpTable ++ body
 
 
+-- The lambda that represents a match-branch takes its captured values as arguments.
+-- Here we create the set_arg instruction to load the captures. They are stored linearly
+-- in the registers, starting at captureStartReg, so we just need a single set_arg instruction.
+-- Note that we might end up with zero arguments.
 compileMatchBranchLoadArg :: Reg -> [String] -> Tac
-compileMatchBranchLoadArg startReg matchedVars =
-  Tac_set_arg 0 startReg (max 0 $ (length matchedVars) - 1)
+compileMatchBranchLoadArg captureStartReg capturedVars =
+  let numCaptures = (max 0 $ (length capturedVars) - 1) in
+  Tac_set_arg 0 captureStartReg numCaptures
 
 
 compileSetArg :: NstVar -> Int -> CodeGenState Tac

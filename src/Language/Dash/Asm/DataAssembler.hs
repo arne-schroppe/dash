@@ -18,6 +18,9 @@ Data Assembler
 Encodes data of type Constant for the virtual machine.
 
 
+TODO describe the runtime representation of all data
+TODO rename const table to constant pool?
+
 -}
 
 
