@@ -404,6 +404,8 @@ After release ?
 
 - private/secret symbols
 
+- Clean up compiler errors. Have a variant with all errors and warnings and emit those. Render when printing
+
 
 - Can we do partial compilation? Per module? Or just a single function or value in a repl?
 

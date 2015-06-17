@@ -139,27 +139,26 @@ compileLoadLambda reg funAddr isResultValue = do
 
 
 compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Tac]
-compileLet tmpVar@(NLocalVar _ name) atom body =
-  compileLet' tmpVar atom name body
-
 compileLet tmpVar atom body =
-  compileLet' tmpVar atom "" body
+  case tmpVar of
+    NLocalVar _ name -> compileLet' name
+    _                -> compileLet' ""
+  where
+    compileLet' :: String -> CodeGenState [Tac]
+    compileLet' name = do
+      let callDirect = canBeCalledDirectly atom
+      rTmp <- getReg tmpVar
+      when callDirect $ addDirectCallReg rTmp
+      comp1 <- compileAtom rTmp atom name False
+      comp2 <- compileExpr body
+      return $ comp1 ++ comp2
 
-compileLet' :: NstVar -> NstAtomicExpr -> String -> NstExpr -> CodeGenState [Tac]
-compileLet' tmpVar atom name body = do
-  let callDirect = canBeCalledDirectly atom
-  rTmp <- getReg tmpVar
-  when callDirect $ addDirectCallReg rTmp
-  comp1 <- compileAtom rTmp atom name False
-  comp2 <- compileExpr body
-  return $ comp1 ++ comp2
 
-
--- This determines whether we'll use Tac_call or Tac_call_cl later
+-- This determines whether we'll use Tac_call or Tac_gen_ap later
 canBeCalledDirectly :: NstAtomicExpr -> Bool
 canBeCalledDirectly atom = case atom of
-  NVar (NConstantFreeVar _) -> True -- TODO we need a function tag for this case
-  NLambda ([]) _ _ -> True
+  NVar (NConstantFreeVar _) -> True    -- this is a function in a surrounding context
+  NLambda ([]) _ _ -> True             -- this is a function inside this function's context
   _ -> False
 
 

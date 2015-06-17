@@ -130,18 +130,6 @@ normalizeSymbol sid args k = do
   cAddr <- addConstant encConst
   k (NCompoundSymbol False cAddr)
 
--- There are three cases:
---   - static symbols, which are completely in the sym table
---   - dynamic symbols, which have some dynamic elements. A template for these can be
---     generated in the sym table and then be copied and modified
---   - unknown dynamism. This happens when symbols include free vars. We need to
---     resolve at a later point whether the closed over var is static or dynamic
---     (or do we?)
-{-
-  normalizeExprList args $ \ normArgs ->
-          k $ NFunCall $ funVar : normArgs
--}
-
 
 -- This is only direct usage of a var (as a "return value")
 normalizeVar :: String -> Cont -> NormState NstExpr
@@ -172,14 +160,18 @@ normalizeFunCall funExpr args k = case (funExpr, args) of
   _ -> do nameExpr funExpr "" $ \ funVar -> do
             maybeAr <- arity funVar
             case maybeAr of
-              Nothing -> do normalizeExprList args $ \ normArgs ->
-                             k $ NFunCall funVar normArgs
+              Nothing -> callToUnknownFunction funVar
               Just (numFree, ar) -> callToKnownFunction funVar numFree ar
   where
     normalizeMathPrimOp :: (NstVar -> NstVar -> NstPrimOp) -> Expr -> Expr -> NormState NstExpr
     normalizeMathPrimOp mathPrimOp a b = do
       normalizeExprList [a, b] $ \ [aVar, bVar] ->
           k $ NPrimOp $ mathPrimOp aVar bVar
+
+    callToUnknownFunction :: NstVar -> NormState NstExpr
+    callToUnknownFunction funVar = 
+      do normalizeExprList args $ \ normArgs ->
+          k $ NFunCall funVar normArgs
 
     callToKnownFunction :: NstVar -> Int -> Int -> NormState NstExpr
     callToKnownFunction funVar numFreeVars funArity =

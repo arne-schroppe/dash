@@ -161,13 +161,14 @@ getReg (NLocalVar tmpVar _) = do
 getReg (NRecursiveVar _) = error "Compiler error: Unexpected recursive var"
 
 
+-- TODO rename to isRegWithRefToKnownFunction
 isDirectCallReg :: Reg -> CodeGenState Bool
 isDirectCallReg reg = do
   scope <- getScope
   let dCallRegs = directCallRegs scope
   return $ Prelude.elem reg dCallRegs
 
-
+-- TODO same here (rename)
 addDirectCallReg :: Reg -> CodeGenState ()
 addDirectCallReg reg = do
   scope <- getScope
