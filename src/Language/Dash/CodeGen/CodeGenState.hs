@@ -142,11 +142,10 @@ getRegByName name = do
   where getRegN = do
           let pl = liftM2 mplus
           numFree <- numFreeVars
-          (freeVar name) `pl`
-              (param name >>= \ p -> return $ (+) <$> (Just numFree) <*> p) `pl`
-              (localVar name)
-
-
+          -- we're trying one possible type of var after another
+          freeVar name `pl`
+              (param name >>= return . ((+) <$> (Just numFree) <*>)) `pl`
+              localVar name
 
 
 getReg :: NstVar -> CodeGenState Int
