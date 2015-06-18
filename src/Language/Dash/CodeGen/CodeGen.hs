@@ -149,6 +149,7 @@ compileLet tmpVar atom body =
       let callDirect = canBeCalledDirectly atom
       rTmp <- getReg tmpVar
       when callDirect $ addDirectCallReg rTmp
+      bindLocalVar name rTmp
       comp1 <- compileAtom rTmp atom name False
       comp2 <- compileExpr body
       return $ comp1 ++ comp2
@@ -157,8 +158,8 @@ compileLet tmpVar atom body =
 -- This determines whether we'll use Tac_call or Tac_gen_ap later
 canBeCalledDirectly :: NstAtomicExpr -> Bool
 canBeCalledDirectly atom = case atom of
-  NVar (NConstantFreeVar _) -> True    -- this is a function in a surrounding context
-  NLambda ([]) _ _ -> True             -- this is a function inside this function's context
+  NVar (NConstantFreeVar _) -> True    -- this is a function in a surrounding context     -- TODO we actually don't know whether this is a function at all!
+  NLambda [] _ _ -> True               -- this is a function inside this function's context
   _ -> False
 
 

@@ -260,7 +260,6 @@ spec = do
               \   curry 3 \n\
               \ apply my-sub"
               let result = run code
-              putStrLn $ show $ toAsm code
               result `shouldReturn` VMNumber 120
 
 
@@ -356,6 +355,20 @@ spec = do
               result `shouldReturn` VMNumber 23
 
 
+
+    it "binds a value inside a nested symbol" $ do
+      let code = " fib n =                       \n\
+                 \   n' = n - 1                  \n\
+                 \   n'' = n - 2                 \n\
+                 \   match n begin               \n\
+                 \     0 -> 0                    \n\
+                 \     1 -> 1                    \n\
+                 \     x -> (fib n') + (fib n'') \n\
+                 \   end                         \n\
+                 \   fib 13"
+      putStrLn $ show $ toNorm code
+      let result = run code
+      result `shouldReturn` VMNumber 233
 
 {-
 What's missing:

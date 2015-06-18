@@ -12,6 +12,8 @@
 
 // TODO unify func vs fun
 // TODO unify addr vs address
+//
+// TODO use low bits for tag, use pointers directly?
 
 #ifdef VM_DEBUG
 #  define debug(x) do { x; } while (0)

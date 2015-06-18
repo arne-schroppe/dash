@@ -163,6 +163,7 @@ addDynamicVar name = do
   else return ()
 
 addBinding :: String -> (NstVar, Bool) -> NormState ()
+addBinding "" _ = return ()
 addBinding name bnd = do
   con <- context
   let bindings' = Map.insert name bnd (bindings con)

@@ -81,9 +81,7 @@ normalizeInContext expr = do
 normalizeExpr :: Expr -> NormState NstExpr
 normalizeExpr expr = case expr of
   LocalBinding (Binding name boundExpr) restExpr ->
-    nameExpr boundExpr name $ \ var -> do
-      -- TODO use isDynamic here
-      addBinding name (var, False)
+    nameExpr boundExpr name $ \ _ -> do
       rest <- normalizeExpr restExpr
       return $ rest
   _ -> do
@@ -141,7 +139,7 @@ normalizeVar name k = do
 normalizeLambda :: [String] -> Expr -> String -> Cont -> NormState NstExpr
 normalizeLambda params bodyExpr name k = do
   enterContext params
-  when (not $ null name) $ addBinding name (NRecursiveVar name, False) -- TODO we don't know whether this var is dynamic or not!
+  addBinding name (NRecursiveVar name, False) -- TODO we don't know whether this var is dynamic or not!
   -- TODO add arity for recursive var?
   normalizedBody <- normalizeExpr bodyExpr
   freeVars <- freeVariables
@@ -248,6 +246,7 @@ normalizeExprList exprList k =
 nameExpr :: Expr -> String -> VCont -> NormState NstExpr
 nameExpr expr originalName k = case expr of
   -- Some variable can be used directly and don't need to be let-bound
+  -- TODO what if we use a var several times, will it be bound several times?
   Var name -> do
     var <- lookupName name
     case var of
@@ -263,19 +262,22 @@ nameExpr expr originalName k = case expr of
   _ -> letBind expr originalName k
   where
     letBind :: Expr -> String -> VCont -> NormState NstExpr
-    letBind e n k' = do
-      atomizeExpr e n $ \ aExpr -> do
-        var <- newTempVar n
+    letBind expr' name k' = do
+      atomizeExpr expr' name $ \ aExpr -> do
+        var <- newTempVar name
+        addBinding name (var, (isDynamic aExpr))
         restExpr <- k' var
         return $ NLet var aExpr restExpr
 
-{-
-isAtomDynamic expr = case expr of
-  NLambda (h:_) _ _ -> True
-  NCompoundSymbol True _ -> True
-  _ -> False
--}
 
+isDynamic :: NstAtomicExpr -> Bool
+isDynamic aExpr =
+  case aExpr of
+    NNumber _ -> False
+    NPlainSymbol _ -> False
+    NString _ -> False
+    NLambda [] _ _ -> False
+    _ -> True
 
 
 

@@ -1,7 +1,6 @@
 module Language.Dash.CodeGen.CodeGenState where
 
 
-import           Control.Applicative
 import           Control.Monad.State hiding (state)
 import qualified Data.Map               as Map
 import qualified Data.Sequence          as Seq
@@ -31,6 +30,7 @@ emptyCompEnv = CompEnv {
 data CompScope = CompScope {
                    functionParams         :: Map.Map String Int
                  , freeVariables          :: Map.Map String Int
+                 , localVariables         :: Map.Map String Int
                  , forwardDeclaredLambdas :: [String]
                  , selfReferenceSlot      :: Maybe Int
 
@@ -40,7 +40,7 @@ data CompScope = CompScope {
                  , directCallRegs         :: [Int]
 
                  , compileTimeConstants   :: Map.Map String CompileTimeConstant
-                 }
+                 } deriving (Show)
 
 
 makeScope :: Map.Map String Int -> Map.Map String Int -> CompScope
@@ -51,6 +51,7 @@ makeScope freeVars params = CompScope {
              , selfReferenceSlot = Nothing
              , directCallRegs = []
              , compileTimeConstants = Map.empty
+             , localVariables = Map.empty
              }
 
 
@@ -59,6 +60,7 @@ data CompileTimeConstant =
   | CTConstPlainSymbol SymId
   | CTConstCompoundSymbol ConstAddr
   | CTConstLambda FunAddr
+  deriving (Show)
 
 
 beginFunction :: [String] -> [String] -> CodeGenState Int
@@ -107,6 +109,19 @@ freeVar name = do
   return res
 
 
+bindLocalVar :: String -> Int -> CodeGenState ()
+bindLocalVar "" _ = return ()
+bindLocalVar name reg = do
+  scope <- getScope
+  let bindings' = Map.insert name reg (localVariables scope)
+  putScope $ scope { localVariables = bindings' }
+
+localVar :: String -> CodeGenState (Maybe Int)
+localVar name = do
+  localVars <- gets $ localVariables.head.scopes
+  return $ Map.lookup name localVars
+
+
 addPlaceholderFunction :: CodeGenState Int
 addPlaceholderFunction = do
   state <- get
@@ -122,16 +137,23 @@ getRegByName name = do
   maybeReg <- getRegN
   case maybeReg of
     Just index -> return index
-    Nothing -> error $ "Unknown identifier " ++ name
+    Nothing -> do 
+      localFreeVars <- gets $ scopes
+      error $ "Unknown identifier " ++ name ++ " " ++ (show localFreeVars)
   where getRegN = do
-  -- TODO make this less ugly
+          -- TODO use mplus here
           f <- freeVar name
           case f of
                   Just i -> return $ Just i
                   Nothing -> do
                           p <- param name
-                          numFree <- numFreeVars
-                          return $ (+) <$> p <*> Just numFree
+                          case p of
+                                  Just i' -> do
+                                          numFree <- numFreeVars
+                                          return $ Just $ i' + numFree
+                                  Nothing -> do
+                                          localVar name
+
 
 
 getReg :: NstVar -> CodeGenState Int
