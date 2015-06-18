@@ -1,6 +1,7 @@
 module Language.Dash.CodeGen.CodeGenState where
 
 
+import           Control.Applicative
 import           Control.Monad.State hiding (state)
 import qualified Data.Map               as Map
 import qualified Data.Sequence          as Seq
@@ -139,18 +140,12 @@ getRegByName name = do
     Just index -> return index
     Nothing -> error $ "Unknown identifier " ++ name
   where getRegN = do
-          -- TODO use mplus here
-          f <- freeVar name
-          case f of
-                  Just i -> return $ Just i
-                  Nothing -> do
-                          p <- param name
-                          case p of
-                                  Just i' -> do
-                                          numFree <- numFreeVars
-                                          return $ Just $ i' + numFree
-                                  Nothing -> do
-                                          localVar name
+          let pl = liftM2 mplus
+          numFree <- numFreeVars
+          (freeVar name) `pl`
+              (param name >>= \ p -> return $ (+) <$> (Just numFree) <*> p) `pl`
+              (localVar name)
+
 
 
 
