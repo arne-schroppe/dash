@@ -137,9 +137,7 @@ getRegByName name = do
   maybeReg <- getRegN
   case maybeReg of
     Just index -> return index
-    Nothing -> do 
-      localFreeVars <- gets $ scopes
-      error $ "Unknown identifier " ++ name ++ " " ++ (show localFreeVars)
+    Nothing -> error $ "Unknown identifier " ++ name
   where getRegN = do
           -- TODO use mplus here
           f <- freeVar name
