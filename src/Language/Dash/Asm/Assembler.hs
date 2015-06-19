@@ -80,6 +80,7 @@ assembleTac funcAddrs addrConv opc =
     Tac_tail_gen_ap r0 fr n -> instructionRRR 15 (r r0) (r fr) (i n)
     Tac_set_cl_val clr r1 n -> instructionRRR 16 (r clr) (r r1) (i n)
     Tac_part_ap r0 fr n     -> instructionRRR 17 (r r0) (r fr) (i n)
+    Tac_eq r0 r1 r2         -> instructionRRR 19 (r r0) (r r1) (r r2)
     Tac_fun_header arity    -> instructionRI  63 (r 0) (i arity)
 
 

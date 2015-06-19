@@ -29,6 +29,7 @@ typedef enum {
   OP_SET_CL_VAL = 16,
   OP_PART_AP = 17,      // Do partial application of known function
   OP_LOAD_f = 18,
+  OP_EQ = 19,
 
   FUN_HEADER = 63
 } vm_opcode;
@@ -74,6 +75,7 @@ typedef enum {
 #define op_set_arg(arg, r, n) (instr_rrr(OP_SET_ARG, arg, r, n)) // target argument, value reg, number of extra args/regs to copy (when copying just one argument, set this to 0)
 #define op_set_cl_val(clr, r1, n) (instr_rrr(OP_SET_CL_VAL, clr, r1, n)) // reg with closure addr (heap), value reg, argument index
 #define op_part_ap(r0, fr, n) (instr_rrr(OP_PART_AP, r0, fr, n)) // result reg, reg with function addr (code), num arguments
+#define op_eq(r0, r1, r2) (instr_rrr(OP_EQ, r0, r1, r2))
 
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))

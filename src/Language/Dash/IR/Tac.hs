@@ -31,6 +31,7 @@ data ThreeAddressCode =
   | Tac_set_cl_val Reg Reg Int    -- expects closure address (heap)
   | Tac_part_ap Reg Reg Int       -- result, reg with function address (code), num args
   | Tac_fun_header Int            -- arity
+  | Tac_eq Reg Reg Reg
   deriving (Show)
 
 type Tac = ThreeAddressCode

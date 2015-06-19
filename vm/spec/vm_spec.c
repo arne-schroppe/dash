@@ -449,6 +449,137 @@ it( does_a_generic_application_of_a_function ) {
   is_equal(result, val(21, vm_tag_number));
 }
 
+it( compares_unequal_objects ) {
+  vm_instruction program[] = {
+    op_load_i(1, 11),
+    op_load_ps(2, 11),
+    op_eq(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, val(0, vm_tag_plain_symbol));
+}
+
+it( compares_equal_numbers ) {
+  vm_instruction program[] = {
+    op_load_i(1, 11),
+    op_load_i(2, 11),
+    op_eq(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, val(1, vm_tag_plain_symbol));
+}
+
+it( compares_unequal_numbers ) {
+  vm_instruction program[] = {
+    op_load_i(1, 11),
+    op_load_i(2, 22),
+    op_eq(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, val(0, vm_tag_plain_symbol));
+}
+
+it( compares_equal_plain_symbols ) {
+  vm_instruction program[] = {
+    op_load_ps(1, 11),
+    op_load_ps(2, 11),
+    op_eq(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, val(1, vm_tag_plain_symbol));
+}
+
+it( compares_unequal_plain_symbols ) {
+  vm_instruction program[] = {
+    op_load_ps(1, 11),
+    op_load_ps(2, 22),
+    op_eq(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, val(0, vm_tag_plain_symbol));
+}
+
+it( compares_equal_compound_symbols ) {
+  vm_value const_table[] = {
+    compound_symbol_header(11, 2),
+    val(55, vm_tag_number),
+    val(66, vm_tag_number),
+    compound_symbol_header(11, 2),
+    val(55, vm_tag_number),
+    val(66, vm_tag_number),
+  };
+
+  vm_instruction program[] = {
+    op_load_cs(1, 0),
+    op_load_cs(2, 3),
+    op_eq(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, val(1, vm_tag_plain_symbol));
+}
+
+it( compares_compound_symbols_with_different_data ) {
+  vm_value const_table[] = {
+    compound_symbol_header(11, 2),
+    val(55, vm_tag_number),
+    val(66, vm_tag_number),
+    compound_symbol_header(11, 2),
+    val(55, vm_tag_number),
+    val(77, vm_tag_number),
+  };
+  vm_instruction program[] = {
+    op_load_cs(1, 0),
+    op_load_cs(2, 3),
+    op_eq(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, val(0, vm_tag_plain_symbol));
+}
+
+it( compares_compound_symbols_with_different_sym_ids ) {
+  vm_value const_table[] = {
+    compound_symbol_header(11, 2),
+    val(55, vm_tag_number),
+    val(66, vm_tag_number),
+    compound_symbol_header(12, 2),
+    val(55, vm_tag_number),
+    val(66, vm_tag_number),
+  };
+  vm_instruction program[] = {
+    op_load_cs(1, 0),
+    op_load_cs(2, 3),
+    op_eq(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, val(0, vm_tag_plain_symbol));
+}
+
+it( compares_compound_symbols_with_different_counts ) {
+  vm_value const_table[] = {
+    compound_symbol_header(11, 2),
+    val(55, vm_tag_number),
+    val(66, vm_tag_number),
+    compound_symbol_header(11, 1),
+    val(55, vm_tag_number),
+  };
+  vm_instruction program[] = {
+    op_load_cs(1, 0),
+    op_load_cs(2, 3),
+    op_eq(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, val(0, vm_tag_plain_symbol));
+}
+
 start_spec(vm_spec)
 	example(load_as_a_number_into_a_register)
 	example(adds_two_numbers)
@@ -471,5 +602,14 @@ start_spec(vm_spec)
   example(creates_an_explicit_partial_application)
   example(creates_a_partial_application_with_a_generic_application)
   example(does_a_generic_application_of_a_function)
+  example(compares_unequal_objects)
+  example(compares_equal_numbers)
+  example(compares_unequal_numbers)
+  example(compares_equal_plain_symbols)
+  example(compares_unequal_plain_symbols)
+  example(compares_equal_compound_symbols)
+  example(compares_compound_symbols_with_different_data)
+  example(compares_compound_symbols_with_different_sym_ids)
+  example(compares_compound_symbols_with_different_counts)
 end_spec
 

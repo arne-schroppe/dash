@@ -23,6 +23,9 @@
 
 static int invocation = 0;
 
+static const vm_value symbol_id_false = 0;
+static const vm_value symbol_id_true = 1;
+
 
 const vm_value vm_tag_number = 0x0;
 const vm_value vm_tag_plain_symbol = 0x4;
@@ -59,6 +62,7 @@ static const int fun_header_size = 1;
 #define current_frame (stack[stack_pointer])
 #define next_frame (stack[stack_pointer + 1])
 
+bool is_equal(vm_value l, vm_value r);
 
 //TODO turn into macro
 int do_call(stack_frame *frame, vm_value instr) {
@@ -146,7 +150,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       int reg0 = get_arg_r0(instr);
 
 
-      vm_value function_header = program[func_address];
+      //vm_value function_header = program[func_address];
       //TODO check that it's actually a function
 
 
@@ -450,6 +454,21 @@ bool execute_instruction(vm_instruction instr, vm_instruction *program) {
     }
     break;
 
+    case OP_EQ: {
+        vm_value l = get_reg(get_arg_r1(instr));
+        vm_value r = get_reg(get_arg_r2(instr));
+        int result_reg = get_arg_r0(instr);
+
+        if( is_equal(l, r)) {
+          get_reg(result_reg) = val(symbol_id_true, vm_tag_plain_symbol);
+        }
+        else {
+          get_reg(result_reg) = val(symbol_id_false, vm_tag_plain_symbol);
+        }
+
+    }
+    break;
+
 
     default:
       fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);
@@ -459,6 +478,49 @@ bool execute_instruction(vm_instruction instr, vm_instruction *program) {
   }
 
   return true;
+}
+
+
+
+// TODO try to do this without recursive function calls
+bool is_equal(vm_value l, vm_value r) {
+
+  vm_value l_tag = get_tag(l);
+
+  if(l_tag != get_tag(r)) {
+    return false;
+  }
+
+  if (l_tag == vm_tag_plain_symbol || l_tag == vm_tag_number) {
+    if(l != r) {
+      return false;
+    }
+
+    return true;
+  }
+
+  if ( l_tag == vm_tag_compound_symbol ) {
+    int l_addr = from_val(l, vm_tag_compound_symbol);
+    int r_addr = from_val(r, vm_tag_compound_symbol);
+    vm_value l_header = const_table[l_addr];
+    vm_value r_header = const_table[r_addr];
+
+    int count = compound_symbol_count(l_header);
+    if( (compound_symbol_id(l_header) != compound_symbol_id(r_header))
+        || (count != compound_symbol_count(r_header)) ) {
+      return false;
+    }
+
+    for(int i = 1; i < count + 1; ++i) {
+      if(! is_equal(const_table[l_addr + i], const_table[r_addr + i])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 
