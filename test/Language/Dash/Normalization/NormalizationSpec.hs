@@ -21,11 +21,13 @@ spec = do
         norm `shouldBe` (NAtom $ NNumber 3)
 
       it "normalizes a simple symbol directly" $ do
+        let builtInSymbols = ["false", "true"]
+        let numBuiltInSymbols = length builtInSymbols
         let ast = LitSymbol "Test" []
         let (norm, _, syms) = normalize ast
-        (length syms) `shouldBe` 1
-        syms `shouldBe` ["Test"]
-        norm `shouldBe` (NAtom $ NPlainSymbol 0)
+        (length syms) `shouldBe` (numBuiltInSymbols + 1)
+        syms `shouldBe` (builtInSymbols ++ ["Test"])
+        norm `shouldBe` (NAtom $ NPlainSymbol (numBuiltInSymbols + 0))
 
       it "splits a complex addition operation" $ do
         let ast = FunCall (Var "+")
@@ -226,8 +228,8 @@ spec = do
                   ]
         let (norm, ctable, _) = normalize ast
         let expectedCTable = [ CMatchData [
-                               CCompoundSymbol 0 [CMatchVar 0, CMatchVar 1, CMatchVar 2],
-                               CCompoundSymbol 1 [CMatchVar 0, CMatchVar 1]
+                               CCompoundSymbol 2 [CMatchVar 0, CMatchVar 1, CMatchVar 2],
+                               CCompoundSymbol 3 [CMatchVar 0, CMatchVar 1]
                              ]]
         let expected = NLet (NLocalVar 0 "") (NNumber 2) $
                        NLet (NLocalVar 1 "") (NLambda [] ["n", "o", "p"] $ NAtom $ NVar $ NFunParam "n") $
@@ -372,3 +374,18 @@ spec = do
 -}
 
       -- TODO a recursive closure which changes it's context (is that possible?)
+
+
+      it "has :true and :false as built-in symbols" $ do
+        let ast = LocalBinding (Binding "x" $ LitSymbol "a" []) $
+                  LocalBinding (Binding "y" $ LitSymbol "b" []) $
+                  LocalBinding (Binding "t" $ LitSymbol "true" []) $
+                  LocalBinding (Binding "f" $ LitSymbol "false" []) $
+                  LitNumber 0
+        let norm = pureNorm ast
+        let expected = NLet (NLocalVar 0 "x") (NPlainSymbol 2) $
+                       NLet (NLocalVar 1 "y") (NPlainSymbol 3) $
+                       NLet (NLocalVar 2 "t") (NPlainSymbol 1) $
+                       NLet (NLocalVar 3 "f") (NPlainSymbol 0) $
+                       NAtom $ NNumber 0
+        norm `shouldBe` expected

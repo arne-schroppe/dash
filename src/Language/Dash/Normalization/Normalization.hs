@@ -123,8 +123,8 @@ normalizeSymbol sname [] k = do
   symId <- addSymbolName sname
   k (NPlainSymbol symId)
 
-normalizeSymbol sid args k = do
-  encConst <- encodeConstant $ LitSymbol sid args
+normalizeSymbol sname args k = do
+  encConst <- encodeConstant $ LitSymbol sname args
   cAddr <- addConstant encConst
   k (NCompoundSymbol False cAddr)
 

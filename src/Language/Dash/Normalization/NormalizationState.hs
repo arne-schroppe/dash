@@ -49,7 +49,7 @@ data NormEnv = NormEnv {
 
 emptyNormEnv :: NormEnv
 emptyNormEnv = NormEnv {
-  symbolNames = Map.empty
+  symbolNames = Map.fromList[ ("false", 0), ("true", 1) ]
 , constTable = []
 , contexts = []
 , arities = Map.empty

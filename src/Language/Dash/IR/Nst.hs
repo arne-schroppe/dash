@@ -45,7 +45,15 @@ data NstVar =
   | NDynamicFreeVar String
   | NConstantFreeVar String -- We should rename this to StaticFreeVar
   | NRecursiveVar String
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show NstVar where
+  show v = case v of
+    NLocalVar i name -> "r" ++ (show i) ++ (if not (null name) then " '" ++ name ++ "'" else "")
+    NFunParam name -> "p '" ++ name ++ "'"
+    NDynamicFreeVar name -> "λ '" ++ name ++ "'"
+    NConstantFreeVar name -> "g '" ++ name ++ "'"
+    NRecursiveVar name -> "r '" ++ name ++ "'"
 
 data NstPrimOp =
     NPrimOpAdd NstVar NstVar
@@ -57,14 +65,14 @@ data NstPrimOp =
 instance Show NstAtomicExpr where
   show atom = case atom of
     NNumber n -> show n
-    NPlainSymbol s -> "sym id " ++ (show s)
+    NPlainSymbol s -> "sym #" ++ (show s)
     NCompoundSymbol b sa -> "sym @" ++ (show sa) ++ (if b then " (dynamic)" else "")
     NString str -> "\"" ++ str ++ "\""
     NVar v -> "var " ++ (show v)
-    NLambda free params body -> "fun fr" ++ (show free) ++ " prms" ++ (show params) ++ " {\n" ++ (show body) ++ "} "
+    NLambda free params body -> "fun λ" ++ (show free) ++ " p" ++ (show params) ++ " {\n" ++ (show body) ++ "\n} "
     NPrimOp p -> show p
-    NPartAp v args -> "part-ap " ++ (show v) ++ " " ++ (show args)
+    NPartAp v args -> "pap " ++ (show v) ++ " " ++ (show args)
     NFunCall v args -> "ap " ++ (show v) ++ " " ++ (show args)
-    NMatch maxv subj pat body -> "match (max: " ++ (show maxv) ++ ") " ++ (show subj) ++ " @" ++ (show pat) ++ " " ++ (show body)
+    NMatch maxv subj pat body -> "match (max " ++ (show maxv) ++ ") [" ++ (show subj) ++ "] @" ++ (show pat) ++ " " ++ (show body)
     
 

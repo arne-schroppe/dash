@@ -404,6 +404,7 @@ K infix operators
 
 - Garbage collection
 - Reducing the amount of created garbage
+  - inlining of match branches
 
 
 
