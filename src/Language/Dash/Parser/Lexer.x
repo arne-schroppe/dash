@@ -36,6 +36,9 @@ tokens :-
   "("           { mkTok TOpen_Par }
   ")"           { mkTok TClose_Par }
   "module"      { mkTok TModule }
+  "if"          { mkTok TIf }
+  "then"        { mkTok TThen }
+  "else"        { mkTok TElse }
   "match"       { mkTok TMatch }
   "do"          { mkTok TDo }
   "with"        { mkTok TWith }
@@ -92,6 +95,9 @@ data Token  = TEOL
             | TEOF
             | TOpen_Par
             | TClose_Par
+            | TIf
+            | TThen
+            | TElse
             | TModule
             | TDefine
             | TSymbol String

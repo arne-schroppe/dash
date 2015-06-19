@@ -378,6 +378,15 @@ spec = do
                  \ end"
       let result = run code
       result `shouldReturn` VMNumber 55
+
+
+    it "has if-then-else" $ do
+      let code = " if :sym == :no-sym then  \n\
+                 \   77                  \n\
+                 \ else                  \n\
+                 \   99"
+      let result = run code
+      result `shouldReturn` VMNumber 99
 {-
 What's missing:
 

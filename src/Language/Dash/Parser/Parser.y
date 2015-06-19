@@ -16,6 +16,9 @@ import Language.Dash.IR.Ast
   '('       { TOpen_Par }
   ')'       { TClose_Par }
   module    { TModule }
+  if        { TIf }
+  then      { TThen }
+  else      { TElse }
   '='       { TDefine }
   symbol    { TSymbol $$ }
   id        { TId $$ }
@@ -72,6 +75,7 @@ Expr:
   | Module         { $1 }
   | CompoundOrSimpleSymbol  { $1 }
   | InfixOperation   { $1 }
+  | IfElse         { $1 }
 
 
 SimpleExpr:
@@ -140,6 +144,11 @@ Definition:
 ModuleFunDef:
     id plus(id) '=' opt(eol) Expr eol  { Binding $1 (Lambda $2 $5) }
 
+
+IfElse:
+    if opt(eol) Expr opt(eol) then opt(eol) Expr opt(eol) else opt(eol) Expr  {
+      Match $3 [(PatSymbol "true" [], $7), (PatSymbol "false" [], $11)]
+    }
 
 
 MatchExpr:
