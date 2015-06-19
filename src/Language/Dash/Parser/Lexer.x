@@ -12,13 +12,15 @@ $alpha      = [a-zA-Z]
 $digit      = [0-9]
 $space      = [\ \t]
 $endline    = [\; $newl]
-$operator   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \^]
+$opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \^]
 
 
 @ident      = $alpha( ($alphanum+ \-)* $alphanum+ )?
 @namespaces = (@ident \/)*
 
 @integer    = $digit $digit*
+
+@operator   = "==" | $opsymbol ($opsymbol | "=")*
 
 -- TODO strings
 
@@ -41,14 +43,12 @@ tokens :-
   "end"         { mkTok TEnd }
   ".\"          { mkTok TLambda }
   ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
-  "="           { mkTok TEqual }
+  "="           { mkTok TDefine }
   "->"          { mkTok TArrow_R }
   "<-"          { mkTok TArrow_L }
   @integer      { mkTokS (\s -> TInt (read s)) }
   @ident        { mkTokS (\s -> TId s) }
-  $operator+    { mkTokS (\s -> TOperator s) }
-
-
+  @operator     { mkTokS (\s -> TOperator s) }
 
 
 {
@@ -93,7 +93,7 @@ data Token  = TEOL
             | TOpen_Par
             | TClose_Par
             | TModule
-            | TEqual
+            | TDefine
             | TSymbol String
             | TId String
             -- | TQId ([String], String)

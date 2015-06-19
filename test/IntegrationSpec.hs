@@ -366,10 +366,18 @@ spec = do
                  \     x -> (fib n') + (fib n'') \n\
                  \   end                         \n\
                  \   fib 13"
-      putStrLn $ show $ toNorm code
       let result = run code
       result `shouldReturn` VMNumber 233
 
+
+    it "has an equality operator" $ do
+      let code = " eq = :sym == :sym     \n\
+                 \ match eq begin        \n\
+                 \   :false -> 33        \n\
+                 \   :true  -> 55        \n\
+                 \ end"
+      let result = run code
+      result `shouldReturn` VMNumber 55
 {-
 What's missing:
 

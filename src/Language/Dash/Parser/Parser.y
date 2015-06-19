@@ -16,7 +16,7 @@ import Language.Dash.IR.Ast
   '('       { TOpen_Par }
   ')'       { TClose_Par }
   module    { TModule }
-  '='       { TEqual }
+  '='       { TDefine }
   symbol    { TSymbol $$ }
   id        { TId $$ }
   -- TODO qid       { TQId $$ }

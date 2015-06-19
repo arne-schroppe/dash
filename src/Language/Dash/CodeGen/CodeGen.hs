@@ -68,14 +68,9 @@ compileAtom reg atom name isResultValue = case atom of
   NCompoundSymbol False cAddr -> do
           -- addCompileTimeConst name $ CConstCompoundSymbol cAddr
           return [Tac_load_cs reg cAddr] -- TODO codeConstant?
-  NPrimOp (NPrimOpAdd a b) -> do
-          ra <- getReg a
-          rb <- getReg b
-          return [Tac_add reg ra rb]
-  NPrimOp (NPrimOpSub a b) -> do
-          ra <- getReg a
-          rb <- getReg b
-          return [Tac_sub reg ra rb]
+  NPrimOp (NPrimOpAdd a b) -> compileBinaryPrimOp Tac_add a b
+  NPrimOp (NPrimOpSub a b) -> compileBinaryPrimOp Tac_sub a b
+  NPrimOp (NPrimOpEq a b) -> compileBinaryPrimOp Tac_eq a b
   NLambda [] params expr -> do
           funAddr <- compileFunc [] params expr name True
           compileLoadLambda reg funAddr isResultValue
@@ -104,6 +99,11 @@ compileAtom reg atom name isResultValue = case atom of
     moveVarToReg var dest = do
               r <- getReg var
               return [Tac_move dest r]
+    compileBinaryPrimOp op a b = do
+          ra <- getReg a
+          rb <- getReg b
+          return [op reg ra rb]
+
 
 
 compileCallInstr :: Reg -> NstVar -> Int -> Bool -> CodeGenState [Tac]
