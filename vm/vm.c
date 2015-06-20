@@ -141,15 +141,11 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       }
     }
     else if (num_args < arity) {
-
       // same case as part_ap TODO use same code
-
       int reg0 = get_arg_r0(instr);
-
 
       //vm_value function_header = program[func_address];
       //TODO check that it's actually a function
-
 
       heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
       vm_value *cl_pointer = heap_get_pointer(cl_address);
@@ -157,19 +153,16 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
       *(cl_pointer + num_args + 1) = func_address;
       get_reg(reg0) = val( (vm_value) cl_address, vm_tag_pap);
-
     }
     else { // over-saturated call
       fprintf(stderr, "over-saturated call %i %i\n", num_args, arity);
     }
-
   }
   else {
     fprintf(stderr, "Expected a function: %i (gen ap)\n", tag);
   }
 
   return -1;
-
 }
 
 
@@ -187,7 +180,6 @@ bool is_equal(vm_value l, vm_value r) {
     if(l != r) {
       return false;
     }
-
     return true;
   }
 
@@ -216,6 +208,7 @@ bool is_equal(vm_value l, vm_value r) {
 }
 
 
+// TODO can we inline this?
 bool does_value_match(vm_value pat, vm_value subject, int start_register) {
 
   vm_value pat_tag = get_tag(pat);
@@ -278,7 +271,6 @@ bool does_value_match(vm_value pat, vm_value subject, int start_register) {
     default:
       return false;
   }
-
 }
 
 
