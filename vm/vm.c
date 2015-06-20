@@ -471,14 +471,10 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
       // TODO It's not entirely clear yet what happens when this returns a new PAP
       case OP_TAIL_GEN_AP: {
-
         do_gen_ap(&current_frame, instr, program);
-
         debug( printf("TL CALLCL r%02i r%02i=%04zu f=%04i n%02i\n", get_arg_r0(instr), cl_address_reg, cl_address, func_address, num_args) );
-
       }
       break;
-
 
 
       case OP_RET: {
@@ -617,17 +613,16 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       break;
 
       case OP_EQ: {
-          vm_value l = get_reg(get_arg_r1(instr));
-          vm_value r = get_reg(get_arg_r2(instr));
-          int result_reg = get_arg_r0(instr);
+        vm_value l = get_reg(get_arg_r1(instr));
+        vm_value r = get_reg(get_arg_r2(instr));
+        int result_reg = get_arg_r0(instr);
 
-          if( is_equal(l, r)) {
-            get_reg(result_reg) = val(symbol_id_true, vm_tag_plain_symbol);
-          }
-          else {
-            get_reg(result_reg) = val(symbol_id_false, vm_tag_plain_symbol);
-          }
-
+        if( is_equal(l, r)) {
+          get_reg(result_reg) = val(symbol_id_true, vm_tag_plain_symbol);
+        }
+        else {
+          get_reg(result_reg) = val(symbol_id_false, vm_tag_plain_symbol);
+        }
       }
       break;
 
