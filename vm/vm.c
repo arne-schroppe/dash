@@ -23,47 +23,39 @@
 
 static int invocation = 0;
 
+// Constants
 static const vm_value symbol_id_false = 0;
 static const vm_value symbol_id_true = 1;
-
+static const int fun_header_size = 1;
 
 const vm_value vm_tag_number = 0x0;
 const vm_value vm_tag_plain_symbol = 0x4;
 const vm_value vm_tag_compound_symbol = 0x5;
-
 const vm_value vm_tag_closure = 0x6; //TODO rename to vm_tag_pap
 const vm_value vm_tag_function = 0x7;
-
 const vm_value vm_tag_match_data = 0xF;
 
-static vm_value *const_table = 0;
-static int const_table_length = 0;
 
-
+// vm State
 #define STACK_SIZE 255
 static stack_frame stack[STACK_SIZE];
 static int stack_pointer = 0;
 static int program_pointer = 0;
-
 static vm_value arg_reg[NUM_REGS];
+static vm_value *const_table = 0;
+static int const_table_length = 0;
 
-
-static const int fun_header_size = 1;
 
 
 #define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
     printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
     return false; }
 
-
 #define get_reg(i) stack[stack_pointer].reg[(i)]
-
 #define current_frame (stack[stack_pointer])
 #define next_frame (stack[stack_pointer + 1])
 
-bool is_equal(vm_value l, vm_value r);
 
-//TODO turn into macro
 #define do_call(frame, instr)         \
   int return_pointer;                 \
   bool call_failed = false;              \
@@ -182,12 +174,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
 
 
-void print_registers(stack_frame frame);
-bool does_value_match(vm_value pat, vm_value subject, int start_reg);
-
-
-
-// TODO try to do this without recursive function calls
+// TODO try to do this without recursive function calls, then turn into a macro
 bool is_equal(vm_value l, vm_value r) {
 
   vm_value l_tag = get_tag(l);
@@ -343,13 +330,9 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
     //debug( print_registers(current_frame) );
     int old_program_pointer = program_pointer;
     ++program_pointer;
-    //is_running = execute_instruction(program[old_program_pointer], program);
-
 
     is_running = true;
-
     vm_value instr = program[old_program_pointer];
-
     vm_opcode opcode = get_opcode(instr);
 
     switch (opcode) {
@@ -655,8 +638,6 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         is_running = false;
         break;
     }
-
-
 
 
     //debug( print_registers(current_frame) );
