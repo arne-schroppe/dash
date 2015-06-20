@@ -110,6 +110,7 @@ compileCallInstr :: Reg -> NstVar -> Int -> Bool -> CodeGenState [Tac]
 compileCallInstr reg funVar numArgs isResultValue = do
           rFun <- getReg funVar
           direct <- isDirectCallReg rFun
+          -- TODO maybe the normalizer should already resolve what is a call to a known function and what isn't?
           let instr = case (direct, isResultValue) of
                   (True, False)  -> [Tac_call reg rFun numArgs]
                   (True, True)   -> [Tac_tail_call rFun numArgs]

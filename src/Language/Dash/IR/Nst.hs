@@ -70,10 +70,9 @@ instance Show NstAtomicExpr where
     NCompoundSymbol b sa -> "sym @" ++ (show sa) ++ (if b then " (dynamic)" else "")
     NString str -> "\"" ++ str ++ "\""
     NVar v -> "var " ++ (show v)
-    NLambda free params body -> "fun λ" ++ (show free) ++ " p" ++ (show params) ++ " {\n" ++ (show body) ++ "\n} "
+    NLambda free params body -> "λ f" ++ (show free) ++ " p" ++ (show params) ++ " {\n" ++ (show body) ++ "}"
     NPrimOp p -> show p
     NPartAp v args -> "pap " ++ (show v) ++ " " ++ (show args)
     NFunCall v args -> "ap " ++ (show v) ++ " " ++ (show args)
     NMatch maxv subj pat body -> "match (max " ++ (show maxv) ++ ") [" ++ (show subj) ++ "] @" ++ (show pat) ++ " " ++ (show body)
-    
 

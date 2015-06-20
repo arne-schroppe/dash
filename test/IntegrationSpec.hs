@@ -262,6 +262,24 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 120
 
+            it "evaluates an over-saturated call to a known function" $ do
+              let code = "\
+              \ f a = .\\ b c = (a + b) - c \n\
+              \ f 54 67 13"
+              let result = run code
+              result `shouldReturn` VMNumber 108
+
+{- TODO fix this later
+            it "evaluates an over-saturated call to an unknown function" $ do
+              let code = "\
+              \ f a =   \n\
+              \   .\\ b c = .\\ d e = .\\ f = ((((a + b) - c) + d) - e) + f \n\
+              \ f 54 67 13 50 20 7"
+              let result = run code
+              result `shouldReturn` VMNumber 145
+-}
+
+
 
     context "when using compound symbols" $ do
 

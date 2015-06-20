@@ -168,7 +168,7 @@ normalizeFunCall funExpr args k = case (funExpr, args) of
           k $ NPrimOp $ primOp aVar bVar
 
     callToUnknownFunction :: NstVar -> NormState NstExpr
-    callToUnknownFunction funVar = 
+    callToUnknownFunction funVar =
       do normalizeExprList args $ \ normArgs ->
           k $ NFunCall funVar normArgs
 
@@ -180,15 +180,15 @@ normalizeFunCall funExpr args k = case (funExpr, args) of
         normalizeExprList args $ \ normArgs ->
             k $ NFunCall funVar normArgs
       -- under-saturated call
-      else if numArgs < funArity then 
-        -- We already know at this point, that this *must* be a simple function, not a closure
+      else if numArgs < funArity then
+        -- We already know at this point, that this *must* be a non-closure
         if numFreeVars > 0 then error "Internal compiler error, trying to do static partial application of closure" 
         else
           normalizeExprList args $ \ normArgs ->
               k $ NPartAp funVar normArgs
       -- over-saturated call
       else do
-        -- TODO should we also check for closures here?
+        -- TODO should we also check for closures here? can we even have known closures?
         let (knownFunArgs, remainingArgs) = splitAt funArity args
         normalizeExprList knownFunArgs $ \ normKnownFunArgs -> do
             knownFunResult <- newTempVar ""
