@@ -387,6 +387,17 @@ spec = do
                  \   99"
       let result = run code
       result `shouldReturn` VMNumber 99
+
+
+    it "test" $ do
+      let code = " if :sym == :no-sym then  \n\
+                 \   77                  \n\
+                 \ else                  \n\
+                 \   99"
+      let result = run code
+      result `shouldReturn` VMNumber 99
+
+
 {-
 What's missing:
 
@@ -405,11 +416,12 @@ K Tail call optimisation (isResultValue, add new opcodes)
 K Currying (also with underscore ?)
 - Over-saturated calls!
 K Change order of free vars and formal parameters in function code so that we can use partial application as currying
-- Equality operator (needs built-in :true and :false symbols)
-- if-then-else
+K Equality operator (needs built-in :true and :false symbols)
+K if-then-else
 - pattern wildcard (can be used multiple times)
 - More math operators
 K infix operators
+- inlining of match branches
 - Strings
 - Creating symbols
 - Lists
@@ -421,7 +433,6 @@ K infix operators
 
 - Garbage collection
 - Reducing the amount of created garbage
-  - inlining of match branches
 
 
 

@@ -39,7 +39,6 @@ const vm_value vm_tag_match_data = 0xF;
 static vm_value *const_table = 0;
 static int const_table_length = 0;
 
-int counter = 0;
 
 #define STACK_SIZE 255
 static stack_frame stack[STACK_SIZE];
@@ -180,306 +179,6 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 void print_registers(stack_frame frame);
 bool does_value_match(vm_value pat, vm_value subject, int start_reg);
 
-bool execute_instruction(vm_instruction instr, vm_instruction *program) {
-  vm_opcode opcode = get_opcode(instr);
-
-  switch (opcode) {
-
-    case OP_LOAD_i: {
-      int reg0 = get_arg_r0(instr);
-      int val = get_arg_i(instr);
-      get_reg(reg0) = val;
-      debug( printf("LOADi  r%02i #%i\n", reg0, val) );
-    }
-    break;
-
-
-    case OP_LOAD_ps: {
-      int reg0 = get_arg_r0(instr);
-      int value = get_arg_i(instr);
-      get_reg(reg0) = val(value, vm_tag_plain_symbol);
-      debug( printf("LOADss  r%02i #%i\n", reg0, value) );
-    }
-    break;
-
-
-    case OP_LOAD_cs: {
-      int reg0 = get_arg_r0(instr);
-      int value = get_arg_i(instr);
-      get_reg(reg0) = val(value, vm_tag_compound_symbol);
-      debug( printf("LOADcs r%02i #%i\n", reg0, value) );
-    }
-    break;
-
-
-    case OP_LOAD_c: {
-      int reg1 = get_arg_r0(instr);
-      int table_index = get_arg_i(instr);
-
-      check_ctable_index(table_index)
-      get_reg(reg1) = const_table[table_index];
-      debug( printf("LOADc  r%02i #%i value: %i\n", reg1, table_index, const_table[table_index]) );
-    }
-    break;
-
-    case OP_LOAD_f: {
-      int reg0 = get_arg_r0(instr);
-      int value = get_arg_i(instr);
-      get_reg(reg0) = val(value, vm_tag_function);
-      debug( printf("LOADf  r%02i #%i\n", reg0, value) );
-    }
-    break;
-
-    case OP_ADD: {
-      int reg1 = get_arg_r1(instr);
-      int reg2 = get_arg_r2(instr);
-      int arg1 = get_reg(reg1);
-      int arg2 = get_reg(reg2);
-      int reg0 = get_arg_r0(instr);
-      get_reg(reg0) = arg1 + arg2;
-      debug( printf("ADD    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
-    }
-    break;
-
-
-    case OP_SUB: {
-      int reg1 = get_arg_r1(instr);
-      int reg2 = get_arg_r2(instr);
-      int arg1 = get_reg(reg1);
-      int arg2 = get_reg(reg2);
-      int reg0 = get_arg_r0(instr);
-      get_reg(reg0) = arg1 - arg2;
-      debug( printf("SUB    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
-    }
-    break;
-
-
-    case OP_MOVE: {
-      int reg0 = get_arg_r0(instr);
-      int reg1 = get_arg_r1(instr);
-      get_reg(reg0) = get_reg(reg1);
-      debug( printf("MOVE   r%02i r%02i\n", reg0, reg1) );
-    }
-    break;
-
-
-    case OP_CALL: {
-      if (stack_pointer + 1 == STACK_SIZE) {
-        printf("STACK OVERFLOW (call)!\n");
-        return false;
-      }
-
-      int return_pointer = do_call(&next_frame, instr);
-
-      next_frame.return_address = return_pointer;
-      next_frame.result_register = get_arg_r0(instr);
-      ++stack_pointer;
-
-      debug( printf("CALL   r%02i r%02i r%02i\n", get_arg_r0(instr), func_address_reg, num_args) );
-    }
-    break;
-
-
-    case OP_TAIL_CALL: {
-      do_call(&current_frame, instr);
-
-      debug( printf("TL CALL r%02i r%02i f=%04d n%02i\n", get_arg_r0(instr), func_address_reg, func_address, num_args) );
-
-      ++ counter; //TODO delete
-      if(counter > 10000) return false;
-    }
-    break;
-
-
-    case OP_GEN_AP: {
-      if (stack_pointer + 1 == STACK_SIZE) {
-        printf("Stack overflow (call cl)!\n");
-        return false;
-      }
-
-      int return_pointer = do_gen_ap(&next_frame, instr, program);
-
-      if (return_pointer != -1) {
-        next_frame.return_address = return_pointer;
-        next_frame.result_register = get_arg_r0(instr);
-        ++stack_pointer;
-      }
-
-      debug( printf("CALLCL r%02i r%02i r%02i\n", get_arg_r0(instr), cl_address_reg, num_args) );
-    }
-    break;
-
-
-    // TODO It's not entirely clear yet what happens when this returns a new PAP
-    case OP_TAIL_GEN_AP: {
-
-      do_gen_ap(&current_frame, instr, program);
-
-      debug( printf("TL CALLCL r%02i r%02i=%04zu f=%04i n%02i\n", get_arg_r0(instr), cl_address_reg, cl_address, func_address, num_args) );
-
-      ++ counter;
-      if(counter > 10000) return false;
-    }
-    break;
-
-
-
-    case OP_RET: {
-      int return_val_reg = get_arg_r0(instr);
-      if (stack_pointer == 0) {
-        //We simply copy the result value to register 0, so that the runtime can find it
-        current_frame.reg[0] = current_frame.reg[return_val_reg];
-        return false;
-      }
-      --stack_pointer;
-      current_frame.reg[next_frame.result_register] = next_frame.reg[return_val_reg];
-      debug( printf("RET\n") );
-      program_pointer = next_frame.return_address;
-    }
-    break;
-
-
-    case OP_JMP: {
-      int offset = get_arg_i(instr);
-      program_pointer += offset;
-      debug( printf("JMP %i\n", offset) );
-    }
-    break;
-
-
-    case OP_MATCH: {
-      int subject = get_reg(get_arg_r0(instr));
-      int patterns_addr = get_reg(get_arg_r1(instr));
-      int capture_reg = get_arg_r2(instr);
-
-      check_ctable_index(patterns_addr)
-      vm_value match_header = const_table[patterns_addr];
-      int number_of_patterns = from_match_value(match_header);
-      int i = 0;
-
-      debug( printf("MATCH subj_reg=%04i pat_addr=%04d capt_reg=%02i\n", get_arg_r0(instr), patterns_addr, capture_reg) );
-      for(i=0; i<number_of_patterns; ++i) {
-        int rel_pat_addr = patterns_addr + 1 + i;
-
-        check_ctable_index(rel_pat_addr)
-        vm_value pat = const_table[rel_pat_addr];
-        if(does_value_match(pat, subject, capture_reg)) {
-          break;
-        }
-        else {
-          continue;
-        }
-      }
-
-      if(i == number_of_patterns) {
-        fprintf(stderr, "Pattern match failed!\n");
-        return false;
-      }
-
-      program_pointer += i;
-    }
-    break;
-
-
-    case OP_SET_ARG: {
-      int target_arg = get_arg_r0(instr);
-      int source_reg = get_arg_r1(instr);
-      int extra_amount = get_arg_r2(instr);
-      memcpy(&arg_reg[target_arg], &current_frame.reg[source_reg], (1 + extra_amount) * sizeof(vm_value));
-      debug( printf("SETARG a%02i r%02i n%02i\n", target_arg, source_reg, extra_amount) );
-    }
-    break;
-
-
-    case OP_SET_CL_VAL: {
-      int cl_reg = get_arg_r0(instr);
-      vm_value closure = get_reg(cl_reg);
-
-      if( get_tag(closure) != vm_tag_closure ) {
-        fprintf(stderr, "Expected a closure!\n");
-        return false;
-      }
-
-      heap_address cl_address = from_val(closure, vm_tag_closure);
-      vm_value new_value = get_reg(get_arg_r1(instr));
-      int arg_index = get_arg_r2(instr);
-
-      vm_value *cl_pointer = heap_get_pointer(cl_address);
-      int header = *cl_pointer;
-      int num_env_args = closure_var_count(header);
-      if(arg_index >= num_env_args) {
-        fprintf(stderr, "Illegal closure modification (index: %i, num env vars: %i)\n", arg_index, num_env_args);
-        return false;
-      }
-      cl_pointer[arg_index + 1] = new_value;
-
-      debug( printf("SETCLARG r%02i r%02i n%02i\n", get_arg_r0(instr), get_arg_r1(instr), arg_index) );
-    }
-    break;
-
-
-    // TODO delete make_cl and use this instead
-    // TODO allow gen_ap and tail_gen_ap to create PAPs
-    case OP_MAKE_CL:
-    case OP_PART_AP: {
-      int reg0 = get_arg_r0(instr);
-      int func_reg = get_arg_r1(instr);
-      int func = get_reg(func_reg);
-
-      if( get_tag(func) != vm_tag_function ) {
-        fprintf(stderr, "Expected a function (op_part_ap)\n");
-        return false;
-      }
-
-      int func_address = from_val(func, vm_tag_function);
-      int num_args = get_arg_r2(instr);
-
-      vm_value function_header = program[func_address];
-      //TODO check that it's actually a function
-      int num_params = get_arg_i(function_header);
-
-      // TODO this was >= earlier, which apparently gave false positives. Find out why, and find out if > is the correct choice
-      if(num_args > num_params) {
-        fprintf(stderr, "Illegal partial application (num args: %i, num params: %i)\n", num_args, num_params);
-        return false;
-      }
-
-      heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
-      vm_value *cl_pointer = heap_get_pointer(cl_address);
-      *cl_pointer = closure_header((num_params - num_args), num_args); /* write header */
-      memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
-      *(cl_pointer + num_args + 1) = func_address;
-      get_reg(reg0) = val( (vm_value) cl_address, vm_tag_closure);
-      debug( printf("PART_AP r%02i r%02i f=%04i r%02i\n", reg0, func_address_reg, func_address, num_args) );
-    }
-    break;
-
-    case OP_EQ: {
-        vm_value l = get_reg(get_arg_r1(instr));
-        vm_value r = get_reg(get_arg_r2(instr));
-        int result_reg = get_arg_r0(instr);
-
-        if( is_equal(l, r)) {
-          get_reg(result_reg) = val(symbol_id_true, vm_tag_plain_symbol);
-        }
-        else {
-          get_reg(result_reg) = val(symbol_id_false, vm_tag_plain_symbol);
-        }
-
-    }
-    break;
-
-
-    default:
-      fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);
-      return false;
-      break;
-
-  }
-
-  return true;
-}
-
 
 
 // TODO try to do this without recursive function calls
@@ -613,8 +312,6 @@ void reset() {
   memset(stack, 0, sizeof(stack_frame) * STACK_SIZE);
   memset(arg_reg, 0, sizeof(vm_value) * NUM_REGS);
   init_heap();
-
-  counter = 0; //TODO delete (also the counter variable)
 }
 
 void print_program(vm_instruction *program) {
@@ -640,7 +337,314 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
     //debug( print_registers(current_frame) );
     int old_program_pointer = program_pointer;
     ++program_pointer;
-    is_running = execute_instruction(program[old_program_pointer], program);
+    //is_running = execute_instruction(program[old_program_pointer], program);
+
+
+    is_running = true;
+
+    vm_value instr = program[old_program_pointer];
+
+    vm_opcode opcode = get_opcode(instr);
+
+    switch (opcode) {
+
+      case OP_LOAD_i: {
+        int reg0 = get_arg_r0(instr);
+        int val = get_arg_i(instr);
+        get_reg(reg0) = val;
+        debug( printf("LOADi  r%02i #%i\n", reg0, val) );
+      }
+      break;
+
+
+      case OP_LOAD_ps: {
+        int reg0 = get_arg_r0(instr);
+        int value = get_arg_i(instr);
+        get_reg(reg0) = val(value, vm_tag_plain_symbol);
+        debug( printf("LOADss  r%02i #%i\n", reg0, value) );
+      }
+      break;
+
+
+      case OP_LOAD_cs: {
+        int reg0 = get_arg_r0(instr);
+        int value = get_arg_i(instr);
+        get_reg(reg0) = val(value, vm_tag_compound_symbol);
+        debug( printf("LOADcs r%02i #%i\n", reg0, value) );
+      }
+      break;
+
+
+      case OP_LOAD_c: {
+        int reg1 = get_arg_r0(instr);
+        int table_index = get_arg_i(instr);
+
+        check_ctable_index(table_index)
+        get_reg(reg1) = const_table[table_index];
+        debug( printf("LOADc  r%02i #%i value: %i\n", reg1, table_index, const_table[table_index]) );
+      }
+      break;
+
+      case OP_LOAD_f: {
+        int reg0 = get_arg_r0(instr);
+        int value = get_arg_i(instr);
+        get_reg(reg0) = val(value, vm_tag_function);
+        debug( printf("LOADf  r%02i #%i\n", reg0, value) );
+      }
+      break;
+
+      case OP_ADD: {
+        int reg1 = get_arg_r1(instr);
+        int reg2 = get_arg_r2(instr);
+        int arg1 = get_reg(reg1);
+        int arg2 = get_reg(reg2);
+        int reg0 = get_arg_r0(instr);
+        get_reg(reg0) = arg1 + arg2;
+        debug( printf("ADD    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
+      }
+      break;
+
+
+      case OP_SUB: {
+        int reg1 = get_arg_r1(instr);
+        int reg2 = get_arg_r2(instr);
+        int arg1 = get_reg(reg1);
+        int arg2 = get_reg(reg2);
+        int reg0 = get_arg_r0(instr);
+        get_reg(reg0) = arg1 - arg2;
+        debug( printf("SUB    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
+      }
+      break;
+
+
+      case OP_MOVE: {
+        int reg0 = get_arg_r0(instr);
+        int reg1 = get_arg_r1(instr);
+        get_reg(reg0) = get_reg(reg1);
+        debug( printf("MOVE   r%02i r%02i\n", reg0, reg1) );
+      }
+      break;
+
+
+      case OP_CALL: {
+        if (stack_pointer + 1 == STACK_SIZE) {
+          printf("STACK OVERFLOW (call)!\n");
+          is_running = false;
+          break;
+        }
+
+        int return_pointer = do_call(&next_frame, instr);
+
+        next_frame.return_address = return_pointer;
+        next_frame.result_register = get_arg_r0(instr);
+        ++stack_pointer;
+
+        debug( printf("CALL   r%02i r%02i r%02i\n", get_arg_r0(instr), func_address_reg, num_args) );
+      }
+      break;
+
+
+      case OP_TAIL_CALL: {
+        do_call(&current_frame, instr);
+
+        debug( printf("TL CALL r%02i r%02i f=%04d n%02i\n", get_arg_r0(instr), func_address_reg, func_address, num_args) );
+      }
+      break;
+
+
+      case OP_GEN_AP: {
+        if (stack_pointer + 1 == STACK_SIZE) {
+          printf("Stack overflow (call cl)!\n");
+          is_running = false;
+          break;
+        }
+
+        int return_pointer = do_gen_ap(&next_frame, instr, program);
+
+        if (return_pointer != -1) {
+          next_frame.return_address = return_pointer;
+          next_frame.result_register = get_arg_r0(instr);
+          ++stack_pointer;
+        }
+
+        debug( printf("CALLCL r%02i r%02i r%02i\n", get_arg_r0(instr), cl_address_reg, num_args) );
+      }
+      break;
+
+
+      // TODO It's not entirely clear yet what happens when this returns a new PAP
+      case OP_TAIL_GEN_AP: {
+
+        do_gen_ap(&current_frame, instr, program);
+
+        debug( printf("TL CALLCL r%02i r%02i=%04zu f=%04i n%02i\n", get_arg_r0(instr), cl_address_reg, cl_address, func_address, num_args) );
+
+      }
+      break;
+
+
+
+      case OP_RET: {
+        int return_val_reg = get_arg_r0(instr);
+        if (stack_pointer == 0) {
+          //We simply copy the result value to register 0, so that the runtime can find it
+          current_frame.reg[0] = current_frame.reg[return_val_reg];
+          is_running = false;
+          break;
+        }
+        --stack_pointer;
+        current_frame.reg[next_frame.result_register] = next_frame.reg[return_val_reg];
+        debug( printf("RET\n") );
+        program_pointer = next_frame.return_address;
+      }
+      break;
+
+
+      case OP_JMP: {
+        int offset = get_arg_i(instr);
+        program_pointer += offset;
+        debug( printf("JMP %i\n", offset) );
+      }
+      break;
+
+
+      case OP_MATCH: {
+        int subject = get_reg(get_arg_r0(instr));
+        int patterns_addr = get_reg(get_arg_r1(instr));
+        int capture_reg = get_arg_r2(instr);
+
+        check_ctable_index(patterns_addr)
+        vm_value match_header = const_table[patterns_addr];
+        int number_of_patterns = from_match_value(match_header);
+        int i = 0;
+
+        debug( printf("MATCH subj_reg=%04i pat_addr=%04d capt_reg=%02i\n", get_arg_r0(instr), patterns_addr, capture_reg) );
+        for(i=0; i<number_of_patterns; ++i) {
+          int rel_pat_addr = patterns_addr + 1 + i;
+
+          check_ctable_index(rel_pat_addr)
+          vm_value pat = const_table[rel_pat_addr];
+          if(does_value_match(pat, subject, capture_reg)) {
+            break;
+          }
+          else {
+            continue;
+          }
+        }
+
+        if(i == number_of_patterns) {
+          fprintf(stderr, "Pattern match failed!\n");
+          is_running = false;
+          break;
+        }
+
+        program_pointer += i;
+      }
+      break;
+
+
+      case OP_SET_ARG: {
+        int target_arg = get_arg_r0(instr);
+        int source_reg = get_arg_r1(instr);
+        int extra_amount = get_arg_r2(instr);
+        memcpy(&arg_reg[target_arg], &current_frame.reg[source_reg], (1 + extra_amount) * sizeof(vm_value));
+        debug( printf("SETARG a%02i r%02i n%02i\n", target_arg, source_reg, extra_amount) );
+      }
+      break;
+
+
+      case OP_SET_CL_VAL: {
+        int cl_reg = get_arg_r0(instr);
+        vm_value closure = get_reg(cl_reg);
+
+        if( get_tag(closure) != vm_tag_closure ) {
+          fprintf(stderr, "Expected a closure!\n");
+          is_running = false;
+          break;
+        }
+
+        heap_address cl_address = from_val(closure, vm_tag_closure);
+        vm_value new_value = get_reg(get_arg_r1(instr));
+        int arg_index = get_arg_r2(instr);
+
+        vm_value *cl_pointer = heap_get_pointer(cl_address);
+        int header = *cl_pointer;
+        int num_env_args = closure_var_count(header);
+        if(arg_index >= num_env_args) {
+          fprintf(stderr, "Illegal closure modification (index: %i, num env vars: %i)\n", arg_index, num_env_args);
+          is_running = false;
+          break;
+        }
+        cl_pointer[arg_index + 1] = new_value;
+
+        debug( printf("SETCLARG r%02i r%02i n%02i\n", get_arg_r0(instr), get_arg_r1(instr), arg_index) );
+      }
+      break;
+
+
+      // TODO delete make_cl and use this instead
+      // TODO allow gen_ap and tail_gen_ap to create PAPs
+      case OP_MAKE_CL:
+      case OP_PART_AP: {
+        int reg0 = get_arg_r0(instr);
+        int func_reg = get_arg_r1(instr);
+        int func = get_reg(func_reg);
+
+        if( get_tag(func) != vm_tag_function ) {
+          fprintf(stderr, "Expected a function (op_part_ap)\n");
+          is_running = false;
+          break;
+        }
+
+        int func_address = from_val(func, vm_tag_function);
+        int num_args = get_arg_r2(instr);
+
+        vm_value function_header = program[func_address];
+        //TODO check that it's actually a function
+        int num_params = get_arg_i(function_header);
+
+        // TODO this was >= earlier, which apparently gave false positives. Find out why, and find out if > is the correct choice
+        if(num_args > num_params) {
+          fprintf(stderr, "Illegal partial application (num args: %i, num params: %i)\n", num_args, num_params);
+          is_running = false;
+          break;
+        }
+
+        heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
+        vm_value *cl_pointer = heap_get_pointer(cl_address);
+        *cl_pointer = closure_header((num_params - num_args), num_args); /* write header */
+        memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
+        *(cl_pointer + num_args + 1) = func_address;
+        get_reg(reg0) = val( (vm_value) cl_address, vm_tag_closure);
+        debug( printf("PART_AP r%02i r%02i f=%04i r%02i\n", reg0, func_address_reg, func_address, num_args) );
+      }
+      break;
+
+      case OP_EQ: {
+          vm_value l = get_reg(get_arg_r1(instr));
+          vm_value r = get_reg(get_arg_r2(instr));
+          int result_reg = get_arg_r0(instr);
+
+          if( is_equal(l, r)) {
+            get_reg(result_reg) = val(symbol_id_true, vm_tag_plain_symbol);
+          }
+          else {
+            get_reg(result_reg) = val(symbol_id_false, vm_tag_plain_symbol);
+          }
+
+      }
+      break;
+
+
+      default:
+        fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);
+        is_running = false;
+        break;
+    }
+
+
+
+
     //debug( print_registers(current_frame) );
   }
 

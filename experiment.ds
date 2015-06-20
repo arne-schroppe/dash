@@ -1,18 +1,32 @@
 
+/--
 
-fib n =
-  n'  = n - 1
-  n'' = n - 2
-  match n begin
-    0 -> 0
-    1 -> 1
-    x -> (fib n') + (fib n'')
+is-sym a =
+  a == :my-sym
+
+add-many n =
+  n + 23
+
+sub-some n =
+  n - 5
+
+
+if is-sym :my-sym then
+  m = add-many 22
+  m - 14
+else
+  :fail
+--/
+
+
+rec n =
+  match (n - 1) begin
+    0 -> :end
+    x -> rec x
   end
 
 
-
-fib 13
-
+rec 4000000
 
 
 
