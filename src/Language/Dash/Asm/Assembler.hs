@@ -63,7 +63,6 @@ assembleTac funcAddrs addrConv opc =
     Tac_ret r0              -> instructionRI   0 (r r0) 0
     Tac_load_i r0 n         -> instructionRI   1 (r r0) n
     Tac_load_addr r0 a      -> instructionRI   1 (r r0) (addrConv a)
-    Tac_load_f r0 fi        -> instructionRI  18 (r r0) (funcAddrs !! fi)
     Tac_load_ps r0 s        -> instructionRI   2 (r r0) (i s)
     Tac_load_cs r0 a        -> instructionRI   3 (r r0) (addrConv a)
     Tac_load_c r0 a         -> instructionRI   4 (r r0) (addrConv a)
@@ -72,15 +71,15 @@ assembleTac funcAddrs addrConv opc =
     Tac_move r0 r1          -> instructionRRR  7 (r r0) (r r1) (i 0)
     Tac_call r0 fr n        -> instructionRRR  8 (r r0) (r fr) (i n)
     Tac_gen_ap r0 fr n      -> instructionRRR  9 (r r0) (r fr) (i n)
-    Tac_make_cl r0 fr n     -> instructionRRR 10 (r r0) (r fr) (i n)
+    Tac_part_ap r0 fr n     -> instructionRRR 10 (r r0) (r fr) (i n)
     Tac_jmp n               -> instructionRI  11 0 (i n)
     Tac_match r0 r1 r2      -> instructionRRR 12 (r r0) (r r1) (r r2)
     Tac_set_arg arg r1 n    -> instructionRRR 13 (i arg) (r r1) (i n)
     Tac_tail_call fr n      -> instructionRRR 14 (i 0) (r fr) (i n)
     Tac_tail_gen_ap r0 fr n -> instructionRRR 15 (r r0) (r fr) (i n)
     Tac_set_cl_val clr r1 n -> instructionRRR 16 (r clr) (r r1) (i n)
-    Tac_part_ap r0 fr n     -> instructionRRR 17 (r r0) (r fr) (i n)
-    Tac_eq r0 r1 r2         -> instructionRRR 19 (r r0) (r r1) (r r2)
+    Tac_load_f r0 fi        -> instructionRI  17 (r r0) (funcAddrs !! fi)
+    Tac_eq r0 r1 r2         -> instructionRRR 18 (r r0) (r r1) (r r2)
     Tac_fun_header arity    -> instructionRI  63 (r 0) (i arity)
 
 

@@ -31,7 +31,7 @@ static const int fun_header_size = 1;
 const vm_value vm_tag_number = 0x0;
 const vm_value vm_tag_plain_symbol = 0x4;
 const vm_value vm_tag_compound_symbol = 0x5;
-const vm_value vm_tag_closure = 0x6; //TODO rename to vm_tag_pap
+const vm_value vm_tag_pap = 0x6;
 const vm_value vm_tag_function = 0x7;
 const vm_value vm_tag_match_data = 0xF;
 
@@ -86,9 +86,9 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
   int num_args = get_arg_r2(instr);
 
   vm_value tag = get_tag(lambda);
-  if(tag == vm_tag_closure ) {
+  if(tag == vm_tag_pap ) {
 
-    heap_address cl_address = (heap_address)from_val(lambda, vm_tag_closure);
+    heap_address cl_address = (heap_address)from_val(lambda, vm_tag_pap);
 
     vm_value *cl_pointer = heap_get_pointer(cl_address);
     int header = *cl_pointer;
@@ -117,7 +117,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       memcpy(new_cl_pointer + 1, cl_pointer + 1, num_cl_vars * sizeof(vm_value));
       memcpy(&new_cl_pointer[num_cl_vars + 1], &arg_reg[0], num_args * sizeof(vm_value));
       *(new_cl_pointer + num_cl_vars + num_args + 1) = func_address;
-      get_reg(reg0) = val( (vm_value) new_cl_address, vm_tag_closure );
+      get_reg(reg0) = val( (vm_value) new_cl_address, vm_tag_pap );
       return -1;
     }
     else { // num_args > arity
@@ -156,7 +156,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       *cl_pointer = closure_header((arity - num_args), num_args); /* write header */
       memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
       *(cl_pointer + num_args + 1) = func_address;
-      get_reg(reg0) = val( (vm_value) cl_address, vm_tag_closure);
+      get_reg(reg0) = val( (vm_value) cl_address, vm_tag_pap);
 
     }
     else { // over-saturated call
@@ -554,13 +554,13 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int cl_reg = get_arg_r0(instr);
         vm_value closure = get_reg(cl_reg);
 
-        if( get_tag(closure) != vm_tag_closure ) {
+        if( get_tag(closure) != vm_tag_pap ) {
           fprintf(stderr, "Expected a closure!\n");
           is_running = false;
           break;
         }
 
-        heap_address cl_address = from_val(closure, vm_tag_closure);
+        heap_address cl_address = from_val(closure, vm_tag_pap);
         vm_value new_value = get_reg(get_arg_r1(instr));
         int arg_index = get_arg_r2(instr);
 
@@ -581,7 +581,6 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
       // TODO delete make_cl and use this instead
       // TODO allow gen_ap and tail_gen_ap to create PAPs
-      case OP_MAKE_CL:
       case OP_PART_AP: {
         int reg0 = get_arg_r0(instr);
         int func_reg = get_arg_r1(instr);
@@ -612,7 +611,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         *cl_pointer = closure_header((num_params - num_args), num_args); /* write header */
         memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
         *(cl_pointer + num_args + 1) = func_address;
-        get_reg(reg0) = val( (vm_value) cl_address, vm_tag_closure);
+        get_reg(reg0) = val( (vm_value) cl_address, vm_tag_pap);
         debug( printf("PART_AP r%02i r%02i f=%04i r%02i\n", reg0, func_address_reg, func_address, num_args) );
       }
       break;

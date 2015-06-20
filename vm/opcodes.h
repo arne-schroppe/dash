@@ -20,16 +20,15 @@ typedef enum {
   OP_MOVE = 7, //Maybe we don't need this, could be add with a zero (see MIPS instruction set)
   OP_CALL = 8,
   OP_GEN_AP = 9, // General function application
-  OP_MAKE_CL = 10,
+  OP_PART_AP = 10,      // Do partial application of known function
   OP_JMP = 11,
   OP_MATCH = 12,
   OP_SET_ARG = 13,
   OP_TAIL_CALL = 14,
   OP_TAIL_GEN_AP = 15,
   OP_SET_CL_VAL = 16,
-  OP_PART_AP = 17,      // Do partial application of known function
-  OP_LOAD_f = 18,
-  OP_EQ = 19,
+  OP_LOAD_f = 17,
+  OP_EQ = 18,
 
   FUN_HEADER = 63
 } vm_opcode;
@@ -68,8 +67,8 @@ typedef enum {
 #define op_move(r0, r1) (instr_rrr(OP_MOVE, r0, r1, 0))
 #define op_call(r0, fr, n) (instr_rrr(OP_CALL, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 #define op_gen_ap(r0, clr, n) (instr_rrr(OP_GEN_AP, r0, clr, n)) // result reg, reg with closure addr (heap), num arguments
+#define op_part_ap(r0, fr, n) (instr_rrr(OP_PART_AP, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 #define op_ret(r0) (instr_ri(OP_RET, r0, 0))
-#define op_make_cl(r0, fr, n) (instr_rrr(OP_MAKE_CL, r0, fr, n)) // result reg, reg with function addr (code), num args
 #define op_jmp(n) (instr_ri(OP_JMP, 0, n))
 #define op_match(r1, r2, r3) (instr_rrr(OP_MATCH, r1, r2, r3)) // reg with subject, reg with pattern addr, start reg for captures
 #define op_set_arg(arg, r, n) (instr_rrr(OP_SET_ARG, arg, r, n)) // target argument, value reg, number of extra args/regs to copy (when copying just one argument, set this to 0)

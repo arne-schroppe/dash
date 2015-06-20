@@ -133,7 +133,7 @@ compileLoadLambda :: Reg -> Int -> Bool -> CodeGenState [Tac]
 compileLoadLambda reg funAddr isResultValue = do
   let ldFunAddr = [Tac_load_f reg funAddr]
   if isResultValue then
-      return $ ldFunAddr ++ [Tac_make_cl reg reg 0]
+      return $ ldFunAddr ++ [Tac_part_ap reg reg 0]
   else
       return $ ldFunAddr
 
@@ -169,8 +169,10 @@ compileClosure reg freeVars params expr name = do
   -- TODO optimize argInstrs by using last parameter in set_arg
   argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
   let argInstrs = catMaybes argInstrsMaybes
+  -- Since free vars are always the first n vars of a compiled function, storing
+  -- a closure is the same as partial application
   let makeClosureInstr = [Tac_load_f reg funAddr,
-                          Tac_make_cl reg reg (length freeVars)]
+                          Tac_part_ap reg reg (length freeVars)]
   selfRefInstrs <- createSelfRefInstrsIfNeeded reg
   return $ argInstrs ++ makeClosureInstr ++ selfRefInstrs
 

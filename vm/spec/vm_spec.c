@@ -67,7 +67,7 @@ it( calls_a_closure_downwards ) {
     op_load_f(2, fun_address2),
     op_load_i(3, 80),
     op_set_arg(0, 3, 0),
-    op_make_cl(2, 2, 1),
+    op_part_ap(2, 2, 1), // we create a closure using a pap
     op_load_f(1, fun_address1),
     op_set_arg(0, 2, 0),
     op_call(0, 1, 1), //call fun1 with a closure to fun2
@@ -109,7 +109,7 @@ it( calls_a_closure_upwards ) {
     op_load_f(1, fun_address2),
     op_load_i(2, 24),
     op_set_arg(0, 2, 0),
-    op_make_cl(0, 1, 1),
+    op_part_ap(0, 1, 1),
     op_ret(0),
 
     // fun 2
@@ -139,7 +139,7 @@ it( modifies_a_closure ) {
     op_load_i(2, 77),
     op_load_i(3, 55),
     op_set_arg(0, 2, 1),
-    op_make_cl(0, 1, 2),
+    op_part_ap(0, 1, 2),
     op_load_i(7, 33),
     op_set_cl_val(0, 7, 1),
     op_ret(0),
@@ -409,7 +409,7 @@ it( creates_a_partial_application_with_a_generic_application ) {
     op_load_i(1, 33), // arg a
     op_set_arg(0, 1, 0),
     op_load_f(2, fun_address),
-    op_make_cl(3, 2, 1),
+    op_part_ap(3, 2, 1),
     op_load_i(4, 98), // arg b
     op_set_arg(0, 4, 0),
     op_gen_ap(5, 3, 1), // result register holds a partial application now
