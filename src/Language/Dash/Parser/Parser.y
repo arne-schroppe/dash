@@ -156,7 +156,7 @@ MatchExpr:
     match Expr begin opt(eol) plus(MatchLine) end { Match $2 $5 }
 
 MatchLine:
-    Pattern '->' Expr eol { ($1, $3) }
+    Pattern '->' opt(eol) Expr eol { ($1, $4) }
 
 Pattern:
     SimplePattern { $1 }

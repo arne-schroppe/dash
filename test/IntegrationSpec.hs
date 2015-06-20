@@ -434,6 +434,8 @@ K infix operators
 - Garbage collection
 - Reducing the amount of created garbage
 
+- Live editing would be really nice
+
 
 
 After release ?
@@ -460,7 +462,6 @@ After release ?
 - Uniquely name vars in frontend, i.e. data-flow analysis
 - Prevent duplicate var names in function definition (unless it's for pattern matching? No, that would be useless)
 
-TODO: Functions need a runtime tag!
 
 -}
 

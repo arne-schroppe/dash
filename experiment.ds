@@ -22,7 +22,9 @@ else
 rec n =
   match (n - 1) begin
     0 -> :end
-    x -> rec x
+    x ->
+      b = (x - 1) + 1
+      rec b
   end
 
 
