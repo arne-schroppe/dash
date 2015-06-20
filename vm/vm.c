@@ -64,22 +64,24 @@ static const int fun_header_size = 1;
 bool is_equal(vm_value l, vm_value r);
 
 //TODO turn into macro
-int do_call(stack_frame *frame, vm_value instr) {
-  int func_reg = get_arg_r1(instr);
-  int func = get_reg(func_reg);
-
-  if(get_tag(func) != vm_tag_function) {
-    fprintf(stderr, "expected a function (do call)\n");
-    exit(-1);
+#define do_call(frame, instr)         \
+  int return_pointer;                 \
+  bool call_failed = false;              \
+  {                                   \
+    int func_reg = get_arg_r1(instr); \
+    int func = get_reg(func_reg);     \
+    if(get_tag(func) != vm_tag_function) { \
+      fprintf(stderr, "expected a function (do call)\n"); \
+      call_failed = true;                \
+    } \
+    else {                            \
+      int func_address = from_val(func, vm_tag_function); \
+      int num_args = get_arg_r2(instr); \
+      memcpy(&(frame->reg[0]), &arg_reg[0], num_args * sizeof(vm_value)); \
+      return_pointer = program_pointer; \
+      program_pointer = func_address + fun_header_size; \
+    } \
   }
-
-  int func_address = from_val(func, vm_tag_function);
-  int num_args = get_arg_r2(instr);
-  memcpy(&(frame->reg[0]), &arg_reg[0], num_args * sizeof(vm_value));
-  int return_pointer = program_pointer;
-  program_pointer = func_address + fun_header_size;
-  return return_pointer;
-}
 
 
 // TODO turn this into a macro
@@ -141,6 +143,10 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
     if (num_args == arity) {
       do_call(frame, instr);
+      if(call_failed) {
+        fprintf(stderr, "Call failed (not a function)\n");
+        return -1; //TODO exit here?
+      }
     }
     else if (num_args < arity) {
 
@@ -433,7 +439,12 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           break;
         }
 
-        int return_pointer = do_call(&next_frame, instr);
+        // this macro will create `return_pointer`
+        do_call((&next_frame), instr);
+        if (call_failed) {
+          is_running = false;
+          break;
+        }
 
         next_frame.return_address = return_pointer;
         next_frame.result_register = get_arg_r0(instr);
@@ -445,7 +456,10 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
 
       case OP_TAIL_CALL: {
-        do_call(&current_frame, instr);
+        do_call((&current_frame), instr);
+        if (call_failed) {
+          is_running = false;
+        }
 
         debug( printf("TL CALL r%02i r%02i f=%04d n%02i\n", get_arg_r0(instr), func_address_reg, func_address, num_args) );
       }
