@@ -71,7 +71,7 @@ compileAtom reg atom name isResultValue = case atom of
   NPrimOp primop -> compilePrimOp primop reg
   NLambda [] params expr -> do
           funAddr <- compileFunc [] params expr name True
-          compileLoadLambda reg funAddr isResultValue
+          compileLoadLambda reg funAddr
   NLambda freeVars params expr -> compileClosure reg freeVars params expr name
   NFunCall funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
@@ -81,7 +81,7 @@ compileAtom reg atom name isResultValue = case atom of
           NLocalVar _ _          -> moveVarToReg var reg
           NFunParam _            -> moveVarToReg var reg
           NDynamicFreeVar _      -> moveVarToReg var reg
-          NConstantFreeVar vname -> compileConstantFreeVar reg vname isResultValue
+          NConstantFreeVar vname -> compileConstantFreeVar reg vname
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches isResultValue
@@ -126,24 +126,21 @@ compilePrimOp primop reg = case primop of
           rb <- getReg b
           return [op reg ra rb]
 
-compileConstantFreeVar :: Reg -> String -> Bool -> CodeGenState [Tac]
-compileConstantFreeVar reg name isResultValue = do
+compileConstantFreeVar :: Reg -> String -> CodeGenState [Tac]
+compileConstantFreeVar reg name = do
   compConst <- getCompileTimeConstInOuterScope name
   case compConst of
           CTConstNumber n -> return [Tac_load_i reg (fromIntegral n)] -- how about storing the constant in const table and simply load_c it here?
           CTConstPlainSymbol symId -> return [Tac_load_ps reg symId]
           -- CConstCompoundSymbol ConstAddr
-          CTConstLambda funAddr -> compileLoadLambda reg funAddr isResultValue
+          CTConstLambda funAddr -> compileLoadLambda reg funAddr
           _ -> error "compileConstantFreeVar"
 
 
-compileLoadLambda :: Reg -> Int -> Bool -> CodeGenState [Tac]
-compileLoadLambda reg funAddr isResultValue = do
+compileLoadLambda :: Reg -> Int -> CodeGenState [Tac]
+compileLoadLambda reg funAddr = do
   let ldFunAddr = [Tac_load_f reg funAddr]
-  if isResultValue then
-      return $ ldFunAddr ++ [Tac_part_ap reg reg 0]
-  else
-      return $ ldFunAddr
+  return $ ldFunAddr
 
 
 compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Tac]

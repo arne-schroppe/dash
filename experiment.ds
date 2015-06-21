@@ -20,7 +20,7 @@ else
 
 
 rec n =
-  match (n - 1) begin
+  match if :sym == 4 then 22 else n - 1 begin
     0 -> :end
     x ->
       b = (x - 1) + 1
@@ -28,7 +28,7 @@ rec n =
   end
 
 
-rec 4000000
+rec 50
 
 
 

@@ -464,6 +464,8 @@ K infix operators
 
 - Live editing would be really nice
 
+- Add license header everywhere!
+- Also add Haskell documentation header everywhere
 
 
 After release ?
