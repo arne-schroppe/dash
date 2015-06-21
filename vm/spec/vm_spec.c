@@ -27,6 +27,39 @@ it( adds_two_numbers ) {
   is_equal(result, 43);
 }
 
+it( subtracts_two_numbers ) {
+  vm_instruction program[] = {
+    op_load_i(1, 11),
+    op_load_i(2, 32),
+    op_sub(0, 2, 1),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, 21);
+}
+
+
+it( multiplies_two_numbers ) {
+  vm_instruction program[] = {
+    op_load_i(1, 5),
+    op_load_i(2, 4),
+    op_mul(0, 2, 1),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, 20);
+}
+
+it( divides_two_numbers ) {
+  vm_instruction program[] = {
+    op_load_i(1, 10),
+    op_load_i(2, 3),
+    op_div(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, 3);
+}
 
 it( moves_a_register ) {
   vm_instruction program[] = {
@@ -583,6 +616,9 @@ it( compares_compound_symbols_with_different_counts ) {
 start_spec(vm_spec)
 	example(load_as_a_number_into_a_register)
 	example(adds_two_numbers)
+	example(subtracts_two_numbers)
+	example(multiplies_two_numbers)
+	example(divides_two_numbers)
   example(moves_a_register)
   example(directly_calls_a_function)
   example(calls_a_closure_downwards)

@@ -15,20 +15,22 @@ typedef enum {
   OP_LOAD_ps = 2,
   OP_LOAD_cs = 3,
   OP_LOAD_c = 4,
-  OP_ADD = 5,
-  OP_SUB = 6,
-  OP_MOVE = 7, //Maybe we don't need this, could be add with a zero (see MIPS instruction set)
-  OP_CALL = 8,
-  OP_GEN_AP = 9, // General function application
-  OP_PART_AP = 10,      // Do partial application of known function
-  OP_JMP = 11,
-  OP_MATCH = 12,
-  OP_SET_ARG = 13,
-  OP_TAIL_CALL = 14,
-  OP_TAIL_GEN_AP = 15,
-  OP_SET_CL_VAL = 16,
-  OP_LOAD_f = 17,
-  OP_EQ = 18,
+  OP_LOAD_f = 5,
+  OP_ADD = 6,
+  OP_SUB = 7,
+  OP_MUL = 8,
+  OP_DIV = 9,
+  OP_MOVE = 10, //Maybe we don't need this, could be add with a zero (see MIPS instruction set)
+  OP_CALL = 11,
+  OP_GEN_AP = 12, // General function application
+  OP_TAIL_CALL = 13,
+  OP_TAIL_GEN_AP = 14,
+  OP_PART_AP = 15,      // Do partial application of known function
+  OP_JMP = 16,
+  OP_MATCH = 17,
+  OP_SET_ARG = 18,
+  OP_SET_CL_VAL = 19,
+  OP_EQ = 20,
 
   FUN_HEADER = 63
 } vm_opcode;
@@ -64,6 +66,8 @@ typedef enum {
 #define op_load_f(r0, i) (instr_ri(OP_LOAD_f, r0, i))
 #define op_add(r0, r1, r2) (instr_rrr(OP_ADD, r0, r1, r2))
 #define op_sub(r0, r1, r2) (instr_rrr(OP_SUB, r0, r1, r2))
+#define op_mul(r0, r1, r2) (instr_rrr(OP_MUL, r0, r1, r2))
+#define op_div(r0, r1, r2) (instr_rrr(OP_DIV, r0, r1, r2))
 #define op_move(r0, r1) (instr_rrr(OP_MOVE, r0, r1, 0))
 #define op_call(r0, fr, n) (instr_rrr(OP_CALL, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 #define op_gen_ap(r0, clr, n) (instr_rrr(OP_GEN_AP, r0, clr, n)) // result reg, reg with closure addr (heap), num arguments

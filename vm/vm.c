@@ -398,6 +398,30 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       break;
 
 
+      case OP_MUL: {
+        int reg1 = get_arg_r1(instr);
+        int reg2 = get_arg_r2(instr);
+        int arg1 = get_reg(reg1);
+        int arg2 = get_reg(reg2);
+        int reg0 = get_arg_r0(instr);
+        get_reg(reg0) = arg1 * arg2;
+        debug( printf("MUL    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
+      }
+      break;
+
+
+      case OP_DIV: {
+        int reg1 = get_arg_r1(instr);
+        int reg2 = get_arg_r2(instr);
+        int arg1 = get_reg(reg1);
+        int arg2 = get_reg(reg2);
+        int reg0 = get_arg_r0(instr);
+        get_reg(reg0) = arg1 / arg2;
+        debug( printf("MUL    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
+      }
+      break;
+
+
       case OP_MOVE: {
         int reg0 = get_arg_r0(instr);
         int reg1 = get_arg_r1(instr);
