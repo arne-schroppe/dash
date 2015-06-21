@@ -447,13 +447,12 @@ K Change order of free vars and formal parameters in function code so that we ca
 K Equality operator (needs built-in :true and :false symbols)
 K if-then-else
 K pattern wildcard (can be used multiple times)
-- More math operators
+K More math operators
 K infix operators
 - inlining of match branches
 - Strings
 - Creating symbols
 - Lists
-- operators
 - maps/dictionaries as built-in type (because that's fairly useful)
   - under the hood these could be somewhat similar to modules, maybe. Or modules can't be modified at runtime,
     but then we're not very dynamic
