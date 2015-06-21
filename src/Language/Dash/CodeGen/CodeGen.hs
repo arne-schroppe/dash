@@ -68,11 +68,7 @@ compileAtom reg atom name isResultValue = case atom of
   NCompoundSymbol False cAddr -> do
           -- addCompileTimeConst name $ CConstCompoundSymbol cAddr
           return [Tac_load_cs reg cAddr] -- TODO codeConstant?
-  NPrimOp (NPrimOpAdd a b) -> compileBinaryPrimOp Tac_add a b
-  NPrimOp (NPrimOpSub a b) -> compileBinaryPrimOp Tac_sub a b
-  NPrimOp (NPrimOpMul a b) -> compileBinaryPrimOp Tac_mul a b
-  NPrimOp (NPrimOpDiv a b) -> compileBinaryPrimOp Tac_div a b
-  NPrimOp (NPrimOpEq a b) -> compileBinaryPrimOp Tac_eq a b
+  NPrimOp primop -> compilePrimOp primop reg
   NLambda [] params expr -> do
           funAddr <- compileFunc [] params expr name True
           compileLoadLambda reg funAddr isResultValue
@@ -101,10 +97,6 @@ compileAtom reg atom name isResultValue = case atom of
     moveVarToReg var dest = do
               r <- getReg var
               return [Tac_move dest r]
-    compileBinaryPrimOp op a b = do
-          ra <- getReg a
-          rb <- getReg b
-          return [op reg ra rb]
 
 
 
@@ -120,6 +112,19 @@ compileCallInstr reg funVar numArgs isResultValue = do
                   (False, True)  -> [Tac_tail_gen_ap reg rFun numArgs]
           return instr
 
+
+compilePrimOp :: NstPrimOp -> Reg -> CodeGenState [Tac]
+compilePrimOp primop reg = case primop of
+  NPrimOpAdd a b -> compileBinaryPrimOp Tac_add a b
+  NPrimOpSub a b -> compileBinaryPrimOp Tac_sub a b
+  NPrimOpMul a b -> compileBinaryPrimOp Tac_mul a b
+  NPrimOpDiv a b -> compileBinaryPrimOp Tac_div a b
+  NPrimOpEq a b -> compileBinaryPrimOp Tac_eq a b
+  where
+    compileBinaryPrimOp op a b = do
+          ra <- getReg a
+          rb <- getReg b
+          return [op reg ra rb]
 
 compileConstantFreeVar :: Reg -> String -> Bool -> CodeGenState [Tac]
 compileConstantFreeVar reg name isResultValue = do
