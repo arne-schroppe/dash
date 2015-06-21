@@ -58,6 +58,8 @@ instance Show NstVar where
 data NstPrimOp =
     NPrimOpAdd NstVar NstVar
   | NPrimOpSub NstVar NstVar
+  | NPrimOpMul NstVar NstVar
+  | NPrimOpDiv NstVar NstVar
   | NPrimOpEq  NstVar NstVar
   deriving (Eq, Ord, Show)
 

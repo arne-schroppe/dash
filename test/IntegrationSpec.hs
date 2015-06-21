@@ -30,6 +30,14 @@ spec = do
       let result = run "7 - 3"
       result `shouldReturn` VMNumber 4
 
+    it "applies built-in multiply function" $ do
+      let result = run "7 * 3"
+      result `shouldReturn` VMNumber 21
+
+    it "applies built-in divide function" $ do
+      let result = run "11 / 3"
+      result `shouldReturn` VMNumber 3
+
     it "stores a value in a variable" $ do
       let result = run " a = 4\n\
                        \ a"

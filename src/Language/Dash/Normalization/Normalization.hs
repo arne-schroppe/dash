@@ -155,6 +155,8 @@ normalizeFunCall :: Expr -> [Expr] -> Cont -> NormState NstExpr
 normalizeFunCall funExpr args k = case (funExpr, args) of
   (Var "+", [a, b]) -> normalizeBinaryPrimOp NPrimOpAdd a b
   (Var "-", [a, b]) -> normalizeBinaryPrimOp NPrimOpSub a b
+  (Var "*", [a, b]) -> normalizeBinaryPrimOp NPrimOpMul a b
+  (Var "/", [a, b]) -> normalizeBinaryPrimOp NPrimOpDiv a b
   (Var "==", [a, b]) -> normalizeBinaryPrimOp NPrimOpEq a b
   _ -> do nameExpr funExpr "" $ \ funVar -> do
             maybeAr <- arity funVar

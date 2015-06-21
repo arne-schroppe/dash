@@ -70,6 +70,8 @@ compileAtom reg atom name isResultValue = case atom of
           return [Tac_load_cs reg cAddr] -- TODO codeConstant?
   NPrimOp (NPrimOpAdd a b) -> compileBinaryPrimOp Tac_add a b
   NPrimOp (NPrimOpSub a b) -> compileBinaryPrimOp Tac_sub a b
+  NPrimOp (NPrimOpMul a b) -> compileBinaryPrimOp Tac_mul a b
+  NPrimOp (NPrimOpDiv a b) -> compileBinaryPrimOp Tac_div a b
   NPrimOp (NPrimOpEq a b) -> compileBinaryPrimOp Tac_eq a b
   NLambda [] params expr -> do
           funAddr <- compileFunc [] params expr name True
