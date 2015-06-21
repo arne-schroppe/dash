@@ -49,6 +49,7 @@ tokens :-
   "="           { mkTok TDefine }
   "->"          { mkTok TArrow_R }
   "<-"          { mkTok TArrow_L }
+  "_"           { mkTok TUnderscore }
   @integer      { mkTokS (\s -> TInt (read s)) }
   @ident        { mkTokS (\s -> TId s) }
   @operator     { mkTokS (\s -> TOperator s) }
@@ -114,6 +115,7 @@ data Token  = TEOL
             | TEnd
             | TLambda
             | TOperator String
+            | TUnderscore
   deriving (Show, Eq)
 
 

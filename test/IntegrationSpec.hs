@@ -373,6 +373,16 @@ spec = do
               result `shouldReturn` VMNumber 23
 
 
+            it "uses wildcards in a match" $ do
+              let code =  " match :test 3 4 begin \n\
+                          \ :test _ 4 _ -> 22 \n\
+                          \ :test 4     -> 33 \n\
+                          \ :test _ 4   -> 44 \n\
+                          \ end"
+              let result = run code
+              result `shouldReturn` VMNumber 44
+
+
 
     it "binds a value inside a nested symbol" $ do
       let code = " fib n =                       \n\

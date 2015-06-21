@@ -259,6 +259,7 @@ encodeMatchPattern nextMatchVar pat =
                   (vars, pats) <- encodePatternCompoundSymbolArgs nextMatchVar params
                   return (vars, CCompoundSymbol symId pats)
     PatVar n -> return $ ([n], CMatchVar nextMatchVar)
+    PatWildcard -> return $ (["_"], CMatchVar nextMatchVar) -- TODO be a bit more sophisticated here and don't encode this as a var that is passed to the match branch
 
 -- TODO use inner state ?
 encodePatternCompoundSymbolArgs :: Int -> [Pattern] -> NormState ([String], [Constant])

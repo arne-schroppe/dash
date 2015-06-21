@@ -9,6 +9,7 @@ data Pattern
     = PatNumber Int
     | PatVar String
     | PatSymbol String [Pattern]
+    | PatWildcard
     deriving (Show, Eq)
 
 

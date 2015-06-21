@@ -34,6 +34,7 @@ import Language.Dash.IR.Ast
   end       { TEnd }
   lam       { TLambda }
   operator  { TOperator $$ }
+  '_'       { TUnderscore }
 
 
 %%
@@ -165,6 +166,7 @@ Pattern:
 SimplePattern:
     int { PatNumber $1 }
   | id  { PatVar $1 }
+  | '_' { PatWildcard }
   | '(' Pattern ')' { $2 }
 
 SymbolPattern:
