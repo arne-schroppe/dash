@@ -17,7 +17,6 @@ data Binding
     = Binding String Expr        -- name, body
     deriving (Show, Eq)
 
--- TODO rename 'FunCall' to Application or FunApplication?
 
 data Expr
     = LitNumber Int
@@ -26,7 +25,7 @@ data Expr
     | Var String
     | Namespace String Expr  -- TODO merge with var?
     | Lambda [String] Expr       -- arguments, body
-    | FunCall Expr [Expr]
+    | FunAp Expr [Expr]            -- A function application
     | LocalBinding Binding Expr  -- binding, body
     | Module [Binding]
     | Match Expr [(Pattern, Expr)]

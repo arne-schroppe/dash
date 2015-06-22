@@ -453,6 +453,7 @@ K infix operators
 - inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
 - Strings
 - Creating symbols
+- tuples
 - Lists
 - maps/dictionaries as built-in type (because that's fairly useful)
   - under the hood these could be somewhat similar to modules, maybe. Or modules can't be modified at runtime,

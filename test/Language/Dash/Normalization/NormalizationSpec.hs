@@ -30,8 +30,8 @@ spec = do
         norm `shouldBe` (NAtom $ NPlainSymbol (numBuiltInSymbols + 0))
 
       it "splits a complex addition operation" $ do
-        let ast = FunCall (Var "+")
-                      [(FunCall (Var "-")
+        let ast = FunAp (Var "+")
+                      [(FunAp (Var "-")
                           [LitNumber 2, LitNumber 3]),
                        LitNumber 4]
         let norm = pureNorm ast
@@ -46,11 +46,11 @@ spec = do
       it "normalizes general function calls" $ do
         let ast = LocalBinding (Binding "fun1" $ Lambda ["a", "b", "c", "d"] $ LitNumber 0) $
                   LocalBinding (Binding "fun2" $ Lambda ["a", "b"] $ LitNumber 0) $
-                  FunCall (Var "fun1")
-                      [(FunCall (Var "fun2")
+                  FunAp (Var "fun1")
+                      [(FunAp (Var "fun2")
                           [LitNumber 1, LitNumber 2]),
                        LitNumber 3,
-                       (FunCall (Var "+")
+                       (FunAp (Var "+")
                           [LitNumber 4, LitNumber 5]),
                        LitNumber 6]
         let norm = pureNorm ast
@@ -59,13 +59,13 @@ spec = do
                 NLet (NLocalVar 1 "fun2") (NLambda [] ["a", "b"] $ NAtom $ NNumber 0) $
                 NLet (NLocalVar 2 "") (NNumber 1) $
                 NLet (NLocalVar 3 "") (NNumber 2) $
-                NLet (NLocalVar 4 "") (NFunCall (NLocalVar 1 "fun2") [(NLocalVar 2 ""), (NLocalVar 3 "")]) $
+                NLet (NLocalVar 4 "") (NFunAp (NLocalVar 1 "fun2") [(NLocalVar 2 ""), (NLocalVar 3 "")]) $
                 NLet (NLocalVar 5 "") (NNumber 3) $
                 NLet (NLocalVar 6 "") (NNumber 4) $
                 NLet (NLocalVar 7 "") (NNumber 5) $
                 NLet (NLocalVar 8 "") (NPrimOp $ NPrimOpAdd (NLocalVar 6 "") (NLocalVar 7 "")) $
                 NLet (NLocalVar 9 "") (NNumber 6) $
-                NAtom $ NFunCall (NLocalVar 0 "fun1") [
+                NAtom $ NFunAp (NLocalVar 0 "fun1") [
                                   NLocalVar 4 "",
                                   NLocalVar 5 "",
                                   NLocalVar 8 "",
@@ -73,7 +73,7 @@ spec = do
         norm `shouldBe` expected
 
       it "normalizes a lambda call" $ do
-        let ast = FunCall
+        let ast = FunAp
                 (Lambda ["a", "b"]
                     (LitNumber 5))
                 [LitNumber 1, LitNumber 2]
@@ -82,12 +82,12 @@ spec = do
                 NLet (NLocalVar 0 "") (NLambda [] ["a", "b"] (NAtom $ NNumber 5)) $
                 NLet (NLocalVar 1 "") (NNumber 1) $
                 NLet (NLocalVar 2 "") (NNumber 2) $
-                NAtom $ NFunCall (NLocalVar 0 "") [NLocalVar 1 "", NLocalVar 2 ""]
+                NAtom $ NFunAp (NLocalVar 0 "") [NLocalVar 1 "", NLocalVar 2 ""]
         norm `shouldBe` expected
 
       it "reuses named variables" $ do
         let ast = LocalBinding (Binding "x" $ LitNumber 3) $
-                  FunCall (Var "+") [Var "x", Var "x"]
+                  FunAp (Var "+") [Var "x", Var "x"]
         let norm = pureNorm ast
         let expected =
                 NLet (NLocalVar 0 "x") (NNumber 3) $
@@ -98,23 +98,23 @@ spec = do
       it "normalizes a returned lambda call" $ do
         let ast = LocalBinding (Binding "make-l" $ Lambda ["x"] $
                                 Lambda ["y"] $ LitNumber 22 ) $
-                  LocalBinding (Binding "l" $ FunCall (Var "make-l") [LitNumber 0]) $
-                  FunCall (Var "l") [LitNumber 55]
+                  LocalBinding (Binding "l" $ FunAp (Var "make-l") [LitNumber 0]) $
+                  FunAp (Var "l") [LitNumber 55]
         let norm = pureNorm ast
         let expected =
                 NLet (NLocalVar 0 "make-l") (NLambda [] ["x"] $ NAtom $
                     NLambda [] ["y"] $ NAtom $ NNumber 22) $
                 NLet (NLocalVar 1 "") (NNumber 0) $
-                NLet (NLocalVar 2 "l") (NFunCall (NLocalVar 0 "make-l") [NLocalVar 1 ""]) $
+                NLet (NLocalVar 2 "l") (NFunAp (NLocalVar 0 "make-l") [NLocalVar 1 ""]) $
                 NLet (NLocalVar 3 "") (NNumber 55) $
-                NAtom $ NFunCall (NLocalVar 2 "l") [NLocalVar 3 ""]
+                NAtom $ NFunAp (NLocalVar 2 "l") [NLocalVar 3 ""]
         norm `shouldBe` expected
 
       it "normalizes nested bindings" $ do
         let ast = LocalBinding (Binding "a" $
                     LocalBinding (Binding "b" $ LitNumber 22) $
-                    FunCall (Var "+") [Var "b", LitNumber 4] ) $
-                  FunCall (Var "-") [Var "a", LitNumber 55]
+                    FunAp (Var "+") [Var "b", LitNumber 4] ) $
+                  FunAp (Var "-") [Var "a", LitNumber 55]
         let norm = pureNorm ast
         let expected =
                 NLet (NLocalVar 1 "") (NNumber 4) $
@@ -136,7 +136,7 @@ spec = do
 
       it "identifies constant free variables" $ do
         let ast = LocalBinding (Binding "b" (LitNumber 4)) $
-                     Lambda ["a"] $ FunCall (Var "+") [Var "a", Var "b"]
+                     Lambda ["a"] $ FunAp (Var "+") [Var "a", Var "b"]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "b") (NNumber 4) $
                        NAtom $ NLambda [] ["a"] $
@@ -146,7 +146,7 @@ spec = do
 
       it "identifies dynamic free variables" $ do
         let ast = Lambda ["b"] $
-                     Lambda ["a"] $ FunCall (Var "+") [Var "a", Var "b"]
+                     Lambda ["a"] $ FunAp (Var "+") [Var "a", Var "b"]
         let norm = pureNorm ast
         let expected = NAtom $ NLambda [] ["b"] $
                        NAtom $ NLambda ["b"] ["a"] $
@@ -157,7 +157,7 @@ spec = do
         let ast = Lambda ["a"] $
                   Lambda ["b"] $
                   Lambda ["c"] $
-                  Lambda ["d"] $ FunCall (Var "+") [Var "a", Var "b"]
+                  Lambda ["d"] $ FunAp (Var "+") [Var "a", Var "b"]
         let norm = pureNorm ast
         let expected = NAtom $ NLambda [] ["a"] $
                        NAtom $ NLambda ["a"] ["b"] $
@@ -241,16 +241,16 @@ spec = do
 
       it "resolves recursive use of an identifier" $ do
         let ast = LocalBinding (Binding "fun" $
-                    Lambda ["a"] $ FunCall (Var "fun") [FunCall (Var "+") [Var "a", LitNumber 1]]) $
-                  FunCall (Var "fun") [LitNumber 10]
+                    Lambda ["a"] $ FunAp (Var "fun") [FunAp (Var "+") [Var "a", LitNumber 1]]) $
+                  FunAp (Var "fun") [LitNumber 10]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "fun") (NLambda [] ["a"] $
                          NLet (NLocalVar 0 "") (NVar $ NConstantFreeVar "fun") $
                          NLet (NLocalVar 1 "") (NNumber 1) $
                          NLet (NLocalVar 2 "") (NPrimOp $ NPrimOpAdd (NFunParam "a") (NLocalVar 1 "")) $
-                         NAtom $ NFunCall (NLocalVar 0 "") [NLocalVar 2 ""]) $
+                         NAtom $ NFunAp (NLocalVar 0 "") [NLocalVar 2 ""]) $
                        NLet (NLocalVar 1 "") (NNumber 10) $
-                       NAtom $ NFunCall (NLocalVar 0 "fun") [NLocalVar 1 ""]
+                       NAtom $ NFunAp (NLocalVar 0 "fun") [NLocalVar 1 ""]
         norm `shouldBe` expected
 
 
@@ -258,43 +258,43 @@ spec = do
       it "resolves recursive use of an identifier in a closure" $ do
         let ast = LocalBinding (Binding "outer" $ Lambda ["b"] $
                     LocalBinding (Binding "fun" $
-                      Lambda ["a"] $ FunCall (Var "fun") [FunCall (Var "+") [Var "a", Var "b"]]) $
-                    FunCall (Var "fun") [LitNumber 10]) $
-                  FunCall (Var "outer") [LitNumber 2]
+                      Lambda ["a"] $ FunAp (Var "fun") [FunAp (Var "+") [Var "a", Var "b"]]) $
+                    FunAp (Var "fun") [LitNumber 10]) $
+                  FunAp (Var "outer") [LitNumber 2]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "outer") (NLambda [] ["b"] $
                          NLet (NLocalVar 0 "fun") (NLambda ["b", "fun"] ["a"] $
                            -- recursive use of "fun" will call the same closure again
                            NLet (NLocalVar 0 "") (NVar $ NDynamicFreeVar "fun") $
                            NLet (NLocalVar 1 "") (NPrimOp $ NPrimOpAdd (NFunParam "a") (NDynamicFreeVar "b")) $
-                           NAtom $ NFunCall (NLocalVar 0 "") [NLocalVar 1 ""]) $
+                           NAtom $ NFunAp (NLocalVar 0 "") [NLocalVar 1 ""]) $
                          NLet (NLocalVar 1 "") (NNumber 10) $
-                         NAtom $ NFunCall (NLocalVar 0 "fun") [NLocalVar 1 ""]) $
+                         NAtom $ NFunAp (NLocalVar 0 "fun") [NLocalVar 1 ""]) $
                        NLet (NLocalVar 1 "") (NNumber 2) $
-                       NAtom $ NFunCall (NLocalVar 0 "outer") [NLocalVar 1 ""]
+                       NAtom $ NFunAp (NLocalVar 0 "outer") [NLocalVar 1 ""]
         norm `shouldBe` expected
 
       it "pulls up new free variables into outer scopes" $ do
         let ast = LocalBinding (Binding "outer" $ Lambda ["b"] $
                     LocalBinding (Binding "fun" $ Lambda ["a"] $
                       LocalBinding (Binding "inner" $ Lambda ["x"] $
-                        FunCall (Var "fun") [FunCall (Var "+") [Var "a", Var "b"]]) $
-                      FunCall (Var "inner") [LitNumber 0]) $
-                    FunCall (Var "fun") [LitNumber 10]) $
-                  FunCall (Var "outer") [LitNumber 2]
+                        FunAp (Var "fun") [FunAp (Var "+") [Var "a", Var "b"]]) $
+                      FunAp (Var "inner") [LitNumber 0]) $
+                    FunAp (Var "fun") [LitNumber 10]) $
+                  FunAp (Var "outer") [LitNumber 2]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "outer") (NLambda [] ["b"] $
                          NLet (NLocalVar 0 "fun") (NLambda ["b", "fun"] ["a"] $
                            NLet (NLocalVar 0 "inner") (NLambda ["b", "a", "fun"] ["x"] $
                              NLet (NLocalVar 0 "") (NVar $ NDynamicFreeVar "fun") $
                              NLet (NLocalVar 1 "") (NPrimOp $ NPrimOpAdd (NDynamicFreeVar "a") (NDynamicFreeVar "b")) $
-                             NAtom $ NFunCall (NLocalVar 0 "") [NLocalVar 1 ""]) $
+                             NAtom $ NFunAp (NLocalVar 0 "") [NLocalVar 1 ""]) $
                            NLet (NLocalVar 1 "") (NNumber 0) $
-                           NAtom $ NFunCall (NLocalVar 0 "inner") [NLocalVar 1 ""]) $
+                           NAtom $ NFunAp (NLocalVar 0 "inner") [NLocalVar 1 ""]) $
                          NLet (NLocalVar 1 "") (NNumber 10) $
-                         NAtom $ NFunCall (NLocalVar 0 "fun") [NLocalVar 1 ""]) $
+                         NAtom $ NFunAp (NLocalVar 0 "fun") [NLocalVar 1 ""]) $
                        NLet (NLocalVar 1 "") (NNumber 2) $
-                       NAtom $ NFunCall (NLocalVar 0 "outer") [NLocalVar 1 ""]
+                       NAtom $ NFunAp (NLocalVar 0 "outer") [NLocalVar 1 ""]
         norm `shouldBe` expected
 
 
@@ -302,7 +302,7 @@ spec = do
       it "does not oversaturate a call to a known function" $ do
         let ast = LocalBinding (Binding "fun" $ Lambda ["a", "b"] $
                     Lambda ["c"] $ Lambda ["d", "e", "f"] $ LitNumber 42) $
-                  FunCall (Var "fun") [LitNumber 1, LitNumber 2,
+                  FunAp (Var "fun") [LitNumber 1, LitNumber 2,
                                        LitNumber 33,
                                        LitNumber 444, LitNumber 555, LitNumber 666]
         let norm = pureNorm ast
@@ -316,17 +316,17 @@ spec = do
                        NLet (NLocalVar 5 "") (NNumber 444) $
                        NLet (NLocalVar 6 "") (NNumber 555) $
                        NLet (NLocalVar 7 "") (NNumber 666) $
-                       NLet (NLocalVar 3 "") (NFunCall (NLocalVar 0 "fun") [NLocalVar 1 "", NLocalVar 2 ""]) $
+                       NLet (NLocalVar 3 "") (NFunAp (NLocalVar 0 "fun") [NLocalVar 1 "", NLocalVar 2 ""]) $
 
                        -- The two returned functions are no known functions anymore, so generic apply needs to
                        -- deal with them at runtime
-                       NAtom $ NFunCall (NLocalVar 3 "") [NLocalVar 4 "", NLocalVar 5 "", NLocalVar 6 "", NLocalVar 7 ""]
+                       NAtom $ NFunAp (NLocalVar 3 "") [NLocalVar 4 "", NLocalVar 5 "", NLocalVar 6 "", NLocalVar 7 ""]
         norm `shouldBe` expected
 
 {-
       -- TODO fix this (by giving all temp vars a name)
       it "does not oversaturate a call to a known anonymous function" $ do
-        let ast = FunCall (Lambda ["a", "b"] $ Lambda ["c"] $ Lambda ["d", "e", "f"] $ LitNumber 42) $
+        let ast = FunAp (Lambda ["a", "b"] $ Lambda ["c"] $ Lambda ["d", "e", "f"] $ LitNumber 42) $
                       [ LitNumber 1, LitNumber 2,
                         LitNumber 33,
                         LitNumber 444, LitNumber 555, LitNumber 666]
@@ -341,18 +341,18 @@ spec = do
                        NLet (NLocalVar 5 "") (NNumber 444) $
                        NLet (NLocalVar 6 "") (NNumber 555) $
                        NLet (NLocalVar 7 "") (NNumber 666) $
-                       NLet (NLocalVar 3 "") (NFunCall (NLocalVar 0 "") [NLocalVar 1 "", NLocalVar 2 ""]) $
+                       NLet (NLocalVar 3 "") (NFunAp (NLocalVar 0 "") [NLocalVar 1 "", NLocalVar 2 ""]) $
 
                        -- The two returned functions are no known functions anymore, so generic apply needs to
                        -- deal with them at runtime
-                       NAtom $ NFunCall (NLocalVar 3 "") [NLocalVar 4 "", NLocalVar 5 "", NLocalVar 6 "", NLocalVar 7 ""]
+                       NAtom $ NFunAp (NLocalVar 3 "") [NLocalVar 4 "", NLocalVar 5 "", NLocalVar 6 "", NLocalVar 7 ""]
         norm `shouldBe` expected
 -}
 
       it "identifies an under-saturated call to a known function" $ do
         let ast = LocalBinding (Binding "fun" $ Lambda ["a", "b", "c"] $
                                                 LitNumber 42) $
-                  FunCall (Var "fun") [LitNumber 1, LitNumber 2]
+                  FunAp (Var "fun") [LitNumber 1, LitNumber 2]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "fun") (NLambda [] ["a", "b", "c"] $
                             NAtom $ (NNumber 42)) $

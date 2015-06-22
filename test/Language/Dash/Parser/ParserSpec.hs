@@ -21,7 +21,7 @@ spec = do
     it "parses an anonymous function" $ do
       parse_string ".\\ a = add a 1" `shouldBe`
         (Lambda ["a"] $
-          FunCall (Var "add") [Var "a", LitNumber 1])
+          FunAp (Var "add") [Var "a", LitNumber 1])
 
     it "parses if-then-else as match" $ do
       parse_string "if a then b else c" `shouldBe`

@@ -73,7 +73,7 @@ compileAtom reg atom name isResultValue = case atom of
           funAddr <- compileFunc [] params expr name True
           compileLoadLambda reg funAddr
   NLambda freeVars params expr -> compileClosure reg freeVars params expr name
-  NFunCall funVar args -> do
+  NFunAp funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
           callInstr <- compileCallInstr reg funVar (length args) isResultValue
           return $ argInstrs ++ callInstr

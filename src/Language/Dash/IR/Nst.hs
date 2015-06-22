@@ -34,7 +34,7 @@ data NstAtomicExpr =
   | NLambda [VarName] [ParamName] NstExpr  -- FreeVars FormalParams Body
   | NPrimOp NstPrimOp
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
-  | NFunCall NstVar [NstVar]
+  | NFunAp NstVar [NstVar]
   | NMatch Int NstVar ConstAddr [([VarName], NstVar)] -- MaxCaptures Subject PatternAddr [MatchedVars, Var-That-Holds-Closure]
   deriving (Eq, Ord)
 
@@ -75,6 +75,6 @@ instance Show NstAtomicExpr where
     NLambda free params body -> "λ f" ++ (show free) ++ " p" ++ (show params) ++ " {\n" ++ (show body) ++ "}"
     NPrimOp p -> show p
     NPartAp v args -> "pap " ++ (show v) ++ " " ++ (show args)
-    NFunCall v args -> "ap " ++ (show v) ++ " " ++ (show args)
+    NFunAp v args -> "ap " ++ (show v) ++ " " ++ (show args)
     NMatch maxv subj pat body -> "match (max " ++ (show maxv) ++ ") [" ++ (show subj) ++ "] @" ++ (show pat) ++ " " ++ (show body)
 

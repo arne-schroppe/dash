@@ -90,8 +90,8 @@ normalizeExpr expr = case expr of
 
 atomizeExpr :: Expr -> String -> Cont -> NormState NstExpr
 atomizeExpr expr name k = case expr of
-  FunCall funExpr args ->
-          normalizeFunCall funExpr args k
+  FunAp funExpr args ->
+          normalizeFunAp funExpr args k
   LitNumber n ->
           normalizeNumber n k
   LitSymbol sname args ->
@@ -151,8 +151,8 @@ normalizeLambda params bodyExpr name k = do
 
 -- TODO throw an error if the thing being called is obviously not callable
 -- TODO it gets a bit confusing in which cases we expect a closure and where we expect a simple function
-normalizeFunCall :: Expr -> [Expr] -> Cont -> NormState NstExpr
-normalizeFunCall funExpr args k = case (funExpr, args) of
+normalizeFunAp :: Expr -> [Expr] -> Cont -> NormState NstExpr
+normalizeFunAp funExpr args k = case (funExpr, args) of
   (Var "+", [a, b]) -> normalizeBinaryPrimOp NPrimOpAdd a b
   (Var "-", [a, b]) -> normalizeBinaryPrimOp NPrimOpSub a b
   (Var "*", [a, b]) -> normalizeBinaryPrimOp NPrimOpMul a b
@@ -161,26 +161,26 @@ normalizeFunCall funExpr args k = case (funExpr, args) of
   _ -> do nameExpr funExpr "" $ \ funVar -> do
             maybeAr <- arity funVar
             case maybeAr of
-              Nothing -> callToUnknownFunction funVar
-              Just (numFree, ar) -> callToKnownFunction funVar numFree ar
+              Nothing -> applyUnknownFunction funVar
+              Just (numFree, ar) -> applyKnownFunction funVar numFree ar
   where
     normalizeBinaryPrimOp :: (NstVar -> NstVar -> NstPrimOp) -> Expr -> Expr -> NormState NstExpr
     normalizeBinaryPrimOp primOp a b = do
       normalizeExprList [a, b] $ \ [aVar, bVar] ->
           k $ NPrimOp $ primOp aVar bVar
 
-    callToUnknownFunction :: NstVar -> NormState NstExpr
-    callToUnknownFunction funVar =
+    applyUnknownFunction :: NstVar -> NormState NstExpr
+    applyUnknownFunction funVar =
       do normalizeExprList args $ \ normArgs ->
-          k $ NFunCall funVar normArgs
+          k $ NFunAp funVar normArgs
 
-    callToKnownFunction :: NstVar -> Int -> Int -> NormState NstExpr
-    callToKnownFunction funVar numFreeVars funArity =
+    applyKnownFunction :: NstVar -> Int -> Int -> NormState NstExpr
+    applyKnownFunction funVar numFreeVars funArity =
       let numArgs = length args in
       -- saturated call
       if numArgs == funArity then do
         normalizeExprList args $ \ normArgs ->
-            k $ NFunCall funVar normArgs
+            k $ NFunAp funVar normArgs
       -- under-saturated call
       else if numArgs < funArity then
         -- We already know at this point, that this *must* be a non-closure
@@ -194,11 +194,11 @@ normalizeFunCall funExpr args k = case (funExpr, args) of
         let (knownFunArgs, remainingArgs) = splitAt funArity args
         normalizeExprList knownFunArgs $ \ normKnownFunArgs -> do
             knownFunResult <- newTempVar ""
-            let knownFunCall = NFunCall funVar normKnownFunArgs
+            let apKnownFun = NFunAp funVar normKnownFunArgs
             normalizeExprList remainingArgs $ \ normRemArgs -> do
-                -- call to result of the previous call to a known function
-                rest <- k $ NFunCall knownFunResult normRemArgs
-                return $ NLet knownFunResult knownFunCall rest
+                -- application of the result of the previous application of a known function
+                rest <- k $ NFunAp knownFunResult normRemArgs
+                return $ NLet knownFunResult apKnownFun rest
 
 
 normalizeMatch :: Expr -> [(Pattern, Expr)] -> Cont -> NormState NstExpr

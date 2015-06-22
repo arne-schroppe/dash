@@ -97,22 +97,22 @@ NonIdentNonSymbolSimpleExpr:
 
 
 FunDefOrAp:
-    NonIdentNonSymbolSimpleExpr plus(SimpleExpr)       { FunCall $1 $2 }
-  | Ident NonIdentSimpleExpr star(SimpleExpr) { FunCall $1 ($2 : $3)  }
+    NonIdentNonSymbolSimpleExpr plus(SimpleExpr)       { FunAp $1 $2 }
+  | Ident NonIdentSimpleExpr star(SimpleExpr) { FunAp $1 ($2 : $3)  }
   | Ident Ident FunDefOrCallNext              { let args = $2 : (fst $3) in (snd $3) $1 args }
 
 
 FunDefOrCallNext:
     Ident FunDefOrCallNext                     { ($1 : (fst $2), (snd $2)) } -- could still be a fun def or a call
-  | NonIdentSimpleExpr star(SimpleExpr)        { ($1 : $2, \ a args -> FunCall a args)   }  -- fun call
+  | NonIdentSimpleExpr star(SimpleExpr)        { ($1 : $2, \ a args -> FunAp a args)   }  -- fun call
   | '=' opt(eol) Expr eol Expr                 { let varName (Var vn) = vn in
                                                  ([], \ a args -> 
                                                         LocalBinding (Binding (varName a) (Lambda (map varName args) $3)) $5) } -- fun def
-  |                                            { ([], \ a args -> FunCall a args) }
+  |                                            { ([], \ a args -> FunAp a args) }
 
 
 InfixOperation:
-    SimpleExpr operator SimpleExpr             { FunCall (Var $2) [$1, $3] }
+    SimpleExpr operator SimpleExpr             { FunAp (Var $2) [$1, $3] }
 
 
 
@@ -195,7 +195,7 @@ DoLineExpr:
 
 
 FunAp:
-    SimpleExpr plus(SimpleExpr) { FunCall $1 $2 }
+    SimpleExpr plus(SimpleExpr) { FunAp $1 $2 }
 
 LocalDoBinding:
     Binding DoLineExpr  { LocalBinding $1 $2 }
@@ -211,7 +211,7 @@ makeMonad monad lines =
     ("_", call) : rest -> foldl (\acc (nid, ncall) ->
           let ns = (Namespace monad (Var "bind")) in
           let args = [ncall, Lambda [nid] acc] in
-          FunCall ns args)
+          FunAp ns args)
         call rest
     (_, _) : rest -> error "Last line in do-block can't be an assignment"
     [] -> error "Malformed do-block"
