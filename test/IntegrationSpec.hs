@@ -436,6 +436,7 @@ K Refactoring
 - General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
 - Inline match branches !!!
 - TODO make it impossible to reassign values (d'oh!)
+- Limits (integers, num local vars, num arguments, num symbols, etc)
 
 missing language features:
 K Closures
@@ -449,7 +450,7 @@ K if-then-else
 K pattern wildcard (can be used multiple times)
 K More math operators
 K infix operators
-- inlining of match branches
+- inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
 - Strings
 - Creating symbols
 - Lists
@@ -466,6 +467,8 @@ K infix operators
 - Add license header everywhere!
 - Also add Haskell documentation header everywhere
 
+- A proper number type (big decimal?)
+
 
 After release ?
 - Modules
@@ -474,6 +477,7 @@ After release ?
 - Mutual recursion in module top-level
 - Multiple files
 - Operator precedence
+- Debugging. Stack traces (or breadcrumbs?)
 
 - private/secret symbols
 
