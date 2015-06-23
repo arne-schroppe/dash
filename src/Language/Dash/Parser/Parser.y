@@ -94,7 +94,7 @@ NonIdentNonSymbolSimpleExpr:
   | '(' Expr star(TupleNextExpr) ')' {
                   case $3 of
                   [] -> $2
-                  es -> LitSymbol "$tuple" ($2 : $3) }
+                  es -> LitSymbol tupleSymbolId ($2 : $3) }
 
 TupleNextExpr:
     ',' Expr   { $2 }
@@ -172,7 +172,14 @@ SimplePattern:
     int { PatNumber $1 }
   | id  { PatVar $1 }
   | '_' { PatWildcard }
-  | '(' Pattern ')' { $2 } -- TODO also add tuples here
+  | '(' Pattern star(TupleNextPattern) ')' { 
+      case $3 of
+        [] -> $2
+        _  -> PatSymbol tupleSymbolId ($2 : $3)
+    }
+
+TupleNextPattern:
+    ',' Pattern   { $2 }
 
 SymbolPattern:
     symbol star(SimplePattern) { PatSymbol $1 $2 }
@@ -209,6 +216,9 @@ LocalDoBinding:
 
 
 {
+
+tupleSymbolId = "$tuple"
+
 
 makeMonad monad lines =
   case (reverse lines) of

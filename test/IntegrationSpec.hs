@@ -391,6 +391,16 @@ spec = do
               result `shouldReturn` VMNumber 44
 
 
+            it "binds a value inside a tuple" $ do
+              let code =  " match (4, 8, 15) begin \n\
+                          \ (1, 2, 3) -> 1 \n\
+                          \ (4, n, m) -> n + m \n\
+                          \ (99, 100, 101) -> 3 \n\
+                          \ end"
+              let result = run code
+              result `shouldReturn` VMNumber 23
+
+
 
     it "binds a value inside a nested symbol" $ do
       let code = " fib n =                       \n\
