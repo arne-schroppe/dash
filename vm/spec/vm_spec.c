@@ -190,14 +190,14 @@ it( modifies_a_closure ) {
 it( applies_a_number_tag_to_a_value ) {
   vm_value original = 44;
   vm_value number = val(original, vm_tag_number);
-  is_equal(from_val(number, vm_tag_number), original);
+  is_equal(from_val(number), original);
 }
 
 
 it( applies_a_symbol_tag_to_a_value ) {
   vm_value original = 12;
   vm_value symbol = val(original, vm_tag_plain_symbol);
-  is_equal(from_val(symbol, vm_tag_plain_symbol), original);
+  is_equal(from_val(symbol), original);
 }
 
 

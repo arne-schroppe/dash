@@ -35,7 +35,7 @@ extern const vm_value vm_tag_match_data;
 
 #define __tag_mask(t) ((t & 0xF) << (sizeof(vm_value) * 8 - __tag_bits))
 #define val(x, t) (x | __tag_mask(t))
-#define from_val(x, t) (x & ~__tag_mask(t))   // TODO change from_val so that it just cuts away the tag
+#define from_val(v) (v & 0x0FFFFFFF)
 #define get_tag(x) (x >> (sizeof(vm_value) * 8 - __tag_bits))
 
 
