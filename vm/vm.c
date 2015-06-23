@@ -6,6 +6,45 @@
 #include "opcodes.h"
 #include "heap.h"
 
+/*
+
+New VM
+
+Add a stack. When calling a function, first push the return address, then all arguments.
+(Free variables first, then formal parameters). The first instruction inside the function
+should grow the stack for temporary vars. Before returning, the function should shrink the
+stack again (for temp + arguments). RET then pops the return address and jumps back.
+
+TODO make sure to check against instructions reading beyond the stack!
+
+
+When entering a function, reserve space for local vars
+Reserve one more slot for the return address for a call (and the local stack frame size)
+
+When calling a function, we still use temporary registers for arguments (TODO should we?
+makes every call more expensive. OTOH, it makes it easier to implement tail calls. Actually
+we don't need the registers. In case of a tail call, we can simply copy)
+
+Ok, so when calling a function, we directly write the arguments to the next stack frame.
+Then we set the return address. When the called function is done, it sets its return value
+at slot 0 (How about multiple return values?). Ret then jumps back to the return address
+and sets the returned value in the slot it belongs.
+
+Stack frame:
+  - frame size (mutable)
+  - return address
+  - result register
+  - arguments and local values
+
+
+TODO add optimized instructions for functions with few arguments ? (measure if this is effective)
+
+TODO use computed Goto
+
+*/
+
+
+
 // #define VM_DEBUG 1
 
 // TODO this code needs some cleaning up
