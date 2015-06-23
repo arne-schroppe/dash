@@ -35,6 +35,7 @@ import Language.Dash.IR.Ast
   lam       { TLambda }
   operator  { TOperator $$ }
   '_'       { TUnderscore }
+  ','       { TComma }
 
 
 %%
@@ -84,15 +85,19 @@ SimpleExpr:
   | NonIdentSimpleExpr  { $1 }
 
 NonIdentSimpleExpr:
-    int            { LitNumber $1 }
-  | symbol         { LitSymbol $1 [] }
-  | string         { LitString $1 }
-  | '(' Expr ')'   { $2 }
+    symbol         { LitSymbol $1 [] }
+  | NonIdentNonSymbolSimpleExpr { $1 }
 
 NonIdentNonSymbolSimpleExpr:
     int            { LitNumber $1 }
   | string         { LitString $1 }
-  | '(' Expr ')'   { $2 }
+  | '(' Expr star(TupleNextExpr) ')' {
+                  case $3 of
+                  [] -> $2
+                  es -> LitSymbol "$tuple" ($2 : $3) }
+
+TupleNextExpr:
+    ',' Expr   { $2 }
 
 
 

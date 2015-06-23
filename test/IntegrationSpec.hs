@@ -452,12 +452,13 @@ K More math operators
 K infix operators
 - inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
 - Strings
-- Creating symbols
+- Creating symbols (symbol arity is known statically)
 - tuples
 - Lists
 - maps/dictionaries as built-in type (because that's fairly useful)
   - under the hood these could be somewhat similar to modules, maybe. Or modules can't be modified at runtime,
     but then we're not very dynamic
+  - map functions: hasKeys, merge (for entitas)
 - I/O (without modules, just io-bind and return)
 
 - Garbage collection

@@ -30,7 +30,7 @@ check-maybe x <maybe> =
 
 rec n =
   match if :sym == 4 then 22 else n - 1 begin
-    0 -> :end 1 2
+    0 -> (1, 2)
     x ->
       b = (x - 1) + 1
       rec b

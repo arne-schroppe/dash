@@ -50,6 +50,7 @@ tokens :-
   "->"          { mkTok TArrow_R }
   "<-"          { mkTok TArrow_L }
   "_"           { mkTok TUnderscore }
+  ","           { mkTok TComma }
   @integer      { mkTokS (\s -> TInt (read s)) }
   @ident        { mkTokS (\s -> TId s) }
   @operator     { mkTokS (\s -> TOperator s) }
@@ -116,6 +117,7 @@ data Token  = TEOL
             | TLambda
             | TOperator String
             | TUnderscore
+            | TComma
   deriving (Show, Eq)
 
 
