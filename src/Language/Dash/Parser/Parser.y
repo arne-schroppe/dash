@@ -108,10 +108,10 @@ FunDefOrAp:
 
 
 FunDefOrCallNext:
-    Ident FunDefOrCallNext                     { ($1 : (fst $2), (snd $2)) } -- could still be a fun def or a call
-  | NonIdentSimpleExpr star(SimpleExpr)        { ($1 : $2, \ a args -> FunAp a args)   }  -- fun call
+    Ident FunDefOrCallNext                     { ($1 : (fst $2), (snd $2)) } -- could still be a fun def or application
+  | NonIdentSimpleExpr star(SimpleExpr)        { ($1 : $2, \ a args -> FunAp a args)   }  -- application
   | '=' opt(eol) Expr eol Expr                 { let varName (Var vn) = vn in
-                                                 ([], \ a args -> 
+                                                 ([], \ a args ->
                                                         LocalBinding (Binding (varName a) (Lambda (map varName args) $3)) $5) } -- fun def
   |                                            { ([], \ a args -> FunAp a args) }
 
@@ -172,7 +172,7 @@ SimplePattern:
     int { PatNumber $1 }
   | id  { PatVar $1 }
   | '_' { PatWildcard }
-  | '(' Pattern ')' { $2 }
+  | '(' Pattern ')' { $2 } -- TODO also add tuples here
 
 SymbolPattern:
     symbol star(SimplePattern) { PatSymbol $1 $2 }

@@ -425,6 +425,13 @@ spec = do
       result `shouldReturn` VMNumber 99
 
 
+    it "has tuples" $ do
+      let code = " (1, 2, :sym)"
+      let result = run code
+      result `shouldReturn` VMSymbol "$tuple" [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
+
+
+
 
 {-
 What's missing:
