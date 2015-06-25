@@ -7,6 +7,7 @@
 #include "heap.h"
 
 /*
+ * TODO delete this comment
 
 New VM
 
@@ -45,7 +46,7 @@ TODO use computed Goto
 
 
 
-// #define VM_DEBUG 1
+#define VM_DEBUG 1
 
 // TODO this code needs some cleaning up
 
@@ -432,7 +433,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
         get_reg(reg0) = arg1 - arg2;
-        debug( printf("SUB    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
+        debug( printf("SUB    r%02i r%02i=%x r%02i=%x\n", reg0, reg1, arg1, reg2, arg2) );
       }
       break;
 
@@ -488,7 +489,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         next_frame.result_register = get_arg_r0(instr);
         ++stack_pointer;
 
-        debug( printf("CALL   r%02i r%02i r%02i\n", get_arg_r0(instr), func_address_reg, num_args) );
+        debug( printf("CALL\n") );
       }
       break;
 
@@ -499,7 +500,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           is_running = false;
         }
 
-        debug( printf("TL CALL r%02i r%02i f=%04d n%02i\n", get_arg_r0(instr), func_address_reg, func_address, num_args) );
+        debug( printf("TL CALL\n") );
       }
       break;
 
@@ -519,7 +520,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           ++stack_pointer;
         }
 
-        debug( printf("CALLCL r%02i r%02i r%02i\n", get_arg_r0(instr), cl_address_reg, num_args) );
+        debug( printf("CALLCL\n") );
       }
       break;
 
@@ -527,7 +528,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       // TODO It's not entirely clear yet what happens when this returns a new PAP
       case OP_TAIL_GEN_AP: {
         do_gen_ap(&current_frame, instr, program);
-        debug( printf("TL CALLCL r%02i r%02i=%04zu f=%04i n%02i\n", get_arg_r0(instr), cl_address_reg, cl_address, func_address, num_args) );
+        debug( printf("TL CALLCL\n") );
       }
       break;
 
@@ -663,7 +664,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
         *(cl_pointer + num_args + 1) = func_address;
         get_reg(reg0) = val( (vm_value) cl_address, vm_tag_pap);
-        debug( printf("PART_AP r%02i r%02i f=%04i r%02i\n", reg0, func_address_reg, func_address, num_args) );
+        debug( printf("PART_AP\n") );
       }
       break;
 
