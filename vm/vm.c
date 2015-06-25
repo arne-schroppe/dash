@@ -333,8 +333,8 @@ void reset() {
   stack_pointer = 0;
   const_table = 0;
   const_table_length = 0;
-  memset(stack, 0, sizeof(stack_frame) * STACK_SIZE);
-  memset(arg_reg, 0, sizeof(vm_value) * NUM_REGS);
+  memset(stack, 0xDEAD, sizeof(stack_frame) * STACK_SIZE); //TODO delete the two memset lines later, just for debugging
+  memset(arg_reg, 0xDEAD, sizeof(vm_value) * NUM_REGS);
   init_heap();
 }
 
