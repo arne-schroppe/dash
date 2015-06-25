@@ -1,0 +1,11 @@
+
+rec n =
+  match n - 1 begin
+    0 -> 4
+    x ->
+      rec x
+  end
+
+
+rec 4000000
+
