@@ -7,36 +7,6 @@
 #include "heap.h"
 
 /*
- * TODO delete this comment
-
-New VM
-
-Add a stack. When calling a function, first push the return address, then all arguments.
-(Free variables first, then formal parameters). The first instruction inside the function
-should grow the stack for temporary vars. Before returning, the function should shrink the
-stack again (for temp + arguments). RET then pops the return address and jumps back.
-
-TODO make sure to check against instructions reading beyond the stack!
-
-
-When entering a function, reserve space for local vars
-Reserve one more slot for the return address for a call (and the local stack frame size)
-
-When calling a function, we still use temporary registers for arguments (TODO should we?
-makes every call more expensive. OTOH, it makes it easier to implement tail calls. Actually
-we don't need the registers. In case of a tail call, we can simply copy)
-
-Ok, so when calling a function, we directly write the arguments to the next stack frame.
-Then we set the return address. When the called function is done, it sets its return value
-at slot 0 (How about multiple return values?). Ret then jumps back to the return address
-and sets the returned value in the slot it belongs.
-
-Stack frame:
-  - frame size (mutable)
-  - return address
-  - result register
-  - arguments and local values
-
 
 TODO add optimized instructions for functions with few arguments ? (measure if this is effective)
 
@@ -81,7 +51,7 @@ const vm_value vm_tag_match_data = 0xF;
 static stack_frame stack[STACK_SIZE];
 static int stack_pointer = 0;
 static int program_pointer = 0;
-static vm_value arg_reg[NUM_REGS];
+//static vm_value arg_reg[NUM_REGS];
 static vm_value *const_table = 0;
 static int const_table_length = 0;
 
@@ -96,7 +66,7 @@ static int const_table_length = 0;
 #define next_frame (stack[stack_pointer + 1])
 
 
-#define do_call(frame, instr)         \
+#define do_call(frame, arg_frame, instr)         \
   int return_pointer;                 \
   bool call_failed = false;              \
   {                                   \
@@ -108,8 +78,10 @@ static int const_table_length = 0;
     } \
     else {                            \
       int func_address = from_val(func); \
-      int num_args = get_arg_r2(instr); \
-      memcpy(frame->reg, arg_reg, num_args * sizeof(vm_value)); \
+      if(frame != arg_frame) { \
+        int num_args = get_arg_r2(instr); \
+        memcpy(frame->reg, arg_frame->reg, num_args * sizeof(vm_value)); \
+      } \
       return_pointer = program_pointer; \
       program_pointer = func_address + fun_header_size; \
     } \
@@ -118,7 +90,7 @@ static int const_table_length = 0;
 
 // TODO turn this into a macro
 // TODO add a result register to the tail-call variety of this opcode!! (right now it's pure coincidence that things work, because we set the missing return reg to 0 by default)
-int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
+int do_gen_ap(stack_frame *frame, stack_frame *arg_frame, vm_value instr, vm_instruction *program) {
 
   // find a better term for "function or closure" than lambda
   int lambda_reg = get_arg_r1(instr);
@@ -136,8 +108,8 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     int num_cl_vars = closure_var_count(header);
 
     if (num_args == arity) {
+      memmove(&(frame->reg[num_cl_vars]), &(arg_frame->reg[0]), num_args * sizeof(vm_value));
       memcpy(&(frame->reg[0]), cl_pointer + 1, num_cl_vars * sizeof(vm_value));
-      memcpy(&(frame->reg[num_cl_vars]), &arg_reg[0], num_args * sizeof(vm_value));
 
       // do the call
       vm_value func_address = *(cl_pointer + num_cl_vars + 1);
@@ -155,7 +127,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       vm_value *new_cl_pointer = heap_get_pointer(new_cl_address);
       *new_cl_pointer = closure_header((arity - num_args), (num_cl_vars + num_args)); /* write header */
       memcpy(new_cl_pointer + 1, cl_pointer + 1, num_cl_vars * sizeof(vm_value));
-      memcpy(&new_cl_pointer[num_cl_vars + 1], &arg_reg[0], num_args * sizeof(vm_value));
+      memcpy(&new_cl_pointer[num_cl_vars + 1], &(arg_frame->reg[0]), num_args * sizeof(vm_value));
       *(new_cl_pointer + num_cl_vars + num_args + 1) = func_address;
       get_reg(reg0) = val( (vm_value) new_cl_address, vm_tag_pap );
       return -1;
@@ -174,7 +146,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     int arity = get_arg_i(fun_header);
 
     if (num_args == arity) {
-      do_call(frame, instr);
+      do_call(frame, arg_frame, instr);
       if(call_failed) {
         fprintf(stderr, "Call failed (not a function)\n");
         return -1; //TODO exit here?
@@ -191,7 +163,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
       vm_value *cl_pointer = heap_get_pointer(cl_address);
       *cl_pointer = closure_header((arity - num_args), num_args); /* write header */
-      memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
+      memcpy(cl_pointer + 1, &(arg_frame->reg[0]), num_args * sizeof(vm_value));
       *(cl_pointer + num_args + 1) = func_address;
       get_reg(reg0) = val( (vm_value) cl_address, vm_tag_pap);
     }
@@ -324,10 +296,6 @@ void print_registers(stack_frame frame) {
     sprintf(&buffer[i*(reg_display_size + 1)], "%016x ", frame.reg[i]);
   }
   printf("regs: %s\n", buffer);
-  for(i=0; i<num_displayed_regs; ++i) {
-    sprintf(&buffer[i*(reg_display_size + 1)], "%016x ", arg_reg[i]);
-  }
-  printf("args: %s\n", buffer);
 }
 
 void reset() {
@@ -336,7 +304,7 @@ void reset() {
   const_table = 0;
   const_table_length = 0;
   memset(stack, 0xEE, sizeof(stack_frame) * STACK_SIZE); //TODO delete the two memset lines later, just for debugging
-  memset(arg_reg, 0xEE, sizeof(vm_value) * NUM_REGS);
+  //memset(arg_reg, 0xEE, sizeof(vm_value) * NUM_REGS);
   init_heap();
 }
 
@@ -480,7 +448,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         }
 
         // this macro will create `return_pointer`
-        do_call((&next_frame), instr);
+        do_call((&next_frame), (&next_frame), instr);
         if (call_failed) {
           is_running = false;
           break;
@@ -496,7 +464,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
 
       case OP_TAIL_CALL: {
-        do_call((&current_frame), instr);
+        do_call((&current_frame), (&next_frame), instr);
         if (call_failed) {
           is_running = false;
         }
@@ -513,7 +481,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           break;
         }
 
-        int return_pointer = do_gen_ap((&next_frame), instr, program);
+        int return_pointer = do_gen_ap((&next_frame), (&next_frame), instr, program);
 
         if (return_pointer != -1) {
           next_frame.return_address = return_pointer;
@@ -528,7 +496,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
       // TODO It's not entirely clear yet what happens when this returns a new PAP
       case OP_TAIL_GEN_AP: {
-        do_gen_ap(&current_frame, instr, program);
+        do_gen_ap(&current_frame, &next_frame, instr, program);
         debug( printf("TL GEN AP\n") );
       }
       break;
@@ -598,7 +566,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int target_arg = get_arg_r0(instr);
         int source_reg = get_arg_r1(instr);
         int extra_amount = get_arg_r2(instr);
-        memcpy(&arg_reg[target_arg], &current_frame.reg[source_reg], (1 + extra_amount) * sizeof(vm_value));
+        memcpy(&next_frame.reg[target_arg], &current_frame.reg[source_reg], (1 + extra_amount) * sizeof(vm_value));
         debug( printf("SETARG a%02i r%02i n%02i\n", target_arg, source_reg, extra_amount) );
       }
       break;
@@ -663,7 +631,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
         vm_value *cl_pointer = heap_get_pointer(cl_address);
         *cl_pointer = closure_header((num_params - num_args), num_args); /* write header */
-        memcpy(cl_pointer + 1, &arg_reg[0], num_args * sizeof(vm_value));
+        memcpy(cl_pointer + 1, &next_frame.reg[0], num_args * sizeof(vm_value));
         *(cl_pointer + num_args + 1) = func_address;
         get_reg(reg0) = val( (vm_value) cl_address, vm_tag_pap);
         debug( printf("PART_AP\n") );
