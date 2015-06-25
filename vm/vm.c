@@ -51,7 +51,6 @@ const vm_value vm_tag_match_data = 0xF;
 static stack_frame stack[STACK_SIZE];
 static int stack_pointer = 0;
 static int program_pointer = 0;
-//static vm_value arg_reg[NUM_REGS];
 static vm_value *const_table = 0;
 static int const_table_length = 0;
 
@@ -303,8 +302,7 @@ void reset() {
   stack_pointer = 0;
   const_table = 0;
   const_table_length = 0;
-  memset(stack, 0xEE, sizeof(stack_frame) * STACK_SIZE); //TODO delete the two memset lines later, just for debugging
-  //memset(arg_reg, 0xEE, sizeof(vm_value) * NUM_REGS);
+  memset(stack, 0xEE, sizeof(stack_frame) * STACK_SIZE); //TODO delete the memset line later, just for debugging
   init_heap();
 }
 
