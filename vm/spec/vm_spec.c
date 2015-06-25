@@ -479,8 +479,7 @@ it( does_a_generic_application_of_a_function ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  printf("RESULT %#16x\n", result);
-  is_equal(result, val(21, vm_tag_number));
+  is_equal(result, val(12, vm_tag_number));
 }
 
 it( compares_unequal_objects ) {
@@ -615,7 +614,6 @@ it( compares_compound_symbols_with_different_counts ) {
 }
 
 start_spec(vm_spec)
-  /*
 	example(load_as_a_number_into_a_register)
 	example(adds_two_numbers)
 	example(subtracts_two_numbers)
@@ -639,9 +637,7 @@ start_spec(vm_spec)
   example(binds_a_value_in_a_nested_symbol)
   example(creates_an_explicit_partial_application)
   example(creates_a_partial_application_with_a_generic_application)
-  */
   example(does_a_generic_application_of_a_function)
-  /*
   example(compares_unequal_objects)
   example(compares_equal_numbers)
   example(compares_unequal_numbers)
@@ -651,6 +647,5 @@ start_spec(vm_spec)
   example(compares_compound_symbols_with_different_data)
   example(compares_compound_symbols_with_different_sym_ids)
   example(compares_compound_symbols_with_different_counts)
-  */
 end_spec
 

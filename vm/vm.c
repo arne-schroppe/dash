@@ -46,7 +46,7 @@ TODO use computed Goto
 
 
 
-#define VM_DEBUG 1
+// #define VM_DEBUG 1
 
 // TODO this code needs some cleaning up
 
@@ -109,7 +109,7 @@ static int const_table_length = 0;
     else {                            \
       int func_address = from_val(func); \
       int num_args = get_arg_r2(instr); \
-      memcpy(&(frame->reg[0]), &arg_reg[0], num_args * sizeof(vm_value)); \
+      memcpy(frame->reg, arg_reg, num_args * sizeof(vm_value)); \
       return_pointer = program_pointer; \
       program_pointer = func_address + fun_header_size; \
     } \
@@ -179,6 +179,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
         fprintf(stderr, "Call failed (not a function)\n");
         return -1; //TODO exit here?
       }
+      return return_pointer;
     }
     else if (num_args < arity) {
       // same case as part_ap TODO use same code
@@ -334,8 +335,8 @@ void reset() {
   stack_pointer = 0;
   const_table = 0;
   const_table_length = 0;
-  memset(stack, 0xDEAD, sizeof(stack_frame) * STACK_SIZE); //TODO delete the two memset lines later, just for debugging
-  memset(arg_reg, 0xDEAD, sizeof(vm_value) * NUM_REGS);
+  memset(stack, 0xEE, sizeof(stack_frame) * STACK_SIZE); //TODO delete the two memset lines later, just for debugging
+  memset(arg_reg, 0xEE, sizeof(vm_value) * NUM_REGS);
   init_heap();
 }
 
@@ -512,7 +513,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           break;
         }
 
-        int return_pointer = do_gen_ap(&next_frame, instr, program);
+        int return_pointer = do_gen_ap((&next_frame), instr, program);
 
         if (return_pointer != -1) {
           next_frame.return_address = return_pointer;
@@ -520,7 +521,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           ++stack_pointer;
         }
 
-        debug( printf("CALLCL\n") );
+        debug( printf("GEN AP\n") );
       }
       break;
 
@@ -528,7 +529,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       // TODO It's not entirely clear yet what happens when this returns a new PAP
       case OP_TAIL_GEN_AP: {
         do_gen_ap(&current_frame, instr, program);
-        debug( printf("TL CALLCL\n") );
+        debug( printf("TL GEN AP\n") );
       }
       break;
 
@@ -538,12 +539,13 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         if (stack_pointer == 0) {
           //We simply copy the result value to register 0, so that the runtime can find it
           current_frame.reg[0] = current_frame.reg[return_val_reg];
+          debug( printf("RET (end) %x\n", current_frame.reg[return_val_reg]) );
           is_running = false;
           break;
         }
         --stack_pointer;
         current_frame.reg[next_frame.result_register] = next_frame.reg[return_val_reg];
-        debug( printf("RET\n") );
+        debug( printf("RET %x\n", next_frame.reg[return_val_reg]) );
         program_pointer = next_frame.return_address;
       }
       break;
