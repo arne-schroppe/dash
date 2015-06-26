@@ -64,12 +64,10 @@ static int const_table_length = 0;
 #define current_frame (stack[stack_pointer])
 #define next_frame (stack[stack_pointer + 1])
 
-
-#define do_call(frame, instr)         \
+#define do_call(frame, func_reg, instr)         \
   int return_pointer;                 \
   bool call_failed = false;              \
   {                                   \
-    int func_reg = get_arg_r1(instr); \
     int func = get_reg(func_reg);     \
     if(get_tag(func) != vm_tag_function) { \
       fprintf(stderr, "expected a function (do call)\n"); \
@@ -226,7 +224,8 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     int arity = get_arg_i(fun_header);
 
     if (num_args == arity) {
-      do_call(frame, instr);
+
+      do_call(frame, lambda_reg, instr);
       if(call_failed) {
         fprintf(stderr, "Call failed (not a function)\n");
         return -1; //TODO exit here?
@@ -256,13 +255,13 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       vm_value *arg_pointer = heap_get_pointer(addr);
 
       *arg_pointer = num_remaining;
-      *(arg_pointer + 1) = frame->return_address;
-      *(arg_pointer + 2) = frame->result_register;
+      //*(arg_pointer + 1) = frame->return_address;
+      //*(arg_pointer + 2) = frame->result_register;
       memcpy(arg_pointer + 3, &next_frame.reg[arity], num_remaining * sizeof(vm_value));
-      frame->spilled_arguments = addr;
+      current_frame.spilled_arguments = addr;
 
       int oversat_ret_pointer = program_pointer - 1; //Return back to this instruction
-      do_call(frame, instr);
+      do_call((&next_frame), lambda_reg, instr);
 
       next_frame.return_address = oversat_ret_pointer;
       next_frame.result_register = get_arg_r0(instr);
@@ -548,7 +547,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         }
 
         // this macro will create `return_pointer`
-        do_call((&next_frame), instr);
+        do_call((&next_frame), get_arg_r1(instr), instr);
         if (call_failed) {
           is_running = false;
           break;
@@ -564,7 +563,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
 
       case OP_TAIL_CALL: {
-        do_call((&current_frame), instr);
+        do_call((&current_frame), get_arg_r1(instr), instr);
         if (call_failed) {
           is_running = false;
         }

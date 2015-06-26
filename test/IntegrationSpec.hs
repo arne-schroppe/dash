@@ -296,7 +296,6 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 7
 
-{-
             it "evaluates an oversaturated call to an unknown function" $ do
               let code = "\
               \ fun a =   \n\
@@ -305,8 +304,14 @@ spec = do
               \ res"
               let result = run code
               result `shouldReturn` VMSymbol "success" []
--}
 
+            it "evaluates an oversaturated tail-call to an unknown function" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   .\\ b c = .\\ d e = .\\ f = :success \n\
+              \ fun 1 2 3 4 5 6"
+              let result = run code
+              result `shouldReturn` VMSymbol "success" []
 -- it "evaluates an oversaturated tail-call to an unknown closure" $ do
             -- TODO test also with tco
 
