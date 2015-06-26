@@ -1,5 +1,29 @@
 
+
+
 /--
+check-maybe x <maybe> =
+  a <- might-fail
+  b <- might-also-fail
+  wrap $ a + b
+--/
+
+
+/--
+rec n =
+  match n - 1 begin
+    0 -> 4
+    x ->
+      rec x
+  end
+
+
+rec 4000000
+
+
+
+--/
+
 
 is-sym a =
   a == :my-sym
@@ -16,26 +40,5 @@ if is-sym :my-sym then
   m - 14
 else
   :fail
---/
-
-
-
-/--
-check-maybe x <maybe> =
-  a <- might-fail
-  b <- might-also-fail
-  wrap $ a + b
---/
-
-
-rec n =
-  match n - 1 begin
-    0 -> 4
-    x ->
-      rec x
-  end
-
-
-rec 4000000
 
 

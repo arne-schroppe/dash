@@ -89,6 +89,7 @@ spec = do
 
 
 
+{- TODO reenable
     it "optimizes tail calls" $ do
       let code = "\
       \ counter acc = \n\
@@ -101,6 +102,7 @@ spec = do
       \ y "
       let result = run code
       result `shouldReturn` VMNumber 43
+-}
 
     -- TODO when changing `counter x` to use `next`, there is a compiler error. Investigate (reason is that next is handled as a constant free var)
 
@@ -277,15 +279,65 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 108
 
-{- TODO fix this later
-            it "evaluates an over-saturated call to an unknown function" $ do
+            it "evaluates an oversaturated call to an unknown closure" $ do
               let code = "\
+              \ fun a =   \n\
+              \   .\\ b c = .\\ d e = .\\ f = ((f + e) - (c + d)) + (a + b) \n\
+              \ res = fun 1 2 3 4 5 6 \n\
+              \ res"
+              let result = run code
+              result `shouldReturn` VMNumber 7
+
+            it "evaluates an oversaturated tail-call to an unknown closure" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   .\\ b c = .\\ d e = .\\ f = ((f + e) - (c + d)) + (a + b) \n\
+              \ fun 1 2 3 4 5 6"
+              let result = run code
+              result `shouldReturn` VMNumber 7
+
+{-
+            it "evaluates an oversaturated call to an unknown function" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   .\\ b c = .\\ d e = .\\ f = :success \n\
+              \ res = fun 1 2 3 4 5 6 \n\
+              \ res"
+              let result = run code
+              result `shouldReturn` VMSymbol "success" []
+-}
+
+-- it "evaluates an oversaturated tail-call to an unknown closure" $ do
+            -- TODO test also with tco
+
+            it "applies result of a function application" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   .\\ b c = .\\ d e = .\\ f = 77 \n\
+              \ (((fun 1) 2 3) 4 5) 6"
+              let result = run code
+              result `shouldReturn` VMNumber 77
+
+            it "applies result of a closure application" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   .\\ b c = .\\ d e = .\\ f = ((f + e) - (c + d)) + (a + b) \n\
+              \ (((fun 1) 2 3) 4 5) 6"
+              let result = run code
+              result `shouldReturn` VMNumber 7
+
+{-
+            it "evaluates an oversaturated call to an unknown function" $ do
+              let code = "\
+              \ g ff = ff 54 67 13 50 20 7 \n\
               \ f a =   \n\
               \   .\\ b c = .\\ d e = .\\ f = ((((a + b) - c) + d) - e) + f \n\
-              \ f 54 67 13 50 20 7"
+              \ g f "
               let result = run code
               result `shouldReturn` VMNumber 145
 -}
+
+            -- TODO also test pap's from oversaturated calls
 
 
 
@@ -470,7 +522,7 @@ K infix operators
 - inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
 - Strings
 - Creating symbols (symbol arity is known statically)
-- tuples
+K tuples
 - Lists
 - maps/dictionaries as built-in type (because that's fairly useful)
   - under the hood these could be somewhat similar to modules, maybe. Or modules can't be modified at runtime,
@@ -480,6 +532,8 @@ K infix operators
 
 - Garbage collection
 - Reducing the amount of created garbage
+
+- concurrency
 
 - Live editing would be really nice
 

@@ -65,7 +65,7 @@ static int const_table_length = 0;
 #define next_frame (stack[stack_pointer + 1])
 
 
-#define do_call(frame, arg_frame, instr)         \
+#define do_call(frame, instr)         \
   int return_pointer;                 \
   bool call_failed = false;              \
   {                                   \
@@ -77,9 +77,9 @@ static int const_table_length = 0;
     } \
     else {                            \
       int func_address = from_val(func); \
-      if(frame != arg_frame) { \
+      if(frame != &next_frame) { \
         int num_args = get_arg_r2(instr); \
-        memcpy(frame->reg, arg_frame->reg, num_args * sizeof(vm_value)); \
+        memcpy(frame->reg, next_frame.reg, num_args * sizeof(vm_value)); \
       } \
       return_pointer = program_pointer; \
       program_pointer = func_address + fun_header_size; \
@@ -89,12 +89,54 @@ static int const_table_length = 0;
 
 // TODO turn this into a macro
 // TODO add a result register to the tail-call variety of this opcode!! (right now it's pure coincidence that things work, because we set the missing return reg to 0 by default)
-int do_gen_ap(stack_frame *frame, stack_frame *arg_frame, vm_value instr, vm_instruction *program) {
+/*
+  How to handle oversaturated calls:
 
-  // find a better term for "function or closure" than lambda
+  When a call is oversaturated, we set up the first call as normal. All additional
+  arguments are stored on the heap, with a very simple format: First word is the
+  number of stored arguments, followed by the arguments we want to store away. The
+  heap address of that arg array is stored in a special field in the frame.
+  The call is instructed to return to the gen_ap call and to store its result into
+  the register that originally held the function.
+
+  When returning to the gen_ap instruction, the field for oversaturated calls is checked.
+  If it is set, the arguments are copied to the argument_frame and the number of arguments
+  is set to the number of arguments we had stored. The frame field for oversaturated calls
+  is reset to 0.
+
+  After this the call proceeds as usual, possibly leading to another oversaturated call.
+
+  TODO describe how state his recreated
+
+*/
+int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
+
+
+  // TODO find a better term for "function or closure" than lambda
   int lambda_reg = get_arg_r1(instr);
-  vm_value lambda = get_reg(lambda_reg);
   int num_args = get_arg_r2(instr);
+
+
+  if(current_frame.spilled_arguments != 0) {
+    vm_value *addr = heap_get_pointer(current_frame.spilled_arguments);
+    num_args = *addr;
+    memcpy(next_frame.reg, addr + 3, num_args * sizeof(vm_value));
+    printf("Args %d addr %d sp %d \n", num_args, (int) current_frame.spilled_arguments, stack_pointer);
+
+    printf("Restoring\n");
+    for(int i=0; i < num_args; ++i) {
+      printf("%02d: %d\n", i, next_frame.reg[i]);
+    }
+    // recreate previous state for tail calls
+
+    lambda_reg = get_arg_r0(instr);
+    frame->spilled_arguments = 0;
+    //frame->return_address = *(addr + 1);
+    //frame->result_register = *(addr + 2);
+  }
+
+
+  vm_value lambda = get_reg(lambda_reg);
 
   vm_value tag = get_tag(lambda);
   if(tag == vm_tag_pap ) {
@@ -107,7 +149,7 @@ int do_gen_ap(stack_frame *frame, stack_frame *arg_frame, vm_value instr, vm_ins
     int num_cl_vars = closure_var_count(header);
 
     if (num_args == arity) {
-      memmove(&(frame->reg[num_cl_vars]), &(arg_frame->reg[0]), num_args * sizeof(vm_value));
+      memmove(&(frame->reg[num_cl_vars]), &(next_frame.reg[0]), num_args * sizeof(vm_value));
       memcpy(&(frame->reg[0]), cl_pointer + 1, num_cl_vars * sizeof(vm_value));
 
       // do the call
@@ -116,6 +158,7 @@ int do_gen_ap(stack_frame *frame, stack_frame *arg_frame, vm_value instr, vm_ins
       program_pointer = func_address + fun_header_size;
       return return_pointer;
     }
+    // Undersaturated application
     else if (num_args < arity) {
       // create a new PAP by copying the old one and adding the new arguments
 
@@ -126,15 +169,53 @@ int do_gen_ap(stack_frame *frame, stack_frame *arg_frame, vm_value instr, vm_ins
       vm_value *new_cl_pointer = heap_get_pointer(new_cl_address);
       *new_cl_pointer = closure_header((arity - num_args), (num_cl_vars + num_args)); /* write header */
       memcpy(new_cl_pointer + 1, cl_pointer + 1, num_cl_vars * sizeof(vm_value));
-      memcpy(&new_cl_pointer[num_cl_vars + 1], &(arg_frame->reg[0]), num_args * sizeof(vm_value));
+      memcpy(&new_cl_pointer[num_cl_vars + 1], &(next_frame.reg[0]), num_args * sizeof(vm_value));
       *(new_cl_pointer + num_cl_vars + num_args + 1) = func_address;
       get_reg(reg0) = val( (vm_value) new_cl_address, vm_tag_pap );
       return -1;
     }
+    // Oversaturated application
     else { // num_args > arity
-      //TODO handle this case
-      fprintf(stderr, "Over-saturated call\n");
+
+      int num_remaining = num_args - arity;
+
+
+      // store remaining args
+      heap_address addr = heap_alloc(num_args + 3);
+      vm_value *arg_pointer = heap_get_pointer(addr);
+
+      *arg_pointer = num_remaining;
+      //*(arg_pointer + 1) = frame->return_address;
+      //*(arg_pointer + 2) = frame->result_register;
+      memcpy(arg_pointer + 3, &(next_frame.reg[arity]), num_remaining * sizeof(vm_value));
+
+      printf("Saving\n");
+      for(int i=0; i < num_remaining; ++i) {
+        printf("%02d: %d\n", i, arg_pointer[i + 3]);
+      }
+
+      //TODO this needs to be the current frame in all cases
+      current_frame.spilled_arguments = addr;
+
+      printf("Spilling %d args, addr %d, sp %d \n", num_remaining, (int) addr, stack_pointer);
+
+
+      // set arguments
+      memmove(&(next_frame.reg[num_cl_vars]), &(next_frame.reg[0]), arity * sizeof(vm_value));
+      memcpy(&(next_frame.reg[0]), cl_pointer + 1, num_cl_vars * sizeof(vm_value));
+
+      // do the call
+      vm_value func_address = *(cl_pointer + num_cl_vars + 1);
+      int return_pointer = program_pointer - 1; //Return back to this instruction
+      program_pointer = func_address + fun_header_size;
+
+
+      next_frame.return_address = return_pointer;
+      next_frame.result_register = get_arg_r0(instr);
+      ++stack_pointer;
+
       return -1;
+
     }
   }
   else if (tag == vm_tag_function) {
@@ -145,7 +226,7 @@ int do_gen_ap(stack_frame *frame, stack_frame *arg_frame, vm_value instr, vm_ins
     int arity = get_arg_i(fun_header);
 
     if (num_args == arity) {
-      do_call(frame, arg_frame, instr);
+      do_call(frame, instr);
       if(call_failed) {
         fprintf(stderr, "Call failed (not a function)\n");
         return -1; //TODO exit here?
@@ -162,16 +243,37 @@ int do_gen_ap(stack_frame *frame, stack_frame *arg_frame, vm_value instr, vm_ins
       heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
       vm_value *cl_pointer = heap_get_pointer(cl_address);
       *cl_pointer = closure_header((arity - num_args), num_args); /* write header */
-      memcpy(cl_pointer + 1, &(arg_frame->reg[0]), num_args * sizeof(vm_value));
+      memcpy(cl_pointer + 1, next_frame.reg, num_args * sizeof(vm_value));
       *(cl_pointer + num_args + 1) = func_address;
       get_reg(reg0) = val( (vm_value) cl_address, vm_tag_pap);
     }
     else { // over-saturated call
-      fprintf(stderr, "over-saturated call %i %i\n", num_args, arity);
+      printf("over\n");
+      int num_remaining = num_args - arity;
+
+      // store remaining args
+      heap_address addr = heap_alloc(num_args + 3);
+      vm_value *arg_pointer = heap_get_pointer(addr);
+
+      *arg_pointer = num_remaining;
+      *(arg_pointer + 1) = frame->return_address;
+      *(arg_pointer + 2) = frame->result_register;
+      memcpy(arg_pointer + 3, &next_frame.reg[arity], num_remaining * sizeof(vm_value));
+      frame->spilled_arguments = addr;
+
+      int oversat_ret_pointer = program_pointer - 1; //Return back to this instruction
+      do_call(frame, instr);
+
+      next_frame.return_address = oversat_ret_pointer;
+      next_frame.result_register = get_arg_r0(instr);
+      ++stack_pointer;
+
+      return -1;
     }
   }
   else {
     fprintf(stderr, "Expected a function: %i (gen ap)\n", tag);
+    //exit(-1);
   }
 
   return -1;
@@ -302,7 +404,7 @@ void reset() {
   stack_pointer = 0;
   const_table = 0;
   const_table_length = 0;
-  memset(stack, 0xEE, sizeof(stack_frame) * STACK_SIZE); //TODO delete the memset line later, just for debugging
+  memset(stack, 0x0, sizeof(stack_frame) * STACK_SIZE); //TODO delete the memset line later, just for debugging
   init_heap();
 }
 
@@ -324,8 +426,8 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
   const_table_length = ctable_length;
   bool is_running = true;
 
+  debug( printf("----- start %d\n", invocation) );
   while(is_running && program_pointer < program_length) {
-    debug( printf("-----\n") );
     //debug( print_registers(current_frame) );
     int old_program_pointer = program_pointer;
     ++program_pointer;
@@ -388,7 +490,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
         get_reg(reg0) = arg1 + arg2;
-        debug( printf("ADD    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
+        debug( printf("ADD    r%02i r%02i=%x r%02i=%x\n", reg0, reg1, arg1, reg2, arg2) );
       }
       break;
 
@@ -446,7 +548,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         }
 
         // this macro will create `return_pointer`
-        do_call((&next_frame), (&next_frame), instr);
+        do_call((&next_frame), instr);
         if (call_failed) {
           is_running = false;
           break;
@@ -462,7 +564,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
 
       case OP_TAIL_CALL: {
-        do_call((&current_frame), (&next_frame), instr);
+        do_call((&current_frame), instr);
         if (call_failed) {
           is_running = false;
         }
@@ -479,7 +581,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           break;
         }
 
-        int return_pointer = do_gen_ap((&next_frame), (&next_frame), instr, program);
+        int return_pointer = do_gen_ap((&next_frame), instr, program);
 
         if (return_pointer != -1) {
           next_frame.return_address = return_pointer;
@@ -494,7 +596,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
       // TODO It's not entirely clear yet what happens when this returns a new PAP
       case OP_TAIL_GEN_AP: {
-        do_gen_ap(&current_frame, &next_frame, instr, program);
+        do_gen_ap(&current_frame, instr, program);
         debug( printf("TL GEN AP\n") );
       }
       break;

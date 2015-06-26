@@ -7,5 +7,6 @@ rec n =
   end
 
 
+-- NOTE don't go higher than 4194303, that's the highest integer the compiler can handle for now
 rec 4000000
 

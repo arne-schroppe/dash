@@ -10,7 +10,7 @@ void init_heap() {
   if (heap) {
     free(heap);
   }
-  next_free_address = 0;
+  next_free_address = 1; // address 0 is reserved to indicate that no address has been set
   heap = calloc(initial_heap_size, sizeof(vm_value)); //TODO this obviously needs some improvement
 }
 

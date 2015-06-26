@@ -13,7 +13,9 @@ struct _stack_frame {
   vm_value reg[NUM_REGS];
   int return_address;
   int result_register;
-  int spilled_arguments_addr; // Used for over-saturated calls. TODO find a better way to handle this! (stack, vm refactoring,e tc)
+
+  //TODO type for this should be heap_address
+  int spilled_arguments; // Used for over-saturated calls.
 };
 typedef struct _stack_frame stack_frame;
 
