@@ -128,9 +128,9 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     // recreate previous state for tail calls
 
     lambda_reg = get_arg_r0(instr);
-    frame->spilled_arguments = 0;
-    //frame->return_address = *(addr + 1);
-    //frame->result_register = *(addr + 2);
+    current_frame.spilled_arguments = 0;
+    //current_frame.return_address = *(addr + 1);
+    //current_frame.result_register = *(addr + 2);
   }
 
 
@@ -183,8 +183,8 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       vm_value *arg_pointer = heap_get_pointer(addr);
 
       *arg_pointer = num_remaining;
-      //*(arg_pointer + 1) = frame->return_address;
-      //*(arg_pointer + 2) = frame->result_register;
+      *(arg_pointer + 1) = frame->return_address;
+      *(arg_pointer + 2) = frame->result_register;
       memcpy(arg_pointer + 3, &(next_frame.reg[arity]), num_remaining * sizeof(vm_value));
 
       printf("Saving\n");

@@ -242,7 +242,7 @@ spec = do
 
     context "when using currying" $ do
 
-            it "evaluates a known curried function" $ do
+            it "applies a known curried function" $ do
               let code = "\
               \ my-sub a b = a - b \n\
               \ curry = my-sub 123  \n\
@@ -250,7 +250,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 120
 
-            it "evaluates an unknown curried closure" $ do
+            it "applies an unknown curried closure" $ do
               let code = "\
               \ get-cl x = \n\
               \   .\\ a b = a - b \n\
@@ -262,7 +262,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 120
 
-            it "evaluates an unknown curried function" $ do
+            it "applies an unknown curried function" $ do
               let code = "\
               \ my-sub a b = a - b \n\
               \ apply f = \n\
@@ -272,14 +272,14 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 120
 
-            it "evaluates an over-saturated call to a known function" $ do
+            it "applies an over-saturated call to a known function" $ do
               let code = "\
               \ f a = .\\ b c = (a + b) - c \n\
               \ f 54 67 13"
               let result = run code
               result `shouldReturn` VMNumber 108
 
-            it "evaluates an oversaturated call to an unknown closure" $ do
+            it "applies an oversaturated call to an unknown closure" $ do
               let code = "\
               \ fun a =   \n\
               \   .\\ b c = .\\ d e = .\\ f = ((f + e) - (c + d)) + (a + b) \n\
@@ -288,7 +288,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 7
 
-            it "evaluates an oversaturated tail-call to an unknown closure" $ do
+            it "applies an oversaturated tail-call to an unknown closure" $ do
               let code = "\
               \ fun a =   \n\
               \   .\\ b c = .\\ d e = .\\ f = ((f + e) - (c + d)) + (a + b) \n\
@@ -296,7 +296,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 7
 
-            it "evaluates an oversaturated call to an unknown function" $ do
+            it "applies an oversaturated call to an unknown function" $ do
               let code = "\
               \ fun a =   \n\
               \   .\\ b c = .\\ d e = .\\ f = :success \n\
@@ -305,15 +305,13 @@ spec = do
               let result = run code
               result `shouldReturn` VMSymbol "success" []
 
-            it "evaluates an oversaturated tail-call to an unknown function" $ do
+            it "applies an oversaturated tail-call to an unknown function" $ do
               let code = "\
               \ fun a =   \n\
               \   .\\ b c = .\\ d e = .\\ f = :success \n\
               \ fun 1 2 3 4 5 6"
               let result = run code
               result `shouldReturn` VMSymbol "success" []
--- it "evaluates an oversaturated tail-call to an unknown closure" $ do
-            -- TODO test also with tco
 
             it "applies result of a function application" $ do
               let code = "\
@@ -331,8 +329,26 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 7
 
+            it "applies a partial application of a closure application" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   .\\ b c = .\\ d = .\\ e f = ((f + e) - (c + d)) + (a + b) \n\
+              \ fpart = fun 1 2 3 4 5 \n\
+              \ fpart 6"
+              let result = run code
+              result `shouldReturn` VMNumber 7
+
+
+            it "applies a partial application of a function application" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   .\\ b c = .\\ d = .\\ e f = :success \n\
+              \ fpart = fun 1 2 3 4 5 \n\
+              \ fpart 6"
+              let result = run code
+              result `shouldReturn` VMSymbol "success" []
 {-
-            it "evaluates an oversaturated call to an unknown function" $ do
+            it "applies an oversaturated call to an unknown function" $ do
               let code = "\
               \ g ff = ff 54 67 13 50 20 7 \n\
               \ f a =   \n\
