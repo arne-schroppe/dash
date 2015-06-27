@@ -119,21 +119,19 @@ vm_value *pap_pointer; \
 /*
   How to handle oversaturated calls:
 
-  When a call is oversaturated, we set up the first call as normal. All additional
+  When a call is oversaturated, we set up the first call as usual. All additional
   arguments are stored on the heap, with a very simple format: First word is the
   number of stored arguments, followed by the arguments we want to store away. The
   heap address of that arg array is stored in a special field in the frame.
-  The call is instructed to return to the gen_ap call and to store its result into
-  the register that originally held the function.
+  The call is instructed to return to the gen_ap call. The result will be stored in
+  the calls result register (which is the only safe place to store it).
 
   When returning to the gen_ap instruction, the field for oversaturated calls is checked.
-  If it is set, the arguments are copied to the argument_frame and the number of arguments
+  If it is set, the arguments are copied to the next_frame and the number of arguments
   is set to the number of arguments we had stored. The frame field for oversaturated calls
   is reset to 0.
 
   After this the call proceeds as usual, possibly leading to another oversaturated call.
-
-
 */
 int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
@@ -232,8 +230,6 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     }
     // Unsersaturated function application
     else if (num_args < arity) {
-      // same case as part_ap TODO use same code
-
       //vm_value function_header = program[func_address];
       //TODO check that it's actually a function
 
@@ -389,22 +385,14 @@ void reset() {
   stack_pointer = 0;
   const_table = 0;
   const_table_length = 0;
-  memset(stack, 0x0, sizeof(stack_frame) * STACK_SIZE); //TODO delete the memset line later, just for debugging
-  init_heap();
-}
 
-void print_program(vm_instruction *program) {
-  int i = 0;
-  printf("----\n");
-  for(i=0; i < 10; ++i) {
-    printf("%04i: %016x\n", i, program[i]);
-  }
-  printf("^^^^\n");
+  // Invariant: spilled_arguments field in all frames must be 0 from the beginning
+  memset(stack, 0x0, sizeof(stack_frame) * STACK_SIZE);
+  init_heap();
 }
 
 
 vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctable, int ctable_length) {
-  //print_program(program);
   ++ invocation;
   reset();
   const_table = ctable;
@@ -686,8 +674,6 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       break;
 
 
-      // TODO delete make_cl and use this instead
-      // TODO allow gen_ap and tail_gen_ap to create PAPs
       case OP_PART_AP: {
         int reg0 = get_arg_r0(instr);
         int func_reg = get_arg_r1(instr);
@@ -704,24 +690,22 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
         vm_value function_header = program[func_address];
         //TODO check that it's actually a function
-        int num_params = get_arg_i(function_header);
+        int arity = get_arg_i(function_header);
 
         // TODO this was >= earlier, which apparently gave false positives. Find out why, and find out if > is the correct choice
-        if(num_args > num_params) {
-          fprintf(stderr, "Illegal partial application (num args: %i, num params: %i)\n", num_args, num_params);
+        if(num_args > arity) {
+          fprintf(stderr, "Illegal partial application (num args: %i, arity: %i)\n", num_args, arity);
           is_running = false;
           break;
         }
 
-        heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
-        vm_value *cl_pointer = heap_get_pointer(cl_address);
-        *cl_pointer = pap_header((num_params - num_args), num_args); /* write header */
-        memcpy(cl_pointer + 1, &next_frame.reg[0], num_args * sizeof(vm_value));
-        *(cl_pointer + num_args + 1) = func_address;
-        get_reg(reg0) = val( (vm_value) cl_address, vm_tag_pap);
+        int pap_arity = arity - num_args;
+        build_pap(num_args, pap_arity, 0, num_args, func_address);
+        get_reg(reg0) = pap_value;
         debug( printf("PART_AP\n") );
       }
       break;
+
 
       case OP_EQ: {
         vm_value l = get_reg(get_arg_r1(instr));
