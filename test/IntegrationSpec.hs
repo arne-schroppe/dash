@@ -514,7 +514,7 @@ K Refactoring
 - Negative integers
 - General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
 - Inline match branches !!!
-- TODO make it impossible to reassign values (d'oh!)
+K TODO make it impossible to reassign values (d'oh!)
 - Limits (integers, num local vars, num arguments, num symbols, etc)
 
 missing language features:

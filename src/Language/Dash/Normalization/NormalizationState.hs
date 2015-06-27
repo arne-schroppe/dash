@@ -166,6 +166,9 @@ addBinding :: String -> (NstVar, Bool) -> NormState ()
 addBinding "" _ = return ()
 addBinding name bnd = do
   con <- context
+  -- TODO handle this more gracefully
+  when (name /= "_" && Map.member name (bindings con)) $ error $ "Error: Redefinition of '" ++ name ++ "'"
+  -- TODO warn when shadowing bindings
   let bindings' = Map.insert name bnd (bindings con)
   putContext $ con { bindings = bindings' }
 

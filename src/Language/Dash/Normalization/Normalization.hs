@@ -249,7 +249,7 @@ normalizeExprList exprList k =
 nameExpr :: Expr -> String -> VCont -> NormState NstExpr
 nameExpr expr originalName k = case expr of
   -- Some variable can be used directly and don't need to be let-bound
-  -- TODO what if we use a var several times, will it be bound several times?
+  -- TODO what if we use a var several times, will it be bound several times? answer: yes it will. fix that!
   Var name -> do
     var <- lookupName name
     case var of
