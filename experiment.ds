@@ -25,20 +25,14 @@ rec 4000000
 --/
 
 
-is-sym a =
-  a == :my-sym
+fib n =
+  match n begin
+    0 -> 0
+    1 -> 1
+    _ -> (fib (n - 1)) + (fib (n - 2))
+  end
 
-add-many n =
-  n + 23
+fib 12
 
-sub-some n =
-  n - 5
-
-
-if is-sym :my-sym then
-  m = add-many 22
-  m - 14
-else
-  :fail
 
 

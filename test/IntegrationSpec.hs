@@ -538,12 +538,12 @@ K tuples
   - under the hood these could be somewhat similar to modules, maybe. Or modules can't be modified at runtime,
     but then we're not very dynamic
   - map functions: hasKeys, merge (for entitas)
-- I/O (without modules, just io-bind and return)
+- Static modules
+- I/O
 
 - Garbage collection
 - Reducing the amount of created garbage
 
-- concurrency
 
 - Live editing would be really nice
 
@@ -554,8 +554,9 @@ K tuples
 
 
 After release ?
-- Modules
-- I/O (with modules)
+
+- Dynamic modules
+
 - indentation syntax
 - Mutual recursion in module top-level
 - Multiple files
@@ -563,6 +564,10 @@ After release ?
 - Debugging. Stack traces (or breadcrumbs?)
 
 - private/secret symbols
+
+- concurrency!
+
+- a REPL
 
 - Clean up compiler errors. Have a variant with all errors and warnings and emit those. Render when printing
 
@@ -576,7 +581,7 @@ After release ?
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
 - Faster, optimized match patterns (reduce number of comparisons)
 - Uniquely name vars in frontend, i.e. data-flow analysis
-- Prevent duplicate var names in function definition (unless it's for pattern matching? No, that would be useless)
+K Prevent duplicate var names in function definition (unless it's for pattern matching? No, that would be useless)
 
 
 -}
