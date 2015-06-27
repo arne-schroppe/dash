@@ -154,7 +154,6 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     current_frame.spilled_arguments = 0;
   }
 
-
   vm_value lambda = get_reg(lambda_reg);
 
   vm_value tag = get_tag(lambda);
@@ -167,8 +166,9 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     int arity = pap_arity(header);
     int num_cl_vars = pap_var_count(header);
 
+    // Saturated closure application
     if (num_args == arity) {
-      memmove(&(frame->reg[num_cl_vars]), &(next_frame.reg[0]), num_args * sizeof(vm_value));
+      memmove(&(frame->reg[num_cl_vars]), next_frame.reg, num_args * sizeof(vm_value));
       memcpy(&(frame->reg[0]), cl_pointer + 1, num_cl_vars * sizeof(vm_value));
 
       // do the call
@@ -177,7 +177,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       program_pointer = func_address + fun_header_size;
       return return_pointer;
     }
-    // Undersaturated application
+    // Undersaturated closure application
     else if (num_args < arity) {
       // create a new PAP by copying the old one and adding the new arguments
 
@@ -194,7 +194,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       get_reg(reg0) = pap_value;
       return -1;
     }
-    // Oversaturated application
+    // Oversaturated closure application
     else { // num_args > arity
 
       prep_oversaturated_call(arity, num_args)
@@ -212,6 +212,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       return -1;
     }
   }
+
   else if (tag == vm_tag_function) {
 
     int func_address = from_val(lambda);
@@ -219,6 +220,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     //TODO check fun header "opcode"
     int arity = get_arg_i(fun_header);
 
+    // saturated function application
     if (num_args == arity) {
 
       do_call(frame, lambda_reg, instr);
@@ -228,6 +230,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       }
       return return_pointer;
     }
+    // Unsersaturated function application
     else if (num_args < arity) {
       // same case as part_ap TODO use same code
 
@@ -242,7 +245,8 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       get_reg(reg0) = pap_value;
       return -1;
     }
-    else { // over-saturated call
+    // Oversaturated function application
+    else {
 
       prep_oversaturated_call(arity, num_args)
       do_call((&next_frame), lambda_reg, instr);
@@ -251,8 +255,9 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       return -1;
     }
   }
+
   else {
-    fprintf(stderr, "Expected a function: %i (gen ap)\n", tag);
+    fprintf(stderr, "Expected a function: %x (gen ap)\n", tag);
     //exit(-1);
   }
 
