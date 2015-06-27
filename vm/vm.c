@@ -85,6 +85,35 @@ static int const_table_length = 0;
   }
 
 
+#define build_pap(num_pap_args, pap_arity, offset, num_args, func_address) \
+vm_value pap_value; \
+vm_value *pap_pointer; \
+{ \
+  const int pap_header_length = 2; \
+  heap_address pap_address = heap_alloc(num_pap_args + pap_header_length ); \
+  pap_pointer = heap_get_pointer(pap_address);  \
+  *pap_pointer = pap_header(pap_arity, num_pap_args); /* write header */ \
+  memcpy(pap_pointer + offset + 1, next_frame.reg, num_args * sizeof(vm_value)); \
+  *(pap_pointer + num_pap_args + 1) = func_address; \
+  pap_value = val( (vm_value) pap_address, vm_tag_pap ); \
+}
+
+
+#define prep_oversaturated_call(arity, num_args) \
+{ \
+  int num_remaining_args = num_args - arity; \
+  /* store remaining args */ \
+  heap_address addr = heap_alloc(num_args + 1); \
+  vm_value *arg_pointer = heap_get_pointer(addr); \
+  *arg_pointer = num_remaining_args; \
+  memcpy(arg_pointer + 1, &(next_frame.reg[arity]), num_remaining_args * sizeof(vm_value)); \
+  current_frame.spilled_arguments = addr; \
+  /* Return back to this instruction */ \
+  int return_pointer = program_pointer - 1; \
+  next_frame.return_address = return_pointer; \
+  next_frame.result_register = get_arg_r0(instr); \
+}
+
 // TODO turn this into a macro
 // TODO add a result register to the tail-call variety of this opcode!! (right now it's pure coincidence that things work, because we set the missing return reg to 0 by default)
 /*
@@ -115,16 +144,11 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
   int num_args = get_arg_r2(instr);
 
 
+  // Check whether we are currently applying an oversaturated call
   if(current_frame.spilled_arguments != 0) {
     vm_value *addr = heap_get_pointer(current_frame.spilled_arguments);
     num_args = *addr;
     memcpy(next_frame.reg, addr + 1, num_args * sizeof(vm_value));
-    printf("Args %d addr %d sp %d \n", num_args, (int) current_frame.spilled_arguments, stack_pointer);
-
-    printf("Restoring\n");
-    for(int i=0; i < num_args; ++i) {
-      printf("%02d: %d\n", i, next_frame.reg[i]);
-    }
 
     lambda_reg = get_arg_r0(instr);
     current_frame.spilled_arguments = 0;
@@ -140,8 +164,8 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
     vm_value *cl_pointer = heap_get_pointer(cl_address);
     int header = *cl_pointer;
-    int arity = closure_arity(header);
-    int num_cl_vars = closure_var_count(header);
+    int arity = pap_arity(header);
+    int num_cl_vars = pap_var_count(header);
 
     if (num_args == arity) {
       memmove(&(frame->reg[num_cl_vars]), &(next_frame.reg[0]), num_args * sizeof(vm_value));
@@ -160,38 +184,20 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       vm_value func_address = *(cl_pointer + num_cl_vars + 1);
       vm_value reg0 = get_arg_r0(instr);
 
-      heap_address new_cl_address = heap_alloc(num_cl_vars + num_args + 2); /* old args + new args + pap header + pointer to function */
-      vm_value *new_cl_pointer = heap_get_pointer(new_cl_address);
-      *new_cl_pointer = closure_header((arity - num_args), (num_cl_vars + num_args)); /* write header */
-      memcpy(new_cl_pointer + 1, cl_pointer + 1, num_cl_vars * sizeof(vm_value));
-      memcpy(&new_cl_pointer[num_cl_vars + 1], &(next_frame.reg[0]), num_args * sizeof(vm_value));
-      *(new_cl_pointer + num_cl_vars + num_args + 1) = func_address;
-      get_reg(reg0) = val( (vm_value) new_cl_address, vm_tag_pap );
+      int num_pap_args = num_cl_vars + num_args;
+      int pap_arity = arity - num_args;
+      int offset = num_cl_vars;
+
+      build_pap(num_pap_args, pap_arity, offset, num_args, func_address)
+      memcpy(pap_pointer + 1, cl_pointer + 1, num_cl_vars * sizeof(vm_value));
+
+      get_reg(reg0) = pap_value;
       return -1;
     }
     // Oversaturated application
     else { // num_args > arity
 
-      int num_remaining = num_args - arity;
-
-
-      // store remaining args
-      heap_address addr = heap_alloc(num_args + 1);
-      vm_value *arg_pointer = heap_get_pointer(addr);
-
-      *arg_pointer = num_remaining;
-      memcpy(arg_pointer + 1, &(next_frame.reg[arity]), num_remaining * sizeof(vm_value));
-
-      printf("Saving\n");
-      for(int i=0; i < num_remaining; ++i) {
-        printf("%02d: %d\n", i, arg_pointer[i + 3]);
-      }
-
-      //TODO this needs to be the current frame in all cases
-      current_frame.spilled_arguments = addr;
-
-      printf("Spilling %d args, addr %d, sp %d \n", num_remaining, (int) addr, stack_pointer);
-
+      prep_oversaturated_call(arity, num_args)
 
       // set arguments
       memmove(&(next_frame.reg[num_cl_vars]), &(next_frame.reg[0]), arity * sizeof(vm_value));
@@ -199,16 +205,11 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
       // do the call
       vm_value func_address = *(cl_pointer + num_cl_vars + 1);
-      int return_pointer = program_pointer - 1; //Return back to this instruction
       program_pointer = func_address + fun_header_size;
 
-
-      next_frame.return_address = return_pointer;
-      next_frame.result_register = get_arg_r0(instr);
       ++stack_pointer;
 
       return -1;
-
     }
   }
   else if (tag == vm_tag_function) {
@@ -229,35 +230,22 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     }
     else if (num_args < arity) {
       // same case as part_ap TODO use same code
-      int reg0 = get_arg_r0(instr);
 
       //vm_value function_header = program[func_address];
       //TODO check that it's actually a function
 
-      heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
-      vm_value *cl_pointer = heap_get_pointer(cl_address);
-      *cl_pointer = closure_header((arity - num_args), num_args); /* write header */
-      memcpy(cl_pointer + 1, next_frame.reg, num_args * sizeof(vm_value));
-      *(cl_pointer + num_args + 1) = func_address;
-      get_reg(reg0) = val( (vm_value) cl_address, vm_tag_pap);
+      vm_value reg0 = get_arg_r0(instr);
+      int pap_arity = arity - num_args;
+
+      build_pap(num_args, pap_arity, 0, num_args, func_address)
+
+      get_reg(reg0) = pap_value;
+      return -1;
     }
     else { // over-saturated call
-      printf("over\n");
-      int num_remaining = num_args - arity;
 
-      // store remaining args
-      heap_address addr = heap_alloc(num_args + 1);
-      vm_value *arg_pointer = heap_get_pointer(addr);
-
-      *arg_pointer = num_remaining;
-      memcpy(arg_pointer + 1, &next_frame.reg[arity], num_remaining * sizeof(vm_value));
-      current_frame.spilled_arguments = addr;
-
-      int oversat_ret_pointer = program_pointer - 1; //Return back to this instruction
+      prep_oversaturated_call(arity, num_args)
       do_call((&next_frame), lambda_reg, instr);
-
-      next_frame.return_address = oversat_ret_pointer;
-      next_frame.result_register = get_arg_r0(instr);
       ++stack_pointer;
 
       return -1;
@@ -680,7 +668,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
         vm_value *cl_pointer = heap_get_pointer(cl_address);
         int header = *cl_pointer;
-        int num_env_args = closure_var_count(header);
+        int num_env_args = pap_var_count(header);
         if(arg_index >= num_env_args) {
           fprintf(stderr, "Illegal closure modification (index: %i, num env vars: %i)\n", arg_index, num_env_args);
           is_running = false;
@@ -722,7 +710,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
         heap_address cl_address = heap_alloc(num_args + 2); /* args + pap header + pointer to function */
         vm_value *cl_pointer = heap_get_pointer(cl_address);
-        *cl_pointer = closure_header((num_params - num_args), num_args); /* write header */
+        *cl_pointer = pap_header((num_params - num_args), num_args); /* write header */
         memcpy(cl_pointer + 1, &next_frame.reg[0], num_args * sizeof(vm_value));
         *(cl_pointer + num_args + 1) = func_address;
         get_reg(reg0) = val( (vm_value) cl_address, vm_tag_pap);

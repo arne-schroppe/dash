@@ -46,9 +46,9 @@ extern const vm_value vm_tag_match_data;
 #define compound_symbol(x) val(x, vm_type_compound_symbol)
 
 
-#define closure_header(arity, num_vars) ((arity << 16) | num_vars)
-#define closure_arity(header) ((header & 0xFFFF0000) >> 16)
-#define closure_var_count(header) (header & 0xFFFF)
+#define pap_header(arity, num_vars) ((arity << 16) | num_vars)
+#define pap_arity(header) ((header & 0xFFFF0000) >> 16)
+#define pap_var_count(header) (header & 0xFFFF)
 
 #define compound_symbol_header(id, n) ((id << 16) | n)
 #define compound_symbol_id(header) ((header & 0xFFFF0000) >> 16)
