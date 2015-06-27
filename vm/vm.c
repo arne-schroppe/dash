@@ -104,7 +104,6 @@ static int const_table_length = 0;
 
   After this the call proceeds as usual, possibly leading to another oversaturated call.
 
-  TODO describe how state his recreated
 
 */
 int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
@@ -118,19 +117,16 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
   if(current_frame.spilled_arguments != 0) {
     vm_value *addr = heap_get_pointer(current_frame.spilled_arguments);
     num_args = *addr;
-    memcpy(next_frame.reg, addr + 3, num_args * sizeof(vm_value));
+    memcpy(next_frame.reg, addr + 1, num_args * sizeof(vm_value));
     printf("Args %d addr %d sp %d \n", num_args, (int) current_frame.spilled_arguments, stack_pointer);
 
     printf("Restoring\n");
     for(int i=0; i < num_args; ++i) {
       printf("%02d: %d\n", i, next_frame.reg[i]);
     }
-    // recreate previous state for tail calls
 
     lambda_reg = get_arg_r0(instr);
     current_frame.spilled_arguments = 0;
-    //current_frame.return_address = *(addr + 1);
-    //current_frame.result_register = *(addr + 2);
   }
 
 
@@ -179,13 +175,11 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
 
       // store remaining args
-      heap_address addr = heap_alloc(num_args + 3);
+      heap_address addr = heap_alloc(num_args + 1);
       vm_value *arg_pointer = heap_get_pointer(addr);
 
       *arg_pointer = num_remaining;
-      *(arg_pointer + 1) = frame->return_address;
-      *(arg_pointer + 2) = frame->result_register;
-      memcpy(arg_pointer + 3, &(next_frame.reg[arity]), num_remaining * sizeof(vm_value));
+      memcpy(arg_pointer + 1, &(next_frame.reg[arity]), num_remaining * sizeof(vm_value));
 
       printf("Saving\n");
       for(int i=0; i < num_remaining; ++i) {
@@ -251,13 +245,11 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       int num_remaining = num_args - arity;
 
       // store remaining args
-      heap_address addr = heap_alloc(num_args + 3);
+      heap_address addr = heap_alloc(num_args + 1);
       vm_value *arg_pointer = heap_get_pointer(addr);
 
       *arg_pointer = num_remaining;
-      //*(arg_pointer + 1) = frame->return_address;
-      //*(arg_pointer + 2) = frame->result_register;
-      memcpy(arg_pointer + 3, &next_frame.reg[arity], num_remaining * sizeof(vm_value));
+      memcpy(arg_pointer + 1, &next_frame.reg[arity], num_remaining * sizeof(vm_value));
       current_frame.spilled_arguments = addr;
 
       int oversat_ret_pointer = program_pointer - 1; //Return back to this instruction
