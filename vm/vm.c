@@ -108,6 +108,7 @@ static int const_table_length = 0;
 */
 int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
+  // TODO remove code duplication (in here, stack push, etc)
 
   // TODO find a better term for "function or closure" than lambda
   int lambda_reg = get_arg_r1(instr);

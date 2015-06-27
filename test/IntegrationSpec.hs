@@ -347,18 +347,7 @@ spec = do
               \ fpart 6"
               let result = run code
               result `shouldReturn` VMSymbol "success" []
-{-
-            it "applies an oversaturated call to an unknown function" $ do
-              let code = "\
-              \ g ff = ff 54 67 13 50 20 7 \n\
-              \ f a =   \n\
-              \   .\\ b c = .\\ d e = .\\ f = ((((a + b) - c) + d) - e) + f \n\
-              \ g f "
-              let result = run code
-              result `shouldReturn` VMNumber 145
--}
 
-            -- TODO also test pap's from oversaturated calls
 
 
 
@@ -509,7 +498,7 @@ spec = do
 
 
     it "has tuples" $ do
-      let code = " (1, 2, :sym)"
+      let code = "(1, 2, :sym)"
       let result = run code
       result `shouldReturn` VMSymbol "$tuple" [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
 
@@ -533,7 +522,7 @@ K Closures
 K Recursion (also mutual recursion)
 K Tail call optimisation (isResultValue, add new opcodes)
 K Currying (also with underscore ?)
-- Over-saturated calls!
+K Over-saturated calls!
 K Change order of free vars and formal parameters in function code so that we can use partial application as currying
 K Equality operator (needs built-in :true and :false symbols)
 K if-then-else
