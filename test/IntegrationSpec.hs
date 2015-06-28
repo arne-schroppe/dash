@@ -529,7 +529,8 @@ K if-then-else
 K pattern wildcard (can be used multiple times)
 K More math operators
 K infix operators
-- inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
+x inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
+- if a closure doesn't escape the current context, apply free variables directly
 - Strings
 - Creating symbols (symbol arity is known statically)
 K tuples
@@ -552,6 +553,12 @@ K tuples
 
 - A proper number type (big decimal?)
 
+- compact list representation
+  - list sections are stored as arrays
+  - only when storing a permanent reference to parts of a list, is that section split off
+    - TODO how does this behave with caching and pipelining?
+    - We'd also check on every return, if something is a list. not very fast in a dynamic
+      language
 
 After release ?
 

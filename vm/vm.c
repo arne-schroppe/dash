@@ -56,6 +56,7 @@ static int const_table_length = 0;
 
 
 
+//TODO do this once instead of all the time
 #define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
     printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
     return false; }
@@ -304,58 +305,59 @@ bool is_equal(vm_value l, vm_value r) {
 
 
 // TODO can we inline this?
-bool does_value_match(vm_value pat, vm_value subject, int start_register) {
+// TODO document the algorithm
+bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
 
-  vm_value pat_tag = get_tag(pat);
+  vm_value pattern_tag = get_tag(pattern);
 
-  // TODO only write to register if it actually matches?
-  if(pat_tag == vm_tag_match_data && !(pat & __single_bit(1, 5) )) {
+  bool is_match_var = !(pattern & 0x8000000);
+  if(pattern_tag == vm_tag_match_data && is_match_var) {
     //capturing match
-    int relative_reg = from_match_value(pat);
+    int relative_reg = from_match_value(pattern);
     get_reg(start_register + relative_reg) = subject;
     return true;
   }
 
-  if(pat_tag != get_tag(subject)) {
+  if(pattern_tag != get_tag(subject)) {
     return false;
   }
 
-  switch(pat_tag) {
+  switch(pattern_tag) {
     case vm_tag_number:
     case vm_tag_plain_symbol:
-      return pat == subject;
+      return pattern == subject;
 
     case vm_tag_compound_symbol: {
-      vm_value pat_address = from_val(pat);
+      vm_value pattern_address = from_val(pattern);
 
-      check_ctable_index(pat_address)
-      vm_value pat_header = const_table[pat_address];
-      vm_value pat_id = compound_symbol_id(pat_header);
+      check_ctable_index(pattern_address)
+      vm_value pattern_header = const_table[pattern_address];
+      vm_value pattern_id = compound_symbol_id(pattern_header);
 
       vm_value subject_address = from_val(subject);
 
       check_ctable_index(subject_address)
       vm_value subject_header = const_table[subject_address];
       vm_value subject_id = compound_symbol_id(subject_header);
-      if(pat_id != subject_id) {
+      if(pattern_id != subject_id) {
         return false;
       }
 
-      vm_value pat_count = compound_symbol_count(pat_header);
+      vm_value pattern_count = compound_symbol_count(pattern_header);
       vm_value subject_count = compound_symbol_count(subject_header);
 
-      if(pat_count != subject_count) {
+      if(pattern_count != subject_count) {
         return false;
       }
 
       int i=0;
-      for(; i<pat_count; ++i) {
-        int rel_pat_address = pat_address + 1 + i;
+      for(; i<pattern_count; ++i) {
+        int rel_pattern_address = pattern_address + 1 + i;
         int rel_subject_address = subject_address + 1 + i;
 
-        check_ctable_index(rel_pat_address);
+        check_ctable_index(rel_pattern_address);
         check_ctable_index(rel_subject_address);
-        if( !does_value_match(const_table[rel_pat_address], const_table[rel_subject_address], start_register) ) {
+        if( !does_value_match(const_table[rel_pattern_address], const_table[rel_subject_address], start_register) ) {
           return false;
         }
       }
