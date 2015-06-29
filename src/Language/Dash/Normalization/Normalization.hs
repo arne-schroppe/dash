@@ -207,7 +207,7 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
   patternAddr <- addConstant $ CMatchData $ map snd matchedVarsAndEncodedPatterns
   let exprs = map snd patternsAndExpressions
   let maxMatchVars = maximum $ map length matchedVars
-  -- we wrap each match branch in a lambda. This way we can handle them easier in the codegenerator
+  -- we wrap each match branch in a lambda. This way we can handle them easier in the code generator
   let lambdaizedExprs = map (\ (params, expr) -> Lambda params expr) $ zip matchedVars exprs
   nameExpr matchedExpr "" $ \ subjVar ->
           normalizeExprList lambdaizedExprs $ \ branchVars -> do
@@ -219,8 +219,8 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
 ----- Normalization helper functions -----
 
 
--- Free variables in a used lambda which can't be resolved in our context need to become
--- free variables in our context
+-- Free variables in a closure used by us which can't be resolved in our context need to 
+-- become free variables in our context
 pullUpFreeVars :: [String] -> NormState ()
 pullUpFreeVars freeVars = do
   _ <- forM (reverse freeVars) $ \ name -> do
