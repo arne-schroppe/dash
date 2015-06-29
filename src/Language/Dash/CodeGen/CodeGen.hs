@@ -191,8 +191,8 @@ compileClosureArg clName argName argIndex =
 
 createSelfRefInstrsIfNeeded :: Reg -> CodeGenState [Tac]
 createSelfRefInstrsIfNeeded clReg = do
-  scope <- getScope
-  case selfReferenceSlot scope of
+  selfRef <- getSelfReference
+  case selfRef of
     Nothing -> return []
     Just index -> return [Tac_set_cl_val clReg clReg index]
 

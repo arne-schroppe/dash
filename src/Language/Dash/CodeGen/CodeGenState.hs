@@ -1,5 +1,7 @@
 module Language.Dash.CodeGen.CodeGenState where
 
+-- TODO list exported functions explicitly
+
 
 import           Control.Applicative
 import           Control.Monad.State hiding (state)
@@ -190,6 +192,9 @@ addDirectCallReg reg = do
   let dCallRegs' = reg : dCallRegs
   putScope $ scope { directCallRegs = dCallRegs' }
 
+
+getSelfReference :: CodeGenState (Maybe Int)
+getSelfReference = getScope >>= return.selfReferenceSlot
 
 setSelfReferenceSlot :: Int -> CodeGenState ()
 setSelfReferenceSlot index = do
