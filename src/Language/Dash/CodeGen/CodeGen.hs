@@ -171,8 +171,8 @@ compileClosure reg freeVars params expr name = do
   funAddr <- compileFunc freeVars params expr name True
   -- TODO optimize argInstrs by using last parameter in set_arg (i.e. if we have arguments
   -- in consecutive registers, we can emit a single instruction for them)
-  argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
-  let argInstrs = catMaybes argInstrsMaybes
+
+  argInstrs <- compileClosureArgs name freeVars
   -- Since free vars are always the first n vars of a compiled function, creating
   -- a closure is the same as partial application
   let makeClosureInstr = [Tac_load_f reg funAddr,
@@ -180,12 +180,16 @@ compileClosure reg freeVars params expr name = do
   selfRefInstrs <- createSelfRefInstrsIfNeeded reg
   return $ argInstrs ++ makeClosureInstr ++ selfRefInstrs
 
-
-compileClosureArg :: String -> String -> Int -> CodeGenState (Maybe Tac)
-compileClosureArg clName argName argIndex =
-  if argName == clName
-    then (setSelfReferenceSlot argIndex) >> return Nothing
-    else compileSetArgN argName argIndex >>= return . Just
+compileClosureArgs :: String -> [String] -> CodeGenState [Tac]
+compileClosureArgs name freeVars = do
+  argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
+  return $ catMaybes argInstrsMaybes
+  where
+    compileClosureArg :: String -> String -> Int -> CodeGenState (Maybe Tac)
+    compileClosureArg clName argName argIndex =
+      if argName == clName
+        then (setSelfReferenceSlot argIndex) >> return Nothing
+        else compileSetArgN argName argIndex >>= return . Just
 
 
 -- If a closure has a reference to itself, it needs itself as a free variable.
@@ -202,10 +206,12 @@ createSelfRefInstrsIfNeeded clReg = do
 -- Every branch in the match-expression has been converted to a lambda by the normalizer.
 compileMatch :: Reg -> NstVar -> Int -> Int -> [([String], NstVar)] -> Bool -> CodeGenState [Tac]
 compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
+  -- TODO it would be much more efficient if we wouldn't store free variables of the match-
+  -- branch lambdas on the heap first but would call them directly. We know that those
+  -- lambdas can't escape the local context.
   let branchCaptures = map fst branches
   let branchLambdaVars = map snd branches -- the variables containing lambdas to call
   subjR <- getReg subject
-  -- TODO use the next free register instead of hardcoded value
   let instrsPerBranch = 3 -- load args, call lambda, jump out
   let handledBranches = [0 .. (length branchLambdaVars) - 1]
   let remainingBranches = reverse handledBranches
@@ -213,6 +219,7 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   -- We are using the fact that registers are used linearly from smallest to largest.
   -- That way we can use the next n registers temporarily to capture match variables
   -- TODO Make sure that this actually works and doesn't create false results
+  -- TODO use the next free register instead of hardcoded value
   let captureStartReg = 29 - maxCaptures + 1 -- reg + 1
   let jumpTable = map (\(remaining, handled) ->
                       -- Jump 1 instr for each remaining entry in jump table
