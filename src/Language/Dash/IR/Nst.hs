@@ -27,7 +27,7 @@ data NstAtomicExpr =
   | NCompoundSymbol Bool ConstAddr  -- IsDynamic SymbolAddr
   | NString String
   | NVar NstVar -- This is only for returning a var as a result
-  | NLambda [VarName] [ParamName] NstExpr  -- FreeVars FormalParams Body
+  | NLambda [VarName] [ParamName] NstExpr -- FreeVars FormalParams Body
   | NPrimOp NstPrimOp
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
   | NFunAp NstVar [NstVar]

@@ -20,10 +20,6 @@ import           Control.Monad.State
 
 -- TODO 'atom' could be misleading. Rename to 'atomExpr' or something like that
 
--- TODO after refactoring the VM, we need to change everything that is called
--- something with 'register' to something like 'localVar' or so. Otherwise
--- the uninitiated observer might think that we don't know what a register is.
-
 
 compile :: NstExpr -> ConstTable -> SymbolNameList -> ([[Tac]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
@@ -72,7 +68,8 @@ compileAtom reg atom name isResultValue = case atom of
   NLambda [] params expr -> do
           funAddr <- compileFunc [] params expr name True
           compileLoadLambda reg funAddr
-  NLambda freeVars params expr -> compileClosure reg freeVars params expr name
+  NLambda freeVars params expr ->
+          compileClosure reg freeVars params expr name
   NFunAp funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
           callInstr <- compileCallInstr reg funVar (length args) isResultValue
@@ -164,7 +161,7 @@ compileLet tmpVar atom body =
 canBeCalledDirectly :: NstAtomicExpr -> Bool
 canBeCalledDirectly atom = case atom of
   -- TODO make sure that this is actually a function (in general, if we can determine that something isn't callable, emit an error or warning)
-  NVar (NConstantFreeVar _) -> True    -- this is supposed to be a function in a surrounding context. If it isn't this will fail at runtime
+  NVar (NConstantFreeVar _) -> True    -- this is supposed to be a function in a surrounding context. If it isn't, calling this will result in a runtime exception
   NLambda [] _ _ -> True               -- this is a function inside this function's context
   _ -> False
 

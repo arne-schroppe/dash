@@ -82,7 +82,7 @@ getTag v = (v .&. 0xF0000000) `rotateL` 4
 getValue v = v .&. 0x0FFFFFFF
 
 
-tagNumber, tagPlainSymbol, tagCompoundSymbol, tagMatchData :: VMWord
+tagNumber, tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagClosure :: VMWord
 tagNumber = 0x0
 tagPlainSymbol = 0x4
 tagCompoundSymbol = 0x5
