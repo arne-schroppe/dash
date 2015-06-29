@@ -189,14 +189,13 @@ normalizeFunAp funExpr args k = case (funExpr, args) of
           normalizeExprList args $ \ normArgs ->
               k $ NPartAp funVar normArgs
       -- over-saturated call
-      else do
-        -- TODO should we also check for closures here? can we even have known closures?
+      else do -- numArgs > funArity
         let (knownFunArgs, remainingArgs) = splitAt funArity args
         normalizeExprList knownFunArgs $ \ normKnownFunArgs -> do
             knownFunResult <- newTempVar ""
             let apKnownFun = NFunAp funVar normKnownFunArgs
             normalizeExprList remainingArgs $ \ normRemArgs -> do
-                -- application of the result of the previous application of a known function
+                -- The previous function application should have resulted in a new function, which we're applying here
                 rest <- k $ NFunAp knownFunResult normRemArgs
                 return $ NLet knownFunResult apKnownFun rest
 
@@ -207,8 +206,8 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
   let matchedVars = map fst matchedVarsAndEncodedPatterns
   patternAddr <- addConstant $ CMatchData $ map snd matchedVarsAndEncodedPatterns
   let exprs = map snd patternsAndExpressions
-  -- we wrap each match branch in a lambda. This way we can handle them easier in the codegenerator
   let maxMatchVars = maximum $ map length matchedVars
+  -- we wrap each match branch in a lambda. This way we can handle them easier in the codegenerator
   let lambdaizedExprs = map (\ (params, expr) -> Lambda params expr) $ zip matchedVars exprs
   nameExpr matchedExpr "" $ \ subjVar ->
           normalizeExprList lambdaizedExprs $ \ branchVars -> do

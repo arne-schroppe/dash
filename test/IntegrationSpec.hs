@@ -557,8 +557,8 @@ K tuples
   - list sections are stored as arrays
   - only when storing a permanent reference to parts of a list, is that section split off
     - TODO how does this behave with caching and pipelining?
-    - We'd also check on every return, if something is a list. not very fast in a dynamic
-      language
+    - We'd also have to check on every return whether something is a list. not very fast 
+      in a dynamic language
 
 After release ?
 
