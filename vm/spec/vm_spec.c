@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "vm_spec.h"
 
-#include "../vm.h"
+#include "../vm_internal.h"
 #include "../opcodes.h"
 
 #define array_length(x) (sizeof(x) / sizeof(x[0]))

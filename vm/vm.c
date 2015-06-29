@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include "vm.h"
+#include "vm_internal.h"
 #include "opcodes.h"
 #include "heap.h"
 
@@ -310,11 +310,14 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
 
   vm_value pattern_tag = get_tag(pattern);
 
+  //if bit 27 (32 - 5) is set, this is a match header, otherwise it is a variable
   bool is_match_var = !(pattern & 0x8000000);
   if(pattern_tag == vm_tag_match_data && is_match_var) {
     //capturing match
     int relative_reg = from_match_value(pattern);
-    get_reg(start_register + relative_reg) = subject;
+    if(relative_reg != match_wildcard_value) {
+      get_reg(start_register + relative_reg) = subject;
+    }
     return true;
   }
 
@@ -371,17 +374,6 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
 }
 
 
-void print_registers(stack_frame frame) {
-  int i;
-  const int num_displayed_regs = 5;
-  const int reg_display_size = 16;
-  char buffer[num_displayed_regs * (reg_display_size + 1) + 1] = {0};
-  for(i=0; i<num_displayed_regs; ++i) {
-    sprintf(&buffer[i*(reg_display_size + 1)], "%016x ", frame.reg[i]);
-  }
-  printf("regs: %s\n", buffer);
-}
-
 void reset() {
   program_pointer = 0;
   stack_pointer = 0;
@@ -404,12 +396,11 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
   debug( printf("----- start %d\n", invocation) );
   while(is_running && program_pointer < program_length) {
     //debug( print_registers(current_frame) );
-    int old_program_pointer = program_pointer;
-    ++program_pointer;
 
     is_running = true;
-    vm_value instr = program[old_program_pointer];
+    vm_value instr = program[program_pointer];
     vm_opcode opcode = get_opcode(instr);
+    ++program_pointer;
 
     switch (opcode) {
 
@@ -450,6 +441,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       }
       break;
 
+
       case OP_LOAD_f: {
         int reg0 = get_arg_r0(instr);
         int value = get_arg_i(instr);
@@ -457,6 +449,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         debug( printf("LOADf  r%02i #%i\n", reg0, value) );
       }
       break;
+
 
       case OP_ADD: {
         int reg1 = get_arg_r1(instr);
