@@ -70,19 +70,6 @@ emptyContext = Context {
 , freeVars = []
 }
 
-{-
-A name lookup can have these outcomes:
-1. It is a local temp var or fun param. In this case, just use LocalVar or FunParam
-2. It is a variable from a surrounding context. In this case there are two possibilities:
-2.1. It is a static value (i.e. a lambda or compound symbol with no free vars or
-     another constant expression, e.g. a number). In this case, add a new temp that has a
-     ConstantFreeVar assigned to it. The code generator will resolve this directly.
-2.2. It is a dynamic variable. In this case add it as a DynamicFreeVar. The code
-     generator will assign a register for it.
-3. It is a recursive variable. Only lambdas and closures can be recursive. Return it as-is
-   so that it can be resolved later.
-4. The name is unknown, which results in an error.
--}
 
 newTempVar :: String -> NormState NstVar
 newTempVar name = do
@@ -93,6 +80,22 @@ newTempVar name = do
   return (NLocalVar tmpVar name)
 
 
+
+{-
+A name lookup can have these outcomes:
+1. It is a local temp var or fun param. In this case, just use LocalVar or FunParam
+2. It is a variable from a surrounding context. In this case there are two possibilities:
+2.1. It is a static value (i.e. a lambda or compound symbol with no free vars or
+     any other constant expression, e.g. a number). In this case, add a new local var that
+     has a ConstantFreeVar assigned to it. The code generator will resolve this directly.
+2.2. It is a dynamic variable. In this case add it as a DynamicFreeVar. The code
+     generator will assign a register for it and it will be passed into the function as an
+     additional argument.
+3. It is a recursive variable. Only lambdas and closures can be recursive. Return it as-is
+   so that it can be resolved in the second stage of normalization, when recursion is
+   resolved.
+4. The name is unknown, which results in an error.
+-}
 lookupName :: String -> NormState NstVar
 lookupName name = do
   state <- get

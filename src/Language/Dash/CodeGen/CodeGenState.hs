@@ -58,11 +58,19 @@ makeScope freeVars params = CompScope {
              }
 
 
+-- This helps us to keep track of constant values in the code. They overlap
+-- with the constants in the ConstTable, but are not the same. CompileTimeConstants
+-- are for example used in determining free variables in closures. Even though a
+-- non-local function g is used inside a function f, doesn't add g as a free variable
+-- to f. It is only if g itself is a closure (and thereby *not* a CompileTimeConst),
+-- that we add it as a free variable. So a CompileTimeConstant has a static representation
+-- at runtime and can be used directly, wherever it occurs. Everything else is dynamic
+-- data and needs to be passed around
 data CompileTimeConstant =
     CTConstNumber VMWord
   | CTConstPlainSymbol SymId
-  | CTConstCompoundSymbol ConstAddr
-  | CTConstLambda FunAddr
+  | CTConstCompoundSymbol ConstAddr  -- only if it exclusively contains other CompileTimeConstants
+  | CTConstLambda FunAddr  -- only if it is not a closure
   deriving (Show)
 
 
@@ -73,17 +81,14 @@ beginFunction freeVars params = do
   let paramBindings = Map.fromList (zipWithIndex params)
   let newScope = makeScope localFreeVars paramBindings
   put $ state { scopes = newScope : (scopes state) }
-  addr <- addPlaceholderFunction
+  addr <- addFunctionPlaceholder
   return addr
 
 
 endFunction :: Int -> [Tac] -> CodeGenState ()
 endFunction funAddr code = do
-  state <- get
-  let instrs = instructions state
-  let instrs' = Seq.update funAddr code instrs
-  put $ state { scopes = (tail $ scopes state),
-                instructions = instrs' }
+  replacePlaceholderWithActualCode funAddr code
+  modify $ \ state -> state { scopes = (tail $ scopes state) }
 
 
 numParameters :: CodeGenState Int
@@ -125,8 +130,13 @@ localVar name = do
   return $ Map.lookup name localVars
 
 
-addPlaceholderFunction :: CodeGenState Int
-addPlaceholderFunction = do
+-- a placeholder is needed because we might start to encode other functions while encoding
+-- a function. So we can't just append the encoded function to the end when we're done
+-- with it, because in some situations we already need its address while encoding it. So
+-- the placeholder helps us to give the function a fixed address, no matter when it is
+-- actually added to the list of functions.
+addFunctionPlaceholder :: CodeGenState Int
+addFunctionPlaceholder = do
   state <- get
   let instrs = instructions state
   let nextFunAddr = Seq.length instrs
@@ -134,6 +144,13 @@ addPlaceholderFunction = do
   put $ state { instructions = instrs' }
   return nextFunAddr
 
+
+replacePlaceholderWithActualCode :: Int -> [Tac] -> CodeGenState ()
+replacePlaceholderWithActualCode funPlaceholderAddr code = do
+  state <- get
+  let instrs = instructions state
+  let instrs' = Seq.update funPlaceholderAddr code instrs -- replace the original function placeholder with the actual code
+  put $ state { instructions = instrs' }
 
 getRegByName :: String -> CodeGenState Int
 getRegByName name = do
@@ -210,14 +227,12 @@ resetSelfReferenceSlot = do
 
 getScope :: CodeGenState CompScope
 getScope = do
-  state <- get
-  return $ head (scopes state)
+  gets $ head.scopes
 
 
 putScope :: CompScope -> CodeGenState ()
 putScope s = do
-  state <- get
-  put $ state { scopes = s : (tail $ scopes state) }
+  modify $ \ state -> state { scopes = s : (tail $ scopes state) }
 
 
 addCompileTimeConst :: String -> CompileTimeConstant -> CodeGenState ()

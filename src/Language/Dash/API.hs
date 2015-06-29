@@ -14,7 +14,7 @@ import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Tac
 import           Language.Dash.Parser.Lexer
 import           Language.Dash.Parser.Parser
-import           Language.Dash.VM.Bits
+import           Language.Dash.VM.DataEncoding
 import           Language.Dash.VM.Types
 import           Language.Dash.VM.VM
 import           Prelude                             hiding (lex)

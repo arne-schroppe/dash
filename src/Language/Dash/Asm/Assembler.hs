@@ -5,11 +5,12 @@ module Language.Dash.Asm.Assembler (
 
 
 import           Data.Bits
+import qualified Data.Sequence                   as Seq
 import           Data.Word
+import           Language.Dash.Asm.DataAssembler
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Tac
 import           Language.Dash.VM.Types
-import           Language.Dash.Asm.DataAssembler
 
 
 {-
@@ -19,8 +20,9 @@ Assembler
 
 The assembler takes lists of three address codes and generates the actual byte code for
 the virtual machine. It also encodes all static objects used at runtime (the const table).
+The latter is done by the DataAssembler.
 
-The code generator stores each function as a list so that the input type for the assembler
+The code generator stores each function as a list, so the input type for the assembler
 is [[tac]]. Function addresses in the input code are indices of the outer list. They are
 turned into real addresses by the assembler.
 
@@ -39,23 +41,27 @@ assemble funcs ctable symnames =
 
 
 assembleWithEncodedConstTable :: [[Tac]] -> [VMWord] -> (Int -> VMWord) -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
-assembleWithEncodedConstTable funcs encCTable cAddrConverter symnames =
-  (map (assembleTac funcAddrs cAddrConverter) instructions, encCTable, symnames)
+assembleWithEncodedConstTable funcs encCTable constAddrConverter symnames =
+  (map (assembleTac funcAddrs constAddrConverter) instructions, encCTable, symnames)
   where instructions = fst combined
         funcAddrs = snd combined
         combined = combineFunctions funcs
 
 
-combineFunctions :: [[Tac]] -> ([Tac], [VMWord])
-combineFunctions funcs = (fst combined, reverse $ snd combined)
-  where combined = foldl calcFuncAddr ([], []) funcs
+-- Converts the nested list of functions into a flat list, and additionally provides
+-- a map from indices in the nested list to the index in the flat list (that map is
+-- just a sequence with the same length as the nested list). The map helps us to find
+-- function references in the Tac code in our generated binary code.
+combineFunctions :: [[Tac]] -> ([Tac], Seq.Seq VMWord)
+combineFunctions funcs = (fst combined, snd combined)
+  where combined = foldl calcFuncAddr ([], Seq.empty) funcs
         calcFuncAddr acc funcInstrs =
           let allInstrs = fst acc in
           let funcAddrs = snd acc in
-          ( allInstrs ++ funcInstrs, (fromIntegral $ length allInstrs) : funcAddrs )
+          ( allInstrs ++ funcInstrs, funcAddrs Seq.|> (fromIntegral $ length allInstrs) )
 
 
-assembleTac :: [VMWord] -> (Int -> VMWord) -> Tac -> Word32
+assembleTac :: Seq.Seq VMWord -> (Int -> VMWord) -> Tac -> Word32
 assembleTac funcAddrs addrConv opc =
   let r = fromIntegral in
   let i = fromIntegral in
@@ -66,7 +72,7 @@ assembleTac funcAddrs addrConv opc =
     Tac_load_ps r0 s        -> instructionRI   2 (r r0) (i s)
     Tac_load_cs r0 a        -> instructionRI   3 (r r0) (addrConv a)
     Tac_load_c r0 a         -> instructionRI   4 (r r0) (addrConv a)
-    Tac_load_f r0 fi        -> instructionRI   5 (r r0) (funcAddrs !! fi)
+    Tac_load_f r0 fi        -> instructionRI   5 (r r0) (funcAddrs `Seq.index` fi)
     Tac_add r0 r1 r2        -> instructionRRR  6 (r r0) (r r1) (r r2)
     Tac_sub r0 r1 r2        -> instructionRRR  7 (r r0) (r r1) (r r2)
     Tac_mul r0 r1 r2        -> instructionRRR  8 (r r0) (r r1) (r r2)

@@ -45,7 +45,7 @@ compileFunc freeVars params expr name shouldAddHeader = do
   else
     endFunction funAddr funcCode
 
-  addCompileTimeConst name $ CTConstLambda funAddr -- Have to re-add to outer scope    TODO this sucks
+  addCompileTimeConst name $ CTConstLambda funAddr -- Have to re-add to outer scope
   return funAddr
 
 
@@ -163,7 +163,8 @@ compileLet tmpVar atom body =
 -- This determines whether we'll use Tac_call or Tac_gen_ap later
 canBeCalledDirectly :: NstAtomicExpr -> Bool
 canBeCalledDirectly atom = case atom of
-  NVar (NConstantFreeVar _) -> True    -- this is a function in a surrounding context     -- TODO we actually don't know whether this is a function at all!
+  -- TODO make sure that this is actually a function (in general, if we can determine that something isn't callable, emit an error or warning)
+  NVar (NConstantFreeVar _) -> True    -- this is supposed to be a function in a surrounding context. If it isn't this will fail at runtime
   NLambda [] _ _ -> True               -- this is a function inside this function's context
   _ -> False
 
@@ -171,10 +172,11 @@ canBeCalledDirectly atom = case atom of
 compileClosure :: Reg -> [String] -> [String] -> NstExpr -> String -> CodeGenState [Tac]
 compileClosure reg freeVars params expr name = do
   funAddr <- compileFunc freeVars params expr name True
-  -- TODO optimize argInstrs by using last parameter in set_arg
+  -- TODO optimize argInstrs by using last parameter in set_arg (i.e. if we have arguments
+  -- in consecutive registers, we can emit a single instruction for them)
   argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
   let argInstrs = catMaybes argInstrsMaybes
-  -- Since free vars are always the first n vars of a compiled function, storing
+  -- Since free vars are always the first n vars of a compiled function, creating
   -- a closure is the same as partial application
   let makeClosureInstr = [Tac_load_f reg funAddr,
                           Tac_part_ap reg reg (length freeVars)]
@@ -189,6 +191,9 @@ compileClosureArg clName argName argIndex =
     else compileSetArgN argName argIndex >>= return . Just
 
 
+-- If a closure has a reference to itself, it needs itself as a free variable.
+-- This function checks if that is the case and emits instructions to set
+-- a refernce to the closure inside the closure.
 createSelfRefInstrsIfNeeded :: Reg -> CodeGenState [Tac]
 createSelfRefInstrsIfNeeded clReg = do
   selfRef <- getSelfReference
@@ -197,7 +202,7 @@ createSelfRefInstrsIfNeeded clReg = do
     Just index -> return [Tac_set_cl_val clReg clReg index]
 
 
--- Every branch in the match-expression has been converted to a lambda by the normalizer. (TODO inline these branches!)
+-- Every branch in the match-expression has been converted to a lambda by the normalizer.
 compileMatch :: Reg -> NstVar -> Int -> Int -> [([String], NstVar)] -> Bool -> CodeGenState [Tac]
 compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   let branchCaptures = map fst branches

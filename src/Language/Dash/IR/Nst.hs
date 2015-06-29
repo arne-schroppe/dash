@@ -10,21 +10,17 @@ import           Language.Dash.IR.Data  (ConstAddr)
 
 -- NST, the Normalized Syntax Tree
 
--- TODO Should every code branch in a match expression really be a closure?
 
 data NstExpr =
     NAtom NstAtomicExpr
   | NLet NstVar NstAtomicExpr NstExpr
   deriving (Eq, Ord)
 
-instance Show NstExpr where
-  show expr = case expr of
-    NAtom atom -> "return " ++ (show atom) ++ "\n"
-    NLet var atom rest -> (show var) ++ " <- " ++ (show atom) ++ "\n" ++ (show rest)
 
 type VarName = String
 type ParamName = String
 
+-- TODO Should every code branch in a match expression really be a closure?
 data NstAtomicExpr =
     NNumber Int
   | NPlainSymbol Int
@@ -47,14 +43,6 @@ data NstVar =
   | NRecursiveVar String
   deriving (Eq, Ord)
 
-instance Show NstVar where
-  show v = case v of
-    NLocalVar i name -> "r" ++ (show i) ++ (if not (null name) then " '" ++ name ++ "'" else "")
-    NFunParam name -> "p '" ++ name ++ "'"
-    NDynamicFreeVar name -> "λ '" ++ name ++ "'"
-    NConstantFreeVar name -> "g '" ++ name ++ "'"
-    NRecursiveVar name -> "r '" ++ name ++ "'"
-
 data NstPrimOp =
     NPrimOpAdd NstVar NstVar
   | NPrimOpSub NstVar NstVar
@@ -64,6 +52,19 @@ data NstPrimOp =
   deriving (Eq, Ord, Show)
 
 
+
+instance Show NstExpr where
+  show expr = case expr of
+    NAtom atom -> "return " ++ (show atom) ++ "\n"
+    NLet var atom rest -> (show var) ++ " <- " ++ (show atom) ++ "\n" ++ (show rest)
+
+instance Show NstVar where
+  show v = case v of
+    NLocalVar i name -> "r" ++ (show i) ++ (if not (null name) then " '" ++ name ++ "'" else "")
+    NFunParam name -> "p '" ++ name ++ "'"
+    NDynamicFreeVar name -> "λ '" ++ name ++ "'"
+    NConstantFreeVar name -> "g '" ++ name ++ "'"
+    NRecursiveVar name -> "r '" ++ name ++ "'"
 
 instance Show NstAtomicExpr where
   show atom = case atom of

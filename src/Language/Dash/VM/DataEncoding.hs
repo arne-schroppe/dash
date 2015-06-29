@@ -1,4 +1,4 @@
-module Language.Dash.VM.Bits (
+module Language.Dash.VM.DataEncoding (
   VMValue(..)
 , decode
 , encodeNumber

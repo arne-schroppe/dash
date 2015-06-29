@@ -30,6 +30,7 @@ data ThreeAddressCode =
   | Tac_jmp Int
   | Tac_match Reg Reg Reg         -- subj reg, pattern addr reg, start reg for captures
   | Tac_set_arg Int Reg Int
+  -- TODO shouldn't this be called set_pap_val now?
   | Tac_set_cl_val Reg Reg Int    -- expects closure address (heap)
   | Tac_fun_header Int            -- arity
   | Tac_eq Reg Reg Reg

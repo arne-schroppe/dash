@@ -9,6 +9,8 @@ module Language.Dash.IR.Data (
 ) where
 
 
+-- Intermediate representation for data static runtime data
+
 
 type SymId = Int
 type FunAddr = Int

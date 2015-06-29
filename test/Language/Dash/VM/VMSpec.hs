@@ -3,7 +3,7 @@ module Language.Dash.VM.VMSpec where
 import           Data.Word
 import           Language.Dash.Asm.Assembler
 import           Language.Dash.IR.Tac
-import           Language.Dash.VM.Bits
+import           Language.Dash.VM.DataEncoding
 import           Language.Dash.VM.VM
 import           Test.Hspec
 import           Test.QuickCheck

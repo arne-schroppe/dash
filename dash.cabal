@@ -31,7 +31,7 @@ library
                     , Language.Dash.Asm.Assembler
                     , Language.Dash.Asm.DataAssembler
                     , Language.Dash.VM.VM
-                    , Language.Dash.VM.Bits
+                    , Language.Dash.VM.DataEncoding
                     , Language.Dash.VM.Types
                     , Language.Dash.API
   build-depends:      base

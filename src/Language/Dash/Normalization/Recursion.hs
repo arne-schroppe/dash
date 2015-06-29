@@ -51,7 +51,7 @@ resolveRecLet var atom expr = do
 
 localVarName :: NstVar -> String
 localVarName (NLocalVar _ name) = name
-localVarName _ = error "Internal compiler error: Something else than a local var was let-bound"
+localVarName _ = error "Internal compiler error: Something other than a local var was let-bound"
 
 
 resolveRecAtom :: NstAtomicExpr -> String -> RecursionState NstAtomicExpr
@@ -106,8 +106,9 @@ addExtraFreeVar name = do
 
 -- TODO this doesn't work for mutual recursion
 
--- The first case (for a lambda that isn't let-bound) is just a placeholder, so that we
--- can easily pop the scope later. No recursive var will resolve to it anyway
+-- The first case (for a lambda that isn't let-bound and thus is unnamed) is just a
+-- placeholder, so that we can easily pop the scope later. No recursive var will resolve
+-- to it anyway.
 pushLambdaScope :: [String] -> String -> RecursionState ()
 pushLambdaScope _ "" = pushLambdaScope' "$$$invalid$$$" (NConstantFreeVar "$$$invalid$$$")
 pushLambdaScope [] n = pushLambdaScope' n (NConstantFreeVar n)

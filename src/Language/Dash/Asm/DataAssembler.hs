@@ -1,5 +1,7 @@
 module Language.Dash.Asm.DataAssembler (
   encodeConstTable
+
+-- These two are only exposed for debugging  TODO move them to another module?
 , atomizeConstTable
 , AtomicConstant(..)
 ) where
@@ -7,7 +9,7 @@ module Language.Dash.Asm.DataAssembler (
 import           Control.Monad.State    hiding (state)
 import qualified Data.IntMap            as IntMap
 import           Language.Dash.IR.Data
-import qualified Language.Dash.VM.Bits  as Bits
+import qualified Language.Dash.VM.DataEncoding  as Enc
 import           Language.Dash.VM.Types
 
 {-
@@ -33,12 +35,18 @@ type ConstAddressMap = Int -> VMWord
 type ConstAtomizationState a = State ConstAtomizationEnv a
 
 
+-- The ConstAddressMap is a conversion function from the virtual constant
+-- addresses used in the Tac ir to the real binary offsets for the vm
 encodeConstTable :: ConstTable -> ([VMWord], ConstAddressMap)
 encodeConstTable ctable =
   let (atoms, mapping) = atomizeConstTable ctable in
   (map encodeConstant atoms, (mapping IntMap.!) )
 
 
+-- We receive data as an array of Data.Constant objects. The first step is
+-- to split this representation into their atomic parts. This is what this
+-- function does. The next step encodes those atomic parts into their
+-- byte representation for the vm.
 atomizeConstTable :: ConstTable -> ([AtomicConstant], IntMap.IntMap VMWord)
 atomizeConstTable ctable =
   let state = execState encTable (emptyConstAtomizationEnv ctable) in
@@ -120,6 +128,11 @@ emptyConstAtomizationEnv ctable = ConstAtomizationEnv {
 }
 
 
+-- While encoding for example a compound symbol, the elements of that symbol
+-- are pushed onto the workQueue and atomized next. If the workQueue is empty
+-- we continue with the next constant from our original input. When we're
+-- done we return Nothing.
+-- TODO I'm quite sure that this can be written much more elegantly
 popWorkItem :: ConstAtomizationState (Maybe Constant)
 popWorkItem = do
   state <- get
@@ -196,11 +209,11 @@ data AtomicConstant =
 
 encodeConstant :: AtomicConstant -> VMWord
 encodeConstant c = case c of
-  ACPlainSymbol sid            -> Bits.encodePlainSymbol $ fromIntegral sid
-  ACCompoundSymbolRef addr     -> Bits.encodeCompoundSymbolRef $ fromIntegral addr
-  ACCompoundSymbolHeader sid n -> Bits.encodeCompoundSymbolHeader (fromIntegral sid) (fromIntegral n)
-  ACNumber n                   -> Bits.encodeNumber $ fromIntegral n
-  ACMatchHeader n              -> Bits.encodeMatchHeader $ fromIntegral n
-  ACMatchVar n                 -> Bits.encodeMatchVar $ fromIntegral n
+  ACPlainSymbol sid            -> Enc.encodePlainSymbol $ fromIntegral sid
+  ACCompoundSymbolRef addr     -> Enc.encodeCompoundSymbolRef $ fromIntegral addr
+  ACCompoundSymbolHeader sid n -> Enc.encodeCompoundSymbolHeader (fromIntegral sid) (fromIntegral n)
+  ACNumber n                   -> Enc.encodeNumber $ fromIntegral n
+  ACMatchHeader n              -> Enc.encodeMatchHeader $ fromIntegral n
+  ACMatchVar n                 -> Enc.encodeMatchVar $ fromIntegral n
 
 

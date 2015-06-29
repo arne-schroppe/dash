@@ -2,7 +2,7 @@ module IntegrationSpec where
 
 import           Test.Hspec
 import           Language.Dash.API
-import           Language.Dash.VM.Bits
+import           Language.Dash.VM.DataEncoding
 import           Numeric
 
 -- This is mainly a test of the code generator. But it is an integration test because
