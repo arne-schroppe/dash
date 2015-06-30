@@ -516,6 +516,8 @@ K Refactoring
 - Inline match branches !!!
 K TODO make it impossible to reassign values (d'oh!)
 - Limits (integers, num local vars, num arguments, num symbols, etc)
+- Big refactoring: instead of all the data we have in state, attach a meta-data object to every object
+  in the various IRs. In normalization, let the var have a reference to the thing it is pointing to
 
 missing language features:
 K Closures
