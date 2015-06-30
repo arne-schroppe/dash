@@ -3,7 +3,7 @@ CFLAGS=-c -Wall
 LDFLAGS=
 AR=ar
 ARFLAGS=-cvq
-SOURCES=vm.c heap.c
+SOURCES=vm.c heap.c gc.c
 OBJECTS=$(SOURCES:.c=.o)
 
 LIB_NAME=libandovm.a

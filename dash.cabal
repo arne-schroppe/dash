@@ -41,6 +41,7 @@ library
   include-dirs:       vm
   c-sources:          vm/vm.c
                     , vm/heap.c
+                    , vm/gc.c
 
 executable dash
   main-is:            Main.hs
