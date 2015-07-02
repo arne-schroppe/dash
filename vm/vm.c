@@ -5,6 +5,8 @@
 #include "vm_internal.h"
 #include "opcodes.h"
 #include "heap.h"
+#include "gc.h"
+#include "vm_tags.h"
 
 /*
 
@@ -44,6 +46,9 @@ const vm_value vm_tag_compound_symbol = 0x5;
 const vm_value vm_tag_pap = 0x6;
 const vm_value vm_tag_function = 0x7;
 const vm_value vm_tag_match_data = 0xF;
+
+// match data will never appear on the heap, so we can reuse the tag
+const vm_value vm_tag_forward_pointer = vm_tag_match_data;
 
 
 // vm State
@@ -382,7 +387,8 @@ void reset() {
 
   // Invariant: spilled_arguments field in all frames must be 0 from the beginning
   memset(stack, 0x0, sizeof(stack_frame) * STACK_SIZE);
-  init_heap();
+  heap_init();
+  gc_set_stack(stack, &stack_pointer);
 }
 
 
@@ -518,6 +524,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         // this macro will create `return_pointer`
         do_call((&next_frame), get_arg_r1(instr), instr);
         if (call_failed) {
+          fprintf(stderr, "call failed\n"); //TODO give a better error description
           is_running = false;
           break;
         }
@@ -534,6 +541,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_TAIL_CALL: {
         do_call((&current_frame), get_arg_r1(instr), instr);
         if (call_failed) {
+          fprintf(stderr, "call failed\n"); //TODO give a better error description
           is_running = false;
         }
 

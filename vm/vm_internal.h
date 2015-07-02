@@ -2,6 +2,9 @@
 #define _INCLUDE_VM_INTERNAL_H
 
 #include "vm.h"
+#include "vm_tags.h"
+
+#define NUM_REGS 32
 
 struct _stack_frame {
   vm_value reg[NUM_REGS];

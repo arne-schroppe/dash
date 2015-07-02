@@ -593,5 +593,13 @@ After release ?
 K Prevent duplicate var names in function definition (unless it's for pattern matching? No, that would be useless)
 
 
+bugs:
+
+1.  a = 1
+    b = a
+    b
+
+    identifier 'b' not found
+
 -}
 
