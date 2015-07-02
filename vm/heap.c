@@ -5,7 +5,7 @@
 
 static vm_value *heap = 0;
 static vm_value *other_heap = 0;
-static size_t heap_size = 2048;
+static size_t heap_size = 4096;
 static heap_address next_free_address = 0;
 
 static void run_gc();

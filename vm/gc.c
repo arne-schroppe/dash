@@ -8,7 +8,6 @@ stack_frame *stack = 0;
 int *stack_pointer = 0;
 
 void gc_set_stack(stack_frame *stack_arg, int *stack_pointer_arg) {
-  fprintf(stderr, "Set stack\n");
   stack = stack_arg;
   stack_pointer = stack_pointer_arg;
 }
@@ -17,6 +16,9 @@ void gc_set_stack(stack_frame *stack_arg, int *stack_pointer_arg) {
 int gc_collect(vm_value *old_heap, vm_value *new_heap, int heap_size) {
   fprintf(stderr, "GC Start\n");
 
+  int new_heap_max = heap_size; //TODO delete
+
+  /*
   // right now only closures (which for us are the same as partial applications)
   // and spilled arguments take space on the heap. Everything else is in the constant 
   // pool.
@@ -32,7 +34,7 @@ int gc_collect(vm_value *old_heap, vm_value *new_heap, int heap_size) {
       int object = frame->reg[j];
       int tag = get_tag(object);
 
-      if(tag == vm_tag_forward_pointer) {
+      if(tag == vm_tag_forward_pointer) { //TODO this doesn't make much sense
         printf("found forward pointer\n");
         vm_value new_index = from_val(object);
         frame->reg[j] = val(new_index, vm_tag_pap);
@@ -96,6 +98,8 @@ int gc_collect(vm_value *old_heap, vm_value *new_heap, int heap_size) {
 
     heap_p += num_args + 2;
 
+    */
+
 
     /*
     int tag = get_tag(object);
@@ -111,10 +115,10 @@ int gc_collect(vm_value *old_heap, vm_value *new_heap, int heap_size) {
       break;
 
     }
-    */
+    * /
 
 
-  }
+  } */
 
   fprintf(stderr, "GC End\n");
   return new_heap_max;

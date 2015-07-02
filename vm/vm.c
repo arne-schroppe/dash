@@ -92,6 +92,7 @@ static int const_table_length = 0;
   }
 
 
+// TODO it could be that func_address is not valid anymore after doing heap_alloc
 #define build_pap(num_pap_args, pap_arity, offset, num_args, func_address) \
 vm_value pap_value; \
 vm_value *pap_pointer; \
