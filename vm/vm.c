@@ -39,6 +39,7 @@ static int invocation = 0;
 static const vm_value symbol_id_false = 0;
 static const vm_value symbol_id_true = 1;
 static const int fun_header_size = 1;
+static const int pap_header_size = 2; \
 
 const vm_value vm_tag_number = 0x0;
 const vm_value vm_tag_plain_symbol = 0x4;
@@ -95,12 +96,11 @@ static int const_table_length = 0;
 vm_value pap_value; \
 vm_value *pap_pointer; \
 { \
-  const int pap_header_length = 2; \
-  heap_address pap_address = heap_alloc(num_pap_args + pap_header_length ); \
+  heap_address pap_address = heap_alloc(num_pap_args + pap_header_size ); \
   pap_pointer = heap_get_pointer(pap_address);  \
   *pap_pointer = pap_header(pap_arity, num_pap_args); /* write header */ \
-  memcpy(pap_pointer + offset + 1, next_frame.reg, num_args * sizeof(vm_value)); \
-  *(pap_pointer + num_pap_args + 1) = func_address; \
+  *(pap_pointer + 1) = func_address; \
+  memcpy(pap_pointer + pap_header_size + offset, next_frame.reg, num_args * sizeof(vm_value)); \
   pap_value = val( (vm_value) pap_address, vm_tag_pap ); \
 }
 
@@ -173,10 +173,10 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     // Saturated closure application
     if (num_args == arity) {
       memmove(&(frame->reg[num_cl_vars]), next_frame.reg, num_args * sizeof(vm_value));
-      memcpy(&(frame->reg[0]), cl_pointer + 1, num_cl_vars * sizeof(vm_value));
+      memcpy(&(frame->reg[0]), cl_pointer + pap_header_size, num_cl_vars * sizeof(vm_value));
 
       // do the call
-      vm_value func_address = *(cl_pointer + num_cl_vars + 1);
+      vm_value func_address = *(cl_pointer + 1);
       int return_pointer = program_pointer;
       program_pointer = func_address + fun_header_size;
       return return_pointer;
@@ -185,7 +185,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     else if (num_args < arity) {
       // create a new PAP by copying the old one and adding the new arguments
 
-      vm_value func_address = *(cl_pointer + num_cl_vars + 1);
+      vm_value func_address = *(cl_pointer + 1);
       vm_value reg0 = get_arg_r0(instr);
 
       int num_pap_args = num_cl_vars + num_args;
@@ -193,7 +193,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       int offset = num_cl_vars;
 
       build_pap(num_pap_args, pap_arity, offset, num_args, func_address)
-      memcpy(pap_pointer + 1, cl_pointer + 1, num_cl_vars * sizeof(vm_value));
+      memcpy(pap_pointer + pap_header_size, cl_pointer + pap_header_size, num_cl_vars * sizeof(vm_value));
 
       get_reg(reg0) = pap_value;
       return -1;
@@ -205,10 +205,10 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
       // set arguments
       memmove(&(next_frame.reg[num_cl_vars]), &(next_frame.reg[0]), arity * sizeof(vm_value));
-      memcpy(&(next_frame.reg[0]), cl_pointer + 1, num_cl_vars * sizeof(vm_value));
+      memcpy(&(next_frame.reg[0]), cl_pointer + pap_header_size, num_cl_vars * sizeof(vm_value));
 
       // do the call
-      vm_value func_address = *(cl_pointer + num_cl_vars + 1);
+      vm_value func_address = *(cl_pointer + 1);
       program_pointer = func_address + fun_header_size;
 
       ++stack_pointer;
@@ -670,7 +670,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           is_running = false;
           break;
         }
-        cl_pointer[arg_index + 1] = new_value;
+        cl_pointer[pap_header_size + arg_index] = new_value;
 
         debug( printf("SETCLARG r%02i r%02i n%02i\n", get_arg_r0(instr), get_arg_r1(instr), arg_index) );
       }
