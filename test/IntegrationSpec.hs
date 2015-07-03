@@ -544,6 +544,7 @@ K tuples
 - Static modules
 - I/O
 
+- Change tags and runtime representation of values
 - Garbage collection
 - Reducing the amount of created garbage
 
