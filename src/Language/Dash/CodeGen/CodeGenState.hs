@@ -4,9 +4,10 @@ module Language.Dash.CodeGen.CodeGenState where
 
 
 import           Control.Applicative
-import           Control.Monad.State    hiding (state)
-import qualified Data.Map               as Map
-import qualified Data.Sequence          as Seq
+import           Control.Monad.State          hiding (state)
+import qualified Data.Map                     as Map
+import qualified Data.Sequence                as Seq
+import           Language.Dash.CodeGen.Limits
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Tac
@@ -58,9 +59,6 @@ makeScope freeVars params = CompScope {
              }
 
 
-maxRegisters, maxInteger :: Int
-maxRegisters = 32
-maxInteger = 0x1FFFFF
 
 -- This helps us to keep track of constant values in the code. They overlap
 -- with the constants in the ConstTable, but are not the same. CompileTimeConstants

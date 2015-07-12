@@ -2,13 +2,14 @@ module Language.Dash.CodeGen.CodeGen (
   compile
 ) where
 
+import           Control.Monad.State
 import           Data.Foldable
 import           Data.Maybe                         (catMaybes)
 import           Language.Dash.CodeGen.CodeGenState
+import           Language.Dash.CodeGen.Limits
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Tac
-import           Control.Monad.State
 
 
 -- TODO explain what the code generator does and how it does it !
@@ -56,6 +57,7 @@ compileExpr expr = case expr of
 compileAtom :: Reg -> NstAtomicExpr -> String -> Bool -> CodeGenState [Tac]
 compileAtom reg atom name isResultValue = case atom of
   NNumber n -> do
+          when (n < 0 || n > maxInteger) $ error "Integer literal out of bounds"
           addCompileTimeConst name $ CTConstNumber (fromIntegral n)
           return [Tac_load_i reg (fromIntegral n)]
   NPlainSymbol sid -> do
