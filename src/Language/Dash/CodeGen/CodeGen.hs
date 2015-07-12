@@ -220,13 +220,15 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   -- That way we can use the next n registers temporarily to capture match variables
   -- TODO Make sure that this actually works and doesn't create false results
   -- TODO use the next free register instead of hardcoded value
-  let captureStartReg = 29 - maxCaptures + 1 -- reg + 1
+  -- TODO the following line might overwrite already used registers and we have no means of checking that limit right now
+  let captureStartReg = (maxRegisters - 2) - maxCaptures + 1 -- reg + 1
   let jumpTable = map (\(remaining, handled) ->
                       -- Jump 1 instr for each remaining entry in jump table
                       Tac_jmp (1 * remaining + instrsPerBranch * handled)) $
                       zip remainingBranches handledBranches
   -- We are using reg as a temporary register here
-  let matchCode = [Tac_load_addr 30 patternAddr, Tac_match subjR 30 captureStartReg]
+  let addrTempReg = maxRegisters - 1
+  let matchCode = [Tac_load_addr addrTempReg patternAddr, Tac_match subjR addrTempReg captureStartReg]
   compiledBranches <- forM (zip3 remainingBranches branchCaptures branchLambdaVars) $
                               \ (remaining, capturedVars, funVar) -> do
                                       let loadArgInstr = compileMatchBranchLoadArg captureStartReg capturedVars

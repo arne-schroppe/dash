@@ -62,6 +62,7 @@ static int const_table_length = 0;
     printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
     return false; }
 
+#define check_reg(i) { int r = (i); if(r >= num_regs) { fprintf(stderr, "Illegal register: %i", r); exit(-1); }}
 #define get_reg(i) stack[stack_pointer].reg[(i)]
 #define current_frame (stack[stack_pointer])
 #define next_frame (stack[stack_pointer + 1])
@@ -70,6 +71,7 @@ static int const_table_length = 0;
   int return_pointer;                 \
   bool call_failed = false;              \
   {                                   \
+    check_reg(func_reg); \
     int func = get_reg(func_reg);     \
     if(get_tag(func) != vm_tag_function) { \
       fprintf(stderr, "expected a function (do call)\n"); \
@@ -153,6 +155,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     current_frame.spilled_arguments = 0;
   }
 
+  check_reg(lambda_reg);
   vm_value lambda = get_reg(lambda_reg);
 
   vm_value tag = get_tag(lambda);
@@ -190,6 +193,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       build_pap(num_pap_args, pap_arity, offset, num_args, func_address)
       memcpy(pap_pointer + pap_header_size, cl_pointer + pap_header_size, num_cl_vars * sizeof(vm_value));
 
+      check_reg(reg0);
       get_reg(reg0) = pap_value;
       return -1;
     }
@@ -239,6 +243,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
       build_pap(num_args, pap_arity, 0, num_args, func_address)
 
+      check_reg(reg0);
       get_reg(reg0) = pap_value;
       return -1;
     }
@@ -310,12 +315,13 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
 
   vm_value pattern_tag = get_tag(pattern);
 
-  //if bit 27 (32 - 5) is set, this is a match header, otherwise it is a variable
+  //if bit 27 (NUM_REGS - 5) is set, this is a match header, otherwise it is a variable
   bool is_match_var = !(pattern & 0x8000000);
   if(pattern_tag == vm_tag_match_data && is_match_var) {
     //capturing match
     int relative_reg = from_match_value(pattern);
     if(relative_reg != match_wildcard_value) {
+      check_reg(start_register + relative_reg);
       get_reg(start_register + relative_reg) = subject;
     }
     return true;
@@ -407,6 +413,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_LOAD_i: {
         int reg0 = get_arg_r0(instr);
         int val = get_arg_i(instr);
+        check_reg(reg0);
         get_reg(reg0) = val;
         debug( printf("LOADi  r%02i #%i\n", reg0, val) );
       }
@@ -416,6 +423,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_LOAD_ps: {
         int reg0 = get_arg_r0(instr);
         int value = get_arg_i(instr);
+        check_reg(reg0);
         get_reg(reg0) = val(value, vm_tag_plain_symbol);
         debug( printf("LOADss  r%02i #%i\n", reg0, value) );
       }
@@ -425,6 +433,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_LOAD_cs: {
         int reg0 = get_arg_r0(instr);
         int value = get_arg_i(instr);
+        check_reg(reg0);
         get_reg(reg0) = val(value, vm_tag_compound_symbol);
         debug( printf("LOADcs r%02i #%i\n", reg0, value) );
       }
@@ -436,6 +445,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int table_index = get_arg_i(instr);
 
         check_ctable_index(table_index)
+        check_reg(reg1);
         get_reg(reg1) = const_table[table_index];
         debug( printf("LOADc  r%02i #%i value: %i\n", reg1, table_index, const_table[table_index]) );
       }
@@ -445,6 +455,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_LOAD_f: {
         int reg0 = get_arg_r0(instr);
         int value = get_arg_i(instr);
+        check_reg(reg0);
         get_reg(reg0) = val(value, vm_tag_function);
         debug( printf("LOADf  r%02i #%i\n", reg0, value) );
       }
@@ -454,9 +465,12 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_ADD: {
         int reg1 = get_arg_r1(instr);
         int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
         int arg1 = get_reg(reg1);
+        check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
+        check_reg(reg0);
         get_reg(reg0) = arg1 + arg2;
         debug( printf("ADD    r%02i r%02i=%x r%02i=%x\n", reg0, reg1, arg1, reg2, arg2) );
       }
@@ -466,9 +480,12 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_SUB: {
         int reg1 = get_arg_r1(instr);
         int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
         int arg1 = get_reg(reg1);
+        check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
+        check_reg(reg0);
         get_reg(reg0) = arg1 - arg2;
         debug( printf("SUB    r%02i r%02i=%x r%02i=%x\n", reg0, reg1, arg1, reg2, arg2) );
       }
@@ -478,9 +495,12 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_MUL: {
         int reg1 = get_arg_r1(instr);
         int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
         int arg1 = get_reg(reg1);
+        check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
+        check_reg(reg0);
         get_reg(reg0) = arg1 * arg2;
         debug( printf("MUL    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
       }
@@ -490,9 +510,12 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_DIV: {
         int reg1 = get_arg_r1(instr);
         int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
         int arg1 = get_reg(reg1);
+        check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
+        check_reg(reg0);
         get_reg(reg0) = arg1 / arg2;
         debug( printf("MUL    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
       }
@@ -502,6 +525,8 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_MOVE: {
         int reg0 = get_arg_r0(instr);
         int reg1 = get_arg_r1(instr);
+        check_reg(reg0);
+        check_reg(reg1);
         get_reg(reg0) = get_reg(reg1);
         debug( printf("MOVE   r%02i r%02i\n", reg0, reg1) );
       }
@@ -596,9 +621,12 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
 
       case OP_MATCH: {
+        check_reg(get_arg_r0(instr));
         int subject = get_reg(get_arg_r0(instr));
+        check_reg(get_arg_r1(instr));
         int patterns_addr = get_reg(get_arg_r1(instr));
         int capture_reg = get_arg_r2(instr);
+        check_reg(capture_reg);
 
         check_ctable_index(patterns_addr)
         vm_value match_header = const_table[patterns_addr];
@@ -642,6 +670,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
       case OP_SET_CL_VAL: {
         int cl_reg = get_arg_r0(instr);
+        check_reg(cl_reg);
         vm_value closure = get_reg(cl_reg);
 
         if( get_tag(closure) != vm_tag_pap ) {
@@ -651,6 +680,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         }
 
         heap_address cl_address = from_val(closure);
+        check_reg(get_arg_r1(instr));
         vm_value new_value = get_reg(get_arg_r1(instr));
         int arg_index = get_arg_r2(instr);
 
@@ -672,6 +702,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_PART_AP: {
         int reg0 = get_arg_r0(instr);
         int func_reg = get_arg_r1(instr);
+        check_reg(func_reg);
         int func = get_reg(func_reg);
 
         if( get_tag(func) != vm_tag_function ) {
@@ -696,6 +727,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
         int pap_arity = arity - num_args;
         build_pap(num_args, pap_arity, 0, num_args, func_address);
+        check_reg(reg0);
         get_reg(reg0) = pap_value;
         debug( printf("PART_AP\n") );
       }
@@ -703,9 +735,12 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
 
       case OP_EQ: {
+        check_reg(get_arg_r1(instr));
+        check_reg(get_arg_r2(instr));
         vm_value l = get_reg(get_arg_r1(instr));
         vm_value r = get_reg(get_arg_r2(instr));
         int result_reg = get_arg_r0(instr);
+        check_reg(result_reg);
 
         if( is_equal(l, r)) {
           get_reg(result_reg) = val(symbol_id_true, vm_tag_plain_symbol);

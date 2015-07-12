@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-#define NUM_REGS 32
 
 
 typedef uint32_t vm_instruction;

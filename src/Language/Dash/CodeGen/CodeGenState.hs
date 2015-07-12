@@ -4,7 +4,7 @@ module Language.Dash.CodeGen.CodeGenState where
 
 
 import           Control.Applicative
-import           Control.Monad.State hiding (state)
+import           Control.Monad.State    hiding (state)
 import qualified Data.Map               as Map
 import qualified Data.Sequence          as Seq
 import           Language.Dash.IR.Data
@@ -58,6 +58,10 @@ makeScope freeVars params = CompScope {
              }
 
 
+maxRegisters, maxInteger :: Int
+maxRegisters = 32
+maxInteger = 0x1FFFFF
+
 -- This helps us to keep track of constant values in the code. They overlap
 -- with the constants in the ConstTable, but are not the same. CompileTimeConstants
 -- are for example used in determining free variables in closures. Even though a
@@ -81,6 +85,7 @@ beginFunction freeVars params = do
   let paramBindings = Map.fromList (zipWithIndex params)
   let newScope = makeScope localFreeVars paramBindings
   put $ state { scopes = newScope : (scopes state) }
+  checkRegisterLimits
   addr <- addFunctionPlaceholder
   return addr
 
@@ -123,12 +128,17 @@ bindLocalVar name reg = do
   scope <- getScope
   let bindings' = Map.insert name reg (localVariables scope)
   putScope $ scope { localVariables = bindings' }
+  checkRegisterLimits
 
 localVar :: String -> CodeGenState (Maybe Int)
 localVar name = do
   localVars <- gets $ localVariables.head.scopes
   return $ Map.lookup name localVars
 
+numLocalVars :: CodeGenState Int
+numLocalVars = do
+  localVars <- gets $ localVariables.head.scopes
+  return $ Map.size localVars
 
 -- a placeholder is needed because we might start to encode other functions while encoding
 -- a function. So we can't just append the encoded function to the end when we're done
@@ -258,6 +268,12 @@ getCompileTimeConstInOuterScope name = do
         Nothing -> getCompConst constName $ tail scps
 
 
+-- TODO implement argument spilling to avoid this hard limit
+checkRegisterLimits :: CodeGenState ()
+checkRegisterLimits = do
+  values <- sequence [numLocalVars, numFreeVars, numParameters]
+  let usedRegs = foldr (+) 0 values
+  when (usedRegs > maxRegisters) $ error "Out of free registers"
 
 
 zipWithIndex :: [a] -> [(a, Int)]

@@ -3,8 +3,10 @@
 
 #include "vm.h"
 
+#define num_regs 32
+
 struct _stack_frame {
-  vm_value reg[NUM_REGS];
+  vm_value reg[num_regs];
   int return_address;
   int result_register;
 
