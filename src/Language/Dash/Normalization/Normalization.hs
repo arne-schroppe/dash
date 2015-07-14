@@ -102,6 +102,8 @@ atomizeExpr expr name k = case expr of
           normalizeMatch matchedExpr patterns k
   Lambda params bodyExpr ->
           normalizeLambda params bodyExpr name k
+  MatchBranch matchedVars bodyExpr ->
+          normalizeMatchBranch matchedVars bodyExpr k
   LocalBinding (Binding bname boundExpr) restExpr ->
           -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
           -- (So in that example "let b = ..." is the inner local binding
@@ -148,6 +150,16 @@ normalizeLambda params bodyExpr name k = do
   addArity name (length freeVars) (length params)
   k $ NLambda freeVars params normalizedBody
 
+normalizeMatchBranch :: [String] -> Expr -> Cont -> NormState NstExpr
+normalizeMatchBranch matchedVars bodyExpr k = do
+  enterContext matchedVars
+  -- TODO add arity for recursive var?
+  normalizedBody <- normalizeExpr bodyExpr
+  freeVars <- freeVariables
+  leaveContext
+  pullUpFreeVars freeVars
+  k $ NMatchBranch freeVars matchedVars normalizedBody
+
 
 -- TODO throw an error if the thing being called is obviously not callable
 -- TODO it gets a bit confusing in which cases we expect a closure and where we expect a simple function
@@ -166,12 +178,12 @@ normalizeFunAp funExpr args k = case (funExpr, args) of
   where
     normalizeBinaryPrimOp :: (NstVar -> NstVar -> NstPrimOp) -> Expr -> Expr -> NormState NstExpr
     normalizeBinaryPrimOp primOp a b = do
-      normalizeExprList [a, b] $ \ [aVar, bVar] ->
+      nameExprList [a, b] $ \ [aVar, bVar] ->
           k $ NPrimOp $ primOp aVar bVar
 
     applyUnknownFunction :: NstVar -> NormState NstExpr
     applyUnknownFunction funVar =
-      do normalizeExprList args $ \ normArgs ->
+      do nameExprList args $ \ normArgs ->
           k $ NFunAp funVar normArgs
 
     applyKnownFunction :: NstVar -> Int -> Int -> NormState NstExpr
@@ -179,22 +191,22 @@ normalizeFunAp funExpr args k = case (funExpr, args) of
       let numArgs = length args in
       -- saturated call
       if numArgs == funArity then do
-        normalizeExprList args $ \ normArgs ->
+        nameExprList args $ \ normArgs ->
             k $ NFunAp funVar normArgs
       -- under-saturated call
       else if numArgs < funArity then
         -- We already know at this point, that this *must* be a non-closure
         if numFreeVars > 0 then error "Internal compiler error, trying to do static partial application of closure" 
         else
-          normalizeExprList args $ \ normArgs ->
+          nameExprList args $ \ normArgs ->
               k $ NPartAp funVar normArgs
       -- over-saturated call
       else do -- numArgs > funArity
         let (knownFunArgs, remainingArgs) = splitAt funArity args
-        normalizeExprList knownFunArgs $ \ normKnownFunArgs -> do
+        nameExprList knownFunArgs $ \ normKnownFunArgs -> do
             knownFunResult <- newTempVar ""
             let apKnownFun = NFunAp funVar normKnownFunArgs
-            normalizeExprList remainingArgs $ \ normRemArgs -> do
+            nameExprList remainingArgs $ \ normRemArgs -> do
                 -- The previous function application should have resulted in a new function, which we're applying here
                 rest <- k $ NFunAp knownFunResult normRemArgs
                 return $ NLet knownFunResult apKnownFun rest
@@ -208,9 +220,9 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
   let exprs = map snd patternsAndExpressions
   let maxMatchVars = maximum $ map length matchedVars
   -- we wrap each match branch in a lambda. This way we can handle them easier in the code generator
-  let lambdaizedExprs = map (\ (params, expr) -> Lambda params expr) $ zip matchedVars exprs
   nameExpr matchedExpr "" $ \ subjVar ->
-          normalizeExprList lambdaizedExprs $ \ branchVars -> do
+          let matchBranches = map (\ (params, expr) -> MatchBranch params expr) $ zip matchedVars exprs in
+          nameExprList matchBranches $ \ branchVars -> do
                   let branches = zip matchedVars branchVars
                   k $ NMatch maxMatchVars subjVar patternAddr branches
 
@@ -229,18 +241,17 @@ pullUpFreeVars freeVars = do
   return ()
 
 
--- TODO shouldn't this be called something like nameExprList ?
-normalizeExprList :: [Expr] -> ([NstVar] -> NormState NstExpr) -> NormState NstExpr
-normalizeExprList exprList k =
-  normalizeExprList' exprList [] k
+nameExprList :: [Expr] -> ([NstVar] -> NormState NstExpr) -> NormState NstExpr
+nameExprList exprList k =
+  nameExprList' exprList [] k
   where
-    normalizeExprList' [] acc k' = do
+    nameExprList' [] acc k' = do
       expr <- k' $ reverse acc
       return expr
-    normalizeExprList' expLs acc k' = do
+    nameExprList' expLs acc k' = do
       let hd = head expLs
       nameExpr hd "" $ \ var -> do
-        restExpr <- normalizeExprList' (tail expLs) (var : acc) k'
+        restExpr <- nameExprList' (tail expLs) (var : acc) k'
         return restExpr
 
 

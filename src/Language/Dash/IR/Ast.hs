@@ -25,6 +25,7 @@ data Expr
     | Var String
     | Namespace String Expr  -- TODO merge with var?
     | Lambda [String] Expr       -- arguments, body
+    | MatchBranch [String] Expr  -- arguments, body
     | FunAp Expr [Expr]            -- A function application
     | LocalBinding Binding Expr  -- binding, body
     | Module [Binding]

@@ -28,6 +28,7 @@ data NstAtomicExpr =
   | NString String
   | NVar NstVar -- This is only for returning a var as a result
   | NLambda [VarName] [ParamName] NstExpr -- FreeVars FormalParams Body
+  | NMatchBranch [VarName] [ParamName] NstExpr -- FreeVars FormalParams Body
   | NPrimOp NstPrimOp
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
   | NFunAp NstVar [NstVar]
@@ -74,6 +75,7 @@ instance Show NstAtomicExpr where
     NString str -> "\"" ++ str ++ "\""
     NVar v -> "var " ++ (show v)
     NLambda free params body -> "λ f" ++ (show free) ++ " p" ++ (show params) ++ " {\n" ++ (show body) ++ "}"
+    NMatchBranch free matchedVars body -> "mλ f" ++ (show free) ++ " m" ++ (show matchedVars) ++ " {\n" ++ (show body) ++ "}"
     NPrimOp p -> show p
     NPartAp v args -> "pap " ++ (show v) ++ " " ++ (show args)
     NFunAp v args -> "ap " ++ (show v) ++ " " ++ (show args)

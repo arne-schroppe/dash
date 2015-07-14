@@ -167,15 +167,15 @@ spec = do
         norm `shouldBe` expected
 
 
-      it "normalizes match-bodies to lambdas" $ do
+      it "normalizes match-bodies to match-branches" $ do
         let ast = Match (LitNumber 2) [
                     (PatNumber 1, LitNumber 33),
                     (PatNumber 2, LitNumber 44)
                   ]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "") (NNumber 2) $
-                       NLet (NLocalVar 1 "") (NLambda [] [] $ NAtom $ NNumber 33) $
-                       NLet (NLocalVar 2 "") (NLambda [] [] $ NAtom $ NNumber 44) $
+                       NLet (NLocalVar 1 "") (NMatchBranch [] [] $ NAtom $ NNumber 33) $
+                       NLet (NLocalVar 2 "") (NMatchBranch [] [] $ NAtom $ NNumber 44) $
                        NAtom $ NMatch 0 (NLocalVar 0 "") 0 [([], NLocalVar 1 ""), ([], NLocalVar 2 "")]
         norm `shouldBe` expected
 
@@ -189,8 +189,8 @@ spec = do
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "a") (NNumber 77) $
                        NLet (NLocalVar 1 "") (NNumber 2) $
-                       NLet (NLocalVar 2 "") (NLambda [] [] $ NAtom $ NVar $ NConstantFreeVar "a") $
-                       NLet (NLocalVar 3 "") (NLambda [] [] $ NAtom $ NNumber 44) $
+                       NLet (NLocalVar 2 "") (NMatchBranch [] [] $ NAtom $ NVar $ NConstantFreeVar "a") $
+                       NLet (NLocalVar 3 "") (NMatchBranch [] [] $ NAtom $ NNumber 44) $
                        NAtom $ NMatch 0 (NLocalVar 1 "") 0 [([], NLocalVar 2 ""), ([], NLocalVar 3 "")]
         norm `shouldBe` expected
 
@@ -203,8 +203,8 @@ spec = do
         let norm = pureNorm ast
         let expected = NAtom $ NLambda [] ["a"] $
                        NLet (NLocalVar 0 "") (NNumber 2) $
-                       NLet (NLocalVar 1 "") (NLambda ["a"] [] $ NAtom $ NVar $ NDynamicFreeVar "a") $
-                       NLet (NLocalVar 2 "") (NLambda [] [] $ NAtom $ NNumber 44) $
+                       NLet (NLocalVar 1 "") (NMatchBranch ["a"] [] $ NAtom $ NVar $ NDynamicFreeVar "a") $
+                       NLet (NLocalVar 2 "") (NMatchBranch [] [] $ NAtom $ NNumber 44) $
                        NAtom $ NMatch 0 (NLocalVar 0 "") 0 [([], NLocalVar 1 ""), ([], NLocalVar 2 "")]
         norm `shouldBe` expected
 
@@ -215,8 +215,8 @@ spec = do
                   ]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar 0 "") (NNumber 2) $
-                       NLet (NLocalVar 1 "") (NLambda [] ["n"] $ NAtom $ NVar $ NFunParam "n") $
-                       NLet (NLocalVar 2 "") (NLambda [] ["m"] $ NAtom $ NVar $ NFunParam "m") $
+                       NLet (NLocalVar 1 "") (NMatchBranch [] ["n"] $ NAtom $ NVar $ NFunParam "n") $
+                       NLet (NLocalVar 2 "") (NMatchBranch [] ["m"] $ NAtom $ NVar $ NFunParam "m") $
                        NAtom $ NMatch 1 (NLocalVar 0 "") 0 [(["n"], NLocalVar 1 ""), (["m"], NLocalVar 2 "")]
         norm `shouldBe` expected
 
@@ -232,8 +232,8 @@ spec = do
                                CCompoundSymbol 3 [CMatchVar 0, CMatchVar 1]
                              ]]
         let expected = NLet (NLocalVar 0 "") (NNumber 2) $
-                       NLet (NLocalVar 1 "") (NLambda [] ["n", "o", "p"] $ NAtom $ NVar $ NFunParam "n") $
-                       NLet (NLocalVar 2 "") (NLambda [] ["m", "l"] $ NAtom $ NVar $ NFunParam "m") $
+                       NLet (NLocalVar 1 "") (NMatchBranch [] ["n", "o", "p"] $ NAtom $ NVar $ NFunParam "n") $
+                       NLet (NLocalVar 2 "") (NMatchBranch [] ["m", "l"] $ NAtom $ NVar $ NFunParam "m") $
                        NAtom $ NMatch 3 (NLocalVar 0 "") 0 [(["n", "o", "p"], NLocalVar 1 ""), (["m", "l"], NLocalVar 2 "")]
         ctable `shouldBe` expectedCTable
         norm `shouldBe` expected

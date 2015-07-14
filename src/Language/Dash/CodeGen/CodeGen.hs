@@ -28,6 +28,7 @@ compile expr cTable symlist =
   (toList (instructions result), cTable, symlist)
 
 
+-- TODO can we get rid of the shouldAddHeader parameter?
 compileFunc :: [String] -> [String] -> NstExpr -> String -> Bool -> CodeGenState Int
 compileFunc freeVars params expr name shouldAddHeader = do
   funAddr <- beginFunction freeVars params
@@ -72,6 +73,10 @@ compileAtom reg atom name isResultValue = case atom of
           compileLoadLambda reg funAddr
   NLambda freeVars params expr ->
           compileClosure reg freeVars params expr name
+  NMatchBranch freeVars matchedVars expr -> do
+          -- free vars are applied directly in match branches, so we can compile them without creating a closure on the heap
+          funAddr <- compileFunc freeVars matchedVars expr "" True
+          compileLoadLambda reg funAddr
   NFunAp funVar args -> do
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
           callInstr <- compileCallInstr reg funVar (length args) isResultValue
@@ -150,10 +155,10 @@ compileLet tmpVar atom body =
   where
     compileLet' :: String -> CodeGenState [Tac]
     compileLet' name = do
-      let callDirect = canBeCalledDirectly atom
       rTmp <- getReg tmpVar
+      let callDirect = canBeCalledDirectly atom
       when callDirect $ addDirectCallReg rTmp
-      bindLocalVar name rTmp
+      bindLocalVar name rTmp atom
       comp1 <- compileAtom rTmp atom name False
       comp2 <- compileExpr body
       return $ comp1 ++ comp2
@@ -193,6 +198,15 @@ compileClosureArgs name freeVars = do
         then (setSelfReferenceSlot argIndex) >> return Nothing
         else compileSetArgN argName argIndex >>= return . Just
 
+compileSetArg :: NstVar -> Int -> CodeGenState Tac
+compileSetArg var arg = do
+  rVar <- getReg var
+  return $ Tac_set_arg arg rVar 0
+
+compileSetArgN :: String -> Int -> CodeGenState Tac
+compileSetArgN name arg = do
+  rVar <- getRegByName name
+  return $ Tac_set_arg arg rVar 0
 
 -- If a closure has a reference to itself, it needs itself as a free variable.
 -- This function checks if that is the case and emits instructions to set
@@ -250,16 +264,6 @@ compileMatchBranchLoadArg captureStartReg capturedVars =
   Tac_set_arg 0 captureStartReg numCaptures
 
 
-compileSetArg :: NstVar -> Int -> CodeGenState Tac
-compileSetArg var arg = do
-  rVar <- getReg var
-  return $ Tac_set_arg arg rVar 0
-
-
-compileSetArgN :: String -> Int -> CodeGenState Tac
-compileSetArgN name arg = do
-  rVar <- getRegByName name
-  return $ Tac_set_arg arg rVar 0
 
 
 

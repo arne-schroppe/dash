@@ -34,7 +34,7 @@ emptyCompEnv = CompEnv {
 data CompScope = CompScope {
                    functionParams         :: Map.Map String Int
                  , freeVariables          :: Map.Map String Int
-                 , localVariables         :: Map.Map String Int
+                 , localVariables         :: Map.Map String (Int, NstAtomicExpr)
                  , forwardDeclaredLambdas :: [String]
                  , selfReferenceSlot      :: Maybe Int
 
@@ -120,23 +120,32 @@ freeVar name = do
   return res
 
 
-bindLocalVar :: String -> Int -> CodeGenState ()
-bindLocalVar "" _ = return ()
-bindLocalVar name reg = do
+bindLocalVar :: String -> Int -> NstAtomicExpr -> CodeGenState ()
+bindLocalVar "" _ _ = return ()
+bindLocalVar name reg atom = do
   scope <- getScope
-  let bindings' = Map.insert name reg (localVariables scope)
+  let bindings' = Map.insert name (reg, atom) (localVariables scope)
   putScope $ scope { localVariables = bindings' }
   checkRegisterLimits
 
 localVar :: String -> CodeGenState (Maybe Int)
 localVar name = do
   localVars <- gets $ localVariables.head.scopes
-  return $ Map.lookup name localVars
+  let result = Map.lookup name localVars
+  return $ fst <$> result
 
 numLocalVars :: CodeGenState Int
 numLocalVars = do
   localVars <- gets $ localVariables.head.scopes
   return $ Map.size localVars
+
+
+getLocalVarContent :: String -> CodeGenState (Maybe NstAtomicExpr)
+getLocalVarContent name = do
+  localVarContent <- gets $ localVariables.head.scopes
+  let result = Map.lookup name localVarContent
+  return $ snd <$> result
+
 
 -- a placeholder is needed because we might start to encode other functions while encoding
 -- a function. So we can't just append the encoded function to the end when we're done
