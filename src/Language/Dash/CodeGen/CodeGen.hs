@@ -158,7 +158,7 @@ compileLet tmpVar atom body =
       rTmp <- getReg tmpVar
       let callDirect = canBeCalledDirectly atom
       when callDirect $ addDirectCallReg rTmp
-      bindLocalVar name rTmp atom
+      bindLocalVar name rTmp
       comp1 <- compileAtom rTmp atom name False
       comp2 <- compileExpr body
       return $ comp1 ++ comp2
@@ -220,16 +220,17 @@ createSelfRefInstrsIfNeeded clReg = do
 
 
 -- Every branch in the match-expression has been converted to a lambda by the normalizer.
-compileMatch :: Reg -> NstVar -> Int -> Int -> [([String], NstVar)] -> Bool -> CodeGenState [Tac]
+compileMatch :: Reg -> NstVar -> Int -> Int -> [([String], [String], NstVar)] -> Bool -> CodeGenState [Tac]
 compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   -- TODO it would be much more efficient if we wouldn't store free variables of the match-
   -- branch lambdas on the heap first but would call them directly. We know that those
   -- lambdas can't escape the local context.
-  let branchCaptures = map fst branches
-  let branchLambdaVars = map snd branches -- the variables containing lambdas to call
+  let branchFreeVars = map (\ (a, _, _) -> a) branches
+  let branchCaptures = map (\ (_, a, _) -> a) branches
+  let matchBranchVars = map (\ (_, _, a) -> a) branches -- the variables containing matchbranches to call
   subjR <- getReg subject
-  let instrsPerBranch = 3 -- load args, call lambda, jump out
-  let handledBranches = [0 .. (length branchLambdaVars) - 1]
+  let instrsPerBranch = 3 -- load args, call match-branch, jump out
+  let handledBranches = [0 .. (length matchBranchVars) - 1]
   let remainingBranches = reverse handledBranches
 
   -- We are using the fact that registers are used linearly from smallest to largest.
@@ -238,30 +239,31 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   -- TODO use the next free register instead of hardcoded value
   -- TODO the following line might overwrite already used registers and we have no means of checking that limit right now
   let captureStartReg = (maxRegisters - 2) - maxCaptures + 1 -- reg + 1
-  let jumpTable = map (\(remaining, handled) ->
+  let jumpInTable = map (\(remaining, handled) ->
                       -- Jump 1 instr for each remaining entry in jump table
                       Tac_jmp (1 * remaining + instrsPerBranch * handled)) $
                       zip remainingBranches handledBranches
   -- We are using reg as a temporary register here
   let addrTempReg = maxRegisters - 1
   let matchCode = [Tac_load_addr addrTempReg patternAddr, Tac_match subjR addrTempReg captureStartReg]
-  compiledBranches <- forM (zip3 remainingBranches branchCaptures branchLambdaVars) $
-                              \ (remaining, capturedVars, funVar) -> do
-                                      let loadArgInstr = compileMatchBranchLoadArg captureStartReg capturedVars
+  compiledBranches <- forM (zip remainingBranches branches) $
+                              \ (remaining, (freeVars, capturedVars, funVar)) -> do
+                                      let loadArgInstrs = compileMatchBranchLoadArg captureStartReg freeVars capturedVars
                                       callInstr <- compileCallInstr reg funVar (length capturedVars) isResultValue
-                                      return $ [loadArgInstr] ++ callInstr ++ [Tac_jmp (remaining * instrsPerBranch)]
+                                      let jumpOut = [Tac_jmp (remaining * instrsPerBranch)]
+                                      return $ loadArgInstrs ++ callInstr ++ jumpOut
   let body = Prelude.concat compiledBranches
-  return $ matchCode ++ jumpTable ++ body
+  return $ matchCode ++ jumpInTable ++ body
 
 
 -- The lambda that represents a match-branch takes its captured values as arguments.
 -- Here we create the set_arg instruction to load the captures. They are stored linearly
 -- in the registers, starting at captureStartReg, so we just need a single set_arg instruction.
 -- Note that we might end up with zero arguments.
-compileMatchBranchLoadArg :: Reg -> [String] -> Tac
-compileMatchBranchLoadArg captureStartReg capturedVars =
+compileMatchBranchLoadArg :: Reg -> [String] -> [a] -> [Tac]
+compileMatchBranchLoadArg captureStartReg freeVars capturedVars =
   let numCaptures = (max 0 $ (length capturedVars) - 1) in
-  Tac_set_arg 0 captureStartReg numCaptures
+  [Tac_set_arg 0 captureStartReg numCaptures]
 
 
 

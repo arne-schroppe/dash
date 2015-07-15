@@ -32,7 +32,7 @@ data NstAtomicExpr =
   | NPrimOp NstPrimOp
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
   | NFunAp NstVar [NstVar]
-  | NMatch Int NstVar ConstAddr [([VarName], NstVar)] -- MaxCaptures Subject PatternAddr [MatchedVars, Var-That-Holds-Closure]
+  | NMatch Int NstVar ConstAddr [([VarName], [VarName], NstVar)] -- MaxCaptures Subject PatternAddr [MatchBranchFreeVars, MatchedVars, VarHoldingMatchBranch]
   deriving (Eq, Ord)
 
 

@@ -34,7 +34,7 @@ emptyCompEnv = CompEnv {
 data CompScope = CompScope {
                    functionParams         :: Map.Map String Int
                  , freeVariables          :: Map.Map String Int
-                 , localVariables         :: Map.Map String (Int, NstAtomicExpr)
+                 , localVariables         :: Map.Map String Int
                  , forwardDeclaredLambdas :: [String]
                  , selfReferenceSlot      :: Maybe Int
 
@@ -120,19 +120,18 @@ freeVar name = do
   return res
 
 
-bindLocalVar :: String -> Int -> NstAtomicExpr -> CodeGenState ()
-bindLocalVar "" _ _ = return ()
-bindLocalVar name reg atom = do
+bindLocalVar :: String -> Int ->  CodeGenState ()
+bindLocalVar "" _ = return ()
+bindLocalVar name reg = do
   scope <- getScope
-  let bindings' = Map.insert name (reg, atom) (localVariables scope)
+  let bindings' = Map.insert name reg (localVariables scope)
   putScope $ scope { localVariables = bindings' }
   checkRegisterLimits
 
 localVar :: String -> CodeGenState (Maybe Int)
 localVar name = do
   localVars <- gets $ localVariables.head.scopes
-  let result = Map.lookup name localVars
-  return $ fst <$> result
+  return $ Map.lookup name localVars
 
 numLocalVars :: CodeGenState Int
 numLocalVars = do
@@ -140,11 +139,6 @@ numLocalVars = do
   return $ Map.size localVars
 
 
-getLocalVarContent :: String -> CodeGenState (Maybe NstAtomicExpr)
-getLocalVarContent name = do
-  localVarContent <- gets $ localVariables.head.scopes
-  let result = Map.lookup name localVarContent
-  return $ snd <$> result
 
 
 -- a placeholder is needed because we might start to encode other functions while encoding

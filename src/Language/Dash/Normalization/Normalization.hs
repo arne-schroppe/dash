@@ -220,10 +220,14 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
   let exprs = map snd patternsAndExpressions
   let maxMatchVars = maximum $ map length matchedVars
   -- we wrap each match branch in a lambda. This way we can handle them easier in the code generator
+  -- But the lambda has a different constructor, called MatchBranch, which helps us in optimizing the
+  -- compiled code (free variables in matchBranches are not pushed as a closure on the heap, for example)
   nameExpr matchedExpr "" $ \ subjVar ->
           let matchBranches = map (\ (params, expr) -> MatchBranch params expr) $ zip matchedVars exprs in
           nameExprList matchBranches $ \ branchVars -> do
-                  let branches = zip matchedVars branchVars
+                  -- TODO add free vars
+                  let freeVars = replicate (length matchBranches) []
+                  let branches = zip3 freeVars matchedVars branchVars
                   k $ NMatch maxMatchVars subjVar patternAddr branches
 
 
