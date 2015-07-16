@@ -170,6 +170,7 @@ getRegByName name = do
     Just index -> return index
     Nothing -> error $ "Unknown identifier " ++ name
   where getRegN = do
+          -- TODO rewrite this in a more understandable way
           let pl = liftM2 mplus
           numFree <- numFreeVars
           -- we're trying one possible type of var after another

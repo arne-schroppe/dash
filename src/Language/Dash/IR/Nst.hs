@@ -20,7 +20,6 @@ data NstExpr =
 type VarName = String
 type ParamName = String
 
--- TODO Should every code branch in a match expression really be a closure?
 data NstAtomicExpr =
     NNumber Int
   | NPlainSymbol Int

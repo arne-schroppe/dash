@@ -229,7 +229,6 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   let branchCaptures = map (\ (_, a, _) -> a) branches
   let matchBranchVars = map (\ (_, _, a) -> a) branches -- the variables containing matchbranches to call
   subjR <- getReg subject
-  let instrsPerBranch = 3 -- load args, call match-branch, jump out
   let handledBranches = [0 .. (length matchBranchVars) - 1]
   let remainingBranches = reverse handledBranches
 
@@ -239,20 +238,49 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   -- TODO use the next free register instead of hardcoded value
   -- TODO the following line might overwrite already used registers and we have no means of checking that limit right now
   let captureStartReg = (maxRegisters - 2) - maxCaptures + 1 -- reg + 1
-  let jumpInTable = map (\(remaining, handled) ->
-                      -- Jump 1 instr for each remaining entry in jump table
-                      Tac_jmp (1 * remaining + instrsPerBranch * handled)) $
-                      zip remainingBranches handledBranches
-  -- We are using reg as a temporary register here
-  let addrTempReg = maxRegisters - 1
-  let matchCode = [Tac_load_addr addrTempReg patternAddr, Tac_match subjR addrTempReg captureStartReg]
   compiledBranches <- forM (zip remainingBranches branches) $
                               \ (remaining, (freeVars, capturedVars, funVar)) -> do
-                                      let loadArgInstrs = compileMatchBranchLoadArg captureStartReg freeVars capturedVars
+                                      loadArgInstrs <- compileMatchBranchLoadArg captureStartReg freeVars capturedVars
                                       callInstr <- compileCallInstr reg funVar (length capturedVars) isResultValue
-                                      let jumpOut = [Tac_jmp (remaining * instrsPerBranch)]
-                                      return $ loadArgInstrs ++ callInstr ++ jumpOut
-  let body = Prelude.concat compiledBranches
+                                      return $ loadArgInstrs ++ callInstr
+
+  -- The next three bindings give us two lists: a list of the count of instructions that 
+  -- comes before the match-branch call code for branch n and a list of the instruction 
+  -- count for remaining branches. So if the branch-call blocks for a match with three 
+  -- branches have the lengths 4, 7, and 3, we'd get:
+  -- numRemainingBranchInstrs = [10, 3, 0]
+  -- numHandledBranchInstrs = [0, 4, 11]
+  let branchInstrCount = map (\ index -> let (pre, rest) = splitAt index compiledBranches in
+                                         let numRemaining = (length matchBranchVars) - 1 - index in
+                                         let numHandled = index in
+                                         let numMissingInstructionsPerBranch = 1 in -- we'll add the jump out instruction later
+                                         let numRemainingInstrs = (length (Prelude.concat rest)) + numMissingInstructionsPerBranch * numRemaining in
+                                         let numHandledInstrs = (length (Prelude.concat pre)) + numMissingInstructionsPerBranch * numHandled in
+                                         (numHandledInstrs, numRemainingInstrs))
+                                 [0 .. (length matchBranchVars)]
+  let numRemainingBranchInstrs = tail $ map snd branchInstrCount
+  let numHandledBranchInstrs = init $ map fst branchInstrCount
+
+  -- instructions for jumping out of the code that calls a match-branch and to the remaining code
+  let jumpOutInstrs = map (\ numRemaining -> [Tac_jmp numRemaining]) numRemainingBranchInstrs
+  let completeCompiledBranches = map ( \ (a, b) -> a ++ b ) $ zip compiledBranches jumpOutInstrs
+
+  -- compile jump table
+  -- the match instruction calls the following instruction at position n if branch n matched. So
+  -- we place a jump table directly after the match instruction, where every entry is exactly one
+  -- instruction (which then jumps to the code that calls the branch instruction)
+  let jumpInTable = map (\(remaining, numHandled) ->
+                      let jumpTableEntrySize = 1 in
+                      -- jump over remaining jump-table entries and then over match-branches we're done with
+                      Tac_jmp (jumpTableEntrySize * remaining + numHandled)) $
+                      zip remainingBranches numHandledBranchInstrs
+  -- We are using reg as a temporary register here
+  let addrTempReg = maxRegisters - 1
+
+  -- compile match call
+  let matchCode = [Tac_load_addr addrTempReg patternAddr, 
+                   Tac_match subjR addrTempReg captureStartReg]
+  let body = Prelude.concat completeCompiledBranches
   return $ matchCode ++ jumpInTable ++ body
 
 
@@ -260,10 +288,12 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
 -- Here we create the set_arg instruction to load the captures. They are stored linearly
 -- in the registers, starting at captureStartReg, so we just need a single set_arg instruction.
 -- Note that we might end up with zero arguments.
-compileMatchBranchLoadArg :: Reg -> [String] -> [a] -> [Tac]
-compileMatchBranchLoadArg captureStartReg freeVars capturedVars =
-  let numCaptures = (max 0 $ (length capturedVars) - 1) in
-  [Tac_set_arg 0 captureStartReg numCaptures]
+compileMatchBranchLoadArg :: Reg -> [String] -> [a] -> CodeGenState [Tac]
+compileMatchBranchLoadArg captureStartReg freeVars capturedVars = do
+  freeArgInstrs <- compileClosureArgs "" freeVars
+  let numCaptures = (max 0 $ (length capturedVars) - 1)
+  let regularParamsStart = length freeVars -- TODO make sure that freeVars can't contain duplicates? (it shouldn't be possible)
+  return $ freeArgInstrs ++ [Tac_set_arg regularParamsStart captureStartReg numCaptures]
 
 
 
