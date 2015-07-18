@@ -527,7 +527,6 @@ K Refactoring
 - Proper error handling (Either result)
 - Negative integers
 - General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
-- Inline match branches !!!
 K TODO make it impossible to reassign values (d'oh!)
 K Limits (integers, num local vars, num arguments, num symbols, etc)
 - Big refactoring: instead of all the data we have in state, attach a meta-data object to every object
@@ -546,7 +545,7 @@ K pattern wildcard (can be used multiple times)
 K More math operators
 K infix operators
 x inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
-- if a closure doesn't escape the current context, apply free variables directly
+K if a closure doesn't escape the current context, apply free variables directly
 - Strings
 - Creating symbols (symbol arity is known statically)
 K tuples
