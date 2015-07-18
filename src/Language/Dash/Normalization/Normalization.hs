@@ -3,7 +3,6 @@ module Language.Dash.Normalization.Normalization (
 ) where
 
 import           Control.Monad.State                            hiding (state)
-import           Data.Maybe                                     (catMaybes)
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
@@ -225,12 +224,11 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
   -- compiled code (free variables in matchBranches are not pushed as a closure on the heap, for example)
   nameExpr matchedExpr "" $ \ subjVar ->
           let matchBranches = map (\ (params, expr) -> MatchBranch params expr) $ zip matchedVars exprs in
-          nameExprListWithValues matchBranches $ \ branchVarsAndValues -> do
-                  -- TODO add free vars
-                  let branchVars = map fst branchVarsAndValues
-                  let values = catMaybes $ map snd branchVarsAndValues
-                  when (length values /= length branchVars) $ error "Internal compiler error: Ill-defined match branches"
-                  let freeVars = map (\ (NMatchBranch free _ _) -> free) values
+          nameExprList matchBranches $ \ branchVars -> do
+                  -- for now we're only inserting empty lists instead of free vars. The recursion module
+                  -- will insert the actual free vars of each match branch, because only that module has
+                  -- full knowledge of them
+                  let freeVars = replicate (length branchVars) []
                   let branches = zip3 freeVars matchedVars branchVars
                   k $ NMatch maxMatchVars subjVar patternAddr branches
 
@@ -250,10 +248,7 @@ pullUpFreeVars freeVars = do
 
 
 nameExprList :: [Expr] -> ([NstVar] -> NormState NstExpr) -> NormState NstExpr
-nameExprList exprList k = nameExprListWithValues exprList $ \ vvs -> k (map fst vvs)
-
-nameExprListWithValues :: [Expr] -> ([(NstVar, Maybe NstAtomicExpr)] -> NormState NstExpr) -> NormState NstExpr
-nameExprListWithValues exprList k =
+nameExprList exprList k =
   nameExprList' exprList [] k
   where
     nameExprList' [] acc k' = do
@@ -261,16 +256,13 @@ nameExprListWithValues exprList k =
       return expr
     nameExprList' expLs acc k' = do
       let hd = head expLs
-      nameExprWithValue hd "" $ \ var value -> do
-        restExpr <- nameExprList' (tail expLs) ((var, value) : acc) k'
+      nameExpr hd "" $ \ var -> do
+        restExpr <- nameExprList' (tail expLs) (var : acc) k'
         return restExpr
 
 
 nameExpr :: Expr -> String -> VCont -> NormState NstExpr
-nameExpr expr originalName k = nameExprWithValue expr originalName $ \ var _ -> k var
-
-nameExprWithValue :: Expr -> String -> (NstVar -> Maybe NstAtomicExpr -> NormState NstExpr) -> NormState NstExpr
-nameExprWithValue expr originalName k = case expr of
+nameExpr expr originalName k = case expr of
   -- Some variable can be used directly and don't need to be let-bound
   -- TODO what if we use a var several times, will it be bound several times? answer: yes it will. fix that!
   Var name -> do
@@ -282,17 +274,17 @@ nameExprWithValue expr originalName k = case expr of
       NRecursiveVar _ -> letBind expr "" k
       -- All other vars are used directly (because they will be in a register later on)
       v -> do
-            bodyExpr <- k v Nothing
+            bodyExpr <- k v
             return bodyExpr
   -- Everything that is not a Var needs to be let-bound
   _ -> letBind expr originalName k
   where
-    letBind :: Expr -> String -> (NstVar -> Maybe NstAtomicExpr -> NormState NstExpr) -> NormState NstExpr
+    letBind :: Expr -> String -> (NstVar -> NormState NstExpr) -> NormState NstExpr
     letBind expr' name k' = do
       atomizeExpr expr' name $ \ aExpr -> do
         var <- newTempVar name
         addBinding name (var, (isDynamic aExpr))
-        restExpr <- k' var (Just aExpr)
+        restExpr <- k' var
         return $ NLet var aExpr restExpr
 
 
