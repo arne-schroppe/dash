@@ -2,7 +2,8 @@ module Language.Dash.Normalization.Normalization (
   normalize
 ) where
 
-import           Control.Monad.State hiding (state)
+import           Control.Monad.State                            hiding (state)
+import           Data.Maybe                                     (catMaybes)
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
@@ -196,7 +197,7 @@ normalizeFunAp funExpr args k = case (funExpr, args) of
       -- under-saturated call
       else if numArgs < funArity then
         -- We already know at this point, that this *must* be a non-closure
-        if numFreeVars > 0 then error "Internal compiler error, trying to do static partial application of closure" 
+        if numFreeVars > 0 then error "Internal compiler error, trying to do static partial application of closure"
         else
           nameExprList args $ \ normArgs ->
               k $ NPartAp funVar normArgs
@@ -224,9 +225,12 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
   -- compiled code (free variables in matchBranches are not pushed as a closure on the heap, for example)
   nameExpr matchedExpr "" $ \ subjVar ->
           let matchBranches = map (\ (params, expr) -> MatchBranch params expr) $ zip matchedVars exprs in
-          nameExprList matchBranches $ \ branchVars -> do
+          nameExprListWithValues matchBranches $ \ branchVarsAndValues -> do
                   -- TODO add free vars
-                  let freeVars = replicate (length matchBranches) []
+                  let branchVars = map fst branchVarsAndValues
+                  let values = catMaybes $ map snd branchVarsAndValues
+                  when (length values /= length branchVars) $ error "Internal compiler error: Ill-defined match branches"
+                  let freeVars = map (\ (NMatchBranch free _ _) -> free) values
                   let branches = zip3 freeVars matchedVars branchVars
                   k $ NMatch maxMatchVars subjVar patternAddr branches
 
@@ -235,7 +239,7 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
 ----- Normalization helper functions -----
 
 
--- Free variables in a closure used by us which can't be resolved in our context need to 
+-- Free variables in a closure used by us which can't be resolved in our context need to
 -- become free variables in our context
 pullUpFreeVars :: [String] -> NormState ()
 pullUpFreeVars freeVars = do
@@ -246,7 +250,10 @@ pullUpFreeVars freeVars = do
 
 
 nameExprList :: [Expr] -> ([NstVar] -> NormState NstExpr) -> NormState NstExpr
-nameExprList exprList k =
+nameExprList exprList k = nameExprListWithValues exprList $ \ vvs -> k (map fst vvs)
+
+nameExprListWithValues :: [Expr] -> ([(NstVar, Maybe NstAtomicExpr)] -> NormState NstExpr) -> NormState NstExpr
+nameExprListWithValues exprList k =
   nameExprList' exprList [] k
   where
     nameExprList' [] acc k' = do
@@ -254,14 +261,16 @@ nameExprList exprList k =
       return expr
     nameExprList' expLs acc k' = do
       let hd = head expLs
-      nameExpr hd "" $ \ var -> do
-        restExpr <- nameExprList' (tail expLs) (var : acc) k'
+      nameExprWithValue hd "" $ \ var value -> do
+        restExpr <- nameExprList' (tail expLs) ((var, value) : acc) k'
         return restExpr
 
 
--- TODO rename this function to something more appropriate
 nameExpr :: Expr -> String -> VCont -> NormState NstExpr
-nameExpr expr originalName k = case expr of
+nameExpr expr originalName k = nameExprWithValue expr originalName $ \ var _ -> k var
+
+nameExprWithValue :: Expr -> String -> (NstVar -> Maybe NstAtomicExpr -> NormState NstExpr) -> NormState NstExpr
+nameExprWithValue expr originalName k = case expr of
   -- Some variable can be used directly and don't need to be let-bound
   -- TODO what if we use a var several times, will it be bound several times? answer: yes it will. fix that!
   Var name -> do
@@ -273,17 +282,17 @@ nameExpr expr originalName k = case expr of
       NRecursiveVar _ -> letBind expr "" k
       -- All other vars are used directly (because they will be in a register later on)
       v -> do
-            bodyExpr <- k v
+            bodyExpr <- k v Nothing
             return bodyExpr
   -- Everything that is not a Var needs to be let-bound
   _ -> letBind expr originalName k
   where
-    letBind :: Expr -> String -> VCont -> NormState NstExpr
+    letBind :: Expr -> String -> (NstVar -> Maybe NstAtomicExpr -> NormState NstExpr) -> NormState NstExpr
     letBind expr' name k' = do
       atomizeExpr expr' name $ \ aExpr -> do
         var <- newTempVar name
         addBinding name (var, (isDynamic aExpr))
-        restExpr <- k' var
+        restExpr <- k' var (Just aExpr)
         return $ NLet var aExpr restExpr
 
 

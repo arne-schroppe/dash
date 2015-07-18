@@ -205,7 +205,7 @@ spec = do
                        NLet (NLocalVar 0 "") (NNumber 2) $
                        NLet (NLocalVar 1 "") (NMatchBranch ["a"] [] $ NAtom $ NVar $ NDynamicFreeVar "a") $
                        NLet (NLocalVar 2 "") (NMatchBranch [] [] $ NAtom $ NNumber 44) $
-                       NAtom $ NMatch 0 (NLocalVar 0 "") 0 [([], [], NLocalVar 1 ""), ([], [], NLocalVar 2 "")]
+                       NAtom $ NMatch 0 (NLocalVar 0 "") 0 [(["a"], [], NLocalVar 1 ""), ([], [], NLocalVar 2 "")]
         norm `shouldBe` expected
 
       it "handles vars in patterns as lambda parameters" $ do

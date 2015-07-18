@@ -8,8 +8,6 @@ import           Language.Dash.IR.Nst
 
 -- State
 
--- TODO pull up new extra vars (if not resolved in that scope)
--- avoid duplicate free vars by adding all current freevars when entering scope
 
 data RecursionEnv = RecursionEnv {
   lambdaStack   :: [(String, NstVar)]
@@ -54,24 +52,27 @@ localVarName (NLocalVar _ name) = name
 localVarName _ = error "Internal compiler error: Something other than a local var was let-bound"
 
 
+type LambdaCtor = [String] -> [String] -> NstExpr -> NstAtomicExpr
+
 resolveRecAtom :: NstAtomicExpr -> String -> RecursionState NstAtomicExpr
 resolveRecAtom atom name = case atom of
   -- Invariant: Recursive vars are always let-bound  (TODO loosen this restriction later)
-  NLambda freeVars params expr -> resolveRecLambda freeVars params expr name
+  NLambda freeVars params expr -> resolveRecLambda NLambda freeVars params expr name
+  NMatchBranch freeVars params expr -> resolveRecLambda NMatchBranch freeVars params expr ""
   NVar (NRecursiveVar vname) -> do
     var <- resolveRecVar vname
     return $ NVar var
   a -> return a
 
 
-resolveRecLambda :: [String] -> [String] -> NstExpr -> String -> RecursionState NstAtomicExpr
-resolveRecLambda freeVars params expr name = do
+resolveRecLambda :: LambdaCtor -> [String] -> [String] -> NstExpr -> String -> RecursionState NstAtomicExpr
+resolveRecLambda lambdaConstructor freeVars params expr name = do
   pushLambdaScope freeVars name
   resolvedBody <- resolveRecExpr expr
   extraFree <- gets extraFreeVars
   let extra = head extraFree
   popLambdaScope
-  return $ NLambda (freeVars ++ extra) params resolvedBody
+  return $ lambdaConstructor (freeVars ++ extra) params resolvedBody
 
 
 resolveRecVar :: String -> RecursionState NstVar

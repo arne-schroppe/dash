@@ -221,12 +221,10 @@ createSelfRefInstrsIfNeeded clReg = do
 
 -- Every branch in the match-expression has been converted to a lambda by the normalizer.
 compileMatch :: Reg -> NstVar -> Int -> Int -> [([String], [String], NstVar)] -> Bool -> CodeGenState [Tac]
-compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
+compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = do
   -- TODO it would be much more efficient if we wouldn't store free variables of the match-
   -- branch lambdas on the heap first but would call them directly. We know that those
   -- lambdas can't escape the local context.
-  let branchFreeVars = map (\ (a, _, _) -> a) branches
-  let branchCaptures = map (\ (_, a, _) -> a) branches
   let matchBranchVars = map (\ (_, _, a) -> a) branches -- the variables containing matchbranches to call
   subjR <- getReg subject
   let handledBranches = [0 .. (length matchBranchVars) - 1]
@@ -238,10 +236,10 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   -- TODO use the next free register instead of hardcoded value
   -- TODO the following line might overwrite already used registers and we have no means of checking that limit right now
   let captureStartReg = (maxRegisters - 2) - maxCaptures + 1 -- reg + 1
-  compiledBranches <- forM (zip remainingBranches branches) $
-                              \ (remaining, (freeVars, capturedVars, funVar)) -> do
+  compiledBranches <- forM branches $
+                              \ (freeVars, capturedVars, funVar) -> do
                                       loadArgInstrs <- compileMatchBranchLoadArg captureStartReg freeVars capturedVars
-                                      callInstr <- compileCallInstr reg funVar (length capturedVars) isResultValue
+                                      callInstr <- compileCallInstr resultReg funVar (length capturedVars + length freeVars) isResultValue
                                       return $ loadArgInstrs ++ callInstr
 
   -- The next three bindings give us two lists: a list of the count of instructions that 
@@ -262,7 +260,7 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
   let numHandledBranchInstrs = init $ map fst branchInstrCount
 
   -- instructions for jumping out of the code that calls a match-branch and to the remaining code
-  let jumpOutInstrs = map (\ numRemaining -> [Tac_jmp numRemaining]) numRemainingBranchInstrs
+  let jumpOutInstrs = map (\ numRemaining -> [Tac_jmp $ numRemaining + 1]) numRemainingBranchInstrs
   let completeCompiledBranches = map ( \ (a, b) -> a ++ b ) $ zip compiledBranches jumpOutInstrs
 
   -- compile jump table
@@ -274,7 +272,6 @@ compileMatch reg subject maxCaptures patternAddr branches isResultValue = do
                       -- jump over remaining jump-table entries and then over match-branches we're done with
                       Tac_jmp (jumpTableEntrySize * remaining + numHandled)) $
                       zip remainingBranches numHandledBranchInstrs
-  -- We are using reg as a temporary register here
   let addrTempReg = maxRegisters - 1
 
   -- compile match call
@@ -292,11 +289,10 @@ compileMatchBranchLoadArg :: Reg -> [String] -> [a] -> CodeGenState [Tac]
 compileMatchBranchLoadArg captureStartReg freeVars capturedVars = do
   freeArgInstrs <- compileClosureArgs "" freeVars
   let numCaptures = (max 0 $ (length capturedVars) - 1)
-  let regularParamsStart = length freeVars -- TODO make sure that freeVars can't contain duplicates? (it shouldn't be possible)
-  return $ freeArgInstrs ++ [Tac_set_arg regularParamsStart captureStartReg numCaptures]
-
-
-
-
-
+  let capturedArgsStart = length freeVars -- TODO make sure that freeVars can't contain duplicates? (it shouldn't be possible)
+  let capturedArgInstrs = if length capturedVars > 0 then
+                              [Tac_set_arg capturedArgsStart captureStartReg numCaptures]
+                          else
+                              []
+  return $ freeArgInstrs ++ capturedArgInstrs
 

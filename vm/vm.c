@@ -514,6 +514,12 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int arg1 = get_reg(reg1);
         check_reg(reg2);
         int arg2 = get_reg(reg2);
+        if(arg2 == 0) {
+          fprintf(stderr, "Division by 0");
+          is_running = false;
+          break;
+        }
+
         int reg0 = get_arg_r0(instr);
         check_reg(reg0);
         get_reg(reg0) = arg1 / arg2;
