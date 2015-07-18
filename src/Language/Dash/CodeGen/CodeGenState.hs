@@ -163,6 +163,7 @@ replacePlaceholderWithActualCode funPlaceholderAddr code = do
   let instrs' = Seq.update funPlaceholderAddr code instrs -- replace the original function placeholder with the actual code
   put $ state { instructions = instrs' }
 
+
 getRegByName :: String -> CodeGenState Int
 getRegByName name = do
   maybeReg <- getRegN
@@ -180,7 +181,8 @@ getRegByName name = do
 
 
 getReg :: NstVar -> CodeGenState Int
-getReg (NConstantFreeVar _) = error "Compiler error"
+getReg (NConstantFreeVar _) =
+  error "Compiler error"
 
 getReg (NFunParam name) = do
   numFree <- numFreeVars

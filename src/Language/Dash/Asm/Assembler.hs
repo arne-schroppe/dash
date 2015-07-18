@@ -30,10 +30,6 @@ turned into real addresses by the assembler.
 
 
 
-
--- TODO do we encode nested symbols depth-first or breadth-first? Try both and measure performance!
-
-
 assemble :: [[Tac]] -> ConstTable -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
 assemble funcs ctable symnames =
   let (consts, addrConvert) = encodeConstTable ctable in

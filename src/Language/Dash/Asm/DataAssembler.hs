@@ -30,7 +30,6 @@ TODO rename const table to constant pool?
 -- TODO explain the algorithm or simplify it (the latter is probably better)
 
 
-
 type ConstAddressMap = Int -> VMWord
 type ConstAtomizationState a = State ConstAtomizationEnv a
 

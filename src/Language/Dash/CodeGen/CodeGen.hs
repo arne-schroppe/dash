@@ -14,9 +14,6 @@ import           Language.Dash.IR.Tac
 
 -- TODO explain what the code generator does and how it does it !
 
-
-
-
 -- TODO when there is more time, do dataflow analysis to reuse registers
 
 -- TODO 'atom' could be misleading. Rename to 'atomExpr' or something like that

@@ -41,7 +41,7 @@ type NormState a = State NormEnv a
 
 data NormEnv = NormEnv {
   symbolNames :: Map.Map String SymId
-, constTable  :: ConstTable -- TODO rename ConstTable to DataTable
+, constTable  :: ConstTable -- TODO rename ConstTable to DataTable (or ConstPool)
 , contexts    :: [Context] -- head is current context
 , arities     :: Map.Map String (Int, Int) -- (Num free vars, num formal params) -- TODO for this we *really* need unique names
 } deriving (Eq, Show)

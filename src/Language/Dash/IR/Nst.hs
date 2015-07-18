@@ -62,7 +62,7 @@ instance Show NstVar where
   show v = case v of
     NLocalVar i name -> "r" ++ (show i) ++ (if not (null name) then " '" ++ name ++ "'" else "")
     NFunParam name -> "p '" ++ name ++ "'"
-    NDynamicFreeVar name -> "λ '" ++ name ++ "'"
+    NDynamicFreeVar name -> "f '" ++ name ++ "'"
     NConstantFreeVar name -> "g '" ++ name ++ "'"
     NRecursiveVar name -> "r '" ++ name ++ "'"
 
