@@ -181,31 +181,30 @@ getRegByName name = do
 
 
 getReg :: NstVar -> CodeGenState Int
-getReg (NConstantFreeVar _) =
-  error "Compiler error"
+getReg var = case var of
+  NConstantFreeVar _ -> error "Compiler error"
+  NRecursiveVar _ -> error "Compiler error: Unexpected recursive var"
+  NFunParam name -> do
+    numFree <- numFreeVars
+    maybeReg <- param name
+    case maybeReg of
+            Just index -> return $ numFree + index
+            Nothing -> error $ "Unknown parameter: " ++ name
 
-getReg (NFunParam name) = do
-  numFree <- numFreeVars
-  maybeReg <- param name
-  case maybeReg of
-          Just index -> return $ numFree + index
-          Nothing -> error $ "Unknown parameter: " ++ name
+  -- When calling a closure, the first n registers are formal arguments
+  -- and the next m registers are closed-over variables
+  -- TODO document this fact somewhere visible
+  NDynamicFreeVar name -> do
+    maybeReg <- freeVar name
+    case maybeReg of
+            Just index -> return index
+            Nothing -> error $ "Unknown free var: " ++ name
 
--- When calling a closure, the first n registers are formal arguments
--- and the next m registers are closed-over variables
--- TODO document this fact somewhere visible
-getReg (NDynamicFreeVar name) = do
-  maybeReg <- freeVar name
-  case maybeReg of
-          Just index -> return index
-          Nothing -> error $ "Unknown free var: " ++ name
+  NLocalVar tmpVar _ -> do
+    numFree <- numFreeVars
+    numParams <- numParameters
+    return $ numFree + numParams + tmpVar
 
-getReg (NLocalVar tmpVar _) = do
-  numFree <- numFreeVars
-  numParams <- numParameters
-  return $ numFree + numParams + tmpVar
-
-getReg (NRecursiveVar _) = error "Compiler error: Unexpected recursive var"
 
 
 -- TODO rename to isRegWithRefToKnownFunction
