@@ -10,20 +10,31 @@ import           Language.Dash.IR.Nst
 
 
 data RecursionEnv = RecursionEnv {
-  lambdaStack   :: [(String, NstVar)]
-
-  -- 'extra free vars' are the additional free variables that are created when
-  -- resolving recursion that involves closures or unknown functions
-, extraFreeVars :: [[String]]
+  contexts :: [RecursionContext]
 }
 
 
 emptyRecursionEnv :: RecursionEnv
 emptyRecursionEnv = RecursionEnv {
-  lambdaStack = []
-, extraFreeVars = []
+  contexts = []
 }
 
+
+data RecursionContext = RecursionContext {
+  lambdaName   :: String
+, lambdaVar    :: NstVar
+
+  -- 'extra free vars' are the additional free variables that are created when
+  -- resolving recursion that involves closures or unknown functions
+, extraFreeVars :: [String]
+}
+
+emptyRecursionContext :: String -> NstVar -> RecursionContext
+emptyRecursionContext lamName lamVar = RecursionContext {
+  lambdaName = lamName
+, lambdaVar  = lamVar
+, extraFreeVars = []
+}
 
 type RecursionState a = State RecursionEnv a
 
@@ -67,18 +78,18 @@ resolveRecAtom atom name = case atom of
 
 resolveRecLambda :: LambdaCtor -> [String] -> [String] -> NstExpr -> String -> RecursionState NstAtomicExpr
 resolveRecLambda lambdaConstructor freeVars params expr name = do
-  pushLambdaScope freeVars name
+  pushContext freeVars name
   resolvedBody <- resolveRecExpr expr
-  extraFree <- gets extraFreeVars
-  let extra = head extraFree
-  popLambdaScope
-  return $ lambdaConstructor (freeVars ++ extra) params resolvedBody
+  context <- getContext
+  let extraFree = extraFreeVars context
+  popContext
+  return $ lambdaConstructor (freeVars ++ extraFree) params resolvedBody
 
 
 resolveRecVar :: String -> RecursionState NstVar
 resolveRecVar name = do
   state <- get
-  let maybeVar = findName name (lambdaStack state)
+  let maybeVar = findName name (contexts state)
   case maybeVar of
     Nothing -> error $ "Internal compiler error: Can't resolve recursive use of " ++ name
     Just v@(NConstantFreeVar _)    -> return v
@@ -88,60 +99,71 @@ resolveRecVar name = do
     _ -> error "resolveRecVar"
 
 
-findName :: String -> [(String, a)] -> Maybe a
+findName :: String -> [RecursionContext] -> Maybe NstVar
 findName _ []             = Nothing
-findName name ((n, v):ns) =
-  if n == name then Just v
-               else findName name ns
+findName name (context:cs) =
+  if (lambdaName context) == name then Just $ lambdaVar context
+  else findName name cs
 
 
 addExtraFreeVar :: String -> RecursionState ()
 addExtraFreeVar name = do
+  context <- getContext
+  let extra = extraFreeVars context
+  when (not $ name `elem` extra) $ do
+          let free' = name : extra
+          modifyContext $ \ ctx -> ctx { extraFreeVars = free'  }
+
+getContext :: RecursionState RecursionContext
+getContext = do
   state <- get
-  let extra = extraFreeVars state
-  let thisFreeVars = head $ extra
-  when (not $ name `elem` thisFreeVars) $ do
-          let free' = name : thisFreeVars
-          let state' = state { extraFreeVars = free' : (tail extra) }
-          put state'
+  return $ head $ contexts state
+
+modifyContext :: (RecursionContext -> RecursionContext) -> RecursionState ()
+modifyContext f = do
+  ctx <- getContext
+  let ctx' = f ctx
+  modify $ \ state -> state { contexts = ctx' : (tail $ contexts state) }
 
 -- TODO this doesn't work for mutual recursion
 
 -- The first case (for a lambda that isn't let-bound and thus is unnamed) is just a
--- placeholder, so that we can easily pop the scope later. No recursive var will resolve
+-- placeholder, so that we can easily pop the context later. No recursive var will resolve
 -- to it anyway.
-pushLambdaScope :: [String] -> String -> RecursionState ()
-pushLambdaScope _ "" = pushLambdaScope' "$$$invalid$$$" (NConstantFreeVar "$$$invalid$$$")
-pushLambdaScope [] n = pushLambdaScope' n (NConstantFreeVar n)
-pushLambdaScope _  n = pushLambdaScope' n (NDynamicFreeVar n)
+pushContext :: [String] -> String -> RecursionState ()
+pushContext _ "" = pushContext' "$$$invalid$$$" (NConstantFreeVar "$$$invalid$$$")
+pushContext [] n = pushContext' n (NConstantFreeVar n)
+pushContext _  n = pushContext' n (NDynamicFreeVar n)
 
 
-pushLambdaScope' :: String -> NstVar -> RecursionState ()
-pushLambdaScope' name var = do
+pushContext' :: String -> NstVar -> RecursionState ()
+pushContext' name var = do
+  let newContext = emptyRecursionContext name var
+  modify $ \ state -> state { contexts = newContext : (contexts state) }
+
+
+popContext :: RecursionState ()
+popContext = do
   state <- get
-  let newStack = (name, var) : (lambdaStack state)
-  let newExtraFreeVars = [] : (extraFreeVars state)
-  put $ state { lambdaStack = newStack, extraFreeVars = newExtraFreeVars }
+  let ctxs = contexts state
+  let currentContext = head ctxs
+  let nextContext = head $ tail ctxs
+
+  let name = lambdaName currentContext
+  let efv = extraFreeVars currentContext
+  let nextEfv = extraFreeVars nextContext
+
+  let nextEfv' = pullUpUnresolvedFreeVars name efv nextEfv
+  let ctxs' = tail ctxs
+  put $ state { contexts = ctxs' }
+  modifyContext $ \ context -> context { extraFreeVars = nextEfv' }
 
 
-popLambdaScope :: RecursionState ()
-popLambdaScope = do
-  state <- get
-  let lst = lambdaStack state
-  let efv = extraFreeVars state
-  let newStack = tail lst
-  let (nextScopeName, _) = head lst
-  let newExtraFreeVars = pullUpUnresolvedFreeVars nextScopeName efv
-  put $ state { lambdaStack = newStack, extraFreeVars = newExtraFreeVars }
-
-
-pullUpUnresolvedFreeVars :: String -> [[String]] -> [[String]]
-pullUpUnresolvedFreeVars nextScopeName efvStack =
-  -- pull up all new free vars that are not resolved by this scope
-  let tailEfv = tail efvStack in
-  let cleanedEfv = delete nextScopeName $ head efvStack in
-  let nextScopeEfv = head $ tailEfv in
-  let nextScopeAllEfv = union cleanedEfv nextScopeEfv in
-  nextScopeAllEfv : (tail tailEfv)
+pullUpUnresolvedFreeVars :: String -> [String] -> [String] -> [String]
+pullUpUnresolvedFreeVars nextContextName currentEfv nextEfv =
+  -- pull up all new free vars that are not resolved by this context
+  let cleanedEfv = delete nextContextName $ currentEfv in
+  let nextContextAllEfv = union cleanedEfv nextEfv in
+  nextContextAllEfv
 
 
