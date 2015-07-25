@@ -6,7 +6,6 @@ module Language.Dash.Asm.Assembler (
 
 import           Data.Bits
 import qualified Data.Sequence                   as Seq
-import           Data.Word
 import           Language.Dash.Asm.DataAssembler
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Tac
@@ -36,7 +35,7 @@ assemble funcs ctable symnames =
   assembleWithEncodedConstTable funcs consts addrConvert symnames
 
 
-assembleWithEncodedConstTable :: [[Tac]] -> [VMWord] -> (Int -> VMWord) -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
+assembleWithEncodedConstTable :: [[Tac]] -> [VMWord] -> (ConstAddr -> VMWord) -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
 assembleWithEncodedConstTable funcs encCTable constAddrConverter symnames =
   (map (assembleTac funcAddrs constAddrConverter) instructions, encCTable, symnames)
   where instructions = fst combined
@@ -57,18 +56,21 @@ combineFunctions funcs = (fst combined, snd combined)
           ( allInstrs ++ funcInstrs, funcAddrs Seq.|> (fromIntegral $ length allInstrs) )
 
 
-assembleTac :: Seq.Seq VMWord -> (Int -> VMWord) -> Tac -> Word32
+assembleTac :: Seq.Seq VMWord -> (ConstAddr -> VMWord) -> Tac -> VMWord
 assembleTac funcAddrs addrConv opc =
-  let r = fromIntegral in
+  let r = regToInt in
   let i = fromIntegral in
+  let sym = fromIntegral.symIdToInt in
+  let caddr a = fromIntegral (addrConv a) in
+  let faddr a = fromIntegral $ funcAddrs `Seq.index` (funcAddrToInt a) in
   case opc of
     Tac_ret r0              -> instructionRI   0 (r r0) 0
     Tac_load_i r0 n         -> instructionRI   1 (r r0) n
-    Tac_load_addr r0 a      -> instructionRI   1 (r r0) (addrConv a)
-    Tac_load_ps r0 s        -> instructionRI   2 (r r0) (i s)
-    Tac_load_cs r0 a        -> instructionRI   3 (r r0) (addrConv a)
-    Tac_load_c r0 a         -> instructionRI   4 (r r0) (addrConv a)
-    Tac_load_f r0 fi        -> instructionRI   5 (r r0) (funcAddrs `Seq.index` fi)
+    Tac_load_addr r0 a      -> instructionRI   1 (r r0) (caddr a)
+    Tac_load_ps r0 s        -> instructionRI   2 (r r0) (sym s)
+    Tac_load_cs r0 a        -> instructionRI   3 (r r0) (caddr a)
+    Tac_load_c r0 a         -> instructionRI   4 (r r0) (caddr a)
+    Tac_load_f r0 fa        -> instructionRI   5 (r r0) (faddr fa)
     Tac_add r0 r1 r2        -> instructionRRR  6 (r r0) (r r1) (r r2)
     Tac_sub r0 r1 r2        -> instructionRRR  7 (r r0) (r r1) (r r2)
     Tac_mul r0 r1 r2        -> instructionRRR  8 (r r0) (r r1) (r r2)
@@ -96,13 +98,13 @@ regBits = 5
 
 
 -- an instruction containing a register and a number
-instructionRI :: VMWord -> VMWord -> VMWord -> VMWord
-instructionRI opcId register value =
+instructionRI :: Int -> Int -> Int -> VMWord
+instructionRI opcId register value = fromIntegral $
   (opcId `shiftL` (instBits - opcBits)) .|. (register `shiftL` (instBits - (opcBits + regBits))) .|. value
 
 -- an instruction containing three registers
-instructionRRR :: VMWord -> VMWord -> VMWord -> VMWord -> VMWord
-instructionRRR opcId r0 r1 r2 =
+instructionRRR :: Int -> Int -> Int -> Int -> VMWord
+instructionRRR opcId r0 r1 r2 = fromIntegral $
    (opcId `shiftL` (instBits - opcBits))
   .|. (r0 `shiftL` (instBits - (opcBits + regBits)))
   .|. (r1 `shiftL` (instBits - (opcBits + 2 * regBits)))

@@ -6,7 +6,7 @@ module Language.Dash.IR.Nst (
 ) where
 
 
-import           Language.Dash.IR.Data  (ConstAddr)
+import           Language.Dash.IR.Data  (ConstAddr, SymId, Name)
 
 -- NST, the Normalized Syntax Tree
 
@@ -17,30 +17,28 @@ data NstExpr =
   deriving (Eq, Ord)
 
 
-type VarName = String
-type ParamName = String
 
 data NstAtomicExpr =
     NNumber Int
-  | NPlainSymbol Int
+  | NPlainSymbol SymId
   | NCompoundSymbol Bool ConstAddr  -- IsDynamic SymbolAddr
-  | NString String
+  | NString Name
   | NVar NstVar -- This is only for returning a var as a result
-  | NLambda [VarName] [ParamName] NstExpr -- FreeVars FormalParams Body
-  | NMatchBranch [VarName] [ParamName] NstExpr -- FreeVars FormalParams Body
+  | NLambda [Name] [Name] NstExpr -- FreeVars FormalParams Body
+  | NMatchBranch [Name] [Name] NstExpr -- FreeVars FormalParams Body
   | NPrimOp NstPrimOp
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
   | NFunAp NstVar [NstVar]
-  | NMatch Int NstVar ConstAddr [([VarName], [VarName], NstVar)] -- MaxCaptures Subject PatternAddr [MatchBranchFreeVars, MatchedVars, VarHoldingMatchBranch]
+  | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures Subject PatternAddr [MatchBranchFreeVars, MatchedVars, VarHoldingMatchBranch]
   deriving (Eq, Ord)
 
 
 data NstVar =
     NLocalVar Int String
-  | NFunParam String
-  | NDynamicFreeVar String
-  | NConstantFreeVar String -- We should rename this to StaticFreeVar
-  | NRecursiveVar String
+  | NFunParam Name
+  | NDynamicFreeVar Name
+  | NConstantFreeVar Name -- We should rename this to StaticFreeVar
+  | NRecursiveVar Name
   deriving (Eq, Ord)
 
 data NstPrimOp =

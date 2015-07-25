@@ -26,7 +26,7 @@ compile expr cTable symlist =
 
 
 -- TODO can we get rid of the shouldAddHeader parameter?
-compileFunc :: [String] -> [String] -> NstExpr -> String -> Bool -> CodeGenState Int
+compileFunc :: [Name] -> [Name] -> NstExpr -> Name -> Bool -> CodeGenState FuncAddr
 compileFunc freeVars params expr name shouldAddHeader = do
   funAddr <- beginFunction freeVars params
   -- we add the name already here for recursion
@@ -52,7 +52,7 @@ compileExpr expr = case expr of
           return $ code ++ [Tac_ret 0]
 
 
-compileAtom :: Reg -> NstAtomicExpr -> String -> Bool -> CodeGenState [Tac]
+compileAtom :: Reg -> NstAtomicExpr -> Name -> Bool -> CodeGenState [Tac]
 compileAtom reg atom name isResultValue = case atom of
   NNumber n -> do
           when (n < 0 || n > maxInteger) $ error "Integer literal out of bounds"
@@ -127,7 +127,7 @@ compilePrimOp primop reg = case primop of
           rb <- getReg b
           return [op reg ra rb]
 
-compileConstantFreeVar :: Reg -> String -> CodeGenState [Tac]
+compileConstantFreeVar :: Reg -> Name -> CodeGenState [Tac]
 compileConstantFreeVar reg name = do
   compConst <- getCompileTimeConstInOuterScope name
   case compConst of
@@ -138,7 +138,7 @@ compileConstantFreeVar reg name = do
           _ -> error "compileConstantFreeVar"
 
 
-compileLoadLambda :: Reg -> Int -> CodeGenState [Tac]
+compileLoadLambda :: Reg -> FuncAddr -> CodeGenState [Tac]
 compileLoadLambda reg funAddr = do
   let ldFunAddr = [Tac_load_f reg funAddr]
   return $ ldFunAddr
@@ -170,7 +170,7 @@ canBeCalledDirectly atom = case atom of
   _ -> False
 
 
-compileClosure :: Reg -> [String] -> [String] -> NstExpr -> String -> CodeGenState [Tac]
+compileClosure :: Reg -> [Name] -> [Name] -> NstExpr -> Name -> CodeGenState [Tac]
 compileClosure reg freeVars params expr name = do
   funAddr <- compileFunc freeVars params expr name True
   -- TODO optimize argInstrs by using last parameter in set_arg (i.e. if we have arguments
@@ -184,7 +184,8 @@ compileClosure reg freeVars params expr name = do
   selfRefInstrs <- createSelfRefInstrsIfNeeded reg
   return $ argInstrs ++ makeClosureInstr ++ selfRefInstrs
 
-compileClosureArgs :: String -> [String] -> CodeGenState [Tac]
+
+compileClosureArgs :: Name -> [Name] -> CodeGenState [Tac]
 compileClosureArgs name freeVars = do
   argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
   return $ catMaybes argInstrsMaybes
@@ -200,7 +201,7 @@ compileSetArg var arg = do
   rVar <- getReg var
   return $ Tac_set_arg arg rVar 0
 
-compileSetArgN :: String -> Int -> CodeGenState Tac
+compileSetArgN :: Name -> Int -> CodeGenState Tac
 compileSetArgN name arg = do
   rVar <- getRegByName name
   return $ Tac_set_arg arg rVar 0
@@ -217,7 +218,7 @@ createSelfRefInstrsIfNeeded clReg = do
 
 
 -- Every branch in the match-expression has been converted to a lambda by the normalizer.
-compileMatch :: Reg -> NstVar -> Int -> Int -> [([String], [String], NstVar)] -> Bool -> CodeGenState [Tac]
+compileMatch :: Reg -> NstVar -> Int -> ConstAddr -> [([Name], [Name], NstVar)] -> Bool -> CodeGenState [Tac]
 compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = do
   -- TODO it would be much more efficient if we wouldn't store free variables of the match-
   -- branch lambdas on the heap first but would call them directly. We know that those
@@ -232,7 +233,7 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
   -- TODO Make sure that this actually works and doesn't create false results
   -- TODO use the next free register instead of hardcoded value
   -- TODO the following line might overwrite already used registers and we have no means of checking that limit right now
-  let captureStartReg = (maxRegisters - 2) - maxCaptures + 1 -- reg + 1
+  let captureStartReg = mkReg $ (maxRegisters - 2) - maxCaptures + 1 -- reg + 1
   compiledBranches <- forM branches $
                               \ (freeVars, capturedVars, funVar) -> do
                                       loadArgInstrs <- compileMatchBranchLoadArg captureStartReg freeVars capturedVars
@@ -269,7 +270,7 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
                       -- jump over remaining jump-table entries and then over match-branches we're done with
                       Tac_jmp (jumpTableEntrySize * remaining + numHandled)) $
                       zip remainingBranches numHandledBranchInstrs
-  let addrTempReg = maxRegisters - 1
+  let addrTempReg = mkReg $ maxRegisters - 1
 
   -- compile match call
   let matchCode = [Tac_load_addr addrTempReg patternAddr, 
@@ -282,7 +283,7 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
 -- Here we create the set_arg instruction to load the captures. They are stored linearly
 -- in the registers, starting at captureStartReg, so we just need a single set_arg instruction.
 -- Note that we might end up with zero arguments.
-compileMatchBranchLoadArg :: Reg -> [String] -> [a] -> CodeGenState [Tac]
+compileMatchBranchLoadArg :: Reg -> [Name] -> [a] -> CodeGenState [Tac]
 compileMatchBranchLoadArg captureStartReg freeVars capturedVars = do
   freeArgInstrs <- compileClosureArgs "" freeVars
   let numCaptures = (max 0 $ (length capturedVars) - 1)

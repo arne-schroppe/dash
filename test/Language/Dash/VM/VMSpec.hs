@@ -3,6 +3,7 @@ module Language.Dash.VM.VMSpec where
 import           Data.Word
 import           Language.Dash.Asm.Assembler
 import           Language.Dash.IR.Tac
+import           Language.Dash.IR.Data
 import           Language.Dash.VM.DataEncoding
 import           Language.Dash.VM.VM
 import           Test.Hspec
@@ -16,7 +17,7 @@ runProgTbl tbl prog = do
   (value, _, _) <- execute asm tbl' []
   return value
   where
-    (asm, tbl', _) = assembleWithEncodedConstTable prog tbl fromIntegral []
+    (asm, tbl', _) = assembleWithEncodedConstTable prog tbl (fromIntegral.constAddrToInt) []
 
 
 spec :: Spec
@@ -46,7 +47,7 @@ spec = do
       let prog = [[ Tac_load_i  1 15,
                     Tac_load_i  2 23,
                     Tac_add  4 1 2,
-                    Tac_load_f  3 1,
+                    Tac_load_f 3 (mkFuncAddr 1),
                     Tac_set_arg 0 4 0,
                     Tac_call 0 3 1,
                     Tac_ret 0 ], [
@@ -58,11 +59,11 @@ spec = do
       (runProg prog) `shouldReturn` 138
 
     it "calls a closure downwards" $ do
-      let prog = [[ Tac_load_f 2 2,
+      let prog = [[ Tac_load_f 2 (mkFuncAddr 2),
                     Tac_load_i 3 80,
                     Tac_set_arg 0 3 0,
                     Tac_part_ap 2 2 1,
-                    Tac_load_f 1 1,
+                    Tac_load_f 1 (mkFuncAddr 1),
                     Tac_set_arg 0 2 0,
                     Tac_call 0 1 1,
                     Tac_ret 0 ], [
@@ -82,7 +83,7 @@ spec = do
       (runProg prog) `shouldReturn` 58 -- 115 + 23 - 80
 
     it "calls a closure upwards" $ do
-      let prog = [[ Tac_load_f 1 1,
+      let prog = [[ Tac_load_f 1 (mkFuncAddr 1),
                     Tac_call 1 1 0,
                     Tac_load_i 2 80,
                     Tac_set_arg 0 2 0,
@@ -90,7 +91,7 @@ spec = do
                     Tac_ret 0 ], [
                     -- fun 1
                     Tac_fun_header 1,
-                    Tac_load_f 1 2,
+                    Tac_load_f 1 (mkFuncAddr 2),
                     Tac_load_i 2 24,
                     Tac_set_arg 0 2 0,
                     Tac_part_ap 0 1 1,
@@ -102,7 +103,7 @@ spec = do
       (runProg prog) `shouldReturn` 56 -- 80 - 24
 
     it "modifies a closure" $ do
-      let prog = [[ Tac_load_f 1 1,
+      let prog = [[ Tac_load_f 1 (mkFuncAddr 1),
                     Tac_call 1 1 0,
                     Tac_load_i 2 80,
                     Tac_set_arg 0 2 0,
@@ -110,7 +111,7 @@ spec = do
                     Tac_ret 0 ], [
                     -- fun 1
                     Tac_fun_header 1,
-                    Tac_load_f 1 2,
+                    Tac_load_f 1 (mkFuncAddr 2),
                     Tac_load_i 2 77,
                     Tac_load_i 3 55,
                     Tac_set_arg 0 2 1,
@@ -143,20 +144,21 @@ spec = do
 
 -}
     it "loads a symbol into a register" $ do
-      let prog = [[ Tac_load_ps 0 12,
+      let sym = mkSymId 12
+      let prog = [[ Tac_load_ps 0 sym,
                     Tac_ret 0]]
-      (runProg prog) `shouldReturn` (encodePlainSymbol 12)
+      (runProg prog) `shouldReturn` (encodePlainSymbol sym)
 
     it "loads a constant" $ do
       let ctable = [ encodeNumber 33 ]
-      let prog = [[ Tac_load_c 0 0,
+      let prog = [[ Tac_load_c 0 (mkConstAddr 0),
                     Tac_ret 0 ]]
       (runProgTbl ctable prog) `shouldReturn` (33)
 
     it "loads a data symbol" $ do
-      let prog = [[ Tac_load_cs 0 1,
+      let prog = [[ Tac_load_cs 0 (mkConstAddr 1),
                     Tac_ret 0 ]]
-      (runProg prog) `shouldReturn` (encodeCompoundSymbolRef 1)
+      (runProg prog) `shouldReturn` (encodeCompoundSymbolRef $ mkConstAddr 1)
 
 
     it "jumps forward" $ do
@@ -185,10 +187,10 @@ spec = do
 
     it "matches a symbol" $ do
       let ctable = [ encodeMatchHeader 2,
-                     encodePlainSymbol 11,
-                     encodePlainSymbol 22 ]
+                     encodePlainSymbol (mkSymId 11),
+                     encodePlainSymbol (mkSymId 22) ]
       let prog = [[ Tac_load_i 0 600,
-                    Tac_load_ps 1 22,
+                    Tac_load_ps 1 (mkSymId 22),
                     Tac_load_i 2 0,
                     Tac_match 1 2 0,
                     Tac_jmp 1,
@@ -201,19 +203,19 @@ spec = do
 
     it "matches a data symbol" $ do
       let ctable = [ encodeMatchHeader 2,
-                     encodeCompoundSymbolRef 3,
-                     encodeCompoundSymbolRef 6,
-                     encodeCompoundSymbolHeader 1 2,
+                     encodeCompoundSymbolRef (mkConstAddr 3),
+                     encodeCompoundSymbolRef (mkConstAddr 6),
+                     encodeCompoundSymbolHeader (mkSymId 1) 2,
                      encodeNumber 55,
                      encodeNumber 66,
-                     encodeCompoundSymbolHeader 1 2,
+                     encodeCompoundSymbolHeader (mkSymId 1) 2,
                      encodeNumber 55,
                      encodeNumber 77,
-                     encodeCompoundSymbolHeader 1 2,
+                     encodeCompoundSymbolHeader (mkSymId 1) 2,
                      encodeNumber 55,
                      encodeNumber 77 ]
       let prog = [[ Tac_load_i 0 600,
-                    Tac_load_cs 1 9,
+                    Tac_load_cs 1 (mkConstAddr 9),
                     Tac_load_i 2 0,
                     Tac_match 1 2 0,
                     Tac_jmp 1,
@@ -226,20 +228,20 @@ spec = do
 
     it "binds a value in a match" $ do
       let ctable = [ encodeMatchHeader 2,
-                     encodeCompoundSymbolRef 3,
-                     encodeCompoundSymbolRef 6,
-                     encodeCompoundSymbolHeader 1 2,
+                     encodeCompoundSymbolRef (mkConstAddr 3),
+                     encodeCompoundSymbolRef (mkConstAddr 6),
+                     encodeCompoundSymbolHeader (mkSymId 1) 2,
                      encodeNumber 55,
                      encodeNumber 66,
-                     encodeCompoundSymbolHeader 1 2,
+                     encodeCompoundSymbolHeader (mkSymId 1) 2,
                      encodeNumber 55,
                      encodeMatchVar 1,
-                     encodeCompoundSymbolHeader 1 2,
+                     encodeCompoundSymbolHeader (mkSymId 1) 2,
                      encodeNumber 55,
                      encodeNumber 77 ]
       let prog = [[ Tac_load_i 0 600,
                     Tac_load_i 4 66,
-                    Tac_load_cs 1 9,
+                    Tac_load_cs 1 (mkConstAddr 9),
                     Tac_load_i 2 0,
                     Tac_match 1 2 3,
                     Tac_jmp 1,

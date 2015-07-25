@@ -30,51 +30,61 @@ decode w ctable symNames =
                     | otherwise        = error $ "Unknown tag " ++ (show t)
 
 
-decodeCompoundSymbol :: Integral a => a -> [VMWord] -> SymbolNameList -> VMValue
+decodeCompoundSymbol :: VMWord -> [VMWord] -> SymbolNameList -> VMValue
 decodeCompoundSymbol addr ctable symNames =
   let subCTable = drop (fromIntegral addr) ctable in
   let (symId, nArgs) = decodeCompoundSymbolHeader (head subCTable) in
   let decoded = map (\v -> decode v ctable symNames) (take (fromIntegral nArgs) $ tail subCTable) in
-  let symName = symNames !! (fromIntegral symId) in
+  let symName = symNames !! (symIdToInt symId) in
   VMSymbol symName decoded
 
 
-encodeNumber :: VMWord -> VMWord
-encodeNumber = makeVMValue tagNumber . ensureRange
+encodeNumber :: Int -> VMWord
+encodeNumber = makeVMValue tagNumber . ensureRange . fromIntegral
 
-encodePlainSymbol :: VMWord -> VMWord
-encodePlainSymbol = makeVMValue tagPlainSymbol . ensureRange
+encodePlainSymbol :: SymId -> VMWord
+encodePlainSymbol = makeVMValue tagPlainSymbol . ensureRange . fromIntegral . symIdToInt
 
-encodeCompoundSymbolRef :: VMWord -> VMWord
-encodeCompoundSymbolRef = makeVMValue tagCompoundSymbol . ensureRange
+encodeCompoundSymbolRef :: ConstAddr -> VMWord
+encodeCompoundSymbolRef = makeVMValue tagCompoundSymbol . ensureRange . fromIntegral . constAddrToInt
 
 ensureRange :: (Ord a, Num a) => a -> a
 ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
 
-encodeMatchHeader :: VMWord -> VMWord
-encodeMatchHeader n = matchData 1 n
+data MatchDataType = MatchHeader | MatchVar
 
-decodeMatchHeader :: VMWord -> VMWord
-decodeMatchHeader h = h .&. 0x7FFFFFF
+matchDataSubTag :: MatchDataType -> VMWord
+matchDataSubTag MatchHeader = 1
+matchDataSubTag MatchVar    = 0
 
-encodeMatchVar :: VMWord -> VMWord
-encodeMatchVar n = matchData 0 n
+encodeMatchHeader :: Int -> VMWord
+encodeMatchHeader n = matchData MatchHeader n
 
-matchData :: VMWord -> VMWord -> VMWord
-matchData mtag n =
-  let cropped = n .&. 0x7FFFFFF in
+decodeMatchHeader :: VMWord -> Int
+decodeMatchHeader h = fromIntegral $ h .&. 0x7FFFFFF
+
+encodeMatchVar :: Int -> VMWord
+encodeMatchVar n = matchData MatchVar n
+
+matchData :: MatchDataType -> Int -> VMWord
+matchData mtype n =
+  let mtag = matchDataSubTag mtype in
+  let cropped = fromIntegral $ n .&. 0x7FFFFFF in
   let mtagVal = mtag `shiftL` (32 - 5) in
   makeVMValue tagMatchData (cropped .|. mtagVal)
 
-encodeCompoundSymbolHeader :: VMWord -> VMWord -> VMWord
-encodeCompoundSymbolHeader symId n = (symId `shiftL` 16) .|. n
 
-decodeCompoundSymbolHeader :: VMWord -> (VMWord, VMWord)
-decodeCompoundSymbolHeader v = ((v .&. 0xFFFF0000) `rotateL` 16, v .&. 0x0000FFFF)
+encodeCompoundSymbolHeader :: SymId -> Int -> VMWord
+encodeCompoundSymbolHeader symId n = fromIntegral $ ((symIdToInt symId) `shiftL` 16) .|. n
+
+decodeCompoundSymbolHeader :: VMWord -> (SymId, Int)
+decodeCompoundSymbolHeader v = (mkSymId $ fromIntegral $ (v .&. 0xFFFF0000) `rotateL` 16,
+                                fromIntegral $ v .&. 0x0000FFFF)
 
 
 makeVMValue :: VMWord -> VMWord -> VMWord
 makeVMValue tag i = i .|. (tag `shiftL` (32 - 4))
+
 
 
 getTag, getValue :: (Bits a, Num a) => a -> a

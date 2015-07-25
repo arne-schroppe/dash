@@ -27,7 +27,7 @@ spec = do
         let (norm, _, syms) = normalize ast
         (length syms) `shouldBe` (numBuiltInSymbols + 1)
         syms `shouldBe` (builtInSymbols ++ ["Test"])
-        norm `shouldBe` (NAtom $ NPlainSymbol (numBuiltInSymbols + 0))
+        norm `shouldBe` (NAtom $ NPlainSymbol $ mkSymId (numBuiltInSymbols + 0))
 
       it "splits a complex addition operation" $ do
         let ast = FunAp (Var "+")
@@ -176,7 +176,7 @@ spec = do
         let expected = NLet (NLocalVar 0 "") (NNumber 2) $
                        NLet (NLocalVar 1 "") (NMatchBranch [] [] $ NAtom $ NNumber 33) $
                        NLet (NLocalVar 2 "") (NMatchBranch [] [] $ NAtom $ NNumber 44) $
-                       NAtom $ NMatch 0 (NLocalVar 0 "") 0 [([], [], NLocalVar 1 ""), ([], [], NLocalVar 2 "")]
+                       NAtom $ NMatch 0 (NLocalVar 0 "") (mkConstAddr 0) [([], [], NLocalVar 1 ""), ([], [], NLocalVar 2 "")]
         norm `shouldBe` expected
 
 
@@ -191,7 +191,7 @@ spec = do
                        NLet (NLocalVar 1 "") (NNumber 2) $
                        NLet (NLocalVar 2 "") (NMatchBranch [] [] $ NAtom $ NVar $ NConstantFreeVar "a") $
                        NLet (NLocalVar 3 "") (NMatchBranch [] [] $ NAtom $ NNumber 44) $
-                       NAtom $ NMatch 0 (NLocalVar 1 "") 0 [([], [], NLocalVar 2 ""), ([], [], NLocalVar 3 "")]
+                       NAtom $ NMatch 0 (NLocalVar 1 "") (mkConstAddr 0) [([], [], NLocalVar 2 ""), ([], [], NLocalVar 3 "")]
         norm `shouldBe` expected
 
       it "captures dynamic free variables in match bodies" $ do
@@ -205,7 +205,7 @@ spec = do
                        NLet (NLocalVar 0 "") (NNumber 2) $
                        NLet (NLocalVar 1 "") (NMatchBranch ["a"] [] $ NAtom $ NVar $ NDynamicFreeVar "a") $
                        NLet (NLocalVar 2 "") (NMatchBranch [] [] $ NAtom $ NNumber 44) $
-                       NAtom $ NMatch 0 (NLocalVar 0 "") 0 [(["a"], [], NLocalVar 1 ""), ([], [], NLocalVar 2 "")]
+                       NAtom $ NMatch 0 (NLocalVar 0 "") (mkConstAddr 0) [(["a"], [], NLocalVar 1 ""), ([], [], NLocalVar 2 "")]
         norm `shouldBe` expected
 
       it "handles vars in patterns as lambda parameters" $ do
@@ -217,7 +217,7 @@ spec = do
         let expected = NLet (NLocalVar 0 "") (NNumber 2) $
                        NLet (NLocalVar 1 "") (NMatchBranch [] ["n"] $ NAtom $ NVar $ NFunParam "n") $
                        NLet (NLocalVar 2 "") (NMatchBranch [] ["m"] $ NAtom $ NVar $ NFunParam "m") $
-                       NAtom $ NMatch 1 (NLocalVar 0 "") 0 [([], ["n"], NLocalVar 1 ""), ([], ["m"], NLocalVar 2 "")]
+                       NAtom $ NMatch 1 (NLocalVar 0 "") (mkConstAddr 0) [([], ["n"], NLocalVar 1 ""), ([], ["m"], NLocalVar 2 "")]
         norm `shouldBe` expected
 
 
@@ -228,13 +228,13 @@ spec = do
                   ]
         let (norm, ctable, _) = normalize ast
         let expectedCTable = [ CMatchData [
-                               CCompoundSymbol 2 [CMatchVar 0, CMatchVar 1, CMatchVar 2],
-                               CCompoundSymbol 3 [CMatchVar 0, CMatchVar 1]
+                               CCompoundSymbol (mkSymId 2) [CMatchVar 0, CMatchVar 1, CMatchVar 2],
+                               CCompoundSymbol (mkSymId 3) [CMatchVar 0, CMatchVar 1]
                              ]]
         let expected = NLet (NLocalVar 0 "") (NNumber 2) $
                        NLet (NLocalVar 1 "") (NMatchBranch [] ["n", "o", "p"] $ NAtom $ NVar $ NFunParam "n") $
                        NLet (NLocalVar 2 "") (NMatchBranch [] ["m", "l"] $ NAtom $ NVar $ NFunParam "m") $
-                       NAtom $ NMatch 3 (NLocalVar 0 "") 0 [([], ["n", "o", "p"], NLocalVar 1 ""), ([], ["m", "l"], NLocalVar 2 "")]
+                       NAtom $ NMatch 3 (NLocalVar 0 "") (mkConstAddr 0) [([], ["n", "o", "p"], NLocalVar 1 ""), ([], ["m", "l"], NLocalVar 2 "")]
         ctable `shouldBe` expectedCTable
         norm `shouldBe` expected
 
@@ -383,9 +383,9 @@ spec = do
                   LocalBinding (Binding "f" $ LitSymbol "false" []) $
                   LitNumber 0
         let norm = pureNorm ast
-        let expected = NLet (NLocalVar 0 "x") (NPlainSymbol 2) $
-                       NLet (NLocalVar 1 "y") (NPlainSymbol 3) $
-                       NLet (NLocalVar 2 "t") (NPlainSymbol 1) $
-                       NLet (NLocalVar 3 "f") (NPlainSymbol 0) $
+        let expected = NLet (NLocalVar 0 "x") (NPlainSymbol $ mkSymId 2) $
+                       NLet (NLocalVar 1 "y") (NPlainSymbol $ mkSymId 3) $
+                       NLet (NLocalVar 2 "t") (NPlainSymbol $ mkSymId 1) $
+                       NLet (NLocalVar 3 "f") (NPlainSymbol $ mkSymId 0) $
                        NAtom $ NNumber 0
         norm `shouldBe` expected

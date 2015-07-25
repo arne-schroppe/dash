@@ -32,22 +32,25 @@ emptyCompEnv = CompEnv {
 
 
 data CompScope = CompScope {
-                   functionParams         :: Map.Map String Int
-                 , freeVariables          :: Map.Map String Int
-                 , localVariables         :: Map.Map String Int
+                   functionParams         :: Map.Map Name Reg
+                 , freeVariables          :: Map.Map Name Reg
+                 , localVariables         :: Map.Map Name Reg
                  , forwardDeclaredLambdas :: [String]
                  , selfReferenceSlot      :: Maybe Int
 
                  -- these are all the registers that hold function values which
                  -- can be called directly with Tac_call. Everything else is
                  -- called with Tac_call_cl
-                 , directCallRegs         :: [Int]
+                 , directCallRegs         :: [Reg]
 
                  , compileTimeConstants   :: Map.Map String CompileTimeConstant
                  } deriving (Show)
 
 
-makeScope :: Map.Map String Int -> Map.Map String Int -> CompScope
+-- TODO save final register locations from the start, don't calculate dynamically
+-- also, store as Map Name (Reg, VarType) where VarType = Local | Free | Param etc
+
+makeScope :: Map.Map Name Reg -> Map.Map Name Reg -> CompScope
 makeScope freeVars params = CompScope {
                functionParams = params
              , freeVariables = freeVars
@@ -72,15 +75,15 @@ data CompileTimeConstant =
     CTConstNumber VMWord
   | CTConstPlainSymbol SymId
   | CTConstCompoundSymbol ConstAddr  -- only if it exclusively contains other CompileTimeConstants
-  | CTConstLambda FunAddr  -- only if it is not a closure
+  | CTConstLambda FuncAddr  -- only if it is not a closure
   deriving (Show)
 
 
-beginFunction :: [String] -> [String] -> CodeGenState Int
+beginFunction :: [Name] -> [Name] -> CodeGenState FuncAddr
 beginFunction freeVars params = do
   state <- get
-  let localFreeVars = Map.fromList (zipWithIndex freeVars)
-  let paramBindings = Map.fromList (zipWithIndex params)
+  let localFreeVars = Map.fromList (zipWithReg freeVars)
+  let paramBindings = Map.fromList (zipWithReg params)
   let newScope = makeScope localFreeVars paramBindings
   put $ state { scopes = newScope : (scopes state) }
   checkRegisterLimits
@@ -88,7 +91,7 @@ beginFunction freeVars params = do
   return addr
 
 
-endFunction :: Int -> [Tac] -> CodeGenState ()
+endFunction :: FuncAddr -> [Tac] -> CodeGenState ()
 endFunction funAddr code = do
   replacePlaceholderWithActualCode funAddr code
   modify $ \ state -> state { scopes = (tail $ scopes state) }
@@ -100,7 +103,7 @@ numParameters = do
   return $ Map.size localParams
 
 
-param :: String -> CodeGenState (Maybe Int)
+param :: String -> CodeGenState (Maybe Reg)
 param name = do
   localParams <- gets $ functionParams.head.scopes
   let res = Map.lookup name localParams
@@ -113,14 +116,14 @@ numFreeVars = do
   return $ Map.size localFreeVars
 
 
-freeVar :: String -> CodeGenState (Maybe Int)
+freeVar :: String -> CodeGenState (Maybe Reg)
 freeVar name = do
   localFreeVars <- gets $ freeVariables.head.scopes
   let res = Map.lookup name localFreeVars
   return res
 
 
-bindLocalVar :: String -> Int ->  CodeGenState ()
+bindLocalVar :: String -> Reg ->  CodeGenState ()
 bindLocalVar "" _ = return ()
 bindLocalVar name reg = do
   scope <- getScope
@@ -128,7 +131,7 @@ bindLocalVar name reg = do
   putScope $ scope { localVariables = bindings' }
   checkRegisterLimits
 
-localVar :: String -> CodeGenState (Maybe Int)
+localVar :: String -> CodeGenState (Maybe Reg)
 localVar name = do
   localVars <- gets $ localVariables.head.scopes
   return $ Map.lookup name localVars
@@ -146,29 +149,30 @@ numLocalVars = do
 -- with it, because in some situations we already need its address while encoding it. So
 -- the placeholder helps us to give the function a fixed address, no matter when it is
 -- actually added to the list of functions.
-addFunctionPlaceholder :: CodeGenState Int
+addFunctionPlaceholder :: CodeGenState FuncAddr
 addFunctionPlaceholder = do
   state <- get
   let instrs = instructions state
   let nextFunAddr = Seq.length instrs
   let instrs' = instrs Seq.|> []
   put $ state { instructions = instrs' }
-  return nextFunAddr
+  return $ mkFuncAddr nextFunAddr
 
 
-replacePlaceholderWithActualCode :: Int -> [Tac] -> CodeGenState ()
-replacePlaceholderWithActualCode funPlaceholderAddr code = do
+replacePlaceholderWithActualCode :: FuncAddr -> [Tac] -> CodeGenState ()
+replacePlaceholderWithActualCode funcPlaceholderAddr code = do
   state <- get
   let instrs = instructions state
-  let instrs' = Seq.update funPlaceholderAddr code instrs -- replace the original function placeholder with the actual code
+  let index = funcAddrToInt funcPlaceholderAddr
+  let instrs' = Seq.update index code instrs -- replace the original function placeholder with the actual code
   put $ state { instructions = instrs' }
 
 
-getRegByName :: String -> CodeGenState Int
+getRegByName :: String -> CodeGenState Reg
 getRegByName name = do
   maybeReg <- getRegN
   case maybeReg of
-    Just index -> return index
+    Just r -> return r
     Nothing -> error $ "Unknown identifier " ++ name
   where getRegN = do
           -- TODO rewrite this in a more understandable way
@@ -176,11 +180,13 @@ getRegByName name = do
           numFree <- numFreeVars
           -- we're trying one possible type of var after another
           freeVar name `pl`
-              (param name >>= return . ((+) <$> (Just numFree) <*>)) `pl`
+              (param name >>= return . addReg numFree ) `pl`
               localVar name
+        addReg offset maybeReg =
+            ( \ r -> mkReg $ offset + (regToInt r)) <$> maybeReg
 
 
-getReg :: NstVar -> CodeGenState Int
+getReg :: NstVar -> CodeGenState Reg
 getReg var = case var of
   NConstantFreeVar _ -> error "Compiler error"
   NRecursiveVar _ -> error "Compiler error: Unexpected recursive var"
@@ -188,7 +194,7 @@ getReg var = case var of
     numFree <- numFreeVars
     maybeReg <- param name
     case maybeReg of
-            Just index -> return $ numFree + index
+            Just r -> return $ mkReg $ numFree + (regToInt r)
             Nothing -> error $ "Unknown parameter: " ++ name
 
   -- When calling a closure, the first n registers are formal arguments
@@ -197,13 +203,13 @@ getReg var = case var of
   NDynamicFreeVar name -> do
     maybeReg <- freeVar name
     case maybeReg of
-            Just index -> return index
+            Just r -> return r
             Nothing -> error $ "Unknown free var: " ++ name
 
   NLocalVar tmpVar _ -> do
     numFree <- numFreeVars
     numParams <- numParameters
-    return $ numFree + numParams + tmpVar
+    return $ mkReg $ numFree + numParams + tmpVar
 
 
 
@@ -248,7 +254,7 @@ putScope s = do
   modify $ \ state -> state { scopes = s : (tail $ scopes state) }
 
 
-addCompileTimeConst :: String -> CompileTimeConstant -> CodeGenState ()
+addCompileTimeConst :: Name -> CompileTimeConstant -> CodeGenState ()
 addCompileTimeConst "" _ = return ()
 addCompileTimeConst name c = do
   scope <- getScope
@@ -258,7 +264,7 @@ addCompileTimeConst name c = do
 
 
 -- This retrieves values for NConstantFreeVar. Those are never inside the current scope
-getCompileTimeConstInOuterScope :: String -> CodeGenState CompileTimeConstant
+getCompileTimeConstInOuterScope :: Name -> CodeGenState CompileTimeConstant
 getCompileTimeConstInOuterScope name = do
   scps <- gets scopes
   getCompConst name scps
@@ -281,3 +287,6 @@ checkRegisterLimits = do
 
 zipWithIndex :: [a] -> [(a, Int)]
 zipWithIndex l = zip l [0..(length l)]
+
+zipWithReg :: [a] -> [(a, Reg)]
+zipWithReg l = zip l $ map mkReg [0..(length l)]

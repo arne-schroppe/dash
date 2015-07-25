@@ -5,19 +5,20 @@ module Language.Dash.API
 , toAtomicConstants
 ) where
 
-import qualified Data.IntMap                         as IntMap
+import qualified Data.Map                                  as Map
 import           Language.Dash.Asm.Assembler
 import           Language.Dash.Asm.DataAssembler
 import           Language.Dash.CodeGen.CodeGen
-import           Language.Dash.Normalization.Normalization
+import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Tac
+import           Language.Dash.Normalization.Normalization
 import           Language.Dash.Parser.Lexer
 import           Language.Dash.Parser.Parser
 import           Language.Dash.VM.DataEncoding
 import           Language.Dash.VM.Types
 import           Language.Dash.VM.VM
-import           Prelude                             hiding (lex)
+import           Prelude                                   hiding (lex)
 
 (|>) :: a -> (a -> b) -> b
 (|>) = flip ($)
@@ -60,7 +61,7 @@ toAsm prog =
 
 
 
-toAtomicConstants :: String -> ([AtomicConstant], IntMap.IntMap VMWord)
+toAtomicConstants :: String -> ([AtomicConstant], Map.Map ConstAddr VMWord)
 toAtomicConstants prog =
   let (_, ctable, _) = prog |> lex |> parse |> normalize ||> compile in
   atomizeConstTable ctable

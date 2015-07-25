@@ -3,7 +3,6 @@ module Language.Dash.IR.Tac (
 , Tac
 ) where
 
-import Language.Dash.VM.Types
 import Language.Dash.IR.Data
 
 
@@ -11,12 +10,12 @@ import Language.Dash.IR.Data
 
 data ThreeAddressCode =
     Tac_ret Reg
-  | Tac_load_i Reg VMWord
+  | Tac_load_i Reg Int
   | Tac_load_addr Reg ConstAddr
   | Tac_load_ps Reg SymId         -- load plain symbol
   | Tac_load_cs Reg ConstAddr     -- load compound symbol
   | Tac_load_c Reg ConstAddr      -- load constant
-  | Tac_load_f Reg FunAddr        -- load function address (code)
+  | Tac_load_f Reg FuncAddr       -- load function address (code)
   | Tac_add Reg Reg Reg
   | Tac_sub Reg Reg Reg
   | Tac_mul Reg Reg Reg

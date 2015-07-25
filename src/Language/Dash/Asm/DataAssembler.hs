@@ -7,7 +7,7 @@ module Language.Dash.Asm.DataAssembler (
 ) where
 
 import           Control.Monad.State    hiding (state)
-import qualified Data.IntMap            as IntMap
+import qualified Data.Map               as Map
 import           Language.Dash.IR.Data
 import qualified Language.Dash.VM.DataEncoding  as Enc
 import           Language.Dash.VM.Types
@@ -30,7 +30,7 @@ TODO rename const table to constant pool?
 -- TODO explain the algorithm or simplify it (the latter is probably better)
 
 
-type ConstAddressMap = Int -> VMWord
+type ConstAddressMap = ConstAddr -> VMWord
 type ConstAtomizationState a = State ConstAtomizationEnv a
 
 
@@ -39,14 +39,14 @@ type ConstAtomizationState a = State ConstAtomizationEnv a
 encodeConstTable :: ConstTable -> ([VMWord], ConstAddressMap)
 encodeConstTable ctable =
   let (atoms, mapping) = atomizeConstTable ctable in
-  (map encodeConstant atoms, (mapping IntMap.!) )
+  (map encodeConstant atoms, (mapping Map.!) )
 
 
 -- We receive data as an array of Data.Constant objects. The first step is
 -- to split this representation into their atomic parts. This is what this
 -- function does. The next step encodes those atomic parts into their
 -- byte representation for the vm.
-atomizeConstTable :: ConstTable -> ([AtomicConstant], IntMap.IntMap VMWord)
+atomizeConstTable :: ConstTable -> ([AtomicConstant], Map.Map ConstAddr VMWord)
 atomizeConstTable ctable =
   let state = execState encTable (emptyConstAtomizationEnv ctable) in
   (atomized state, addrMap state)
@@ -77,7 +77,7 @@ atomizeConstant c = case c of
 atomizeCompoundSymbol :: SymId -> [Constant] -> ConstAtomizationState ()
 atomizeCompoundSymbol sid args = do
   setReservedSpace (1 + length args)
-  let symbolHeader = ACCompoundSymbolHeader (fromIntegral sid) (fromIntegral $ length args)
+  let symbolHeader = ACCompoundSymbolHeader sid (fromIntegral $ length args)
   atomizedArgs <- mapM atomizeConstArg args
   addAtomized $ symbolHeader : atomizedArgs
   setReservedSpace 0
@@ -110,7 +110,7 @@ atomizeConstArg c = case c of
 data ConstAtomizationEnv = ConstAtomizationEnv {
   constants         :: [Constant]
 , workQueue         :: [Constant]
-, addrMap           :: IntMap.IntMap VMWord
+, addrMap           :: Map.Map ConstAddr VMWord
 , atomized          :: [AtomicConstant] -- should be a Sequence
 , reservedSpace     :: Int
 , numAtomizedConsts :: Int
@@ -120,7 +120,7 @@ emptyConstAtomizationEnv :: [Constant] -> ConstAtomizationEnv
 emptyConstAtomizationEnv ctable = ConstAtomizationEnv {
   constants         = ctable
 , workQueue         = []
-, addrMap           = IntMap.fromList []
+, addrMap           = Map.empty
 , atomized          = []
 , reservedSpace     = 0
 , numAtomizedConsts = 0
@@ -139,8 +139,8 @@ popWorkItem = do
     ([], []) -> return Nothing
     ([], cs) -> do
           numAtomized <- gets numAtomizedConsts
-          let currentAddr = length $ atomized state
-          addAddrMapping numAtomized $ fromIntegral currentAddr
+          let currentAddr = fromIntegral $ length $ atomized state
+          addAddrMapping (mkConstAddr numAtomized) currentAddr
           state' <- get
           put $ state' { numAtomizedConsts = numAtomized + 1, constants = tail cs }
           return $ Just $ head cs
@@ -148,10 +148,10 @@ popWorkItem = do
           put (state { workQueue = tail ws })
           return $ Just $ head ws
 
-addAddrMapping :: Int -> VMWord -> ConstAtomizationState ()
+addAddrMapping :: ConstAddr -> VMWord -> ConstAtomizationState ()
 addAddrMapping src dest = do
   state <- get
-  let newMap = IntMap.insert src dest (addrMap state)
+  let newMap = Map.insert src dest (addrMap state)
   put $ state { addrMap = newMap }
 
 
@@ -162,14 +162,14 @@ pushWorkItem c = do
   put $ state { workQueue = workQ ++ [c] }
 
 
-nextFreeAddress :: ConstAtomizationState Int
+nextFreeAddress :: ConstAtomizationState ConstAddr
 nextFreeAddress = do
   state <- get
   let used = length $ atomized state
   let reserved = reservedSpace state
   let pendingItems = workQueue state
   let pending = foldl (\acc c -> acc + (spaceNeededByConstant c)) 0 pendingItems
-  return $ used + reserved + pending
+  return $ mkConstAddr $ used + reserved + pending
 
 
 spaceNeededByConstant :: Constant -> Int
@@ -208,11 +208,11 @@ data AtomicConstant =
 
 encodeConstant :: AtomicConstant -> VMWord
 encodeConstant c = case c of
-  ACPlainSymbol sid            -> Enc.encodePlainSymbol $ fromIntegral sid
-  ACCompoundSymbolRef addr     -> Enc.encodeCompoundSymbolRef $ fromIntegral addr
-  ACCompoundSymbolHeader sid n -> Enc.encodeCompoundSymbolHeader (fromIntegral sid) (fromIntegral n)
-  ACNumber n                   -> Enc.encodeNumber $ fromIntegral n
-  ACMatchHeader n              -> Enc.encodeMatchHeader $ fromIntegral n
-  ACMatchVar n                 -> Enc.encodeMatchVar $ fromIntegral n
+  ACPlainSymbol sid            -> Enc.encodePlainSymbol sid
+  ACCompoundSymbolRef addr     -> Enc.encodeCompoundSymbolRef addr
+  ACCompoundSymbolHeader sid n -> Enc.encodeCompoundSymbolHeader sid n
+  ACNumber n                   -> Enc.encodeNumber n
+  ACMatchHeader n              -> Enc.encodeMatchHeader n
+  ACMatchVar n                 -> Enc.encodeMatchVar n
 
 

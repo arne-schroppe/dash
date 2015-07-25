@@ -49,7 +49,7 @@ data NormEnv = NormEnv {
 
 emptyNormEnv :: NormEnv
 emptyNormEnv = NormEnv {
-  symbolNames = Map.fromList[ ("false", 0), ("true", 1) ]
+  symbolNames = Map.fromList[ ("false", mkSymId 0), ("true", mkSymId 1) ]
 , constTable = []
 , contexts = []
 , arities = Map.empty
@@ -218,7 +218,7 @@ addSymbolName s = do
   if Map.member s syms then
     return $ syms Map.! s
   else do
-    let nextId = Map.size syms
+    let nextId = mkSymId $ Map.size syms
     let syms' = Map.insert s nextId syms
     put $ state { symbolNames = syms' }
     return nextId
@@ -234,10 +234,10 @@ addConstant :: Constant -> NormState ConstAddr
 addConstant c = do
   state <- get
   let cTable = constTable state
-  let nextAddr = length cTable
+  let nextAddr = mkConstAddr $ length cTable
   let constTable' = cTable ++ [c] -- TODO can we cons + reverse?
   put $ state { constTable = constTable' }
-  return $ fromIntegral nextAddr
+  return nextAddr
 
 
 encodeConstant :: Expr -> NormState Constant
