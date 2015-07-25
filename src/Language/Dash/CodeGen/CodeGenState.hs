@@ -5,12 +5,11 @@ module Language.Dash.CodeGen.CodeGenState where
 
 import           Control.Monad.State          hiding (state)
 import qualified Data.Map                     as Map
-import           Data.Maybe
 import qualified Data.Sequence                as Seq
 import           Language.Dash.CodeGen.Limits
 import           Language.Dash.IR.Data
-import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Tac
+import           Language.Dash.IR.Nst
 import           Language.Dash.VM.Types
 
 
@@ -32,9 +31,7 @@ emptyCompEnv = CompEnv {
 
 
 data CompScope = CompScope {
-                   functionParams         :: Map.Map Name Reg
-                 , freeVariables          :: Map.Map Name Reg
-                 , localVariables         :: Map.Map Name Reg
+                   bindings               :: Map.Map Name Reg
                  , selfReferenceSlot      :: Maybe Int
 
                  -- these are all the registers that hold function values which
@@ -47,18 +44,13 @@ data CompScope = CompScope {
                  } deriving (Show)
 
 
--- TODO save final register locations from the start, don't calculate dynamically
--- also, store as Map Name (Reg, VarType) where VarType = Local | Free | Param etc
-
-makeScope :: Map.Map Name Reg -> Map.Map Name Reg -> CompScope
-makeScope freeVars params = CompScope {
-               functionParams = params
-             , freeVariables = freeVars
+makeScope :: Map.Map Name Reg -> CompScope
+makeScope initialBindings = CompScope {
+               bindings = initialBindings
              , selfReferenceSlot = Nothing
              , directCallRegs = []
              , compileTimeConstants = Map.empty
-             , localVariables = Map.empty
-             , nextFreeRegIndex = Map.size freeVars + Map.size params
+             , nextFreeRegIndex = Map.size initialBindings 
              }
 
 
@@ -82,10 +74,11 @@ data CompileTimeConstant =
 beginFunction :: [Name] -> [Name] -> CodeGenState FuncAddr
 beginFunction freeVars params = do
   state <- get
-  let localFreeVars = Map.fromList (zipWithReg freeVars 0)
+  let freeVarBindings = Map.fromList (zipWithReg freeVars 0)
   let paramStart = length freeVars
   let paramBindings = Map.fromList (zipWithReg params paramStart)
-  let newScope = makeScope localFreeVars paramBindings
+  -- The order of arguments for union is important. We prefer params over free vars
+  let newScope = makeScope $ Map.union paramBindings freeVarBindings
   put $ state { scopes = newScope : (scopes state) }
   checkRegisterLimits
   addr <- addFunctionPlaceholder
@@ -98,49 +91,21 @@ endFunction funAddr code = do
   modify $ \ state -> state { scopes = (tail $ scopes state) }
 
 
-numParameters :: CodeGenState Int
-numParameters = do
-  localParams <- gets $ functionParams.head.scopes
-  return $ Map.size localParams
 
 
-param :: String -> CodeGenState (Maybe Reg)
-param name = do
-  localParams <- gets $ functionParams.head.scopes
-  let res = Map.lookup name localParams
-  return res
-
-
-numFreeVars :: CodeGenState Int
-numFreeVars = do
-  localFreeVars <- gets $ freeVariables.head.scopes
-  return $ Map.size localFreeVars
-
-
-freeVar :: String -> CodeGenState (Maybe Reg)
-freeVar name = do
-  localFreeVars <- gets $ freeVariables.head.scopes
-  let res = Map.lookup name localFreeVars
-  return res
-
-
-bindLocalVar :: String -> Reg ->  CodeGenState ()
-bindLocalVar "" _ = error "Binding anonymous var"
-bindLocalVar name reg = do
+bindVar :: String -> Reg -> CodeGenState ()
+bindVar "" _ = error "Binding anonymous var"
+bindVar name reg = do
   scope <- getScope
-  let bindings' = Map.insert name reg (localVariables scope)
-  putScope $ scope { localVariables = bindings' }
+  let bindings' = Map.insert name reg (bindings scope)
+  putScope $ scope { bindings = bindings' }
   checkRegisterLimits
 
-localVar :: String -> CodeGenState (Maybe Reg)
-localVar name = do
-  localVars <- gets $ localVariables.head.scopes
-  return $ Map.lookup name localVars
 
-numLocalVars :: CodeGenState Int
-numLocalVars = do
-  localVars <- gets $ localVariables.head.scopes
-  return $ Map.size localVars
+numBindings :: CodeGenState Int
+numBindings = do
+  bs <- gets $ bindings.head.scopes
+  return $ Map.size bs
 
 
 
@@ -169,6 +134,9 @@ replacePlaceholderWithActualCode funcPlaceholderAddr code = do
   put $ state { instructions = instrs' }
 
 
+getReg :: NstVar -> CodeGenState Reg
+getReg (NVar name _) = getRegByName name
+
 getRegByName :: String -> CodeGenState Reg
 getRegByName name = do
   maybeReg <- getRegN
@@ -176,30 +144,28 @@ getRegByName name = do
     Just r -> return r
     Nothing -> error $ "Unknown identifier " ++ name
   where getRegN = do
-          -- TODO rewrite this in a more understandable way
-          let pl = liftM2 mplus
-          -- we're trying one possible type of var after another
-          freeVar name `pl` param name `pl` localVar name
+          binds <- gets $ bindings.head.scopes
+          return $ Map.lookup name binds
 
 
-getReg :: NstVar -> CodeGenState Reg
-getReg var = case var of
-  NVar _ NConstant -> error "Compiler error"
-  NVar _ NRecursiveVar -> error "Compiler error: Unexpected recursive var"
-  NVar name NFunParam -> do
-    maybeReg <- param name
-    return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
-
-  -- When calling a closure, the first n registers are formal arguments
-  -- and the next m registers are closed-over variables
-  -- TODO document this fact somewhere visible
-  NVar name NFreeVar -> do
-    maybeReg <- freeVar name
-    return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
-
-  NVar name NLocalVar -> do
-    maybeReg <- localVar name
-    return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
+-- getReg :: NstVar -> CodeGenState Reg
+-- getReg var = case var of
+--   NVar _ NConstant -> error "Compiler error"
+--   NVar _ NRecursiveVar -> error "Compiler error: Unexpected recursive var"
+--   NVar name NFunParam -> do
+--     maybeReg <- param name
+--     return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
+-- 
+--   -- When calling a closure, the first n registers are formal arguments
+--   -- and the next m registers are closed-over variables
+--   -- TODO document this fact somewhere visible
+--   NVar name NFreeVar -> do
+--     maybeReg <- freeVar name
+--     return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
+-- 
+--   NVar name NLocalVar -> do
+--     maybeReg <- localVar name
+--     return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
 
 
 newReg :: CodeGenState Reg
@@ -279,8 +245,8 @@ getCompileTimeConstInSurroundingScopes name = do
 -- TODO implement argument spilling to avoid this hard limit
 checkRegisterLimits :: CodeGenState ()
 checkRegisterLimits = do
-  values <- sequence [numLocalVars, numFreeVars, numParameters]
-  let usedRegs = sum values
+  bs <- gets $ bindings.head.scopes
+  let usedRegs = Map.size bs
   when (usedRegs >= maxRegisters) $ error "Out of free registers"
 
 

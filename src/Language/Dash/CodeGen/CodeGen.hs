@@ -153,7 +153,7 @@ compileLet tmpVar atom body =
     compileLet' :: String -> CodeGenState [Tac]
     compileLet' name = do
       rTmp <- newReg
-      bindLocalVar name rTmp
+      bindVar name rTmp
       let callDirect = canBeCalledDirectly atom
       when callDirect $ addDirectCallReg rTmp
       comp1 <- compileAtom rTmp atom name False

@@ -8,7 +8,7 @@ module Language.Dash.Normalization.NormalizationState (
 , hasBinding
 , addDynamicVar
 , lookupName
-, newAutoNamedTempVar
+, newTempVar
 , freeVariables
 
 , addSymbolName
@@ -73,8 +73,8 @@ emptyContext = Context {
 , freeVars = []
 }
 
-newAutoNamedTempVar :: NormState NstVar
-newAutoNamedTempVar = do
+newTempVar :: NormState NstVar
+newTempVar = do
   name <- newName
   return $ NVar name NLocalVar
   where

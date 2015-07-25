@@ -204,7 +204,7 @@ normalizeFunAp funExpr args k = case (funExpr, args) of
       else do -- numArgs > funArity
         let (knownFunArgs, remainingArgs) = splitAt funArity args
         nameExprList knownFunArgs $ \ normKnownFunArgs -> do
-            knownFunResult <- newAutoNamedTempVar
+            knownFunResult <- newTempVar
             let apKnownFun = NFunAp funVar normKnownFunArgs
             nameExprList remainingArgs $ \ normRemArgs -> do
                 -- The previous function application should have resulted in a new function, which we're applying here
@@ -282,7 +282,7 @@ nameExpr expr originalName k = case expr of
     letBind :: Expr -> String -> (NstVar -> NormState NstExpr) -> NormState NstExpr
     letBind expr' name k' = do
       atomizeExpr expr' name $ \ aExpr -> do
-        var <- if null name then newAutoNamedTempVar else return $ NVar name NLocalVar
+        var <- if null name then newTempVar else return $ NVar name NLocalVar
         addBinding name (var, (isDynamic aExpr))
         restExpr <- k' var
         return $ NLet var aExpr restExpr
