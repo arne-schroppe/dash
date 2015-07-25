@@ -108,7 +108,7 @@ atomizeExpr expr name k = case expr of
           -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
           -- (So in that example "let b = ..." is the inner local binding
           atomizeExpr boundExpr bname $ \ aExpr -> do
-            var <- newTempVar bname
+            let var = NLocalVar bname
             addBinding bname (var, False)
             atomizeExpr restExpr "" $ \ normBoundExpr -> do
               rest <- k normBoundExpr
@@ -282,7 +282,7 @@ nameExpr expr originalName k = case expr of
     letBind :: Expr -> String -> (NstVar -> NormState NstExpr) -> NormState NstExpr
     letBind expr' name k' = do
       atomizeExpr expr' name $ \ aExpr -> do
-        var <- if null name then newAutoNamedTempVar else newTempVar name
+        var <- if null name then newAutoNamedTempVar else return $ NLocalVar name
         addBinding name (var, (isDynamic aExpr))
         restExpr <- k' var
         return $ NLet var aExpr restExpr

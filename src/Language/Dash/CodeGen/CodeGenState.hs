@@ -199,7 +199,7 @@ getReg var = case var of
     maybeReg <- freeVar name
     return $ fromMaybe (error $ "Unknown free var: " ++ name) maybeReg
 
-  NLocalVar _ name -> do
+  NLocalVar name -> do
     maybeReg <- localVar name
     return $ fromMaybe (error $ "Unknown local var: " ++ name) maybeReg
 

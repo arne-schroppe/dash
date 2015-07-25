@@ -70,7 +70,7 @@ resolveRecLet var atom expr = do
 
 
 localVarName :: NstVar -> String
-localVarName (NLocalVar _ name) = name
+localVarName (NLocalVar name) = name
 localVarName _ = error "Internal compiler error: Something other than a local var was let-bound"
 
 

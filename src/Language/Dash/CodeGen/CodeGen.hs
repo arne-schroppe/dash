@@ -79,7 +79,7 @@ compileAtom reg atom name isResultValue = case atom of
           callInstr <- compileCallInstr reg funVar (length args) isResultValue
           return $ argInstrs ++ callInstr
   NVar var -> case var of
-          NLocalVar _ _          -> moveVarToReg var reg
+          NLocalVar _            -> moveVarToReg var reg
           NFunParam _            -> moveVarToReg var reg
           NDynamicFreeVar _      -> moveVarToReg var reg
           NConstantFreeVar vname -> compileConstantFreeVar reg vname
@@ -147,7 +147,7 @@ compileLoadLambda reg funAddr = do
 compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Tac]
 compileLet tmpVar atom body =
   case tmpVar of
-    NLocalVar _ name -> compileLet' name
+    NLocalVar name   -> compileLet' name
     _                -> compileLet' ""    -- TODO we need names for this
   where
     compileLet' :: String -> CodeGenState [Tac]

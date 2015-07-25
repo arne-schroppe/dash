@@ -8,7 +8,6 @@ module Language.Dash.Normalization.NormalizationState (
 , hasBinding
 , addDynamicVar
 , lookupName
-, newTempVar
 , newAutoNamedTempVar
 , freeVariables
 
@@ -75,22 +74,14 @@ emptyContext = Context {
 }
 
 newAutoNamedTempVar :: NormState NstVar
-newAutoNamedTempVar = do
-  newName >>= newTempVar
+newAutoNamedTempVar =
+  liftM NLocalVar newName
   where
     newName = do
       index <- gets varNameCounter
       modify $ \ env -> env { varNameCounter = index + 1 }
       return $ "$local" ++ (show index)
 
-
-newTempVar :: String -> NormState NstVar
-newTempVar name = do
-  con <- context
-  let tmpVar = tempVarCounter con
-  let nextTmpVar = tmpVar + 1
-  putContext $ con { tempVarCounter = nextTmpVar }
-  return (NLocalVar tmpVar name)
 
 
 
@@ -215,7 +206,7 @@ arity var = do
 
 varName :: NstVar -> String
 varName var = case var of
-  NLocalVar _ name      -> name
+  NLocalVar name        -> name
   NFunParam name        -> name
   NDynamicFreeVar name  -> name
   NConstantFreeVar name -> name

@@ -34,7 +34,7 @@ data NstAtomicExpr =
 
 
 data NstVar =
-    NLocalVar Int Name
+    NLocalVar Name
   | NFunParam Name
   | NDynamicFreeVar Name
   | NConstantFreeVar Name -- We should rename this to StaticFreeVar
@@ -58,7 +58,7 @@ instance Show NstExpr where
 
 instance Show NstVar where
   show v = case v of
-    NLocalVar i name -> "r" ++ (show i) ++ (if not (null name) then " '" ++ name ++ "'" else "")
+    NLocalVar name -> "r" ++ " '" ++ name ++ "'"
     NFunParam name -> "p '" ++ name ++ "'"
     NDynamicFreeVar name -> "f '" ++ name ++ "'"
     NConstantFreeVar name -> "g '" ++ name ++ "'"
