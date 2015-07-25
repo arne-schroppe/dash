@@ -126,7 +126,7 @@ freeVar name = do
 
 
 bindLocalVar :: String -> Reg ->  CodeGenState ()
-bindLocalVar "" _ = return ()
+bindLocalVar "" _ = error "Binding anonymous var"
 bindLocalVar name reg = do
   scope <- getScope
   let bindings' = Map.insert name reg (localVariables scope)
@@ -271,8 +271,8 @@ addCompileTimeConst name c = do
 
 
 -- This retrieves values for NConstantFreeVar. Those are never inside the current scope
-getCompileTimeConstInOuterScope :: Name -> CodeGenState CompileTimeConstant
-getCompileTimeConstInOuterScope name = do
+getCompileTimeConstInSurroundingScopes :: Name -> CodeGenState CompileTimeConstant
+getCompileTimeConstInSurroundingScopes name = do
   scps <- gets scopes
   getCompConst name scps
   where
@@ -288,8 +288,8 @@ getCompileTimeConstInOuterScope name = do
 checkRegisterLimits :: CodeGenState ()
 checkRegisterLimits = do
   values <- sequence [numLocalVars, numFreeVars, numParameters]
-  let usedRegs = foldr (+) 0 values
-  when (usedRegs > maxRegisters) $ error "Out of free registers"
+  let usedRegs = sum values
+  when (usedRegs >= maxRegisters) $ error "Out of free registers"
 
 
 zipWithIndex :: [a] -> [(a, Int)]

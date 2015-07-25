@@ -129,7 +129,7 @@ compilePrimOp primop reg = case primop of
 
 compileConstantFreeVar :: Reg -> Name -> CodeGenState [Tac]
 compileConstantFreeVar reg name = do
-  compConst <- getCompileTimeConstInOuterScope name
+  compConst <- getCompileTimeConstInSurroundingScopes name
   case compConst of
           CTConstNumber n -> return [Tac_load_i reg (fromIntegral n)] -- how about storing the constant in const table and simply load_c it here?
           CTConstPlainSymbol symId -> return [Tac_load_ps reg symId]
