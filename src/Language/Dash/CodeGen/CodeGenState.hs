@@ -5,6 +5,7 @@ module Language.Dash.CodeGen.CodeGenState where
 
 import           Control.Monad.State          hiding (state)
 import qualified Data.Map                     as Map
+import           Data.Maybe
 import qualified Data.Sequence                as Seq
 import           Language.Dash.CodeGen.Limits
 import           Language.Dash.IR.Data
@@ -180,9 +181,7 @@ getRegByName name = do
           -- TODO rewrite this in a more understandable way
           let pl = liftM2 mplus
           -- we're trying one possible type of var after another
-          freeVar name `pl`
-              param name `pl`
-              localVar name
+          freeVar name `pl` param name `pl` localVar name
 
 
 getReg :: NstVar -> CodeGenState Reg
@@ -191,23 +190,18 @@ getReg var = case var of
   NRecursiveVar _ -> error "Compiler error: Unexpected recursive var"
   NFunParam name -> do
     maybeReg <- param name
-    case maybeReg of
-            Just r -> return r
-            Nothing -> error $ "Unknown parameter: " ++ name
+    return $ fromMaybe (error $ "Unknown parameter: " ++ name) maybeReg
 
   -- When calling a closure, the first n registers are formal arguments
   -- and the next m registers are closed-over variables
   -- TODO document this fact somewhere visible
   NDynamicFreeVar name -> do
     maybeReg <- freeVar name
-    case maybeReg of
-            Just r -> return r
-            Nothing -> error $ "Unknown free var: " ++ name
+    return $ fromMaybe (error $ "Unknown free var: " ++ name) maybeReg
 
-  NLocalVar tmpVar _ -> do
-    numFree <- numFreeVars
-    numParams <- numParameters
-    return $ mkReg $ numFree + numParams + tmpVar
+  NLocalVar _ name -> do
+    maybeReg <- localVar name
+    return $ fromMaybe (error $ "Unknown local var: " ++ name) maybeReg
 
 
 newReg :: CodeGenState Reg

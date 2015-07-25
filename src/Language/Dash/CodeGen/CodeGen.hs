@@ -148,14 +148,14 @@ compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Tac]
 compileLet tmpVar atom body =
   case tmpVar of
     NLocalVar _ name -> compileLet' name
-    _                -> compileLet' ""
+    _                -> compileLet' ""    -- TODO we need names for this
   where
     compileLet' :: String -> CodeGenState [Tac]
     compileLet' name = do
-      rTmp <- getReg tmpVar
+      rTmp <- newReg
+      bindLocalVar name rTmp
       let callDirect = canBeCalledDirectly atom
       when callDirect $ addDirectCallReg rTmp
-      bindLocalVar name rTmp
       comp1 <- compileAtom rTmp atom name False
       comp2 <- compileExpr body
       return $ comp1 ++ comp2
