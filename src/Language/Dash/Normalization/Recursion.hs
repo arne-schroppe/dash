@@ -114,8 +114,8 @@ resolveRecVar name = do
   let maybeVar = findName name (contexts state)
   case maybeVar of
     Nothing -> error $ "Internal compiler error: Can't resolve recursive use of " ++ name
-    Just v@(NConstantFreeVar _)    -> return v
-    Just v@(NDynamicFreeVar vname) -> do
+    Just v@(NConstant _)    -> return v
+    Just v@(NFreeVar vname) -> do
       addExtraFreeVar vname
       return v
     _ -> error "resolveRecVar"
@@ -168,9 +168,9 @@ modifyContext f = do
 -- placeholder, so that we can easily pop the context later. No recursive var will resolve
 -- to it anyway.
 pushContext :: [String] -> String -> RecursionState ()
-pushContext _ "" = pushContext' "$$$invalid$$$" (NConstantFreeVar "$$$invalid$$$")
-pushContext [] n = pushContext' n (NConstantFreeVar n)
-pushContext _  n = pushContext' n (NDynamicFreeVar n)
+pushContext _ "" = pushContext' "$$$invalid$$$" (NConstant "$$$invalid$$$")
+pushContext [] n = pushContext' n (NConstant n)
+pushContext _  n = pushContext' n (NFreeVar n)
 
 
 pushContext' :: String -> NstVar -> RecursionState ()

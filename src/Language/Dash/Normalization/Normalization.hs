@@ -269,7 +269,7 @@ nameExpr expr originalName k = case expr of
     var <- lookupName name
     case var of
       -- Constant free vars are let-bound
-      NConstantFreeVar _ -> letBind expr "" k
+      NConstant _ -> letBind expr "" k
       -- Recursive vars are also let-bound. Not strictly necessary, but easier later on  (TODO loosen this restriction)
       NRecursiveVar _ -> letBind expr "" k
       -- All other vars are used directly (because they will be in a register later on)

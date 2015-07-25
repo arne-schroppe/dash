@@ -111,10 +111,10 @@ lookupName name = do
            (var, isDynamic) <- lookupNameInContext name (tail ctxs)
            if isDynamic then do
              addDynamicVar name
-             return $ NDynamicFreeVar name
+             return $ NFreeVar name
            else case var of
              NRecursiveVar _ -> return var
-             _ -> return $ NConstantFreeVar name
+             _ -> return $ NConstant name
 
 
 lookupNameInContext :: String -> [Context] -> NormState (NstVar, Bool)
@@ -208,8 +208,8 @@ varName :: NstVar -> String
 varName var = case var of
   NLocalVar name        -> name
   NFunParam name        -> name
-  NDynamicFreeVar name  -> name
-  NConstantFreeVar name -> name
+  NFreeVar name  -> name
+  NConstant name -> name
   NRecursiveVar name    -> name
 
 

@@ -143,7 +143,7 @@ spec = do
         let norm = pureNorm ast
         let expected = NLet (NLocalVar "b") (NNumber 4) $
                        NAtom $ NLambda [] ["a"] $
-                         NLet (NLocalVar $ lvn 0) (NVar $ NConstantFreeVar "b") $
+                         NLet (NLocalVar $ lvn 0) (NVar $ NConstant "b") $
                          NAtom $ NPrimOp $ NPrimOpAdd (NFunParam "a") (NLocalVar $ lvn 0)
         norm `shouldBe` expected
 
@@ -153,7 +153,7 @@ spec = do
         let norm = pureNorm ast
         let expected = NAtom $ NLambda [] ["b"] $
                        NAtom $ NLambda ["b"] ["a"] $
-                         NAtom $ NPrimOp $ NPrimOpAdd (NFunParam "a") (NDynamicFreeVar "b")
+                         NAtom $ NPrimOp $ NPrimOpAdd (NFunParam "a") (NFreeVar "b")
         norm `shouldBe` expected
 
       it "identifies nested closures" $ do
@@ -166,7 +166,7 @@ spec = do
                        NAtom $ NLambda ["a"] ["b"] $
                        NAtom $ NLambda ["b", "a"] ["c"] $
                        NAtom $ NLambda ["b", "a"] ["d"] $
-                        NAtom $ NPrimOp $ NPrimOpAdd (NDynamicFreeVar "a") (NDynamicFreeVar "b")
+                        NAtom $ NPrimOp $ NPrimOpAdd (NFreeVar "a") (NFreeVar "b")
         norm `shouldBe` expected
 
 
@@ -194,7 +194,7 @@ spec = do
         let norm = pureNorm ast
         let expected = NLet (NLocalVar "a") (NNumber 77) $
                        NLet (NLocalVar $ lvn 0) (NNumber 2) $
-                       NLet (NLocalVar $ lvn 1) (NMatchBranch [] [] $ NAtom $ NVar $ NConstantFreeVar "a") $
+                       NLet (NLocalVar $ lvn 1) (NMatchBranch [] [] $ NAtom $ NVar $ NConstant "a") $
                        NLet (NLocalVar $ lvn 2) (NMatchBranch [] [] $ NAtom $ NNumber 44) $
                        NAtom $ NMatch 0 (NLocalVar $ lvn 0) (mkConstAddr 0)
                                [ ([], [], NLocalVar $ lvn 1)
@@ -210,7 +210,7 @@ spec = do
         let norm = pureNorm ast
         let expected = NAtom $ NLambda [] ["a"] $
                        NLet (NLocalVar $ lvn 0) (NNumber 2) $
-                       NLet (NLocalVar $ lvn 1) (NMatchBranch ["a"] [] $ NAtom $ NVar $ NDynamicFreeVar "a") $
+                       NLet (NLocalVar $ lvn 1) (NMatchBranch ["a"] [] $ NAtom $ NVar $ NFreeVar "a") $
                        NLet (NLocalVar $ lvn 2) (NMatchBranch [] [] $ NAtom $ NNumber 44) $
                        NAtom $ NMatch 0 (NLocalVar $ lvn 0) (mkConstAddr 0)
                                [ (["a"], [], NLocalVar $ lvn 1)
@@ -258,7 +258,7 @@ spec = do
                   FunAp (Var "fun") [LitNumber 10]
         let norm = pureNorm ast
         let expected = NLet (NLocalVar "fun") (NLambda [] ["a"] $
-                         NLet (NLocalVar $ lvn 0) (NVar $ NConstantFreeVar "fun") $
+                         NLet (NLocalVar $ lvn 0) (NVar $ NConstant "fun") $
                          NLet (NLocalVar $ lvn 1) (NNumber 1) $
                          NLet (NLocalVar $ lvn 2) (NPrimOp $ NPrimOpAdd (NFunParam "a") (NLocalVar $ lvn 1)) $
                          NAtom $ NFunAp (NLocalVar $ lvn 0) [NLocalVar $ lvn 2]) $
@@ -278,8 +278,8 @@ spec = do
         let expected = NLet (NLocalVar "outer") (NLambda [] ["b"] $
                          NLet (NLocalVar "fun") (NLambda ["b", "fun"] ["a"] $
                            -- recursive use of "fun" will call the same closure again
-                           NLet (NLocalVar $ lvn 0) (NVar $ NDynamicFreeVar "fun") $
-                           NLet (NLocalVar $ lvn 1) (NPrimOp $ NPrimOpAdd (NFunParam "a") (NDynamicFreeVar "b")) $
+                           NLet (NLocalVar $ lvn 0) (NVar $ NFreeVar "fun") $
+                           NLet (NLocalVar $ lvn 1) (NPrimOp $ NPrimOpAdd (NFunParam "a") (NFreeVar "b")) $
                            NAtom $ NFunAp (NLocalVar $ lvn 0) [NLocalVar $ lvn 1]) $
                          NLet (NLocalVar $ lvn 2) (NNumber 10) $
                          NAtom $ NFunAp (NLocalVar "fun") [NLocalVar $ lvn 2]) $
@@ -299,8 +299,8 @@ spec = do
         let expected = NLet (NLocalVar "outer") (NLambda [] ["b"] $
                          NLet (NLocalVar "fun") (NLambda ["b", "fun"] ["a"] $
                            NLet (NLocalVar "inner") (NLambda ["b", "a", "fun"] ["x"] $
-                             NLet (NLocalVar $ lvn 0) (NVar $ NDynamicFreeVar "fun") $
-                             NLet (NLocalVar $ lvn 1) (NPrimOp $ NPrimOpAdd (NDynamicFreeVar "a") (NDynamicFreeVar "b")) $
+                             NLet (NLocalVar $ lvn 0) (NVar $ NFreeVar "fun") $
+                             NLet (NLocalVar $ lvn 1) (NPrimOp $ NPrimOpAdd (NFreeVar "a") (NFreeVar "b")) $
                              NAtom $ NFunAp (NLocalVar $ lvn 0) [NLocalVar $ lvn 1]) $
                            NLet (NLocalVar $ lvn 2) (NNumber 0) $
                            NAtom $ NFunAp (NLocalVar "inner") [NLocalVar $ lvn 2]) $

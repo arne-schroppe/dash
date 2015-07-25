@@ -36,8 +36,10 @@ data NstAtomicExpr =
 data NstVar =
     NLocalVar Name
   | NFunParam Name
-  | NDynamicFreeVar Name
-  | NConstantFreeVar Name -- We should rename this to StaticFreeVar
+  | NFreeVar Name
+
+  -- Global constants, e.g. named functions without free variables or named literals
+  | NConstant Name
   | NRecursiveVar Name
   deriving (Eq, Ord)
 
@@ -60,8 +62,8 @@ instance Show NstVar where
   show v = case v of
     NLocalVar name -> "r" ++ " '" ++ name ++ "'"
     NFunParam name -> "p '" ++ name ++ "'"
-    NDynamicFreeVar name -> "f '" ++ name ++ "'"
-    NConstantFreeVar name -> "g '" ++ name ++ "'"
+    NFreeVar name -> "f '" ++ name ++ "'"
+    NConstant name -> "g '" ++ name ++ "'"
     NRecursiveVar name -> "r '" ++ name ++ "'"
 
 instance Show NstAtomicExpr where

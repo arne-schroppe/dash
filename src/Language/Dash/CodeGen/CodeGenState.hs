@@ -35,7 +35,6 @@ data CompScope = CompScope {
                    functionParams         :: Map.Map Name Reg
                  , freeVariables          :: Map.Map Name Reg
                  , localVariables         :: Map.Map Name Reg
-                 , forwardDeclaredLambdas :: [String]
                  , selfReferenceSlot      :: Maybe Int
 
                  -- these are all the registers that hold function values which
@@ -55,7 +54,6 @@ makeScope :: Map.Map Name Reg -> Map.Map Name Reg -> CompScope
 makeScope freeVars params = CompScope {
                functionParams = params
              , freeVariables = freeVars
-             , forwardDeclaredLambdas = []
              , selfReferenceSlot = Nothing
              , directCallRegs = []
              , compileTimeConstants = Map.empty
@@ -186,7 +184,7 @@ getRegByName name = do
 
 getReg :: NstVar -> CodeGenState Reg
 getReg var = case var of
-  NConstantFreeVar _ -> error "Compiler error"
+  NConstant _ -> error "Compiler error"
   NRecursiveVar _ -> error "Compiler error: Unexpected recursive var"
   NFunParam name -> do
     maybeReg <- param name
@@ -195,7 +193,7 @@ getReg var = case var of
   -- When calling a closure, the first n registers are formal arguments
   -- and the next m registers are closed-over variables
   -- TODO document this fact somewhere visible
-  NDynamicFreeVar name -> do
+  NFreeVar name -> do
     maybeReg <- freeVar name
     return $ fromMaybe (error $ "Unknown free var: " ++ name) maybeReg
 
@@ -264,7 +262,7 @@ addCompileTimeConst name c = do
   putScope $ scope { compileTimeConstants = consts' }
 
 
--- This retrieves values for NConstantFreeVar. Those are never inside the current scope
+-- This retrieves values for NConstant. Those are never inside the current scope
 getCompileTimeConstInSurroundingScopes :: Name -> CodeGenState CompileTimeConstant
 getCompileTimeConstInSurroundingScopes name = do
   scps <- gets scopes

@@ -81,8 +81,8 @@ compileAtom reg atom name isResultValue = case atom of
   NVar var -> case var of
           NLocalVar _            -> moveVarToReg var reg
           NFunParam _            -> moveVarToReg var reg
-          NDynamicFreeVar _      -> moveVarToReg var reg
-          NConstantFreeVar vname -> compileConstantFreeVar reg vname
+          NFreeVar _      -> moveVarToReg var reg
+          NConstant vname -> compileConstantFreeVar reg vname
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches isResultValue
@@ -165,7 +165,7 @@ compileLet tmpVar atom body =
 canBeCalledDirectly :: NstAtomicExpr -> Bool
 canBeCalledDirectly atom = case atom of
   -- TODO make sure that this is actually a function (in general, if we can determine that something isn't callable, emit an error or warning)
-  NVar (NConstantFreeVar _) -> True    -- this is supposed to be a function in a surrounding context. If it isn't, calling this will result in a runtime exception
+  NVar (NConstant _) -> True    -- this is supposed to be a function in a surrounding context. If it isn't, calling this will result in a runtime exception
   NLambda [] _ _ -> True               -- this is a function inside this function's context
   _ -> False
 
