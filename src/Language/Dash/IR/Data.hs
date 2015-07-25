@@ -43,6 +43,7 @@ type SymbolNameList = [String]
 -- TODO don't use VMWord before actually getting to the VM specific parts of compilation?
 
 
+-- TODO ensure that name is never empty
 type Name = String
 
 

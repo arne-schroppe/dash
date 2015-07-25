@@ -9,6 +9,7 @@ module Language.Dash.Normalization.NormalizationState (
 , addDynamicVar
 , lookupName
 , newTempVar
+, newAutoNamedTempVar
 , freeVariables
 
 , addSymbolName
@@ -44,6 +45,7 @@ data NormEnv = NormEnv {
 , constTable  :: ConstTable -- TODO rename ConstTable to DataTable (or ConstPool)
 , contexts    :: [Context] -- head is current context
 , arities     :: Map.Map String (Int, Int) -- (Num free vars, num formal params) -- TODO for this we *really* need unique names
+, varNameCounter :: Int
 } deriving (Eq, Show)
 
 
@@ -53,9 +55,11 @@ emptyNormEnv = NormEnv {
 , constTable = []
 , contexts = []
 , arities = Map.empty
+, varNameCounter = 0
 }
 
 
+-- TODO rename to scope ? or environment? To something else at lease
 data Context = Context {
   tempVarCounter :: Int
 , bindings       :: Map.Map String (NstVar, Bool) -- Bool indicates whether this is a dynamic var or not
@@ -69,6 +73,15 @@ emptyContext = Context {
 , bindings = Map.empty
 , freeVars = []
 }
+
+newAutoNamedTempVar :: NormState NstVar
+newAutoNamedTempVar = do
+  newName >>= newTempVar
+  where
+    newName = do
+      index <- gets varNameCounter
+      modify $ \ env -> env { varNameCounter = index + 1 }
+      return $ "$local" ++ (show index)
 
 
 newTempVar :: String -> NormState NstVar

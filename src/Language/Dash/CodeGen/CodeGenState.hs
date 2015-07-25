@@ -43,6 +43,7 @@ data CompScope = CompScope {
                  , directCallRegs         :: [Reg]
 
                  , compileTimeConstants   :: Map.Map String CompileTimeConstant
+                 , nextFreeRegIndex       :: Int
                  } deriving (Show)
 
 
@@ -58,6 +59,7 @@ makeScope freeVars params = CompScope {
              , directCallRegs = []
              , compileTimeConstants = Map.empty
              , localVariables = Map.empty
+             , nextFreeRegIndex = Map.size freeVars + Map.size params
              }
 
 
@@ -207,6 +209,15 @@ getReg var = case var of
     numParams <- numParameters
     return $ mkReg $ numFree + numParams + tmpVar
 
+
+newReg :: CodeGenState Reg
+newReg = do
+  scope <- getScope
+  let nextFree = nextFreeRegIndex scope
+  let reg = mkReg nextFree
+  let scope' = scope { nextFreeRegIndex = nextFree + 1 }
+  putScope scope'
+  return reg
 
 
 -- TODO rename to isRegWithRefToKnownFunction
