@@ -34,7 +34,7 @@ data NstAtomicExpr =
 
 
 data NstVar =
-    NLocalVar Int String
+    NLocalVar Int Name
   | NFunParam Name
   | NDynamicFreeVar Name
   | NConstantFreeVar Name -- We should rename this to StaticFreeVar

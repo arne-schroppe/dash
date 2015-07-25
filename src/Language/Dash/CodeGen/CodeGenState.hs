@@ -3,7 +3,6 @@ module Language.Dash.CodeGen.CodeGenState where
 -- TODO list exported functions explicitly
 
 
-import           Control.Applicative
 import           Control.Monad.State          hiding (state)
 import qualified Data.Map                     as Map
 import qualified Data.Sequence                as Seq
@@ -82,8 +81,9 @@ data CompileTimeConstant =
 beginFunction :: [Name] -> [Name] -> CodeGenState FuncAddr
 beginFunction freeVars params = do
   state <- get
-  let localFreeVars = Map.fromList (zipWithReg freeVars)
-  let paramBindings = Map.fromList (zipWithReg params)
+  let localFreeVars = Map.fromList (zipWithReg freeVars 0)
+  let paramStart = length freeVars
+  let paramBindings = Map.fromList (zipWithReg params paramStart)
   let newScope = makeScope localFreeVars paramBindings
   put $ state { scopes = newScope : (scopes state) }
   checkRegisterLimits
@@ -177,13 +177,10 @@ getRegByName name = do
   where getRegN = do
           -- TODO rewrite this in a more understandable way
           let pl = liftM2 mplus
-          numFree <- numFreeVars
           -- we're trying one possible type of var after another
           freeVar name `pl`
-              (param name >>= return . addReg numFree ) `pl`
+              param name `pl`
               localVar name
-        addReg offset maybeReg =
-            ( \ r -> mkReg $ offset + (regToInt r)) <$> maybeReg
 
 
 getReg :: NstVar -> CodeGenState Reg
@@ -191,10 +188,9 @@ getReg var = case var of
   NConstantFreeVar _ -> error "Compiler error"
   NRecursiveVar _ -> error "Compiler error: Unexpected recursive var"
   NFunParam name -> do
-    numFree <- numFreeVars
     maybeReg <- param name
     case maybeReg of
-            Just r -> return $ mkReg $ numFree + (regToInt r)
+            Just r -> return r
             Nothing -> error $ "Unknown parameter: " ++ name
 
   -- When calling a closure, the first n registers are formal arguments
@@ -288,5 +284,5 @@ checkRegisterLimits = do
 zipWithIndex :: [a] -> [(a, Int)]
 zipWithIndex l = zip l [0..(length l)]
 
-zipWithReg :: [a] -> [(a, Reg)]
-zipWithReg l = zip l $ map mkReg [0..(length l)]
+zipWithReg :: [a] -> Int -> [(a, Reg)]
+zipWithReg l offset = zip l $ map mkReg [offset..offset + (length l)]
