@@ -2,6 +2,7 @@ module Language.Dash.IR.Nst (
   NstExpr (..)
 , NstAtomicExpr (..)
 , NstVar (..)
+, NstVarType (..)
 , NstPrimOp (..)
 ) where
 
@@ -23,7 +24,7 @@ data NstAtomicExpr =
   | NPlainSymbol SymId
   | NCompoundSymbol Bool ConstAddr  -- IsDynamic SymbolAddr
   | NString Name
-  | NVar NstVar -- This is only for returning a var as a result
+  | NVarExpr NstVar
   | NLambda [Name] [Name] NstExpr -- FreeVars FormalParams Body
   | NMatchBranch [Name] [Name] NstExpr -- FreeVars FormalParams Body
   | NPrimOp NstPrimOp
@@ -32,15 +33,16 @@ data NstAtomicExpr =
   | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures Subject PatternAddr [MatchBranchFreeVars, MatchedVars, VarHoldingMatchBranch]
   deriving (Eq, Ord)
 
-
-data NstVar =
-    NLocalVar Name
-  | NFunParam Name
-  | NFreeVar Name
-
+data NstVarType =
+    NLocalVar
+  | NFunParam
+  | NFreeVar
   -- Global constants, e.g. named functions without free variables or named literals
-  | NConstant Name
-  | NRecursiveVar Name
+  | NConstant
+  | NRecursiveVar
+  deriving (Eq, Ord)
+
+data NstVar = NVar Name NstVarType
   deriving (Eq, Ord)
 
 data NstPrimOp =
@@ -58,13 +60,16 @@ instance Show NstExpr where
     NAtom atom -> "return " ++ (show atom) ++ "\n"
     NLet var atom rest -> (show var) ++ " <- " ++ (show atom) ++ "\n" ++ (show rest)
 
-instance Show NstVar where
+instance Show NstVarType where
   show v = case v of
-    NLocalVar name -> "r" ++ " '" ++ name ++ "'"
-    NFunParam name -> "p '" ++ name ++ "'"
-    NFreeVar name -> "f '" ++ name ++ "'"
-    NConstant name -> "g '" ++ name ++ "'"
-    NRecursiveVar name -> "r '" ++ name ++ "'"
+    NLocalVar -> "l"
+    NFunParam -> "p"
+    NFreeVar -> "f"
+    NConstant -> "g"
+    NRecursiveVar -> "r"
+
+instance Show NstVar where
+  show (NVar name vartype) = (show vartype) ++ "'" ++ name ++ "'"
 
 instance Show NstAtomicExpr where
   show atom = case atom of
@@ -72,7 +77,7 @@ instance Show NstAtomicExpr where
     NPlainSymbol s -> "sym #" ++ (show s)
     NCompoundSymbol b sa -> "sym @" ++ (show sa) ++ (if b then " (dynamic)" else "")
     NString str -> "\"" ++ str ++ "\""
-    NVar v -> "var " ++ (show v)
+    NVarExpr v -> "var " ++ (show v)
     NLambda free params body -> "λ f" ++ (show free) ++ " p" ++ (show params) ++ " {\n" ++ (show body) ++ "}"
     NMatchBranch free matchedVars body -> "mλ f" ++ (show free) ++ " m" ++ (show matchedVars) ++ " {\n" ++ (show body) ++ "}"
     NPrimOp p -> show p

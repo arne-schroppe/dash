@@ -78,11 +78,11 @@ compileAtom reg atom name isResultValue = case atom of
           argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
           callInstr <- compileCallInstr reg funVar (length args) isResultValue
           return $ argInstrs ++ callInstr
-  NVar var -> case var of
-          NLocalVar _            -> moveVarToReg var reg
-          NFunParam _            -> moveVarToReg var reg
-          NFreeVar _      -> moveVarToReg var reg
-          NConstant vname -> compileConstantFreeVar reg vname
+  NVarExpr var -> case var of
+          NVar _ NLocalVar          -> moveVarToReg var reg
+          NVar _ NFunParam          -> moveVarToReg var reg
+          NVar _ NFreeVar           -> moveVarToReg var reg
+          NVar vname NConstant      -> compileConstantFreeVar reg vname
           x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
   NMatch maxCaptures subject patternAddr branches ->
           compileMatch reg subject maxCaptures patternAddr branches isResultValue
@@ -147,8 +147,8 @@ compileLoadLambda reg funAddr = do
 compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Tac]
 compileLet tmpVar atom body =
   case tmpVar of
-    NLocalVar name   -> compileLet' name
-    _                -> compileLet' ""    -- TODO we need names for this
+    NVar name NLocalVar -> compileLet' name
+    _                   -> compileLet' ""    -- TODO we need names for this
   where
     compileLet' :: String -> CodeGenState [Tac]
     compileLet' name = do
@@ -165,7 +165,7 @@ compileLet tmpVar atom body =
 canBeCalledDirectly :: NstAtomicExpr -> Bool
 canBeCalledDirectly atom = case atom of
   -- TODO make sure that this is actually a function (in general, if we can determine that something isn't callable, emit an error or warning)
-  NVar (NConstant _) -> True    -- this is supposed to be a function in a surrounding context. If it isn't, calling this will result in a runtime exception
+  NVarExpr (NVar _ NConstant) -> True    -- this is supposed to be a function in a surrounding context. If it isn't, calling this will result in a runtime exception
   NLambda [] _ _ -> True               -- this is a function inside this function's context
   _ -> False
 

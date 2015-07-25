@@ -74,8 +74,9 @@ emptyContext = Context {
 }
 
 newAutoNamedTempVar :: NormState NstVar
-newAutoNamedTempVar =
-  liftM NLocalVar newName
+newAutoNamedTempVar = do
+  name <- newName
+  return $ NVar name NLocalVar
   where
     newName = do
       index <- gets varNameCounter
@@ -111,10 +112,10 @@ lookupName name = do
            (var, isDynamic) <- lookupNameInContext name (tail ctxs)
            if isDynamic then do
              addDynamicVar name
-             return $ NFreeVar name
+             return $ NVar name NFreeVar
            else case var of
-             NRecursiveVar _ -> return var
-             _ -> return $ NConstant name
+             NVar _ NRecursiveVar -> return var
+             _ -> return $ NVar name NConstant
 
 
 lookupNameInContext :: String -> [Context] -> NormState (NstVar, Bool)
@@ -131,7 +132,7 @@ enterContext funParams = do
   pushContext emptyContext
   void $ forM funParams $ \ paramName ->
     -- Function params are always dynamic
-    addBinding paramName (NFunParam paramName, True)
+    addBinding paramName (NVar paramName NFunParam, True)
   return ()
 
 leaveContext :: NormState ()
@@ -205,12 +206,7 @@ arity var = do
   return $ Map.lookup vname (arities env)
 
 varName :: NstVar -> String
-varName var = case var of
-  NLocalVar name        -> name
-  NFunParam name        -> name
-  NFreeVar name  -> name
-  NConstant name -> name
-  NRecursiveVar name    -> name
+varName (NVar name _) = name
 
 
 --- Symbols

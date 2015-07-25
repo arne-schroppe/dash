@@ -108,7 +108,7 @@ atomizeExpr expr name k = case expr of
           -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
           -- (So in that example "let b = ..." is the inner local binding
           atomizeExpr boundExpr bname $ \ aExpr -> do
-            let var = NLocalVar bname
+            let var = NVar bname NLocalVar
             addBinding bname (var, False)
             atomizeExpr restExpr "" $ \ normBoundExpr -> do
               rest <- k normBoundExpr
@@ -135,13 +135,13 @@ normalizeSymbol sname args k = do
 normalizeVar :: String -> Cont -> NormState NstExpr
 normalizeVar name k = do
   var <- lookupName name
-  k $ NVar var
+  k $ NVarExpr var
 
 
 normalizeLambda :: [String] -> Expr -> String -> Cont -> NormState NstExpr
 normalizeLambda params bodyExpr name k = do
   enterContext params
-  addBinding name (NRecursiveVar name, False) -- TODO we don't know whether this var is dynamic or not!
+  addBinding name (NVar name NRecursiveVar, False) -- TODO we don't know whether this var is dynamic or not!
   -- TODO add arity for recursive var?
   normalizedBody <- normalizeExpr bodyExpr
   freeVars <- freeVariables
@@ -269,9 +269,9 @@ nameExpr expr originalName k = case expr of
     var <- lookupName name
     case var of
       -- Constant free vars are let-bound
-      NConstant _ -> letBind expr "" k
+      NVar _ NConstant -> letBind expr "" k
       -- Recursive vars are also let-bound. Not strictly necessary, but easier later on  (TODO loosen this restriction)
-      NRecursiveVar _ -> letBind expr "" k
+      NVar _ NRecursiveVar -> letBind expr "" k
       -- All other vars are used directly (because they will be in a register later on)
       v -> do
             bodyExpr <- k v
@@ -282,7 +282,7 @@ nameExpr expr originalName k = case expr of
     letBind :: Expr -> String -> (NstVar -> NormState NstExpr) -> NormState NstExpr
     letBind expr' name k' = do
       atomizeExpr expr' name $ \ aExpr -> do
-        var <- if null name then newAutoNamedTempVar else return $ NLocalVar name
+        var <- if null name then newAutoNamedTempVar else return $ NVar name NLocalVar
         addBinding name (var, (isDynamic aExpr))
         restExpr <- k' var
         return $ NLet var aExpr restExpr

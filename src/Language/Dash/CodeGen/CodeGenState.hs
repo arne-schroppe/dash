@@ -184,22 +184,22 @@ getRegByName name = do
 
 getReg :: NstVar -> CodeGenState Reg
 getReg var = case var of
-  NConstant _ -> error "Compiler error"
-  NRecursiveVar _ -> error "Compiler error: Unexpected recursive var"
-  NFunParam name -> do
+  NVar _ NConstant -> error "Compiler error"
+  NVar _ NRecursiveVar -> error "Compiler error: Unexpected recursive var"
+  NVar name NFunParam -> do
     maybeReg <- param name
-    return $ fromMaybe (error $ "Unknown parameter: " ++ name) maybeReg
+    return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
 
   -- When calling a closure, the first n registers are formal arguments
   -- and the next m registers are closed-over variables
   -- TODO document this fact somewhere visible
-  NFreeVar name -> do
+  NVar name NFreeVar -> do
     maybeReg <- freeVar name
-    return $ fromMaybe (error $ "Unknown free var: " ++ name) maybeReg
+    return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
 
-  NLocalVar name -> do
+  NVar name NLocalVar -> do
     maybeReg <- localVar name
-    return $ fromMaybe (error $ "Unknown local var: " ++ name) maybeReg
+    return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
 
 
 newReg :: CodeGenState Reg

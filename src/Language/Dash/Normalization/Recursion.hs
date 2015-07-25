@@ -70,7 +70,7 @@ resolveRecLet var atom expr = do
 
 
 localVarName :: NstVar -> String
-localVarName (NLocalVar name) = name
+localVarName (NVar name NLocalVar) = name
 localVarName _ = error "Internal compiler error: Something other than a local var was let-bound"
 
 
@@ -82,9 +82,9 @@ resolveRecAtom atom name = case atom of
   NLambda freeVars params expr -> resolveRecLambda NLambda freeVars params expr name
   NMatchBranch freeVars params expr -> resolveRecLambda NMatchBranch freeVars params expr ""
   NMatch maxCapt resultVar addr branches -> resolveRecMatch maxCapt resultVar addr branches
-  NVar (NRecursiveVar vname) -> do
+  NVarExpr (NVar vname NRecursiveVar) -> do
     var <- resolveRecVar vname
-    return $ (NVar var, [])
+    return $ (NVarExpr var, [])
   a -> return (a, [])
 
 
@@ -114,8 +114,8 @@ resolveRecVar name = do
   let maybeVar = findName name (contexts state)
   case maybeVar of
     Nothing -> error $ "Internal compiler error: Can't resolve recursive use of " ++ name
-    Just v@(NConstant _)    -> return v
-    Just v@(NFreeVar vname) -> do
+    Just v@(NVar _ NConstant)    -> return v
+    Just v@(NVar vname NFreeVar) -> do
       addExtraFreeVar vname
       return v
     _ -> error "resolveRecVar"
@@ -168,9 +168,9 @@ modifyContext f = do
 -- placeholder, so that we can easily pop the context later. No recursive var will resolve
 -- to it anyway.
 pushContext :: [String] -> String -> RecursionState ()
-pushContext _ "" = pushContext' "$$$invalid$$$" (NConstant "$$$invalid$$$")
-pushContext [] n = pushContext' n (NConstant n)
-pushContext _  n = pushContext' n (NFreeVar n)
+pushContext _ "" = pushContext' "$$$invalid$$$" (NVar "$$$invalid$$$" NConstant)
+pushContext [] n = pushContext' n (NVar n NConstant)
+pushContext _  n = pushContext' n (NVar n NFreeVar)
 
 
 pushContext' :: String -> NstVar -> RecursionState ()
