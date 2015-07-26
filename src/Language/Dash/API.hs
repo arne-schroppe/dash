@@ -27,11 +27,13 @@ import           Prelude                                   hiding (lex)
 (||>) (a, b, c) d = d a b c
 
 -- TODO have separate compile and run and add methods (add is for repl)
--- TODO in cabal only export API module and reexport all relevant types and functions here (or rename this module)
+-- TODO in cabal only export API module and reexport all relevant types and functions
+-- here (or rename this module)
 
 -- TODO add showAsm
 -- also, optimize the const table (remove duplicates)
--- don't bleed Word32 (and fromIntegral) out into the rest. Type Consttable as [[Int]] or [ConstTableEntry] where ConstTableEntry = [Int]
+-- don't bleed Word32 (and fromIntegral) out into the rest. Type Consttable as [[Int]]
+-- or [ConstTableEntry] where ConstTableEntry = [Int]
 -- Add better typing for several things, also for uncompiled asm
 
 -- TODO find a style and use it consistently
@@ -42,7 +44,13 @@ import           Prelude                                   hiding (lex)
 
 run :: String -> IO VMValue
 run prog = do
-  (value, ctable, symNames) <-  prog |> lex |> parse |> normalize ||> compile ||> assemble ||> execute
+  (value, ctable, symNames) <- prog
+                               |> lex
+                               |> parse
+                               |> normalize
+                               ||> compile
+                               ||> assemble
+                               ||> execute
   return $ decode value ctable symNames
 
 
@@ -58,7 +66,6 @@ toAsm :: String -> [[Tac]]
 toAsm prog =
   let (asm, _, _) = prog |> lex |> parse |> normalize ||> compile in
   asm
-
 
 
 toAtomicConstants :: String -> ([AtomicConstant], Map.Map ConstAddr VMWord)

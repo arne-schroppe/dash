@@ -11,34 +11,36 @@ import           Language.Dash.IR.Nst
 -- State
 
 
-data RecursionEnv = RecursionEnv {
-  contexts :: [RecursionContext]
-}
+data RecursionEnv = RecursionEnv
+  { contexts :: [RecursionContext]
+  }
 
 
 emptyRecursionEnv :: RecursionEnv
-emptyRecursionEnv = RecursionEnv {
-  contexts = []
-}
+emptyRecursionEnv = RecursionEnv
+  { contexts = []
+  }
 
 
-data RecursionContext = RecursionContext {
-  lambdaName     :: String
-, lambdaVar      :: NstVar
+data RecursionContext = RecursionContext
+  { lambdaName     :: String
+  , lambdaVar      :: NstVar
 
   -- 'extra free vars' are the additional free variables that are created when
   -- resolving recursion that involves closures or unknown functions
-, extraFreeVars  :: [String]
-, freeVarsForVar :: Map.Map NstVar [String]
-}
+  , extraFreeVars  :: [String]
+  , freeVarsForVar :: Map.Map NstVar [String]
+  }
+
 
 emptyRecursionContext :: String -> NstVar -> RecursionContext
-emptyRecursionContext lamName lamVar = RecursionContext {
-  lambdaName = lamName
-, lambdaVar  = lamVar
-, extraFreeVars = []
-, freeVarsForVar = Map.empty
-}
+emptyRecursionContext lamName lamVar = RecursionContext
+  { lambdaName = lamName
+  , lambdaVar  = lamVar
+  , extraFreeVars = []
+  , freeVarsForVar = Map.empty
+  }
+
 
 type RecursionState a = State RecursionEnv a
 
@@ -46,12 +48,14 @@ type RecursionState a = State RecursionEnv a
 resolveRecursion :: NstExpr -> NstExpr
 resolveRecursion normExpr = evalState (resolveRecExprInContext normExpr) emptyRecursionEnv
 
+
 resolveRecExprInContext :: NstExpr -> RecursionState NstExpr
 resolveRecExprInContext expr = do
   pushContext [] ""
   expr' <- resolveRecExpr expr
   popContext
   return expr'
+
 
 resolveRecExpr :: NstExpr -> RecursionState NstExpr
 resolveRecExpr normExpr = case normExpr of
@@ -76,28 +80,44 @@ localVarName _ = error "Internal compiler error: Something other than a local va
 
 type LambdaCtor = [String] -> [String] -> NstExpr -> NstAtomicExpr
 
+
 resolveRecAtom :: NstAtomicExpr -> String -> RecursionState (NstAtomicExpr, [String])
 resolveRecAtom atom name = case atom of
   -- Invariant: Recursive vars are always let-bound  (TODO loosen this restriction later)
-  NLambda freeVars params expr -> resolveRecLambda NLambda freeVars params expr name
-  NMatchBranch freeVars params expr -> resolveRecLambda NMatchBranch freeVars params expr ""
-  NMatch maxCapt resultVar addr branches -> resolveRecMatch maxCapt resultVar addr branches
+  NLambda freeVars params expr ->
+      resolveRecLambda NLambda freeVars params expr name
+  NMatchBranch freeVars params expr ->
+      resolveRecLambda NMatchBranch freeVars params expr ""
+  NMatch maxCapt resultVar addr branches ->
+      resolveRecMatch maxCapt resultVar addr branches
   NVarExpr (NVar vname NRecursiveVar) -> do
-    var <- resolveRecVar vname
-    return (NVarExpr var, [])
-  a -> return (a, [])
+      var <- resolveRecVar vname
+      return (NVarExpr var, [])
+  a ->
+      return (a, [])
 
 
-resolveRecMatch :: Int -> NstVar -> ConstAddr -> [([String], [String], NstVar)] -> RecursionState (NstAtomicExpr, [String])
+resolveRecMatch :: Int
+                -> NstVar
+                -> ConstAddr
+                -> [([String], [String], NstVar)]
+                -> RecursionState (NstAtomicExpr, [String])
 resolveRecMatch maxCapt resultVar addr branches = do
   newBranches <- forM branches ( \ (_, capturedVars, branchVar) -> do
                                    freeVars <- getFreeVarsForLocalVar branchVar
                                    return (freeVars, capturedVars, branchVar))
   return (NMatch maxCapt resultVar addr newBranches, [])
 
--- We return the free vars for this lambda so that match instructions coming later can know about them
--- (they need to know about free vars so that they can call match-branches correctly)
-resolveRecLambda :: LambdaCtor -> [String] -> [String] -> NstExpr -> String -> RecursionState (NstAtomicExpr, [String])
+
+-- We return the free vars for this lambda so that match instructions coming later
+-- can know about them. (they need to know about free vars so that they can call
+-- match-branches correctly.)
+resolveRecLambda :: LambdaCtor
+                 -> [String]
+                 -> [String]
+                 -> NstExpr
+                 -> String
+                 -> RecursionState (NstAtomicExpr, [String])
 resolveRecLambda lambdaConstructor freeVars params expr name = do
   pushContext freeVars name
   resolvedBody <- resolveRecExpr expr
@@ -113,19 +133,23 @@ resolveRecVar name = do
   state <- get
   let maybeVar = findName name (contexts state)
   case maybeVar of
-    Nothing -> error $ "Internal compiler error: Can't resolve recursive use of " ++ name
-    Just v@(NVar _ NConstant)    -> return v
+    Nothing ->
+        error $ "Internal compiler error: Can't resolve recursive use of " ++ name
+    Just v@(NVar _ NConstant) ->
+        return v
     Just v@(NVar vname NFreeVar) -> do
-      addExtraFreeVar vname
-      return v
-    _ -> error "resolveRecVar"
+        addExtraFreeVar vname
+        return v
+    _ ->
+        error "resolveRecVar"
 
 
 findName :: String -> [RecursionContext] -> Maybe NstVar
 findName _ []             = Nothing
 findName name (context:cs) =
-  if lambdaName context == name then Just $ lambdaVar context
-  else findName name cs
+  if lambdaName context == name
+    then Just $ lambdaVar context
+    else findName name cs
 
 
 addExtraFreeVar :: String -> RecursionState ()
@@ -143,6 +167,7 @@ setFreeVarsForLocalVar var freeVars = do
   let freeVarMap = freeVarsForVar context
   modifyContext $ \ ctx -> ctx { freeVarsForVar = Map.insert var freeVars freeVarMap }
 
+
 getFreeVarsForLocalVar :: NstVar -> RecursionState [String]
 getFreeVarsForLocalVar var = do
   context <- getContext
@@ -151,16 +176,19 @@ getFreeVarsForLocalVar var = do
       Nothing -> error $ "Internal compiler error: Unknown local var: " ++ show var
       Just freeVars -> return freeVars
 
+
 getContext :: RecursionState RecursionContext
 getContext = do
   state <- get
   return $ head $ contexts state
+
 
 modifyContext :: (RecursionContext -> RecursionContext) -> RecursionState ()
 modifyContext f = do
   ctx <- getContext
   let ctx' = f ctx
   modify $ \ state -> state { contexts = ctx' : tail (contexts state) }
+
 
 -- TODO this doesn't work for mutual recursion
 

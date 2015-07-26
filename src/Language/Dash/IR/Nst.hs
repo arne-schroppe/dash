@@ -18,7 +18,6 @@ data NstExpr =
   deriving (Eq, Ord)
 
 
-
 data NstAtomicExpr =
     NNumber Int
   | NPlainSymbol SymId
@@ -30,19 +29,26 @@ data NstAtomicExpr =
   | NPrimOp NstPrimOp
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
   | NFunAp NstVar [NstVar]
-  | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures Subject PatternAddr [MatchBranchFreeVars, MatchedVars, VarHoldingMatchBranch]
+  | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures Subject
+                                                           -- PatternAddr
+                                                           -- [ MatchBranchFreeVars
+                                                           -- , MatchedVars
+                                                           -- , MatchBranchVar]
   deriving (Eq, Ord)
+
 
 data NstVarType =
     NLocalVar
   | NFunParam
   | NFreeVar
-  | NConstant -- Global constants, e.g. named functions without free variables or named literals
+  | NConstant -- Global constants, e.g. named functions without free vars or literals
   | NRecursiveVar
   deriving (Eq, Ord)
 
+
 data NstVar = NVar Name NstVarType
   deriving (Eq, Ord)
+
 
 data NstPrimOp =
     NPrimOpAdd NstVar NstVar
@@ -53,11 +59,11 @@ data NstPrimOp =
   deriving (Eq, Ord, Show)
 
 
-
 instance Show NstExpr where
   show expr = case expr of
     NAtom atom -> "return " ++ show atom ++ "\n"
     NLet var atom rest -> show var ++ " <- " ++ show atom ++ "\n" ++ show rest
+
 
 instance Show NstVarType where
   show v = case v of
@@ -67,8 +73,10 @@ instance Show NstVarType where
     NConstant     -> "g"
     NRecursiveVar -> "r"
 
+
 instance Show NstVar where
   show (NVar name vartype) = show vartype ++ "'" ++ name ++ "'"
+
 
 instance Show NstAtomicExpr where
   show atom = case atom of

@@ -34,10 +34,10 @@ decodeCompoundSymbol :: VMWord -> [VMWord] -> SymbolNameList -> VMValue
 decodeCompoundSymbol addr ctable symNames =
   let subCTable = drop (fromIntegral addr) ctable in
   let (symId, nArgs) = decodeCompoundSymbolHeader (head subCTable) in
-  let decoded = map (\v -> decode v ctable symNames) (take (fromIntegral nArgs) $ tail subCTable) in
+  let decoded = map (\v -> decode v ctable symNames)
+                    (take (fromIntegral nArgs) $ tail subCTable) in
   let symName = symNames !! symIdToInt symId in
   VMSymbol symName decoded
-
 
 encodeNumber :: Int -> VMWord
 encodeNumber = makeVMValue tagNumber . ensureRange . fromIntegral
@@ -46,7 +46,10 @@ encodePlainSymbol :: SymId -> VMWord
 encodePlainSymbol = makeVMValue tagPlainSymbol . ensureRange . fromIntegral . symIdToInt
 
 encodeCompoundSymbolRef :: ConstAddr -> VMWord
-encodeCompoundSymbolRef = makeVMValue tagCompoundSymbol . ensureRange . fromIntegral . constAddrToInt
+encodeCompoundSymbolRef = makeVMValue tagCompoundSymbol
+                          . ensureRange
+                          . fromIntegral
+                          . constAddrToInt
 
 ensureRange :: (Ord a, Num a) => a -> a
 ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
@@ -73,7 +76,6 @@ matchData mtype n =
   let mtagVal = mtag `shiftL` (32 - 5) in
   makeVMValue tagMatchData (cropped .|. mtagVal)
 
-
 encodeCompoundSymbolHeader :: SymId -> Int -> VMWord
 encodeCompoundSymbolHeader symId n = fromIntegral $ (symIdToInt symId `shiftL` 16) .|. n
 
@@ -81,18 +83,15 @@ decodeCompoundSymbolHeader :: VMWord -> (SymId, Int)
 decodeCompoundSymbolHeader v = (mkSymId $ fromIntegral $ (v .&. 0xFFFF0000) `rotateL` 16,
                                 fromIntegral $ v .&. 0x0000FFFF)
 
-
 makeVMValue :: VMWord -> VMWord -> VMWord
 makeVMValue tag i = i .|. (tag `shiftL` (32 - 4))
-
-
 
 getTag, getValue :: (Bits a, Num a) => a -> a
 getTag v = (v .&. 0xF0000000) `rotateL` 4
 getValue v = v .&. 0x0FFFFFFF
 
 
-tagNumber, tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagClosure :: VMWord
+tagNumber ,tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagClosure:: VMWord
 tagNumber = 0x0
 tagPlainSymbol = 0x4
 tagCompoundSymbol = 0x5
