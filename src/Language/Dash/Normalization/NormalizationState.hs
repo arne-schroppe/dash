@@ -73,6 +73,7 @@ emptyContext = Context
   , freeVars = []
   }
 
+
 newTempVar :: NormState NstVar
 newTempVar = do
   name <- newName
@@ -82,9 +83,6 @@ newTempVar = do
       index <- gets varNameCounter
       modify $ \ env -> env { varNameCounter = index + 1 }
       return $ "$local" ++ show index
-
-
-
 
 {-
 A name lookup can have these outcomes:

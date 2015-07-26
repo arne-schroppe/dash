@@ -246,7 +246,7 @@ compileMatch :: Reg
              -> [([Name], [Name], NstVar)]
              -> Bool
              -> CodeGenState [Opcode]
-compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = do
+compileMatch resultReg subject _{- maxCaptures -} patternAddr branches isResultValue = do
   -- the variables containing matchbranches to call
   let matchBranchVars = map (\ (_, _, a) -> a) branches
   subjR <- getReg subject
