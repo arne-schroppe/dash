@@ -78,7 +78,7 @@ static int const_table_length = 0;
       call_failed = true;                \
     } \
     else {                            \
-      int func_address = from_val(func); \
+      int func_address = get_val(func); \
       if(frame != &next_frame) { \
         int num_args = get_arg_r2(instr); \
         memcpy(frame->reg, next_frame.reg, num_args * sizeof(vm_value)); \
@@ -98,7 +98,7 @@ vm_value *pap_pointer; \
   *pap_pointer = pap_header(pap_arity, num_pap_args); /* write header */ \
   *(pap_pointer + 1) = func_address; \
   memcpy(pap_pointer + pap_header_size + offset, next_frame.reg, num_args * sizeof(vm_value)); \
-  pap_value = val( (vm_value) pap_address, vm_tag_pap ); \
+  pap_value = make_tagged_val( (vm_value) pap_address, vm_tag_pap ); \
 }
 
 
@@ -161,7 +161,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
   vm_value tag = get_tag(lambda);
   if(tag == vm_tag_pap ) {
 
-    heap_address cl_address = (heap_address)from_val(lambda);
+    heap_address cl_address = (heap_address)get_val(lambda);
 
     vm_value *cl_pointer = heap_get_pointer(cl_address);
     int header = *cl_pointer;
@@ -218,7 +218,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
   else if (tag == vm_tag_function) {
 
-    int func_address = from_val(lambda);
+    int func_address = get_val(lambda);
     vm_instruction fun_header = program[func_address];
     //TODO check fun header "opcode"
     int arity = get_arg_i(fun_header);
@@ -285,8 +285,8 @@ bool is_equal(vm_value l, vm_value r) {
   }
 
   if ( l_tag == vm_tag_compound_symbol ) {
-    int l_addr = from_val(l);
-    int r_addr = from_val(r);
+    int l_addr = get_val(l);
+    int r_addr = get_val(r);
     vm_value l_header = const_table[l_addr];
     vm_value r_header = const_table[r_addr];
 
@@ -337,13 +337,13 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
       return pattern == subject;
 
     case vm_tag_compound_symbol: {
-      vm_value pattern_address = from_val(pattern);
+      vm_value pattern_address = get_val(pattern);
 
       check_ctable_index(pattern_address)
       vm_value pattern_header = const_table[pattern_address];
       vm_value pattern_id = compound_symbol_id(pattern_header);
 
-      vm_value subject_address = from_val(subject);
+      vm_value subject_address = get_val(subject);
 
       check_ctable_index(subject_address)
       vm_value subject_header = const_table[subject_address];
@@ -424,7 +424,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int reg0 = get_arg_r0(instr);
         int value = get_arg_i(instr);
         check_reg(reg0);
-        get_reg(reg0) = val(value, vm_tag_plain_symbol);
+        get_reg(reg0) = make_tagged_val(value, vm_tag_plain_symbol);
         debug( printf("LOADss  r%02i #%i\n", reg0, value) );
       }
       break;
@@ -434,7 +434,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int reg0 = get_arg_r0(instr);
         int value = get_arg_i(instr);
         check_reg(reg0);
-        get_reg(reg0) = val(value, vm_tag_compound_symbol);
+        get_reg(reg0) = make_tagged_val(value, vm_tag_compound_symbol);
         debug( printf("LOADcs r%02i #%i\n", reg0, value) );
       }
       break;
@@ -456,7 +456,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int reg0 = get_arg_r0(instr);
         int value = get_arg_i(instr);
         check_reg(reg0);
-        get_reg(reg0) = val(value, vm_tag_function);
+        get_reg(reg0) = make_tagged_val(value, vm_tag_function);
         debug( printf("LOADf  r%02i #%i\n", reg0, value) );
       }
       break;
@@ -685,7 +685,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           break;
         }
 
-        heap_address cl_address = from_val(closure);
+        heap_address cl_address = get_val(closure);
         check_reg(get_arg_r1(instr));
         vm_value new_value = get_reg(get_arg_r1(instr));
         int arg_index = get_arg_r2(instr);
@@ -717,7 +717,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           break;
         }
 
-        int func_address = from_val(func);
+        int func_address = get_val(func);
         int num_args = get_arg_r2(instr);
 
         vm_value function_header = program[func_address];
@@ -749,10 +749,10 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         check_reg(result_reg);
 
         if( is_equal(l, r)) {
-          get_reg(result_reg) = val(symbol_id_true, vm_tag_plain_symbol);
+          get_reg(result_reg) = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
         }
         else {
-          get_reg(result_reg) = val(symbol_id_false, vm_tag_plain_symbol);
+          get_reg(result_reg) = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
         }
       }
       break;

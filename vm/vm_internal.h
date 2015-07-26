@@ -21,8 +21,8 @@ typedef struct _stack_frame stack_frame;
 // reading values
 
 #define __tag_mask(t) ((t & 0xF) << (sizeof(vm_value) * 8 - __tag_bits))
-#define val(x, t) (x | __tag_mask(t))
-#define from_val(v) (v & 0x0FFFFFFF)
+#define make_tagged_val(x, t) (x | __tag_mask(t))
+#define get_val(v) (v & 0x0FFFFFFF)
 #define get_tag(x) (x >> (sizeof(vm_value) * 8 - __tag_bits))
 
 #define pap_header(arity, num_vars) ((arity << 16) | num_vars)
@@ -39,9 +39,9 @@ typedef struct _stack_frame stack_frame;
 
 // creating values
 
-#define number(x) val(x, vm_type_number)
-#define plain_symbol(x) val(x, vm_type_plain_symbol)
-#define compound_symbol(x) val(x, vm_type_compound_symbol)
+#define number(x) get_val(x, vm_type_number)
+#define plain_symbol(x) get_val(x, vm_type_plain_symbol)
+#define compound_symbol(x) get_val(x, vm_type_compound_symbol)
 
 // In addition to the usual tag, match data also uses the bit after the tag (currently the
 // fifth bit from the left) to encode additional information. If the bit is set, the value

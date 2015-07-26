@@ -529,6 +529,10 @@ K Refactoring
 - General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
 K TODO make it impossible to reassign values (d'oh!)
 K Limits (integers, num local vars, num arguments, num symbols, etc)
+- Put all compiler errors into a common error modules
+- unify naming, e.g. fun/func, get vs. no prefix, etc
+- Use better types (Reg as member of Num typeclass)
+- Lots and lots of cleanup. Unified names and parameter orders and smart constructors, etc
 
 missing language features:
 K Closures
