@@ -8,8 +8,8 @@ import qualified Data.Map                     as Map
 import qualified Data.Sequence                as Seq
 import           Language.Dash.CodeGen.Limits
 import           Language.Dash.IR.Data
-import           Language.Dash.IR.Tac
 import           Language.Dash.IR.Nst
+import           Language.Dash.IR.Tac
 import           Language.Dash.VM.Types
 
 
@@ -17,42 +17,40 @@ import           Language.Dash.VM.Types
 
 type CodeGenState a = State CompEnv a
 
-data CompEnv = CompEnv {
-                   instructions :: Seq.Seq [Tac]
-                 , scopes       :: [CompScope]
-                 }
+data CompEnv = CompEnv
+  { instructions :: Seq.Seq [Tac]
+  , scopes       :: [CompScope]
+  }
 
 
 emptyCompEnv :: CompEnv
-emptyCompEnv = CompEnv {
-                   instructions = Seq.fromList []
-                 , scopes = []
-                 }
+emptyCompEnv = CompEnv
+  { instructions = Seq.fromList []
+  , scopes = []
+  }
 
 
-data CompScope = CompScope {
-                   bindings               :: Map.Map Name Reg
-                 , selfReferenceSlot      :: Maybe Int
+data CompScope = CompScope
+  { bindings             :: Map.Map Name Reg
+  , selfReferenceSlot    :: Maybe Int
 
-                 -- these are all the registers that hold function values which
-                 -- can be called directly with Tac_call. Everything else is
-                 -- called with Tac_call_cl
-                 , directCallRegs         :: [Reg]
-
-                 , compileTimeConstants   :: Map.Map String CompileTimeConstant
-                 , nextFreeRegIndex       :: Int
-                 } deriving (Show)
+  -- these are all the registers that hold function values which
+  -- can be called directly with Tac_call. Everything else is
+  -- called with Tac_call_cl
+  , directCallRegs       :: [Reg]
+  , compileTimeConstants :: Map.Map String CompileTimeConstant
+  , nextFreeRegIndex     :: Int
+  } deriving (Show)
 
 
 makeScope :: Map.Map Name Reg -> CompScope
-makeScope initialBindings = CompScope {
-               bindings = initialBindings
-             , selfReferenceSlot = Nothing
-             , directCallRegs = []
-             , compileTimeConstants = Map.empty
-             , nextFreeRegIndex = Map.size initialBindings 
-             }
-
+makeScope initialBindings = CompScope
+  { bindings = initialBindings
+  , selfReferenceSlot = Nothing
+  , directCallRegs = []
+  , compileTimeConstants = Map.empty
+  , nextFreeRegIndex = Map.size initialBindings
+  }
 
 
 -- This helps us to keep track of constant values in the code. They overlap
@@ -66,7 +64,7 @@ makeScope initialBindings = CompScope {
 data CompileTimeConstant =
     CTConstNumber VMWord
   | CTConstPlainSymbol SymId
-  | CTConstCompoundSymbol ConstAddr  -- only if it exclusively contains other CompileTimeConstants
+  | CTConstCompoundSymbol ConstAddr -- only if it only contains other CompileTimeConstants
   | CTConstLambda FuncAddr  -- only if it is not a closure
   deriving (Show)
 
@@ -90,6 +88,7 @@ endFunction funAddr code = do
   replacePlaceholderWithActualCode funAddr code
   modify $ \ state -> state { scopes = tail $ scopes state }
 
+
 bindVar :: String -> Reg -> CodeGenState ()
 bindVar "" _ = error "Binding anonymous var"
 bindVar name reg = do
@@ -103,8 +102,6 @@ numBindings :: CodeGenState Int
 numBindings = do
   bs <- gets $ bindings.head.scopes
   return $ Map.size bs
-
-
 
 
 -- a placeholder is needed because we might start to encode other functions while encoding
@@ -127,12 +124,14 @@ replacePlaceholderWithActualCode funcPlaceholderAddr code = do
   state <- get
   let instrs = instructions state
   let index = funcAddrToInt funcPlaceholderAddr
-  let instrs' = Seq.update index code instrs -- replace the original function placeholder with the actual code
+  -- replace the original function placeholder with the actual code
+  let instrs' = Seq.update index code instrs
   put $ state { instructions = instrs' }
 
 
 getReg :: NstVar -> CodeGenState Reg
 getReg (NVar name _) = getRegByName name
+
 
 getRegByName :: String -> CodeGenState Reg
 getRegByName name = do
@@ -162,6 +161,7 @@ isDirectCallReg reg = do
   let dCallRegs = directCallRegs scope
   return $ Prelude.elem reg dCallRegs
 
+
 -- TODO same here (rename)
 addDirectCallReg :: Reg -> CodeGenState ()
 addDirectCallReg reg = do
@@ -173,6 +173,7 @@ addDirectCallReg reg = do
 
 getSelfReference :: CodeGenState (Maybe Int)
 getSelfReference = liftM selfReferenceSlot getScope
+
 
 setSelfReferenceSlot :: Int -> CodeGenState ()
 setSelfReferenceSlot index = do
@@ -211,7 +212,8 @@ getCompileTimeConstInSurroundingScopes name = do
   scps <- gets scopes
   getCompConst name scps
   where
-    getCompConst _ [] = error $ "Compiler error: no compile time constant named '" ++ name ++ "'"
+    getCompConst _ [] = error $ "Compiler error: no compile time constant named '"
+                                ++ name ++ "'"
     getCompConst constName scps = do
       let consts = compileTimeConstants $ head scps
       case Map.lookup constName consts of

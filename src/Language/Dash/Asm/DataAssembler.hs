@@ -6,10 +6,10 @@ module Language.Dash.Asm.DataAssembler (
 , AtomicConstant(..)
 ) where
 
-import           Control.Monad.State    hiding (state)
-import qualified Data.Map               as Map
+import           Control.Monad.State           hiding (state)
+import qualified Data.Map                      as Map
 import           Language.Dash.IR.Data
-import qualified Language.Dash.VM.DataEncoding  as Enc
+import qualified Language.Dash.VM.DataEncoding as Enc
 import           Language.Dash.VM.Types
 
 {-
@@ -54,7 +54,9 @@ atomizeConstTable ctable =
     encTable = whileJust atomizeConstant popWorkItem
 
 
-whileJust :: (b -> ConstAtomizationState a) -> ConstAtomizationState (Maybe b) -> ConstAtomizationState ()
+whileJust :: (b -> ConstAtomizationState a)
+          -> ConstAtomizationState (Maybe b)
+          -> ConstAtomizationState ()
 whileJust f source = do
   next <- source
   case next of
@@ -62,7 +64,6 @@ whileJust f source = do
     Just x -> do
       _ <- f x
       whileJust f source
-
 
 
 atomizeConstant :: Constant -> ConstAtomizationState ()
@@ -104,8 +105,7 @@ atomizeConstArg c = case c of
   x -> error $ "Unable to encode constant as argument: " ++ show x
 
 
-
------ State
+-- State
 
 data ConstAtomizationEnv = ConstAtomizationEnv {
   constants         :: [Constant]
@@ -115,6 +115,7 @@ data ConstAtomizationEnv = ConstAtomizationEnv {
 , reservedSpace     :: Int
 , numAtomizedConsts :: Int
 }
+
 
 emptyConstAtomizationEnv :: [Constant] -> ConstAtomizationEnv
 emptyConstAtomizationEnv ctable = ConstAtomizationEnv {
@@ -136,17 +137,19 @@ popWorkItem :: ConstAtomizationState (Maybe Constant)
 popWorkItem = do
   state <- get
   case (workQueue state, constants state) of
-    ([], []) -> return Nothing
+    ([], []) ->
+        return Nothing
     ([], cs) -> do
-          numAtomized <- gets numAtomizedConsts
-          let currentAddr = fromIntegral $ length $ atomized state
-          addAddrMapping (mkConstAddr numAtomized) currentAddr
-          state' <- get
-          put $ state' { numAtomizedConsts = numAtomized + 1, constants = tail cs }
-          return $ Just $ head cs
+        numAtomized <- gets numAtomizedConsts
+        let currentAddr = fromIntegral $ length $ atomized state
+        addAddrMapping (mkConstAddr numAtomized) currentAddr
+        state' <- get
+        put $ state' { numAtomizedConsts = numAtomized + 1, constants = tail cs }
+        return $ Just $ head cs
     (ws, _) -> do
-          put (state { workQueue = tail ws })
-          return $ Just $ head ws
+        put (state { workQueue = tail ws })
+        return $ Just $ head ws
+
 
 addAddrMapping :: ConstAddr -> VMWord -> ConstAtomizationState ()
 addAddrMapping src dest = do
@@ -193,8 +196,7 @@ setReservedSpace n = do
   put $ state { reservedSpace = n }
 
 
-
------ Byte encoding for data
+-- Byte encoding for data
 
 data AtomicConstant =
     ACPlainSymbol SymId
@@ -214,5 +216,4 @@ encodeConstant c = case c of
   ACNumber n                   -> Enc.encodeNumber n
   ACMatchHeader n              -> Enc.encodeMatchHeader n
   ACMatchVar n                 -> Enc.encodeMatchVar n
-
 

@@ -29,18 +29,28 @@ turned into real addresses by the assembler.
 
 
 
-assemble :: [[Tac]] -> ConstTable -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
+assemble :: [[Tac]]
+         -> ConstTable
+         -> SymbolNameList
+         -> ([VMWord], [VMWord], SymbolNameList)
 assemble funcs ctable symnames =
   let (consts, addrConvert) = encodeConstTable ctable in
   assembleWithEncodedConstTable funcs consts addrConvert symnames
 
 
-assembleWithEncodedConstTable :: [[Tac]] -> [VMWord] -> (ConstAddr -> VMWord) -> SymbolNameList -> ([VMWord], [VMWord], SymbolNameList)
+assembleWithEncodedConstTable :: [[Tac]]
+                              -> [VMWord]
+                              -> (ConstAddr
+                              -> VMWord)
+                              -> SymbolNameList
+                              -> ([VMWord], [VMWord], SymbolNameList)
 assembleWithEncodedConstTable funcs encCTable constAddrConverter symnames =
-  (map (assembleTac funcAddrs constAddrConverter) instructions, encCTable, symnames)
-  where instructions = fst combined
-        funcAddrs = snd combined
-        combined = combineFunctions funcs
+  (map assembleOpcode instructions, encCTable, symnames)
+  where
+    assembleOpcode = assembleTac funcAddrs constAddrConverter
+    instructions = fst combined
+    funcAddrs = snd combined
+    combined = combineFunctions funcs
 
 
 -- Converts the nested list of functions into a flat list, and additionally provides
@@ -48,18 +58,20 @@ assembleWithEncodedConstTable funcs encCTable constAddrConverter symnames =
 -- just a sequence with the same length as the nested list). The map helps us to find
 -- function references in the Tac code in our generated binary code.
 combineFunctions :: [[Tac]] -> ([Tac], Seq.Seq VMWord)
-combineFunctions = foldl calcFuncAddr ([], Seq.empty)
-    where calcFuncAddr acc funcInstrs =
-            let allInstrs = fst acc in
-            let funcAddrs = snd acc in
-            ( allInstrs ++ funcInstrs, funcAddrs Seq.|> fromIntegral (length allInstrs) )
+combineFunctions =
+  foldl calcFuncAddr ([], Seq.empty)
+  where
+    calcFuncAddr acc funcInstrs =
+      let allInstrs = fst acc in
+      let funcAddrs = snd acc in
+      ( allInstrs ++ funcInstrs, funcAddrs Seq.|> fromIntegral (length allInstrs) )
 
 
 assembleTac :: Seq.Seq VMWord -> (ConstAddr -> VMWord) -> Tac -> VMWord
 assembleTac funcAddrs addrConv opc =
   let r = regToInt in
   let i = fromIntegral in
-  let sym = fromIntegral.symIdToInt in
+  let sym = fromIntegral . symIdToInt in
   let caddr a = fromIntegral (addrConv a) in
   let faddr a = fromIntegral $ funcAddrs `Seq.index` funcAddrToInt a in
   case opc of
@@ -85,9 +97,7 @@ assembleTac funcAddrs addrConv opc =
     Tac_set_arg arg r1 n    -> instructionRRR 18 (i arg) (r r1) (i n)
     Tac_set_cl_val clr r1 n -> instructionRRR 19 (r clr) (r r1) (i n)
     Tac_eq r0 r1 r2         -> instructionRRR 20 (r r0) (r r1) (r r2)
-
     Tac_fun_header arity    -> instructionRI  63 (r 0) (i arity)
-
 
 
 instBits, opcBits, regBits :: Int
@@ -98,13 +108,18 @@ regBits = 5
 
 -- an instruction containing a register and a number
 instructionRI :: Int -> Int -> Int -> VMWord
-instructionRI opcId register value = fromIntegral $
-  (opcId `shiftL` (instBits - opcBits)) .|. (register `shiftL` (instBits - (opcBits + regBits))) .|. value
+instructionRI opcId register value =
+  fromIntegral $
+  (opcId `shiftL` (instBits - opcBits))
+  .|. (register `shiftL` (instBits - (opcBits + regBits)))
+  .|. value
+
 
 -- an instruction containing three registers
 instructionRRR :: Int -> Int -> Int -> Int -> VMWord
-instructionRRR opcId r0 r1 r2 = fromIntegral $
-   (opcId `shiftL` (instBits - opcBits))
+instructionRRR opcId r0 r1 r2 =
+  fromIntegral $
+  (opcId `shiftL` (instBits - opcBits))
   .|. (r0 `shiftL` (instBits - (opcBits + regBits)))
   .|. (r1 `shiftL` (instBits - (opcBits + 2 * regBits)))
   .|. (r2 `shiftL` (instBits - (opcBits + 3 * regBits)))

@@ -7,7 +7,7 @@ module Language.Dash.IR.Nst (
 ) where
 
 
-import           Language.Dash.IR.Data  (ConstAddr, SymId, Name)
+import           Language.Dash.IR.Data (ConstAddr, Name, SymId)
 
 -- NST, the Normalized Syntax Tree
 
