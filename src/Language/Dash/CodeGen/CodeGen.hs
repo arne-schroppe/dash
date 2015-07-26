@@ -9,7 +9,7 @@ import           Language.Dash.CodeGen.CodeGenState
 import           Language.Dash.CodeGen.Limits
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
-import           Language.Dash.IR.Tac
+import           Language.Dash.IR.Opcode
 
 
 -- TODO explain what the code generator does and how it does it !
@@ -22,7 +22,7 @@ import           Language.Dash.IR.Tac
 compile :: NstExpr
         -> ConstTable
         -> SymbolNameList
-        -> ([[Tac]], ConstTable, SymbolNameList)
+        -> ([[Opcode]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
   let result = execState (compileFunc [] [] expr "" False) emptyCompEnv in
   (toList (instructions result), cTable, symlist)
@@ -38,7 +38,7 @@ compileFunc freeVars params expr name shouldAddHeader = do
 
   if shouldAddHeader then do
     let arity = length freeVars + length params
-    let funcCode' = Tac_fun_header arity : funcCode
+    let funcCode' = OpcFunHeader arity : funcCode
     endFunction funAddr funcCode'
   else
     endFunction funAddr funcCode
@@ -47,28 +47,28 @@ compileFunc freeVars params expr name shouldAddHeader = do
   return funAddr
 
 
-compileExpr :: NstExpr -> CodeGenState [Tac]
+compileExpr :: NstExpr -> CodeGenState [Opcode]
 compileExpr expr =
   case expr of
     NLet var atom body ->
       compileLet var atom body
     NAtom a -> do
       code <- compileAtom 0 a "" True
-      return $ code ++ [Tac_ret 0]
+      return $ code ++ [OpcRet 0]
 
 
-compileAtom :: Reg -> NstAtomicExpr -> Name -> Bool -> CodeGenState [Tac]
+compileAtom :: Reg -> NstAtomicExpr -> Name -> Bool -> CodeGenState [Opcode]
 compileAtom reg atom name isResultValue = case atom of
   NNumber n -> do
       when (n < 0 || n > maxInteger) $ error "Integer literal out of bounds"
       addCompileTimeConst name $ CTConstNumber (fromIntegral n)
-      return [Tac_load_i reg (fromIntegral n)]
+      return [OpcLoadI reg (fromIntegral n)]
   NPlainSymbol sid -> do
       addCompileTimeConst name $ CTConstPlainSymbol sid
-      return [Tac_load_ps reg sid]
+      return [OpcLoadPS reg sid]
   NCompoundSymbol False cAddr ->
       -- addCompileTimeConst name $ CConstCompoundSymbol cAddr
-      return [Tac_load_cs reg cAddr] -- TODO codeConstant?
+      return [OpcLoadCS reg cAddr] -- TODO codeConstant?
   NPrimOp primop ->
       compilePrimOp primop reg
   NLambda [] params expr -> do
@@ -98,38 +98,38 @@ compileAtom reg atom name isResultValue = case atom of
       argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
       rFun <- getReg funVar
       let numArgs = length args
-      let partApInst = [Tac_part_ap reg rFun numArgs]
+      let partApInst = [OpcPartAp reg rFun numArgs]
       return $ argInstrs ++ partApInst
   x ->
       error $ "Unable to compile " ++ show x
   where
-    moveVarToReg :: NstVar -> Reg -> CodeGenState [Tac]
+    moveVarToReg :: NstVar -> Reg -> CodeGenState [Opcode]
     moveVarToReg var dest = do
       r <- getReg var
-      return [Tac_move dest r]
+      return [OpcMove dest r]
 
 
-compileCallInstr :: Reg -> NstVar -> Int -> Bool -> CodeGenState [Tac]
+compileCallInstr :: Reg -> NstVar -> Int -> Bool -> CodeGenState [Opcode]
 compileCallInstr reg funVar numArgs isResultValue = do
   rFun <- getReg funVar
   direct <- isDirectCallReg rFun
   -- TODO maybe the normalizer should already resolve what is a call to a known
   -- function and what isn't?
   let instr = case (direct, isResultValue) of
-          (True, False)  -> [Tac_call reg rFun numArgs]
-          (True, True)   -> [Tac_tail_call rFun numArgs]
-          (False, False) -> [Tac_gen_ap reg rFun numArgs]
-          (False, True)  -> [Tac_tail_gen_ap reg rFun numArgs]
+          (True, False)  -> [OpcCall reg rFun numArgs]
+          (True, True)   -> [OpcTailCall rFun numArgs]
+          (False, False) -> [OpcGenAp reg rFun numArgs]
+          (False, True)  -> [OpcTailGenAp reg rFun numArgs]
   return instr
 
 
-compilePrimOp :: NstPrimOp -> Reg -> CodeGenState [Tac]
+compilePrimOp :: NstPrimOp -> Reg -> CodeGenState [Opcode]
 compilePrimOp primop reg = case primop of
-  NPrimOpAdd a b -> compileBinaryPrimOp Tac_add a b
-  NPrimOpSub a b -> compileBinaryPrimOp Tac_sub a b
-  NPrimOpMul a b -> compileBinaryPrimOp Tac_mul a b
-  NPrimOpDiv a b -> compileBinaryPrimOp Tac_div a b
-  NPrimOpEq a b  -> compileBinaryPrimOp Tac_eq  a b
+  NPrimOpAdd a b -> compileBinaryPrimOp OpcAdd a b
+  NPrimOpSub a b -> compileBinaryPrimOp OpcSub a b
+  NPrimOpMul a b -> compileBinaryPrimOp OpcMul a b
+  NPrimOpDiv a b -> compileBinaryPrimOp OpcDiv a b
+  NPrimOpEq a b  -> compileBinaryPrimOp OpcEq  a b
   where
     compileBinaryPrimOp op a b = do
       ra <- getReg a
@@ -137,30 +137,30 @@ compilePrimOp primop reg = case primop of
       return [op reg ra rb]
 
 
-compileConstantFreeVar :: Reg -> Name -> CodeGenState [Tac]
+compileConstantFreeVar :: Reg -> Name -> CodeGenState [Opcode]
 compileConstantFreeVar reg name = do
   compConst <- getCompileTimeConstInSurroundingScopes name
   case compConst of
     -- TODO how about storing the constant in const table and simply load_c it here?
-    CTConstNumber n          -> return [Tac_load_i reg (fromIntegral n)]
-    CTConstPlainSymbol symId -> return [Tac_load_ps reg symId]
+    CTConstNumber n          -> return [OpcLoadI reg (fromIntegral n)]
+    CTConstPlainSymbol symId -> return [OpcLoadPS reg symId]
     -- CConstCompoundSymbol ConstAddr
     CTConstLambda funAddr    -> compileLoadLambda reg funAddr
     _ -> error "compileConstantFreeVar"
 
 
-compileLoadLambda :: Reg -> FuncAddr -> CodeGenState [Tac]
+compileLoadLambda :: Reg -> FuncAddr -> CodeGenState [Opcode]
 compileLoadLambda reg funAddr =
-  return [Tac_load_f reg funAddr]
+  return [OpcLoadF reg funAddr]
 
 
-compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Tac]
+compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Opcode]
 compileLet tmpVar atom body =
   case tmpVar of
     NVar name NLocalVar -> compileLet' name
     _                   -> compileLet' ""    -- TODO we need names for this
   where
-    compileLet' :: String -> CodeGenState [Tac]
+    compileLet' :: String -> CodeGenState [Opcode]
     compileLet' name = do
       rTmp <- newReg
       bindVar name rTmp
@@ -171,22 +171,23 @@ compileLet tmpVar atom body =
       return $ comp1 ++ comp2
 
 
--- This determines whether we'll use Tac_call or Tac_gen_ap later
+-- This determines whether we'll use call or gen_ap later
 canBeCalledDirectly :: NstAtomicExpr -> Bool
-canBeCalledDirectly atom = case atom of
-  -- TODO make sure that this is actually a function (in general, if we can determine
-  -- that something isn't callable, emit an error or warning)
+canBeCalledDirectly atom =
+  case atom of
+    -- TODO make sure that this is actually a function (in general, if we can determine
+    -- that something isn't callable, emit an error or warning)
 
-  -- this is supposed to be a function in a surrounding context. If it isn't, calling
-  -- this will result in a runtime exception
-  NVarExpr (NVar _ NConstant) -> True
+    -- this is supposed to be a function in a surrounding context. If it isn't, calling
+    -- this will result in a runtime exception
+    NVarExpr (NVar _ NConstant) -> True
 
-  -- this is a function inside this function's context
-  NLambda [] _ _ -> True
-  _ -> False
+    -- this is a function inside this function's context
+    NLambda [] _ _ -> True
+    _ -> False
 
 
-compileClosure :: Reg -> [Name] -> [Name] -> NstExpr -> Name -> CodeGenState [Tac]
+compileClosure :: Reg -> [Name] -> [Name] -> NstExpr -> Name -> CodeGenState [Opcode]
 compileClosure reg freeVars params expr name = do
   funAddr <- compileFunc freeVars params expr name True
   -- TODO optimize argInstrs by using last parameter in set_arg (i.e. if we have arguments
@@ -196,45 +197,45 @@ compileClosure reg freeVars params expr name = do
   -- Since free vars are always the first n vars of a compiled function, creating
   -- a closure is the same as partial application
   let makeClosureInstr =
-          [ Tac_load_f reg funAddr
-          , Tac_part_ap reg reg (length freeVars)]
+          [ OpcLoadF reg funAddr
+          , OpcPartAp reg reg (length freeVars)]
   selfRefInstrs <- createSelfRefInstrsIfNeeded reg
   return $ argInstrs ++ makeClosureInstr ++ selfRefInstrs
 
 
-compileClosureArgs :: Name -> [Name] -> CodeGenState [Tac]
+compileClosureArgs :: Name -> [Name] -> CodeGenState [Opcode]
 compileClosureArgs name freeVars = do
   argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
   return $ catMaybes argInstrsMaybes
   where
-    compileClosureArg :: String -> String -> Int -> CodeGenState (Maybe Tac)
+    compileClosureArg :: String -> String -> Int -> CodeGenState (Maybe Opcode)
     compileClosureArg clName argName argIndex =
       if argName == clName
         then setSelfReferenceSlot argIndex >> return Nothing
         else liftM Just $ compileSetArgN argName argIndex
 
 
-compileSetArg :: NstVar -> Int -> CodeGenState Tac
+compileSetArg :: NstVar -> Int -> CodeGenState Opcode
 compileSetArg var arg = do
   rVar <- getReg var
-  return $ Tac_set_arg arg rVar 0
+  return $ OpcSetArg arg rVar 0
 
 
-compileSetArgN :: Name -> Int -> CodeGenState Tac
+compileSetArgN :: Name -> Int -> CodeGenState Opcode
 compileSetArgN name arg = do
   rVar <- getRegByName name
-  return $ Tac_set_arg arg rVar 0
+  return $ OpcSetArg arg rVar 0
 
 
 -- If a closure has a reference to itself, it needs itself as a free variable.
 -- This function checks if that is the case and emits instructions to set
 -- a refernce to the closure inside the closure.
-createSelfRefInstrsIfNeeded :: Reg -> CodeGenState [Tac]
+createSelfRefInstrsIfNeeded :: Reg -> CodeGenState [Opcode]
 createSelfRefInstrsIfNeeded clReg = do
   selfRef <- getSelfReference
   case selfRef of
     Nothing -> return []
-    Just index -> return [Tac_set_cl_val clReg clReg index]
+    Just index -> return [OpcSetClVal clReg clReg index]
 
 
 -- Every branch in the match-expression has been converted to a lambda by the normalizer.
@@ -244,7 +245,7 @@ compileMatch :: Reg
              -> ConstAddr
              -> [([Name], [Name], NstVar)]
              -> Bool
-             -> CodeGenState [Tac]
+             -> CodeGenState [Opcode]
 compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = do
   -- the variables containing matchbranches to call
   let matchBranchVars = map (\ (_, _, a) -> a) branches
@@ -289,7 +290,7 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
 
   -- instructions for jumping out of the code that calls a match-branch
   -- and to the remaining code
-  let jumpOutInstrs = map (\ numRemaining -> [Tac_jmp $ numRemaining + 1])
+  let jumpOutInstrs = map (\ numRemaining -> [OpcJmp $ numRemaining + 1])
                           numRemainingBranchInstrs
   let completeCompiledBranches = zipWith (++) compiledBranches jumpOutInstrs
 
@@ -302,15 +303,15 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
                       let jumpTableEntrySize = 1 in
                       -- jump over remaining jump-table entries and then over match-
                       -- branches we're done with
-                      Tac_jmp (jumpTableEntrySize * remaining + numHandled)) $
+                      OpcJmp (jumpTableEntrySize * remaining + numHandled)) $
                       zip remainingBranches numHandledBranchInstrs
 
   -- after match has started, we can reuse the reg holding the address for captured vars
   let addrTempReg = captureStartReg
 
   -- compile match call
-  let matchCode = [Tac_load_addr addrTempReg patternAddr,
-                   Tac_match subjR addrTempReg captureStartReg]
+  let matchCode = [OpcLoadAddr addrTempReg patternAddr,
+                   OpcMatch subjR addrTempReg captureStartReg]
   let body = Prelude.concat completeCompiledBranches
   return $ matchCode ++ jumpInTable ++ body
 
@@ -320,7 +321,7 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
 -- in the registers, starting at captureStartReg, so we just need a single set_arg
 -- instruction.
 -- Note that we might end up with zero arguments.
-compileMatchBranchLoadArg :: Reg -> [Name] -> [a] -> CodeGenState [Tac]
+compileMatchBranchLoadArg :: Reg -> [Name] -> [a] -> CodeGenState [Opcode]
 compileMatchBranchLoadArg captureStartReg freeVars capturedVars = do
   freeArgInstrs <- compileClosureArgs "" freeVars
   let numCaptures = max 0 $ length capturedVars - 1
@@ -329,7 +330,7 @@ compileMatchBranchLoadArg captureStartReg freeVars capturedVars = do
   let capturedArgsStart = length freeVars
   let capturedArgInstrs =
           if not (null capturedVars)
-            then [Tac_set_arg capturedArgsStart captureStartReg numCaptures]
+            then [OpcSetArg capturedArgsStart captureStartReg numCaptures]
             else []
   return $ freeArgInstrs ++ capturedArgInstrs
 

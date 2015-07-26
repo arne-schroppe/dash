@@ -8,7 +8,7 @@ import           Data.Bits
 import qualified Data.Sequence                   as Seq
 import           Language.Dash.Asm.DataAssembler
 import           Language.Dash.IR.Data
-import           Language.Dash.IR.Tac
+import           Language.Dash.IR.Opcode
 import           Language.Dash.VM.Types
 
 
@@ -29,7 +29,7 @@ turned into real addresses by the assembler.
 
 
 
-assemble :: [[Tac]]
+assemble :: [[Opcode]]
          -> ConstTable
          -> SymbolNameList
          -> ([VMWord], [VMWord], SymbolNameList)
@@ -38,7 +38,7 @@ assemble funcs ctable symnames =
   assembleWithEncodedConstTable funcs consts addrConvert symnames
 
 
-assembleWithEncodedConstTable :: [[Tac]]
+assembleWithEncodedConstTable :: [[Opcode]]
                               -> [VMWord]
                               -> (ConstAddr
                               -> VMWord)
@@ -57,7 +57,7 @@ assembleWithEncodedConstTable funcs encCTable constAddrConverter symnames =
 -- a map from indices in the nested list to the index in the flat list (that map is
 -- just a sequence with the same length as the nested list). The map helps us to find
 -- function references in the Tac code in our generated binary code.
-combineFunctions :: [[Tac]] -> ([Tac], Seq.Seq VMWord)
+combineFunctions :: [[Opcode]] -> ([Opcode], Seq.Seq VMWord)
 combineFunctions =
   foldl calcFuncAddr ([], Seq.empty)
   where
@@ -67,7 +67,7 @@ combineFunctions =
       ( allInstrs ++ funcInstrs, funcAddrs Seq.|> fromIntegral (length allInstrs) )
 
 
-assembleTac :: Seq.Seq VMWord -> (ConstAddr -> VMWord) -> Tac -> VMWord
+assembleTac :: Seq.Seq VMWord -> (ConstAddr -> VMWord) -> Opcode -> VMWord
 assembleTac funcAddrs addrConv opc =
   let r = regToInt in
   let i = fromIntegral in
@@ -75,29 +75,29 @@ assembleTac funcAddrs addrConv opc =
   let caddr a = fromIntegral (addrConv a) in
   let faddr a = fromIntegral $ funcAddrs `Seq.index` funcAddrToInt a in
   case opc of
-    Tac_ret r0              -> instructionRI   0 (r r0) 0
-    Tac_load_i r0 n         -> instructionRI   1 (r r0) n
-    Tac_load_addr r0 a      -> instructionRI   1 (r r0) (caddr a)
-    Tac_load_ps r0 s        -> instructionRI   2 (r r0) (sym s)
-    Tac_load_cs r0 a        -> instructionRI   3 (r r0) (caddr a)
-    Tac_load_c r0 a         -> instructionRI   4 (r r0) (caddr a)
-    Tac_load_f r0 fa        -> instructionRI   5 (r r0) (faddr fa)
-    Tac_add r0 r1 r2        -> instructionRRR  6 (r r0) (r r1) (r r2)
-    Tac_sub r0 r1 r2        -> instructionRRR  7 (r r0) (r r1) (r r2)
-    Tac_mul r0 r1 r2        -> instructionRRR  8 (r r0) (r r1) (r r2)
-    Tac_div r0 r1 r2        -> instructionRRR  9 (r r0) (r r1) (r r2)
-    Tac_move r0 r1          -> instructionRRR 10 (r r0) (r r1) (i 0)
-    Tac_call r0 fr n        -> instructionRRR 11 (r r0) (r fr) (i n)
-    Tac_gen_ap r0 fr n      -> instructionRRR 12 (r r0) (r fr) (i n)
-    Tac_tail_call fr n      -> instructionRRR 13 (i 0) (r fr) (i n)
-    Tac_tail_gen_ap r0 fr n -> instructionRRR 14 (r r0) (r fr) (i n)
-    Tac_part_ap r0 fr n     -> instructionRRR 15 (r r0) (r fr) (i n)
-    Tac_jmp n               -> instructionRI  16 0 (i n)
-    Tac_match r0 r1 r2      -> instructionRRR 17 (r r0) (r r1) (r r2)
-    Tac_set_arg arg r1 n    -> instructionRRR 18 (i arg) (r r1) (i n)
-    Tac_set_cl_val clr r1 n -> instructionRRR 19 (r clr) (r r1) (i n)
-    Tac_eq r0 r1 r2         -> instructionRRR 20 (r r0) (r r1) (r r2)
-    Tac_fun_header arity    -> instructionRI  63 (r 0) (i arity)
+    OpcRet r0             -> instructionRI   0 (r r0) 0
+    OpcLoadI r0 n         -> instructionRI   1 (r r0) n
+    OpcLoadAddr r0 a      -> instructionRI   1 (r r0) (caddr a)
+    OpcLoadPS r0 s        -> instructionRI   2 (r r0) (sym s)
+    OpcLoadCS r0 a        -> instructionRI   3 (r r0) (caddr a)
+    OpcLoadC r0 a         -> instructionRI   4 (r r0) (caddr a)
+    OpcLoadF r0 fa        -> instructionRI   5 (r r0) (faddr fa)
+    OpcAdd r0 r1 r2       -> instructionRRR  6 (r r0) (r r1) (r r2)
+    OpcSub r0 r1 r2       -> instructionRRR  7 (r r0) (r r1) (r r2)
+    OpcMul r0 r1 r2       -> instructionRRR  8 (r r0) (r r1) (r r2)
+    OpcDiv r0 r1 r2       -> instructionRRR  9 (r r0) (r r1) (r r2)
+    OpcMove r0 r1         -> instructionRRR 10 (r r0) (r r1) (i 0)
+    OpcCall r0 fr n       -> instructionRRR 11 (r r0) (r fr) (i n)
+    OpcGenAp r0 fr n      -> instructionRRR 12 (r r0) (r fr) (i n)
+    OpcTailCall fr n      -> instructionRRR 13 (i 0) (r fr) (i n)
+    OpcTailGenAp r0 fr n  -> instructionRRR 14 (r r0) (r fr) (i n)
+    OpcPartAp r0 fr n     -> instructionRRR 15 (r r0) (r fr) (i n)
+    OpcJmp n              -> instructionRI  16 0 (i n)
+    OpcMatch r0 r1 r2     -> instructionRRR 17 (r r0) (r r1) (r r2)
+    OpcSetArg arg r1 n    -> instructionRRR 18 (i arg) (r r1) (i n)
+    OpcSetClVal clr r1 n  -> instructionRRR 19 (r clr) (r r1) (i n)
+    OpcEq r0 r1 r2        -> instructionRRR 20 (r r0) (r r1) (r r2)
+    OpcFunHeader arity    -> instructionRI  63 (r 0) (i arity)
 
 
 instBits, opcBits, regBits :: Int

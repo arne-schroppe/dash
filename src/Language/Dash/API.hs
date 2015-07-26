@@ -11,7 +11,7 @@ import           Language.Dash.Asm.DataAssembler
 import           Language.Dash.CodeGen.CodeGen
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
-import           Language.Dash.IR.Tac
+import           Language.Dash.IR.Opcode
 import           Language.Dash.Normalization.Normalization
 import           Language.Dash.Parser.Lexer
 import           Language.Dash.Parser.Parser
@@ -62,7 +62,7 @@ toNorm prog =
   nExpr
 
 
-toAsm :: String -> [[Tac]]
+toAsm :: String -> [[Opcode]]
 toAsm prog =
   let (asm, _, _) = prog |> lex |> parse |> normalize ||> compile in
   asm

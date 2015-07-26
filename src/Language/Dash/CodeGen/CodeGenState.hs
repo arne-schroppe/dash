@@ -9,7 +9,7 @@ import qualified Data.Sequence                as Seq
 import           Language.Dash.CodeGen.Limits
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
-import           Language.Dash.IR.Tac
+import           Language.Dash.IR.Opcode
 import           Language.Dash.VM.Types
 
 
@@ -18,7 +18,7 @@ import           Language.Dash.VM.Types
 type CodeGenState a = State CompEnv a
 
 data CompEnv = CompEnv
-  { instructions :: Seq.Seq [Tac]
+  { instructions :: Seq.Seq [Opcode]
   , scopes       :: [CompScope]
   }
 
@@ -83,7 +83,7 @@ beginFunction freeVars params = do
   return addr
 
 
-endFunction :: FuncAddr -> [Tac] -> CodeGenState ()
+endFunction :: FuncAddr -> [Opcode] -> CodeGenState ()
 endFunction funAddr code = do
   replacePlaceholderWithActualCode funAddr code
   modify $ \ state -> state { scopes = tail $ scopes state }
@@ -119,7 +119,7 @@ addFunctionPlaceholder = do
   return $ mkFuncAddr nextFunAddr
 
 
-replacePlaceholderWithActualCode :: FuncAddr -> [Tac] -> CodeGenState ()
+replacePlaceholderWithActualCode :: FuncAddr -> [Opcode] -> CodeGenState ()
 replacePlaceholderWithActualCode funcPlaceholderAddr code = do
   state <- get
   let instrs = instructions state

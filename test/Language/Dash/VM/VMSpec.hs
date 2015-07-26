@@ -2,22 +2,23 @@ module Language.Dash.VM.VMSpec where
 
 import           Data.Word
 import           Language.Dash.Asm.Assembler
-import           Language.Dash.IR.Tac
+import           Language.Dash.IR.Opcode
 import           Language.Dash.IR.Data
 import           Language.Dash.VM.DataEncoding
 import           Language.Dash.VM.VM
 import           Test.Hspec
 import           Test.QuickCheck
 
-runProg :: [[Tac]] -> IO Word32
+runProg :: [[Opcode]] -> IO Word32
 runProg = runProgTbl []
 
-runProgTbl :: [Word32] -> [[Tac]] -> IO Word32
+runProgTbl :: [Word32] -> [[Opcode]] -> IO Word32
 runProgTbl tbl prog = do
   (value, _, _) <- execute asm tbl' []
   return value
   where
-    (asm, tbl', _) = assembleWithEncodedConstTable prog tbl (fromIntegral.constAddrToInt) []
+    (asm, tbl', _) =
+      assembleWithEncodedConstTable prog tbl (fromIntegral.constAddrToInt) []
 
 
 spec :: Spec
@@ -25,104 +26,104 @@ spec = do
   describe "Virtual Machine" $ do
 
     it "loads a number into a register" $ do
-      let prog = [[ Tac_load_i 0 55,
-                    Tac_ret 0 ]]
+      let prog = [[ OpcLoadI 0 55,
+                    OpcRet 0 ]]
       (runProg prog) `shouldReturn` 55
 
 
     it "adds two numbers" $ do
-      let prog = [[ Tac_load_i 1 5,
-                    Tac_load_i 2 32,
-                    Tac_add 0 1 2,
-                    Tac_ret 0 ]]
+      let prog = [[ OpcLoadI 1 5,
+                    OpcLoadI 2 32,
+                    OpcAdd 0 1 2,
+                    OpcRet 0 ]]
       (runProg prog) `shouldReturn` 37
 
     it "moves a register" $ do
-      let prog = [[ Tac_load_i  2 37,
-                    Tac_move  0 2,
-                    Tac_ret 0 ]]
+      let prog = [[ OpcLoadI  2 37,
+                    OpcMove  0 2,
+                    OpcRet 0 ]]
       (runProg prog) `shouldReturn` 37
 
     it "directly calls a function" $ do
-      let prog = [[ Tac_load_i  1 15,
-                    Tac_load_i  2 23,
-                    Tac_add  4 1 2,
-                    Tac_load_f 3 (mkFuncAddr 1),
-                    Tac_set_arg 0 4 0,
-                    Tac_call 0 3 1,
-                    Tac_ret 0 ], [
-                    Tac_fun_header 1,
-                    Tac_load_i  1 100,
-                    Tac_add  2 0 1,
-                    Tac_ret 2]]
+      let prog = [[ OpcLoadI  1 15,
+                    OpcLoadI  2 23,
+                    OpcAdd  4 1 2,
+                    OpcLoadF 3 (mkFuncAddr 1),
+                    OpcSetArg 0 4 0,
+                    OpcCall 0 3 1,
+                    OpcRet 0 ], [
+                    OpcFunHeader 1,
+                    OpcLoadI  1 100,
+                    OpcAdd  2 0 1,
+                    OpcRet 2]]
 
       (runProg prog) `shouldReturn` 138
 
     it "calls a closure downwards" $ do
-      let prog = [[ Tac_load_f 2 (mkFuncAddr 2),
-                    Tac_load_i 3 80,
-                    Tac_set_arg 0 3 0,
-                    Tac_part_ap 2 2 1,
-                    Tac_load_f 1 (mkFuncAddr 1),
-                    Tac_set_arg 0 2 0,
-                    Tac_call 0 1 1,
-                    Tac_ret 0 ], [
+      let prog = [[ OpcLoadF 2 (mkFuncAddr 2),
+                    OpcLoadI 3 80,
+                    OpcSetArg 0 3 0,
+                    OpcPartAp 2 2 1,
+                    OpcLoadF 1 (mkFuncAddr 1),
+                    OpcSetArg 0 2 0,
+                    OpcCall 0 1 1,
+                    OpcRet 0 ], [
                     -- fun1
-                    Tac_fun_header 2,
-                    Tac_load_i 2 115,
-                    Tac_load_i 3 23,
-                    Tac_add 2 2 3,
-                    Tac_set_arg 0 2 0,
-                    Tac_gen_ap 2 0 1,
-                    Tac_ret 2 ], [
+                    OpcFunHeader 2,
+                    OpcLoadI 2 115,
+                    OpcLoadI 3 23,
+                    OpcAdd 2 2 3,
+                    OpcSetArg 0 2 0,
+                    OpcGenAp 2 0 1,
+                    OpcRet 2 ], [
                     -- fun2
                     -- fun_header 1 1, -- (* 1 closed over value, 1 parameter *)
-                    Tac_fun_header 2,
-                    Tac_sub 2 1 0,
-                    Tac_ret 2 ]]
+                    OpcFunHeader 2,
+                    OpcSub 2 1 0,
+                    OpcRet 2 ]]
       (runProg prog) `shouldReturn` 58 -- 115 + 23 - 80
 
     it "calls a closure upwards" $ do
-      let prog = [[ Tac_load_f 1 (mkFuncAddr 1),
-                    Tac_call 1 1 0,
-                    Tac_load_i 2 80,
-                    Tac_set_arg 0 2 0,
-                    Tac_gen_ap 0 1 1,
-                    Tac_ret 0 ], [
+      let prog = [[ OpcLoadF 1 (mkFuncAddr 1),
+                    OpcCall 1 1 0,
+                    OpcLoadI 2 80,
+                    OpcSetArg 0 2 0,
+                    OpcGenAp 0 1 1,
+                    OpcRet 0 ], [
                     -- fun 1
-                    Tac_fun_header 1,
-                    Tac_load_f 1 (mkFuncAddr 2),
-                    Tac_load_i 2 24,
-                    Tac_set_arg 0 2 0,
-                    Tac_part_ap 0 1 1,
-                    Tac_ret 0 ], [
+                    OpcFunHeader 1,
+                    OpcLoadF 1 (mkFuncAddr 2),
+                    OpcLoadI 2 24,
+                    OpcSetArg 0 2 0,
+                    OpcPartAp 0 1 1,
+                    OpcRet 0 ], [
                     -- fun 2
-                    Tac_fun_header 2,
-                    Tac_sub 2 1 0,
-                    Tac_ret 2 ]]
+                    OpcFunHeader 2,
+                    OpcSub 2 1 0,
+                    OpcRet 2 ]]
       (runProg prog) `shouldReturn` 56 -- 80 - 24
 
     it "modifies a closure" $ do
-      let prog = [[ Tac_load_f 1 (mkFuncAddr 1),
-                    Tac_call 1 1 0,
-                    Tac_load_i 2 80,
-                    Tac_set_arg 0 2 0,
-                    Tac_gen_ap 0 1 1,
-                    Tac_ret 0 ], [
+      let prog = [[ OpcLoadF 1 (mkFuncAddr 1),
+                    OpcCall 1 1 0,
+                    OpcLoadI 2 80,
+                    OpcSetArg 0 2 0,
+                    OpcGenAp 0 1 1,
+                    OpcRet 0 ], [
                     -- fun 1
-                    Tac_fun_header 1,
-                    Tac_load_f 1 (mkFuncAddr 2),
-                    Tac_load_i 2 77,
-                    Tac_load_i 3 55,
-                    Tac_set_arg 0 2 1,
-                    Tac_part_ap 0 1 2,
-                    Tac_load_i 7 33,
-                    Tac_set_cl_val 0 7 1,
-                    Tac_ret 0 ], [
+                    OpcFunHeader 1,
+                    OpcLoadF 1 (mkFuncAddr 2),
+                    OpcLoadI 2 77,
+                    OpcLoadI 3 55,
+                    OpcSetArg 0 2 1,
+                    OpcPartAp 0 1 2,
+                    OpcLoadI 7 33,
+                    OpcSetClVal 0 7 1,
+                    OpcRet 0 ], [
                     -- fun 2
-                    Tac_fun_header 3,
-                    Tac_sub 3 0 1,
-                    Tac_ret 3 ]]
+                    OpcFunHeader 3,
+                    OpcSub 3 0 1,
+                    OpcRet 3 ]]
       (runProg prog) `shouldReturn` 44 -- 77 - 33
 
 
@@ -145,60 +146,60 @@ spec = do
 -}
     it "loads a symbol into a register" $ do
       let sym = mkSymId 12
-      let prog = [[ Tac_load_ps 0 sym,
-                    Tac_ret 0]]
+      let prog = [[ OpcLoadPS 0 sym,
+                    OpcRet 0]]
       (runProg prog) `shouldReturn` (encodePlainSymbol sym)
 
     it "loads a constant" $ do
       let ctable = [ encodeNumber 33 ]
-      let prog = [[ Tac_load_c 0 (mkConstAddr 0),
-                    Tac_ret 0 ]]
+      let prog = [[ OpcLoadC 0 (mkConstAddr 0),
+                    OpcRet 0 ]]
       (runProgTbl ctable prog) `shouldReturn` (33)
 
     it "loads a data symbol" $ do
-      let prog = [[ Tac_load_cs 0 (mkConstAddr 1),
-                    Tac_ret 0 ]]
+      let prog = [[ OpcLoadCS 0 (mkConstAddr 1),
+                    OpcRet 0 ]]
       (runProg prog) `shouldReturn` (encodeCompoundSymbolRef $ mkConstAddr 1)
 
 
     it "jumps forward" $ do
-      let prog = [[ Tac_load_i 0 66,
-                    Tac_jmp 1,
-                    Tac_ret 0,
-                    Tac_load_i 0 70,
-                    Tac_ret 0 ]]
+      let prog = [[ OpcLoadI 0 66,
+                    OpcJmp 1,
+                    OpcRet 0,
+                    OpcLoadI 0 70,
+                    OpcRet 0 ]]
       (runProg prog) `shouldReturn` 70
 
     it "matches a number" $ do
       let ctable = [ encodeMatchHeader 2,
                      encodeNumber 11,
                      encodeNumber 22 ]
-      let prog = [[ Tac_load_i 0 600,
-                    Tac_load_i 1 22,
-                    Tac_load_i 2 0,
-                    Tac_match 1 2 0,
-                    Tac_jmp 1,
-                    Tac_jmp 2,
-                    Tac_load_i 0 4,
-                    Tac_ret 0,
-                    Tac_load_i 0 300,
-                    Tac_ret 0 ]]
+      let prog = [[ OpcLoadI 0 600,
+                    OpcLoadI 1 22,
+                    OpcLoadI 2 0,
+                    OpcMatch 1 2 0,
+                    OpcJmp 1,
+                    OpcJmp 2,
+                    OpcLoadI 0 4,
+                    OpcRet 0,
+                    OpcLoadI 0 300,
+                    OpcRet 0 ]]
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a symbol" $ do
       let ctable = [ encodeMatchHeader 2,
                      encodePlainSymbol (mkSymId 11),
                      encodePlainSymbol (mkSymId 22) ]
-      let prog = [[ Tac_load_i 0 600,
-                    Tac_load_ps 1 (mkSymId 22),
-                    Tac_load_i 2 0,
-                    Tac_match 1 2 0,
-                    Tac_jmp 1,
-                    Tac_jmp 2,
-                    Tac_load_i 0 4,
-                    Tac_ret 0,
-                    Tac_load_i 0 300,
-                    Tac_ret 0 ]]
+      let prog = [[ OpcLoadI 0 600,
+                    OpcLoadPS 1 (mkSymId 22),
+                    OpcLoadI 2 0,
+                    OpcMatch 1 2 0,
+                    OpcJmp 1,
+                    OpcJmp 2,
+                    OpcLoadI 0 4,
+                    OpcRet 0,
+                    OpcLoadI 0 300,
+                    OpcRet 0 ]]
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "matches a data symbol" $ do
@@ -214,16 +215,16 @@ spec = do
                      encodeCompoundSymbolHeader (mkSymId 1) 2,
                      encodeNumber 55,
                      encodeNumber 77 ]
-      let prog = [[ Tac_load_i 0 600,
-                    Tac_load_cs 1 (mkConstAddr 9),
-                    Tac_load_i 2 0,
-                    Tac_match 1 2 0,
-                    Tac_jmp 1,
-                    Tac_jmp 2,
-                    Tac_load_i 0 4,
-                    Tac_ret 0,
-                    Tac_load_i 0 300,
-                    Tac_ret 0 ]]
+      let prog = [[ OpcLoadI 0 600,
+                    OpcLoadCS 1 (mkConstAddr 9),
+                    OpcLoadI 2 0,
+                    OpcMatch 1 2 0,
+                    OpcJmp 1,
+                    OpcJmp 2,
+                    OpcLoadI 0 4,
+                    OpcRet 0,
+                    OpcLoadI 0 300,
+                    OpcRet 0 ]]
       (runProgTbl ctable prog) `shouldReturn` 300
 
     it "binds a value in a match" $ do
@@ -239,17 +240,17 @@ spec = do
                      encodeCompoundSymbolHeader (mkSymId 1) 2,
                      encodeNumber 55,
                      encodeNumber 77 ]
-      let prog = [[ Tac_load_i 0 600,
-                    Tac_load_i 4 66,
-                    Tac_load_cs 1 (mkConstAddr 9),
-                    Tac_load_i 2 0,
-                    Tac_match 1 2 3,
-                    Tac_jmp 1,
-                    Tac_jmp 2,
-                    Tac_load_i 0 22,
-                    Tac_ret 0,
-                    Tac_move 0 4, -- reg 4 contains match var 1 (see pattern in ctable)
-                    Tac_ret 0 ]]
+      let prog = [[ OpcLoadI 0 600,
+                    OpcLoadI 4 66,
+                    OpcLoadCS 1 (mkConstAddr 9),
+                    OpcLoadI 2 0,
+                    OpcMatch 1 2 3,
+                    OpcJmp 1,
+                    OpcJmp 2,
+                    OpcLoadI 0 22,
+                    OpcRet 0,
+                    OpcMove 0 4, -- reg 4 contains match var 1 (see pattern in ctable)
+                    OpcRet 0 ]]
       (runProgTbl ctable prog) `shouldReturn` 77
 
 {- TODO

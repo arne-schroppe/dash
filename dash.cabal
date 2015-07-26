@@ -25,7 +25,7 @@ library
                     , Language.Dash.Normalization.NormalizationState
                     , Language.Dash.Normalization.Recursion
                     , Language.Dash.IR.Ast
-                    , Language.Dash.IR.Tac
+                    , Language.Dash.IR.Opcode
                     , Language.Dash.IR.Data
                     , Language.Dash.IR.Nst
                     , Language.Dash.Asm.Assembler

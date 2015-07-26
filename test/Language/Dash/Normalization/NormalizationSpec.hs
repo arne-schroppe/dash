@@ -3,7 +3,6 @@ module Language.Dash.Normalization.NormalizationSpec where
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
-import           Language.Dash.IR.Tac
 import           Language.Dash.Normalization.Normalization
 import           Test.Hspec
 
