@@ -226,13 +226,8 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
   subjR <- getReg subject
   let handledBranches = [0 .. length matchBranchVars - 1]
   let remainingBranches = reverse handledBranches
-
-  -- We are using the fact that registers are used linearly from smallest to largest.
-  -- That way we can use the next n registers temporarily to capture match variables
-  -- TODO Make sure that this actually works and doesn't create false results
-  -- TODO use the next free register instead of hardcoded value
-  -- TODO the following line might overwrite already used registers and we have no means of checking that limit right now
-  let captureStartReg = mkReg $ (maxRegisters - 2) - maxCaptures + 1 -- reg + 1
+  captureStartReg <- newReg -- TODO return register to pool after we're done with it
+  -- TODO reserve maxCaptures vars (so that we can check that we don't run out of registers) and return them to pool afterwards
   compiledBranches <- forM branches $
                               \ (freeVars, capturedVars, funVar) -> do
                                       loadArgInstrs <- compileMatchBranchLoadArg captureStartReg freeVars capturedVars
@@ -269,10 +264,10 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
                       -- jump over remaining jump-table entries and then over match-branches we're done with
                       Tac_jmp (jumpTableEntrySize * remaining + numHandled)) $
                       zip remainingBranches numHandledBranchInstrs
-  let addrTempReg = mkReg $ maxRegisters - 1
+  let addrTempReg = captureStartReg -- after match has started, we can reuse the reg holding the address for captured vars
 
   -- compile match call
-  let matchCode = [Tac_load_addr addrTempReg patternAddr, 
+  let matchCode = [Tac_load_addr addrTempReg patternAddr,
                    Tac_match subjR addrTempReg captureStartReg]
   let body = Prelude.concat completeCompiledBranches
   return $ matchCode ++ jumpInTable ++ body
