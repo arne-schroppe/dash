@@ -79,7 +79,7 @@ beginFunction freeVars params = do
   let paramBindings = Map.fromList (zipWithReg params paramStart)
   -- The order of arguments for union is important. We prefer params over free vars
   let newScope = makeScope $ Map.union paramBindings freeVarBindings
-  put $ state { scopes = newScope : (scopes state) }
+  put $ state { scopes = newScope : scopes state }
   checkRegisterLimits
   addr <- addFunctionPlaceholder
   return addr
@@ -88,10 +88,7 @@ beginFunction freeVars params = do
 endFunction :: FuncAddr -> [Tac] -> CodeGenState ()
 endFunction funAddr code = do
   replacePlaceholderWithActualCode funAddr code
-  modify $ \ state -> state { scopes = (tail $ scopes state) }
-
-
-
+  modify $ \ state -> state { scopes = tail $ scopes state }
 
 bindVar :: String -> Reg -> CodeGenState ()
 bindVar "" _ = error "Binding anonymous var"
@@ -195,7 +192,7 @@ addDirectCallReg reg = do
 
 
 getSelfReference :: CodeGenState (Maybe Int)
-getSelfReference = getScope >>= return.selfReferenceSlot
+getSelfReference = liftM selfReferenceSlot getScope
 
 setSelfReferenceSlot :: Int -> CodeGenState ()
 setSelfReferenceSlot index = do
@@ -210,13 +207,13 @@ resetSelfReferenceSlot = do
 
 
 getScope :: CodeGenState CompScope
-getScope = do
+getScope =
   gets $ head.scopes
 
 
 putScope :: CompScope -> CodeGenState ()
-putScope s = do
-  modify $ \ state -> state { scopes = s : (tail $ scopes state) }
+putScope s =
+  modify $ \ state -> state { scopes = s : tail (scopes state) }
 
 
 addCompileTimeConst :: Name -> CompileTimeConstant -> CodeGenState ()
@@ -254,4 +251,4 @@ zipWithIndex :: [a] -> [(a, Int)]
 zipWithIndex l = zip l [0..(length l)]
 
 zipWithReg :: [a] -> Int -> [(a, Reg)]
-zipWithReg l offset = zip l $ map mkReg [offset..offset + (length l)]
+zipWithReg l offset = zip l $ map mkReg [offset..offset + length l]

@@ -89,7 +89,7 @@ atomizeMatchData args = do
   let matchHeader = ACMatchHeader (fromIntegral $ length args)
   atomizedArgs <- mapM atomizeConstArg args
   addAtomized $ matchHeader : atomizedArgs
-  setReservedSpace $ 0
+  setReservedSpace 0
 
 
 atomizeConstArg :: Constant -> ConstAtomizationState AtomicConstant
@@ -168,7 +168,7 @@ nextFreeAddress = do
   let used = length $ atomized state
   let reserved = reservedSpace state
   let pendingItems = workQueue state
-  let pending = foldl (\acc c -> acc + (spaceNeededByConstant c)) 0 pendingItems
+  let pending = foldl (\acc c -> acc + spaceNeededByConstant c) 0 pendingItems
   return $ mkConstAddr $ used + reserved + pending
 
 
@@ -184,7 +184,7 @@ spaceNeededByConstant c = case c of
 addAtomized :: [AtomicConstant] -> ConstAtomizationState ()
 addAtomized atoms = do
   state <- get
-  put $ state { atomized = (atomized state) ++ atoms }
+  put $ state { atomized = atomized state ++ atoms }
 
 
 setReservedSpace :: Int -> ConstAtomizationState ()

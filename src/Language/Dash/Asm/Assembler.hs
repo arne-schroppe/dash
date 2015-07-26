@@ -48,12 +48,11 @@ assembleWithEncodedConstTable funcs encCTable constAddrConverter symnames =
 -- just a sequence with the same length as the nested list). The map helps us to find
 -- function references in the Tac code in our generated binary code.
 combineFunctions :: [[Tac]] -> ([Tac], Seq.Seq VMWord)
-combineFunctions funcs = (fst combined, snd combined)
-  where combined = foldl calcFuncAddr ([], Seq.empty) funcs
-        calcFuncAddr acc funcInstrs =
-          let allInstrs = fst acc in
-          let funcAddrs = snd acc in
-          ( allInstrs ++ funcInstrs, funcAddrs Seq.|> (fromIntegral $ length allInstrs) )
+combineFunctions = foldl calcFuncAddr ([], Seq.empty)
+    where calcFuncAddr acc funcInstrs =
+            let allInstrs = fst acc in
+            let funcAddrs = snd acc in
+            ( allInstrs ++ funcInstrs, funcAddrs Seq.|> fromIntegral (length allInstrs) )
 
 
 assembleTac :: Seq.Seq VMWord -> (ConstAddr -> VMWord) -> Tac -> VMWord
@@ -62,7 +61,7 @@ assembleTac funcAddrs addrConv opc =
   let i = fromIntegral in
   let sym = fromIntegral.symIdToInt in
   let caddr a = fromIntegral (addrConv a) in
-  let faddr a = fromIntegral $ funcAddrs `Seq.index` (funcAddrToInt a) in
+  let faddr a = fromIntegral $ funcAddrs `Seq.index` funcAddrToInt a in
   case opc of
     Tac_ret r0              -> instructionRI   0 (r r0) 0
     Tac_load_i r0 n         -> instructionRI   1 (r r0) n

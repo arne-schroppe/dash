@@ -81,10 +81,8 @@ normalizeInContext expr = do
 normalizeExpr :: Expr -> NormState NstExpr
 normalizeExpr expr = case expr of
   LocalBinding (Binding name boundExpr) restExpr ->
-    nameExpr boundExpr name $ \ _ -> do
-      rest <- normalizeExpr restExpr
-      return $ rest
-  _ -> do
+    nameExpr boundExpr name $ \ _ -> normalizeExpr restExpr
+  _ ->
     atomizeExpr expr "" $ return . NAtom
 
 
@@ -113,7 +111,7 @@ atomizeExpr expr name k = case expr of
             atomizeExpr restExpr "" $ \ normBoundExpr -> do
               rest <- k normBoundExpr
               return $ NLet var aExpr rest
-  x -> error $ "Unable to normalize " ++ (show x)
+  x -> error $ "Unable to normalize " ++ show x
 
 
 normalizeNumber :: Int -> Cont -> NormState NstExpr
@@ -170,27 +168,27 @@ normalizeFunAp funExpr args k = case (funExpr, args) of
   (Var "*", [a, b]) -> normalizeBinaryPrimOp NPrimOpMul a b
   (Var "/", [a, b]) -> normalizeBinaryPrimOp NPrimOpDiv a b
   (Var "==", [a, b]) -> normalizeBinaryPrimOp NPrimOpEq a b
-  _ -> do nameExpr funExpr "" $ \ funVar -> do
+  _ -> nameExpr funExpr "" $ \ funVar -> do
             maybeAr <- arity funVar
             case maybeAr of
               Nothing -> applyUnknownFunction funVar
               Just (numFree, ar) -> applyKnownFunction funVar numFree ar
   where
     normalizeBinaryPrimOp :: (NstVar -> NstVar -> NstPrimOp) -> Expr -> Expr -> NormState NstExpr
-    normalizeBinaryPrimOp primOp a b = do
+    normalizeBinaryPrimOp primOp a b =
       nameExprList [a, b] $ \ [aVar, bVar] ->
           k $ NPrimOp $ primOp aVar bVar
 
     applyUnknownFunction :: NstVar -> NormState NstExpr
     applyUnknownFunction funVar =
-      do nameExprList args $ \ normArgs ->
+      nameExprList args $ \ normArgs ->
           k $ NFunAp funVar normArgs
 
     applyKnownFunction :: NstVar -> Int -> Int -> NormState NstExpr
     applyKnownFunction funVar numFreeVars funArity =
       let numArgs = length args in
       -- saturated call
-      if numArgs == funArity then do
+      if numArgs == funArity then
         nameExprList args $ \ normArgs ->
             k $ NFunAp funVar normArgs
       -- under-saturated call
@@ -223,7 +221,7 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
   -- But the lambda has a different constructor, called MatchBranch, which helps us in optimizing the
   -- compiled code (free variables in matchBranches are not pushed as a closure on the heap, for example)
   nameExpr matchedExpr "" $ \ subjVar ->
-          let matchBranches = map (\ (params, expr) -> MatchBranch params expr) $ zip matchedVars exprs in
+          let matchBranches = zipWith MatchBranch matchedVars exprs in
           nameExprList matchBranches $ \ branchVars -> do
                   -- for now we're only inserting empty lists instead of free vars. The recursion module
                   -- will insert the actual free vars of each match branch, because only that module has
@@ -243,22 +241,19 @@ pullUpFreeVars :: [String] -> NormState ()
 pullUpFreeVars freeVars = do
   _ <- forM (reverse freeVars) $ \ name -> do
           hasB <- hasBinding name
-          when (not hasB) $ addDynamicVar name
+          unless hasB $ addDynamicVar name
   return ()
 
 
 nameExprList :: [Expr] -> ([NstVar] -> NormState NstExpr) -> NormState NstExpr
-nameExprList exprList k =
-  nameExprList' exprList [] k
+nameExprList exprList =
+  nameExprList' exprList []
   where
-    nameExprList' [] acc k' = do
-      expr <- k' $ reverse acc
-      return expr
-    nameExprList' expLs acc k' = do
-      let hd = head expLs
-      nameExpr hd "" $ \ var -> do
-        restExpr <- nameExprList' (tail expLs) (var : acc) k'
-        return restExpr
+    nameExprList' [] acc k' =
+      k' $ reverse acc
+    nameExprList' expLs acc k' =
+      nameExpr (head expLs)"" $ \ var ->
+        nameExprList' (tail expLs) (var : acc) k'
 
 
 nameExpr :: Expr -> String -> VCont -> NormState NstExpr
@@ -273,17 +268,15 @@ nameExpr expr originalName k = case expr of
       -- Recursive vars are also let-bound. Not strictly necessary, but easier later on  (TODO loosen this restriction)
       NVar _ NRecursiveVar -> letBind expr "" k
       -- All other vars are used directly (because they will be in a register later on)
-      v -> do
-            bodyExpr <- k v
-            return bodyExpr
+      v -> k v
   -- Everything that is not a Var needs to be let-bound
   _ -> letBind expr originalName k
   where
     letBind :: Expr -> String -> (NstVar -> NormState NstExpr) -> NormState NstExpr
-    letBind expr' name k' = do
+    letBind expr' name k' =
       atomizeExpr expr' name $ \ aExpr -> do
         var <- if null name then newTempVar else return $ NVar name NLocalVar
-        addBinding name (var, (isDynamic aExpr))
+        addBinding name (var, isDynamic aExpr)
         restExpr <- k' var
         return $ NLet var aExpr restExpr
 

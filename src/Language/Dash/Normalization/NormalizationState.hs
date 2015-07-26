@@ -25,7 +25,8 @@ module Language.Dash.Normalization.NormalizationState (
 ) where
 
 
-import           Control.Monad.State hiding (state)
+import           Control.Monad.State   hiding (state)
+import           Data.Function         (on)
 import           Data.List
 import qualified Data.Map              as Map
 import           Language.Dash.IR.Ast
@@ -40,10 +41,10 @@ type NormState a = State NormEnv a
 
 
 data NormEnv = NormEnv {
-  symbolNames :: Map.Map String SymId
-, constTable  :: ConstTable -- TODO rename ConstTable to DataTable (or ConstPool)
-, contexts    :: [Context] -- head is current context
-, arities     :: Map.Map String (Int, Int) -- (Num free vars, num formal params) -- TODO for this we *really* need unique names
+  symbolNames    :: Map.Map String SymId
+, constTable     :: ConstTable -- TODO rename ConstTable to DataTable (or ConstPool)
+, contexts       :: [Context] -- head is current context
+, arities        :: Map.Map String (Int, Int) -- (Num free vars, num formal params) -- TODO for this we *really* need unique names
 , varNameCounter :: Int
 } deriving (Eq, Show)
 
@@ -81,7 +82,7 @@ newTempVar = do
     newName = do
       index <- gets varNameCounter
       modify $ \ env -> env { varNameCounter = index + 1 }
-      return $ "$local" ++ (show index)
+      return $ "$local" ++ show index
 
 
 
@@ -136,8 +137,7 @@ enterContext funParams = do
   return ()
 
 leaveContext :: NormState ()
-leaveContext = do
-  popContext
+leaveContext = popContext
 
 
 context :: NormState Context
@@ -146,7 +146,7 @@ context = gets $ head.contexts
 pushContext :: Context -> NormState ()
 pushContext c = do
   state <- get
-  put $ state { contexts = c : (contexts state) }
+  put $ state { contexts = c : contexts state }
 
 popContext :: NormState ()
 popContext = do
@@ -164,11 +164,10 @@ addDynamicVar :: String -> NormState ()
 addDynamicVar name = do
   con <- context
   let free = freeVars con
-  if not (name `elem` free) then do
-          let free' = name : free
-          let con' = con { freeVars = free' }
-          putContext con'
-  else return ()
+  when (name `notElem` free) $
+          do let free' = name : free
+             let con' = con { freeVars = free' }
+             putContext con'
 
 addBinding :: String -> (NstVar, Bool) -> NormState ()
 addBinding "" _ = return ()
@@ -224,7 +223,7 @@ addSymbolName s = do
     return nextId
 
 getSymbolNames :: NormEnv -> SymbolNameList
-getSymbolNames = map fst . sortBy (\a b -> compare (snd a) (snd b)) . Map.toList . symbolNames
+getSymbolNames = map fst . sortBy (compare `on` snd) . Map.toList . symbolNames
 
 
 --- Constants
@@ -251,28 +250,28 @@ encodeConstant v =
                 symId <- addSymbolName s
                 encodedArgs <- mapM encodeConstant args
                 return $ CCompoundSymbol symId encodedArgs
-    _ -> error $ "Can only encode constant symbols for now"
+    _ -> error "Can only encode constant symbols for now"
 
 
 encodeMatchPattern :: Int -> Pattern -> NormState ([String], Constant)
 encodeMatchPattern nextMatchVar pat =
   case pat of
-    PatNumber n -> return ([], (CNumber n))
+    PatNumber n -> return ([], CNumber n)
     PatSymbol s [] -> do sid <- addSymbolName s
-                         return $ ([], CPlainSymbol sid)
+                         return ([], CPlainSymbol sid)
     PatSymbol s params -> do
                   symId <- addSymbolName s
                   (vars, pats) <- encodePatternCompoundSymbolArgs nextMatchVar params
                   return (vars, CCompoundSymbol symId pats)
-    PatVar n -> return $ ([n], CMatchVar nextMatchVar)
-    PatWildcard -> return $ (["_"], CMatchVar nextMatchVar) -- TODO be a bit more sophisticated here and don't encode this as a var that is passed to the match branch
+    PatVar n -> return ([n], CMatchVar nextMatchVar)
+    PatWildcard -> return (["_"], CMatchVar nextMatchVar) -- TODO be a bit more sophisticated here and don't encode this as a var that is passed to the match branch
 
 -- TODO use inner state ?
 encodePatternCompoundSymbolArgs :: Int -> [Pattern] -> NormState ([String], [Constant])
 encodePatternCompoundSymbolArgs nextMatchVar args = do
   (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
     (vars, encoded) <- encodeMatchPattern nextMV p
-    return (nextMV + (fromIntegral $ length vars), accVars ++ vars, pats ++ [encoded])
+    return (nextMV + fromIntegral (length vars), accVars ++ vars, pats ++ [encoded])
     ) (nextMatchVar, [], []) args  -- TODO get that O(n*m) out and make it more clear what this does
   return (vars, entries)
 

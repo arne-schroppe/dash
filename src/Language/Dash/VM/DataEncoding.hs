@@ -23,11 +23,11 @@ decode w ctable symNames =
   let value = getValue w in
   decode' tag value
   where decode' t v | t==tagNumber     = VMNumber v
-                    | t==tagPlainSymbol   = VMSymbol (symNames !! (fromIntegral v)) []
+                    | t==tagPlainSymbol   = VMSymbol (symNames !! fromIntegral v) []
                     | t==tagCompoundSymbol = decodeCompoundSymbol v ctable symNames
                     | t==tagClosure = VMClosure
                     | t==tagFunction = VMFunction
-                    | otherwise        = error $ "Unknown tag " ++ (show t)
+                    | otherwise        = error $ "Unknown tag " ++ show t
 
 
 decodeCompoundSymbol :: VMWord -> [VMWord] -> SymbolNameList -> VMValue
@@ -35,7 +35,7 @@ decodeCompoundSymbol addr ctable symNames =
   let subCTable = drop (fromIntegral addr) ctable in
   let (symId, nArgs) = decodeCompoundSymbolHeader (head subCTable) in
   let decoded = map (\v -> decode v ctable symNames) (take (fromIntegral nArgs) $ tail subCTable) in
-  let symName = symNames !! (symIdToInt symId) in
+  let symName = symNames !! symIdToInt symId in
   VMSymbol symName decoded
 
 
@@ -58,13 +58,13 @@ matchDataSubTag MatchHeader = 1
 matchDataSubTag MatchVar    = 0
 
 encodeMatchHeader :: Int -> VMWord
-encodeMatchHeader n = matchData MatchHeader n
+encodeMatchHeader = matchData MatchHeader
 
 decodeMatchHeader :: VMWord -> Int
 decodeMatchHeader h = fromIntegral $ h .&. 0x7FFFFFF
 
 encodeMatchVar :: Int -> VMWord
-encodeMatchVar n = matchData MatchVar n
+encodeMatchVar = matchData MatchVar
 
 matchData :: MatchDataType -> Int -> VMWord
 matchData mtype n =
@@ -75,7 +75,7 @@ matchData mtype n =
 
 
 encodeCompoundSymbolHeader :: SymId -> Int -> VMWord
-encodeCompoundSymbolHeader symId n = fromIntegral $ ((symIdToInt symId) `shiftL` 16) .|. n
+encodeCompoundSymbolHeader symId n = fromIntegral $ (symIdToInt symId `shiftL` 16) .|. n
 
 decodeCompoundSymbolHeader :: VMWord -> (SymId, Int)
 decodeCompoundSymbolHeader v = (mkSymId $ fromIntegral $ (v .&. 0xFFFF0000) `rotateL` 16,

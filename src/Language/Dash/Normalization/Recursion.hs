@@ -84,7 +84,7 @@ resolveRecAtom atom name = case atom of
   NMatch maxCapt resultVar addr branches -> resolveRecMatch maxCapt resultVar addr branches
   NVarExpr (NVar vname NRecursiveVar) -> do
     var <- resolveRecVar vname
-    return $ (NVarExpr var, [])
+    return (NVarExpr var, [])
   a -> return (a, [])
 
 
@@ -92,8 +92,8 @@ resolveRecMatch :: Int -> NstVar -> ConstAddr -> [([String], [String], NstVar)] 
 resolveRecMatch maxCapt resultVar addr branches = do
   newBranches <- forM branches ( \ (_, capturedVars, branchVar) -> do
                                    freeVars <- getFreeVarsForLocalVar branchVar
-                                   return $ (freeVars, capturedVars, branchVar))
-  return $ (NMatch maxCapt resultVar addr newBranches, [])
+                                   return (freeVars, capturedVars, branchVar))
+  return (NMatch maxCapt resultVar addr newBranches, [])
 
 -- We return the free vars for this lambda so that match instructions coming later can know about them
 -- (they need to know about free vars so that they can call match-branches correctly)
@@ -105,7 +105,7 @@ resolveRecLambda lambdaConstructor freeVars params expr name = do
   let extraFree = extraFreeVars context
   popContext
   let allFreeVars = freeVars ++ extraFree
-  return $ (lambdaConstructor allFreeVars params resolvedBody, allFreeVars)
+  return (lambdaConstructor allFreeVars params resolvedBody, allFreeVars)
 
 
 resolveRecVar :: String -> RecursionState NstVar
@@ -124,7 +124,7 @@ resolveRecVar name = do
 findName :: String -> [RecursionContext] -> Maybe NstVar
 findName _ []             = Nothing
 findName name (context:cs) =
-  if (lambdaName context) == name then Just $ lambdaVar context
+  if lambdaName context == name then Just $ lambdaVar context
   else findName name cs
 
 
@@ -132,7 +132,7 @@ addExtraFreeVar :: String -> RecursionState ()
 addExtraFreeVar name = do
   context <- getContext
   let extra = extraFreeVars context
-  when (not $ name `elem` extra) $ do
+  unless (name `elem` extra) $ do
           let free' = name : extra
           modifyContext $ \ ctx -> ctx { extraFreeVars = free'  }
 
@@ -147,8 +147,8 @@ getFreeVarsForLocalVar :: NstVar -> RecursionState [String]
 getFreeVarsForLocalVar var = do
   context <- getContext
   let freeVarMap = freeVarsForVar context
-  case (Map.lookup var freeVarMap) of
-      Nothing -> error $ "Internal compiler error: Unknown local var: " ++ (show var)
+  case Map.lookup var freeVarMap of
+      Nothing -> error $ "Internal compiler error: Unknown local var: " ++ show var
       Just freeVars -> return freeVars
 
 getContext :: RecursionState RecursionContext
@@ -160,7 +160,7 @@ modifyContext :: (RecursionContext -> RecursionContext) -> RecursionState ()
 modifyContext f = do
   ctx <- getContext
   let ctx' = f ctx
-  modify $ \ state -> state { contexts = ctx' : (tail $ contexts state) }
+  modify $ \ state -> state { contexts = ctx' : tail (contexts state) }
 
 -- TODO this doesn't work for mutual recursion
 
@@ -176,7 +176,7 @@ pushContext _  n = pushContext' n (NVar n NFreeVar)
 pushContext' :: String -> NstVar -> RecursionState ()
 pushContext' name var = do
   let newContext = emptyRecursionContext name var
-  modify $ \ state -> state { contexts = newContext : (contexts state) }
+  modify $ \ state -> state { contexts = newContext : contexts state }
 
 
 popContext :: RecursionState ()

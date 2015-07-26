@@ -35,7 +35,7 @@ compileFunc freeVars params expr name shouldAddHeader = do
 
   if shouldAddHeader then do
     let arity = length freeVars + length params
-    let funcCode' = (Tac_fun_header arity) : funcCode
+    let funcCode' = Tac_fun_header arity : funcCode
     endFunction funAddr funcCode'
   else
     endFunction funAddr funcCode
@@ -61,7 +61,7 @@ compileAtom reg atom name isResultValue = case atom of
   NPlainSymbol sid -> do
           addCompileTimeConst name $ CTConstPlainSymbol sid
           return [Tac_load_ps reg sid]
-  NCompoundSymbol False cAddr -> do
+  NCompoundSymbol False cAddr ->
           -- addCompileTimeConst name $ CConstCompoundSymbol cAddr
           return [Tac_load_cs reg cAddr] -- TODO codeConstant?
   NPrimOp primop -> compilePrimOp primop reg
@@ -92,7 +92,7 @@ compileAtom reg atom name isResultValue = case atom of
           let numArgs = length args
           let partApInst = [Tac_part_ap reg rFun numArgs]
           return $ argInstrs ++ partApInst
-  x -> error $ "Unable to compile " ++ (show x)
+  x -> error $ "Unable to compile " ++ show x
   where
     moveVarToReg :: NstVar -> Reg -> CodeGenState [Tac]
     moveVarToReg var dest = do
@@ -139,9 +139,8 @@ compileConstantFreeVar reg name = do
 
 
 compileLoadLambda :: Reg -> FuncAddr -> CodeGenState [Tac]
-compileLoadLambda reg funAddr = do
-  let ldFunAddr = [Tac_load_f reg funAddr]
-  return $ ldFunAddr
+compileLoadLambda reg funAddr =
+  return [Tac_load_f reg funAddr]
 
 
 compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Tac]
@@ -193,8 +192,8 @@ compileClosureArgs name freeVars = do
     compileClosureArg :: String -> String -> Int -> CodeGenState (Maybe Tac)
     compileClosureArg clName argName argIndex =
       if argName == clName
-        then (setSelfReferenceSlot argIndex) >> return Nothing
-        else compileSetArgN argName argIndex >>= return . Just
+        then setSelfReferenceSlot argIndex >> return Nothing
+        else liftM Just $ compileSetArgN argName argIndex
 
 compileSetArg :: NstVar -> Int -> CodeGenState Tac
 compileSetArg var arg = do
@@ -225,7 +224,7 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
   -- lambdas can't escape the local context.
   let matchBranchVars = map (\ (_, _, a) -> a) branches -- the variables containing matchbranches to call
   subjR <- getReg subject
-  let handledBranches = [0 .. (length matchBranchVars) - 1]
+  let handledBranches = [0 .. length matchBranchVars - 1]
   let remainingBranches = reverse handledBranches
 
   -- We are using the fact that registers are used linearly from smallest to largest.
@@ -247,11 +246,11 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
   -- numRemainingBranchInstrs = [10, 3, 0]
   -- numHandledBranchInstrs = [0, 4, 11]
   let branchInstrCount = map (\ index -> let (pre, rest) = splitAt index compiledBranches in
-                                         let numRemaining = (length matchBranchVars) - 1 - index in
+                                         let numRemaining = length matchBranchVars - 1 - index in
                                          let numHandled = index in
                                          let numMissingInstructionsPerBranch = 1 in -- we'll add the jump out instruction later
-                                         let numRemainingInstrs = (length (Prelude.concat rest)) + numMissingInstructionsPerBranch * numRemaining in
-                                         let numHandledInstrs = (length (Prelude.concat pre)) + numMissingInstructionsPerBranch * numHandled in
+                                         let numRemainingInstrs = length (Prelude.concat rest) + numMissingInstructionsPerBranch * numRemaining in
+                                         let numHandledInstrs = length (Prelude.concat pre) + numMissingInstructionsPerBranch * numHandled in
                                          (numHandledInstrs, numRemainingInstrs))
                                  [0 .. (length matchBranchVars)]
   let numRemainingBranchInstrs = tail $ map snd branchInstrCount
@@ -259,7 +258,7 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
 
   -- instructions for jumping out of the code that calls a match-branch and to the remaining code
   let jumpOutInstrs = map (\ numRemaining -> [Tac_jmp $ numRemaining + 1]) numRemainingBranchInstrs
-  let completeCompiledBranches = map ( \ (a, b) -> a ++ b ) $ zip compiledBranches jumpOutInstrs
+  let completeCompiledBranches = zipWith (++) compiledBranches jumpOutInstrs
 
   -- compile jump table
   -- the match instruction calls the following instruction at position n if branch n matched. So
@@ -286,9 +285,9 @@ compileMatch resultReg subject maxCaptures patternAddr branches isResultValue = 
 compileMatchBranchLoadArg :: Reg -> [Name] -> [a] -> CodeGenState [Tac]
 compileMatchBranchLoadArg captureStartReg freeVars capturedVars = do
   freeArgInstrs <- compileClosureArgs "" freeVars
-  let numCaptures = (max 0 $ (length capturedVars) - 1)
+  let numCaptures = max 0 $ length capturedVars - 1
   let capturedArgsStart = length freeVars -- TODO make sure that freeVars can't contain duplicates? (it shouldn't be possible)
-  let capturedArgInstrs = if length capturedVars > 0 then
+  let capturedArgInstrs = if not (null capturedVars) then
                               [Tac_set_arg capturedArgsStart captureStartReg numCaptures]
                           else
                               []
