@@ -145,26 +145,6 @@ getRegByName name = do
           return $ Map.lookup name binds
 
 
--- getReg :: NstVar -> CodeGenState Reg
--- getReg var = case var of
---   NVar _ NConstant -> error "Compiler error"
---   NVar _ NRecursiveVar -> error "Compiler error: Unexpected recursive var"
---   NVar name NFunParam -> do
---     maybeReg <- param name
---     return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
--- 
---   -- When calling a closure, the first n registers are formal arguments
---   -- and the next m registers are closed-over variables
---   -- TODO document this fact somewhere visible
---   NVar name NFreeVar -> do
---     maybeReg <- freeVar name
---     return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
--- 
---   NVar name NLocalVar -> do
---     maybeReg <- localVar name
---     return $ fromMaybe (error $ "Unknown identifier: " ++ name) maybeReg
-
-
 newReg :: CodeGenState Reg
 newReg = do
   scope <- getScope

@@ -37,8 +37,7 @@ data NstVarType =
     NLocalVar
   | NFunParam
   | NFreeVar
-  -- Global constants, e.g. named functions without free variables or named literals
-  | NConstant
+  | NConstant -- Global constants, e.g. named functions without free variables or named literals
   | NRecursiveVar
   deriving (Eq, Ord)
 
@@ -62,10 +61,10 @@ instance Show NstExpr where
 
 instance Show NstVarType where
   show v = case v of
-    NLocalVar -> "l"
-    NFunParam -> "p"
-    NFreeVar -> "f"
-    NConstant -> "g"
+    NLocalVar     -> "l"
+    NFunParam     -> "p"
+    NFreeVar      -> "f"
+    NConstant     -> "g"
     NRecursiveVar -> "r"
 
 instance Show NstVar where
@@ -73,15 +72,21 @@ instance Show NstVar where
 
 instance Show NstAtomicExpr where
   show atom = case atom of
-    NNumber n -> show n
-    NPlainSymbol s -> "sym #" ++ show s
+    NNumber n            -> show n
+    NPlainSymbol s       -> "sym #" ++ show s
     NCompoundSymbol b sa -> "sym @" ++ show sa ++ if b then " (dynamic)" else ""
-    NString str -> "\"" ++ str ++ "\""
-    NVarExpr v -> "var " ++ show v
-    NLambda free params body -> "λ f" ++ show free ++ " p" ++ show params ++ " {\n" ++ show body ++ "}"
-    NMatchBranch free matchedVars body -> "mλ f" ++ show free ++ " m" ++ show matchedVars ++ " {\n" ++ show body ++ "}"
-    NPrimOp p -> show p
-    NPartAp v args -> "pap " ++ show v ++ " " ++ show args
-    NFunAp v args -> "ap " ++ show v ++ " " ++ show args
-    NMatch maxv subj pat body -> "match (max " ++ show maxv ++ ") [" ++ show subj ++ "] @" ++ show pat ++ " " ++ show body
+    NString str          -> "\"" ++ str ++ "\""
+    NVarExpr v           -> "var " ++ show v
+    NLambda free params body ->
+                            "λ f" ++ show free ++ " p" ++ show params
+                            ++ " {\n" ++ show body ++ "}"
+    NMatchBranch free matchedVars body ->
+                            "mλ f" ++ show free ++ " m" ++ show matchedVars
+                            ++ " {\n" ++ show body ++ "}"
+    NPrimOp p            -> show p
+    NPartAp v args       -> "pap " ++ show v ++ " " ++ show args
+    NFunAp v args        -> "ap " ++ show v ++ " " ++ show args
+    NMatch maxv subj pat body ->
+                            "match (max " ++ show maxv ++ ") [" ++ show subj ++ "] @"
+                            ++ show pat ++ " " ++ show body
 
