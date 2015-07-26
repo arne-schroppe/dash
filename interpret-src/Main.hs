@@ -10,4 +10,4 @@ main = do
   let scriptPath = args !! 0
   fileContent <- readFile scriptPath
   result <- run fileContent
-  putStrLn $ show result
+  print result
