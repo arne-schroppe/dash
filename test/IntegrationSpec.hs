@@ -516,6 +516,45 @@ spec = do
       let result = run code
       result `shouldReturn` VMSymbol "$tuple" [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
 
+    it "has lists" $ do
+      let code = "[1, 2, :sym]"
+      let result = run code
+      result `shouldReturn` VMSymbol "list" [VMNumber 1,
+                              VMSymbol "list" [ VMNumber 2,
+                              VMSymbol "list" [ VMSymbol "sym" [], 
+                              VMSymbol "empty-list" []]]]
+
+
+    it "matches an empty list" $ do
+      let code = " ls = []      \n\
+                 \ match ls begin        \n\
+                 \   [1, 2] -> :a \n\
+                 \   [1, 2, 3] -> :b        \n\
+                 \   [] -> :c        \n\
+                 \ end"
+      let result = run code
+      result `shouldReturn` VMSymbol "c" []
+
+
+    it "matches an exact list" $ do
+      let code = " ls = [1, 2, 3]      \n\
+                 \ match ls begin        \n\
+                 \   [1, 2] -> :a \n\
+                 \   [1, 2, 3] -> :b        \n\
+                 \ end"
+      let result = run code
+      result `shouldReturn` VMSymbol "b" []
+
+
+    it "matches a list's tail" $ do
+      let code = " ls = [1, 2, 3, 4]      \n\
+                 \ match ls begin        \n\
+                 \   [1, 2] -> :a \n\
+                 \   [1, 2 | tl] -> tl        \n\
+                 \ end"
+      let result = run code
+      result `shouldReturn` VMSymbol "list" [VMNumber 3, VMSymbol "list" [VMNumber 4, VMSymbol "empty-list" []]]
+
 
 
 
