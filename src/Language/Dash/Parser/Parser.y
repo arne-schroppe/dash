@@ -15,6 +15,8 @@ import Language.Dash.IR.Ast
   eol       { TEOL }
   '('       { TOpen_Par }
   ')'       { TClose_Par }
+  '['       { TOpen_Bracket }
+  ']'       { TClose_Bracket }
   module    { TModule }
   if        { TIf }
   then      { TThen }
@@ -91,6 +93,7 @@ NonIdentSimpleExpr:
 NonIdentNonSymbolSimpleExpr:
     int            { LitNumber $1 }
   | string         { LitString $1 }
+  | List           { $1 }
   | '(' Expr star(TupleNextExpr) ')' {
                   case $3 of
                   [] -> $2
@@ -120,6 +123,17 @@ InfixOperation:
     SimpleExpr operator SimpleExpr             { FunAp (Var $2) [$1, $3] }
 
 
+List:
+    '[' ListNext ']'       { $2 }
+
+ListNext:
+    Expr              { LitSymbol "list" [$1, LitSymbol "empty-list" []] }
+  | Expr ',' ListNext { LitSymbol "list" [$1, $3] }
+  |                   { LitSymbol "empty-list" [] }
+
+
+ListNextExpr:
+    ',' Expr   { $2 }
 
 LocalBinding:
     Binding Expr  { LocalBinding $1 $2 }

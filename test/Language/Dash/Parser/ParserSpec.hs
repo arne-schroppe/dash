@@ -26,3 +26,11 @@ spec = do
     it "parses if-then-else as match" $ do
       parse_string "if a then b else c" `shouldBe`
         (Match (Var "a") [(PatSymbol "true" [], Var "b"), (PatSymbol "false" [], Var "c")])
+
+    it "parses an empty list" $ do
+      parse_string "[]" `shouldBe`
+        LitSymbol "empty-list" []
+
+    it "parses a list" $ do
+      parse_string "[1, a, 2]" `shouldBe`
+        LitSymbol "list" [LitNumber 1, LitSymbol "list" [Var "a", LitSymbol "list" [LitNumber 2, LitSymbol "empty-list" []]]]

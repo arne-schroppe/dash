@@ -549,15 +549,17 @@ K infix operators
 x inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
 K if a closure doesn't escape the current context, apply free variables directly
 - Strings
+- Garbage collection
 - Creating symbols (symbol arity is known statically)
 K tuples
 - Lists
+- Static modules
+- I/O
+
 - maps/dictionaries as built-in type (because that's fairly useful)
   - under the hood these could be somewhat similar to modules, maybe. Or modules can't be modified at runtime,
     but then we're not very dynamic
   - map functions: hasKeys, merge (for entitas)
-- Static modules
-- I/O
 
 - Change tags and runtime representation of values
 - Garbage collection
