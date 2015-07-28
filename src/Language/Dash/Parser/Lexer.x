@@ -53,6 +53,7 @@ tokens :-
   "<-"          { mkTok TArrow_L }
   "_"           { mkTok TUnderscore }
   ","           { mkTok TComma }
+  "|"           { mkTok TVBar }
   @integer      { mkTokS (\s -> TInt (read s)) }
   @ident        { mkTokS (\s -> TId s) }
   @operator     { mkTokS (\s -> TOperator s) }
@@ -122,6 +123,7 @@ data Token  = TEOL
             | TOperator String
             | TUnderscore
             | TComma
+            | TVBar
   deriving (Show, Eq)
 
 

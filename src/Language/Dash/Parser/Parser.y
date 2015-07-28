@@ -38,6 +38,7 @@ import Language.Dash.IR.Ast
   operator  { TOperator $$ }
   '_'       { TUnderscore }
   ','       { TComma }
+  '|'       { TVBar }
 
 
 %%
@@ -132,8 +133,6 @@ ListNext:
   |                   { LitSymbol "empty-list" [] }
 
 
-ListNextExpr:
-    ',' Expr   { $2 }
 
 LocalBinding:
     Binding Expr  { LocalBinding $1 $2 }
@@ -184,13 +183,17 @@ Pattern:
 
 SimplePattern:
     int { PatNumber $1 }
-  | id  { PatVar $1 }
-  | '_' { PatWildcard }
+  | PatId { $1 }
   | '(' Pattern star(TupleNextPattern) ')' { 
       case $3 of
         [] -> $2
         _  -> PatSymbol tupleSymbolId ($2 : $3)
     }
+  | PatList  { $1 }
+
+PatId:
+    id  { PatVar $1 }
+  | '_' { PatWildcard }
 
 TupleNextPattern:
     ',' Pattern   { $2 }
@@ -198,7 +201,14 @@ TupleNextPattern:
 SymbolPattern:
     symbol star(SimplePattern) { PatSymbol $1 $2 }
 
+PatList:
+    '[' PatListNext ']'  { $2 }
 
+PatListNext:
+    Pattern                  { PatSymbol "list" [$1, PatSymbol "empty-list" []] }
+  | Pattern ',' PatListNext  { PatSymbol "list" [$1, $3] }
+  | Pattern '|' PatId        { PatSymbol "list" [$1, $3] }
+  |                          { PatSymbol "empty-list" [] }
 
 
 DoExpr:

@@ -24,6 +24,7 @@ rec 4000000
 
 --/
 
+/--
 
 fib n =
   match n begin
@@ -33,6 +34,19 @@ fib n =
   end
 
 fib 35
+
+--/
+
+test-list l =
+  match l begin
+    []             -> :empty
+    [1]            -> :a
+    [1, 2]         -> :b
+    [a, 3]         -> :c
+    [1, 2, 3 | tl] -> :d
+  end
+
+test-list [1, 2, 3, 4, 5, 6]
 
 
 
