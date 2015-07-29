@@ -128,9 +128,9 @@ List:
     '[' ListNext ']'       { $2 }
 
 ListNext:
-    Expr              { LitSymbol "list" [$1, LitSymbol "empty-list" []] }
-  | Expr ',' ListNext { LitSymbol "list" [$1, $3] }
-  |                   { LitSymbol "empty-list" [] }
+    Expr              { LitSymbol listConsSymbolId [$1, LitSymbol listEmptySymbolId []] }
+  | Expr ',' ListNext { LitSymbol listConsSymbolId [$1, $3] }
+  |                   { LitSymbol listEmptySymbolId [] }
 
 
 
@@ -205,11 +205,11 @@ PatList:
     '[' PatListNext ']'  { $2 }
 
 PatListNext:
-    Pattern                  { PatSymbol "list" [$1, PatSymbol "empty-list" []] }
-  | Pattern ',' PatListNext  { PatSymbol "list" [$1, $3] }
-  | Pattern '|' PatId        { PatSymbol "list" [$1, $3] }
-  | Pattern '|' PatList      { PatSymbol "list" [$1, $3] }
-  |                          { PatSymbol "empty-list" [] }
+    Pattern                  { PatSymbol listConsSymbolId [$1, PatSymbol listEmptySymbolId []] }
+  | Pattern ',' PatListNext  { PatSymbol listConsSymbolId [$1, $3] }
+  | Pattern '|' PatId        { PatSymbol listConsSymbolId [$1, $3] }
+  | Pattern '|' PatList      { PatSymbol listConsSymbolId [$1, $3] }
+  |                          { PatSymbol listEmptySymbolId [] }
 
 
 DoExpr:
@@ -242,9 +242,13 @@ LocalDoBinding:
 
 {
 
+-- TODO export these symbols so that tests can use them abstractly
 tupleSymbolId = "$tuple"
 
+listConsSymbolId = "list"
+listEmptySymbolId = "empty-list"
 
+makeMonad :: String -> [(String, Expr)] -> Expr
 makeMonad monad lines =
   case (reverse lines) of
     (_, call) : []     -> call
