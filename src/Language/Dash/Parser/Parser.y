@@ -208,6 +208,7 @@ PatListNext:
     Pattern                  { PatSymbol "list" [$1, PatSymbol "empty-list" []] }
   | Pattern ',' PatListNext  { PatSymbol "list" [$1, $3] }
   | Pattern '|' PatId        { PatSymbol "list" [$1, $3] }
+  | Pattern '|' PatList      { PatSymbol "list" [$1, $3] }
   |                          { PatSymbol "empty-list" [] }
 
 

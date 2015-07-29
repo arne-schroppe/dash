@@ -555,6 +555,14 @@ spec = do
       let result = run code
       result `shouldReturn` VMSymbol "list" [VMNumber 3, VMSymbol "list" [VMNumber 4, VMSymbol "empty-list" []]]
 
+    it "matches a list's tail with a nested pattern" $ do
+      let code = " ls = [1, 2, 3, 4, 5]      \n\
+                 \ match ls begin        \n\
+                 \   [1, 2] -> :a \n\
+                 \   [1 | [2 | [ 3 | tl]]] -> tl        \n\
+                 \ end"
+      let result = run code
+      result `shouldReturn` VMSymbol "list" [VMNumber 4, VMSymbol "list" [VMNumber 5, VMSymbol "empty-list" []]]
 
 
 
@@ -591,7 +599,7 @@ K if a closure doesn't escape the current context, apply free variables directly
 - Garbage collection
 - Creating symbols (symbol arity is known statically)
 K tuples
-- Lists
+K Lists
 - Static modules
 - I/O
 
