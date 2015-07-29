@@ -77,7 +77,6 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 120
 
-    -- TODO When returning a lambda from a function (as seen here) it would be more secure to have a tag for lambdas
     it "returns a simple lambda" $ do
       let code =  " make-adder x = \n\
                   \   .\\ y = 22 + y \n\
@@ -89,7 +88,6 @@ spec = do
 
 
 
-{- TODO reenable
     it "optimizes tail calls" $ do
       let code = "\
       \ counter acc = \n\
@@ -102,9 +100,7 @@ spec = do
       \ y "
       let result = run code
       result `shouldReturn` VMNumber 43
--}
 
-    -- TODO when changing `counter x` to use `next`, there is a compiler error. Investigate (reason is that next is handled as a constant free var)
 
 
 
@@ -122,7 +118,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 43
 
-            -- TODO this test triggers an illegal partial application but still manages to pass
+
             it "handles nested self-recursion of closure" $ do
               -- We add the dummy closure so that it is the closure at memory index 0.
               -- This way we know that the inner use of `counter` is not simply using
@@ -594,7 +590,7 @@ K pattern wildcard (can be used multiple times)
 K More math operators
 K infix operators
 x inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
-K if a closure doesn't escape the current context, apply free variables directly
+x if a closure doesn't escape the current context, apply free variables directly
 - Strings
 - Garbage collection
 - Creating symbols (symbol arity is known statically)

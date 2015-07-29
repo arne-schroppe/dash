@@ -37,7 +37,7 @@ static int invocation = 0;
 static const vm_value symbol_id_false = 0;
 static const vm_value symbol_id_true = 1;
 static const int fun_header_size = 1;
-static const int pap_header_size = 2; \
+static const int pap_header_size = 2;
 
 const vm_value vm_tag_number = 0x0;
 const vm_value vm_tag_plain_symbol = 0x4;
