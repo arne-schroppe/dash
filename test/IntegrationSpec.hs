@@ -355,9 +355,21 @@ spec = do
               let result = run ":sym 2 3"
               result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]
 
-            -- TODO dynamic compound symbols
+            it "creates a symbol at runtime" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   :sym a \n\
+              \ fun 7"
+              let result = run code
+              result `shouldReturn` VMSymbol "sym" [VMNumber 7]
 
-
+            it "creates a nested symbol at runtime" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   :sym 1 (:sym2 a) 3 \n\
+              \ fun 2"
+              let result = run code
+              result `shouldReturn` VMSymbol "sym" [VMNumber 1, VMSymbol "sym2" [VMNumber 2], VMNumber 3]
 
     context "when matching" $ do
 
