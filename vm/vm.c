@@ -38,12 +38,14 @@ static const vm_value symbol_id_false = 0;
 static const vm_value symbol_id_true = 1;
 static const int fun_header_size = 1;
 static const int pap_header_size = 2;
+static const int compound_symbol_header_size = 1;
 
 const vm_value vm_tag_number = 0x0;
 const vm_value vm_tag_plain_symbol = 0x4;
 const vm_value vm_tag_compound_symbol = 0x5;
 const vm_value vm_tag_pap = 0x6;
 const vm_value vm_tag_function = 0x7;
+const vm_value vm_tag_dynamic_compound_symbol = 0x8;
 const vm_value vm_tag_match_data = 0xF;
 
 
@@ -754,6 +756,30 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         else {
           get_reg(result_reg) = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
         }
+      }
+      break;
+
+      case OP_COPY_SYM: {
+        check_reg(get_arg_r0(instr));
+        check_reg(get_arg_r1(instr));
+        vm_value const_symbol = get_reg(get_arg_r1(instr));
+
+        if ( get_tag(const_symbol) != vm_tag_compound_symbol ) {
+          fprintf(stderr, "Expected a const symbol, got tag: %d\n", get_tag(const_symbol));
+        }
+
+        int c_addr = get_val(const_symbol);
+        vm_value c_sym_header = const_table[c_addr];
+
+        int count = compound_symbol_count(c_sym_header);
+
+        size_t total_size = compound_symbol_header_size + count;
+        heap_address dyn_sym_address = heap_alloc(total_size);
+        vm_value *sym_pointer = heap_get_pointer(dyn_sym_address);  \
+        memcpy(sym_pointer, &(const_table[c_addr]), total_size * sizeof(vm_value));
+
+        get_reg(get_arg_r0(instr)) = make_tagged_val(dyn_sym_address, vm_tag_dynamic_compound_symbol);
+
       }
       break;
 

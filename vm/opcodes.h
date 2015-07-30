@@ -29,8 +29,10 @@ typedef enum {
   OP_JMP = 16,
   OP_MATCH = 17,
   OP_SET_ARG = 18,
-  OP_SET_CL_VAL = 19,
+  OP_SET_CL_VAL = 19, // TODO rename to SET_CL_FIELD
   OP_EQ = 20,
+  OP_COPY_SYM = 21,  // copies a constant compound symbol to the heap
+  OP_SET_SYM_FIELD = 22, // sets a field of a heap compound symbol
 
   FUN_HEADER = 63
 } vm_opcode;
@@ -59,6 +61,7 @@ typedef enum {
                                             (reg2 << (instr_size - (__opcb + 3 * __regb))))
 
 // TODO make it clear which opcodes expect a function address and which expect a closure!!
+// TODO describe all arguments!
 #define op_load_i(r0, i) (instr_ri(OP_LOAD_i, r0, i))
 #define op_load_ps(r0, i) (instr_ri(OP_LOAD_ps, r0, i))
 #define op_load_cs(r0, i) (instr_ri(OP_LOAD_cs, r0, i))
@@ -79,6 +82,8 @@ typedef enum {
 #define op_set_cl_val(clr, r1, n) (instr_rrr(OP_SET_CL_VAL, clr, r1, n)) // reg with closure addr (heap), value reg, argument index
 #define op_part_ap(r0, fr, n) (instr_rrr(OP_PART_AP, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 #define op_eq(r0, r1, r2) (instr_rrr(OP_EQ, r0, r1, r2))
+#define op_copy_sym(r0, r1) (instr_rrr(OP_COPY_SYM, r0, r1, 0)) // heap addr result reg, const addr reg
+#define op_set_sym_field(symr, r1, n) (instr_rrr(OP_COPY_SYM, r0, r1, 0)) // heap sym addr reg, new value reg, field index
 
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))

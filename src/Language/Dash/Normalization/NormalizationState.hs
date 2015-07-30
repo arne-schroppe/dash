@@ -13,6 +13,7 @@ module Language.Dash.Normalization.NormalizationState (
 , getSymbolNames
 , constTable
 , encodeConstant
+, encodeCompoundSymbol
 , addConstant
 , encodeMatchPattern
 , arity
@@ -258,11 +259,18 @@ encodeConstant v =
         sid <- addSymbolName s
         return $ CPlainSymbol sid
     LitSymbol s args -> do
-        symId <- addSymbolName s
-        encodedArgs <- mapM encodeConstant args
-        return $ CCompoundSymbol symId encodedArgs
+        (sym, _) <- encodeCompoundSymbol s args
+        return sym
     _ ->
         error "Can only encode constant symbols for now"
+
+
+encodeCompoundSymbol :: Name -> [Expr] -> NormState (Constant, Bool)
+encodeCompoundSymbol symName symArgs = do
+  symId <- addSymbolName symName
+  encodedArgs <- mapM encodeConstant symArgs
+  return $ (CCompoundSymbol symId encodedArgs, False)
+
 
 
 encodeMatchPattern :: Int -> Pattern -> NormState ([String], Constant)

@@ -6,13 +6,16 @@
 
 #define array_length(x) (sizeof(x) / sizeof(x[0]))
 
+
+const int heap_start = 1;
+
 it( load_as_a_number_into_a_register ) {
   vm_instruction program[] = {
     op_load_i(0, 55),
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(55, vm_tag_number));
+  is_equal(result, make_tagged_val(55, vm_tag_number));
 }
 
 
@@ -189,15 +192,15 @@ it( modifies_a_closure ) {
 
 it( applies_a_number_tag_to_a_value ) {
   vm_value original = 44;
-  vm_value number = val(original, vm_tag_number);
-  is_equal(from_val(number), original);
+  vm_value number = make_tagged_val(original, vm_tag_number);
+  is_equal(get_val(number), original);
 }
 
 
 it( applies_a_symbol_tag_to_a_value ) {
   vm_value original = 12;
-  vm_value symbol = val(original, vm_tag_plain_symbol);
-  is_equal(from_val(symbol), original);
+  vm_value symbol = make_tagged_val(original, vm_tag_plain_symbol);
+  is_equal(get_val(symbol), original);
 }
 
 
@@ -207,13 +210,13 @@ it( load_as_a_symbol_into_a_register ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(12, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(12, vm_tag_plain_symbol));
 }
 
 
 it( load_as_a_constant ) {
   vm_value const_table[] = {
-    val(33, vm_tag_plain_symbol)
+    make_tagged_val(33, vm_tag_plain_symbol)
   };
 
   vm_instruction program[] = {
@@ -221,7 +224,7 @@ it( load_as_a_constant ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, val(33, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(33, vm_tag_plain_symbol));
 }
 
 
@@ -235,7 +238,7 @@ it( load_as_a_compound_symbol ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, 0);
-  is_equal(result, val(1, vm_tag_compound_symbol));
+  is_equal(result, make_tagged_val(1, vm_tag_compound_symbol));
 }
 
 
@@ -248,15 +251,15 @@ it( jumps_forward ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(70, vm_tag_number));
+  is_equal(result, make_tagged_val(70, vm_tag_number));
 }
 
 
 it( matches_a_number ) {
   vm_value const_table[] = {
     match_header(2),
-    val(11, vm_tag_number),
-    val(22, vm_tag_number),
+    make_tagged_val(11, vm_tag_number),
+    make_tagged_val(22, vm_tag_number),
   };
 
   vm_instruction program[] = {
@@ -272,14 +275,14 @@ it( matches_a_number ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, val(300, vm_tag_number));
+  is_equal(result, make_tagged_val(300, vm_tag_number));
 }
 
 it( matches_a_symbol ) {
   vm_value const_table[] = {
     match_header(2),
-    val(11, vm_tag_plain_symbol),
-    val(22, vm_tag_plain_symbol),
+    make_tagged_val(11, vm_tag_plain_symbol),
+    make_tagged_val(22, vm_tag_plain_symbol),
   };
 
   vm_instruction program[] = {
@@ -295,7 +298,7 @@ it( matches_a_symbol ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, val(300, vm_tag_number));
+  is_equal(result, make_tagged_val(300, vm_tag_number));
 }
 
 
@@ -303,17 +306,17 @@ it( matches_a_compound_symbol ) {
 
   vm_value const_table[] = {
     match_header(2),
-    val(3, vm_tag_compound_symbol),
-    val(6, vm_tag_compound_symbol),
+    make_tagged_val(3, vm_tag_compound_symbol),
+    make_tagged_val(6, vm_tag_compound_symbol),
     compound_symbol_header(1, 2),
-    val(55, vm_tag_number),
-    val(66, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
     compound_symbol_header(1, 2),
-    val(55, vm_tag_number),
-    val(77, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(77, vm_tag_number),
     compound_symbol_header(1, 2), /* the subject */
-    val(55, vm_tag_number),
-    val(77, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(77, vm_tag_number),
   };
 
   vm_instruction program[] = {
@@ -329,7 +332,7 @@ it( matches_a_compound_symbol ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, val(300, vm_tag_number));
+  is_equal(result, make_tagged_val(300, vm_tag_number));
 
 }
 
@@ -337,17 +340,17 @@ it( binds_a_value_in_a_match ) {
 
   vm_value const_table[] = {
     match_header(2),
-    val(3, vm_tag_compound_symbol),
-    val(6, vm_tag_compound_symbol),
+    make_tagged_val(3, vm_tag_compound_symbol),
+    make_tagged_val(6, vm_tag_compound_symbol),
     compound_symbol_header(1, 2),
-    val(55, vm_tag_number),
-    val(66, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
     compound_symbol_header(1, 2),
-    val(55, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
     match_var(1), /* store this match in start_reg + 1 */
     compound_symbol_header(1, 2), /* the subject */
-    val(55, vm_tag_number),
-    val(77, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(77, vm_tag_number),
   };
 
   vm_instruction program[] = {
@@ -366,7 +369,7 @@ it( binds_a_value_in_a_match ) {
   };
 
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, val(77, vm_tag_number));
+  is_equal(result, make_tagged_val(77, vm_tag_number));
 }
 
 
@@ -374,26 +377,26 @@ it( binds_a_value_in_a_nested_symbol ) {
 
   vm_value const_table[] = {
     match_header(2),
-    val(3, vm_tag_compound_symbol),
-    val(8, vm_tag_compound_symbol),
+    make_tagged_val(3, vm_tag_compound_symbol),
+    make_tagged_val(8, vm_tag_compound_symbol),
 
     compound_symbol_header(1, 2),
-    val(6, vm_tag_compound_symbol),
+    make_tagged_val(6, vm_tag_compound_symbol),
     match_var(1),
     compound_symbol_header(3, 1),
     match_var(0),
 
     compound_symbol_header(1, 2),
-    val(11, vm_tag_compound_symbol),
+    make_tagged_val(11, vm_tag_compound_symbol),
     match_var(1),
     compound_symbol_header(2, 1),
     match_var(0),
 
     compound_symbol_header(1, 2), /* the subject */ //13
-    val(16, vm_tag_compound_symbol),
-    val(55, vm_tag_number),
+    make_tagged_val(16, vm_tag_compound_symbol),
+    make_tagged_val(55, vm_tag_number),
     compound_symbol_header(2, 1), //16
-    val(66, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
 
   };
 
@@ -412,7 +415,7 @@ it( binds_a_value_in_a_nested_symbol ) {
   };
 
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, val(11, vm_tag_number));
+  is_equal(result, make_tagged_val(11, vm_tag_number));
 }
 
 it( creates_an_explicit_partial_application ) {
@@ -433,7 +436,7 @@ it( creates_an_explicit_partial_application ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(32, vm_tag_number));
+  is_equal(result, make_tagged_val(32, vm_tag_number));
 }
 
 it( creates_a_partial_application_with_a_generic_application ) {
@@ -459,7 +462,7 @@ it( creates_a_partial_application_with_a_generic_application ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(165, vm_tag_number));
+  is_equal(result, make_tagged_val(165, vm_tag_number));
 }
 
 
@@ -479,7 +482,7 @@ it( does_a_generic_application_of_a_function ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(12, vm_tag_number));
+  is_equal(result, make_tagged_val(12, vm_tag_number));
 }
 
 it( compares_unequal_objects ) {
@@ -490,7 +493,7 @@ it( compares_unequal_objects ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(0, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(0, vm_tag_plain_symbol));
 }
 
 it( compares_equal_numbers ) {
@@ -501,7 +504,7 @@ it( compares_equal_numbers ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(1, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(1, vm_tag_plain_symbol));
 }
 
 it( compares_unequal_numbers ) {
@@ -512,7 +515,7 @@ it( compares_unequal_numbers ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(0, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(0, vm_tag_plain_symbol));
 }
 
 it( compares_equal_plain_symbols ) {
@@ -523,7 +526,7 @@ it( compares_equal_plain_symbols ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(1, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(1, vm_tag_plain_symbol));
 }
 
 it( compares_unequal_plain_symbols ) {
@@ -534,17 +537,17 @@ it( compares_unequal_plain_symbols ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, val(0, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(0, vm_tag_plain_symbol));
 }
 
 it( compares_equal_compound_symbols ) {
   vm_value const_table[] = {
     compound_symbol_header(11, 2),
-    val(55, vm_tag_number),
-    val(66, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
     compound_symbol_header(11, 2),
-    val(55, vm_tag_number),
-    val(66, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
   };
 
   vm_instruction program[] = {
@@ -554,17 +557,17 @@ it( compares_equal_compound_symbols ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, val(1, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(1, vm_tag_plain_symbol));
 }
 
 it( compares_compound_symbols_with_different_data ) {
   vm_value const_table[] = {
     compound_symbol_header(11, 2),
-    val(55, vm_tag_number),
-    val(66, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
     compound_symbol_header(11, 2),
-    val(55, vm_tag_number),
-    val(77, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(77, vm_tag_number),
   };
   vm_instruction program[] = {
     op_load_cs(1, 0),
@@ -573,17 +576,17 @@ it( compares_compound_symbols_with_different_data ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, val(0, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(0, vm_tag_plain_symbol));
 }
 
 it( compares_compound_symbols_with_different_sym_ids ) {
   vm_value const_table[] = {
     compound_symbol_header(11, 2),
-    val(55, vm_tag_number),
-    val(66, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
     compound_symbol_header(12, 2),
-    val(55, vm_tag_number),
-    val(66, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
   };
   vm_instruction program[] = {
     op_load_cs(1, 0),
@@ -592,16 +595,16 @@ it( compares_compound_symbols_with_different_sym_ids ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, val(0, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(0, vm_tag_plain_symbol));
 }
 
 it( compares_compound_symbols_with_different_counts ) {
   vm_value const_table[] = {
     compound_symbol_header(11, 2),
-    val(55, vm_tag_number),
-    val(66, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
     compound_symbol_header(11, 1),
-    val(55, vm_tag_number),
+    make_tagged_val(55, vm_tag_number),
   };
   vm_instruction program[] = {
     op_load_cs(1, 0),
@@ -610,8 +613,30 @@ it( compares_compound_symbols_with_different_counts ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, val(0, vm_tag_plain_symbol));
+  is_equal(result, make_tagged_val(0, vm_tag_plain_symbol));
 }
+
+it( loads_a_symbol_on_the_heap ) {
+  vm_value const_table[] = {
+    compound_symbol_header(5, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
+    compound_symbol_header(7, 2),
+    make_tagged_val(33, vm_tag_number),
+    make_tagged_val(44, vm_tag_number),
+  };
+  vm_instruction program[] = {
+    op_load_cs(0, 0),
+    op_load_cs(1, 3),
+    op_copy_sym(0, 1),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(heap_start, vm_tag_dynamic_compound_symbol));
+}
+
+
+
 
 start_spec(vm_spec)
 	example(load_as_a_number_into_a_register)
@@ -647,5 +672,6 @@ start_spec(vm_spec)
   example(compares_compound_symbols_with_different_data)
   example(compares_compound_symbols_with_different_sym_ids)
   example(compares_compound_symbols_with_different_counts)
+  example(loads_a_symbol_on_the_heap)
 end_spec
 

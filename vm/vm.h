@@ -20,6 +20,7 @@ extern const vm_value vm_tag_compound_symbol;
 extern const vm_value vm_tag_closure;
 extern const vm_value vm_tag_function;
 
+extern const vm_value vm_tag_dynamic_compound_symbol;
 extern const vm_value vm_tag_match_data;
 
 

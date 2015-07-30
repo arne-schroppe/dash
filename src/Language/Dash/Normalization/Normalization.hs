@@ -124,9 +124,16 @@ normalizeSymbol sname [] k = do
   symId <- addSymbolName sname
   k (NPlainSymbol symId)
 normalizeSymbol sname args k = do
-  encConst <- encodeConstant $ LitSymbol sname args
+  (encConst, isDynamicSymbol) <- encodeCompoundSymbol sname args
   cAddr <- addConstant encConst
-  k (NCompoundSymbol False cAddr)
+  -- TODO get a list of all dynamic values and their positions. Then
+  -- letbind the dynamic values. At the dynamic positions inside the
+  -- symbol just set 0. Codegen will then take that const symbol, copy
+  -- it to the heap, and set the letbound values at their respective
+  -- positions. So change isDynamic::Bool to freeVars::[LocalVar, Index]
+  -- New opcodes: LOAD_SYM heap_addr_reg sym_reg, SET_SYM_VAL heap_sym_reg val_reg
+  -- We also need a new tag for heap symbols
+  k (NCompoundSymbol isDynamicSymbol cAddr)
 
 
 -- This is only direct usage of a var (as a "return value")

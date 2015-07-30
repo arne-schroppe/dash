@@ -347,8 +347,6 @@ spec = do
               result `shouldReturn` VMSymbol "success" []
 
 
-
-
     context "when using compound symbols" $ do
 
             it "interprets a compound symbol" $ do
@@ -370,6 +368,7 @@ spec = do
               \ fun 2"
               let result = run code
               result `shouldReturn` VMSymbol "sym" [VMNumber 1, VMSymbol "sym2" [VMNumber 2], VMNumber 3]
+
 
     context "when matching" $ do
 
