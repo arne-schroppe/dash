@@ -3,6 +3,7 @@
 
 #include "../vm_internal.h"
 #include "../opcodes.h"
+#include "../heap.h"
 
 #define array_length(x) (sizeof(x) / sizeof(x[0]))
 
@@ -633,9 +634,47 @@ it( loads_a_symbol_on_the_heap ) {
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
   is_equal(result, make_tagged_val(heap_start, vm_tag_dynamic_compound_symbol));
+
+  vm_value *heap_p = heap_get_pointer(heap_start);
+  vm_value sym_header = *heap_p;
+  is_equal(compound_symbol_count(sym_header), 2);
+  int header_size = 1;
+  is_equal(heap_p[header_size + 0], 33);
+  is_equal(heap_p[header_size + 1], 44);
+}
+
+it( modifies_a_heap_symbol ) {
+
+  vm_value const_table[] = {
+    compound_symbol_header(5, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
+    compound_symbol_header(7, 2),
+    make_tagged_val(33, vm_tag_number),
+    make_tagged_val(44, vm_tag_number),
+  };
+  vm_instruction program[] = {
+    op_load_cs(0, 0),
+    op_load_cs(1, 3),
+    op_copy_sym(0, 1),
+    op_load_ps(5, 77),
+    op_set_sym_field(0, 5, 1),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(heap_start, vm_tag_dynamic_compound_symbol));
+
+  vm_value *heap_p = heap_get_pointer(heap_start);
+  vm_value sym_header = *heap_p;
+  is_equal(compound_symbol_count(sym_header), 2);
+  int header_size = 1;
+  is_equal(heap_p[header_size + 0], 33);
+  is_equal(heap_p[header_size + 1], make_tagged_val(77, vm_tag_plain_symbol));
+
 }
 
 
+// TODO equality and matching with dynamic comp symbols! (and between const and dyn symbols)
 
 
 start_spec(vm_spec)
@@ -673,5 +712,6 @@ start_spec(vm_spec)
   example(compares_compound_symbols_with_different_sym_ids)
   example(compares_compound_symbols_with_different_counts)
   example(loads_a_symbol_on_the_heap)
+  example(modifies_a_heap_symbol)
 end_spec
 

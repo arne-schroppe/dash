@@ -766,6 +766,8 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
         if ( get_tag(const_symbol) != vm_tag_compound_symbol ) {
           fprintf(stderr, "Expected a const symbol, got tag: %d\n", get_tag(const_symbol));
+          is_running = false;
+          break;
         }
 
         int c_addr = get_val(const_symbol);
@@ -783,6 +785,33 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       }
       break;
 
+      case OP_SET_SYM_FIELD: {
+        check_reg(get_arg_r0(instr));
+        check_reg(get_arg_r1(instr));
+        vm_value heap_symbol = get_reg(get_arg_r0(instr));
+
+        if ( get_tag(heap_symbol) != vm_tag_dynamic_compound_symbol ) {
+          fprintf(stderr, "Expected a dynamic symbol, got tag: %d\n", get_tag(heap_symbol));
+          is_running = false;
+          break;
+        }
+
+        int h_addr = get_val(heap_symbol);
+        vm_value *p = heap_get_pointer(h_addr);
+        vm_value h_sym_header = *p;
+
+        int count = compound_symbol_count(h_sym_header);
+
+        int index = get_arg_r2(instr);
+        if(index < 0 || index >= count) {
+          fprintf(stderr, "Illegal index while setting symbol field: %d\n", index);
+          is_running = false;
+          break;
+        }
+
+        p[compound_symbol_header_size + index] = get_reg(get_arg_r1(instr));
+      }
+      break;
 
       default:
         fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);

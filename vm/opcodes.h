@@ -83,7 +83,7 @@ typedef enum {
 #define op_part_ap(r0, fr, n) (instr_rrr(OP_PART_AP, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 #define op_eq(r0, r1, r2) (instr_rrr(OP_EQ, r0, r1, r2))
 #define op_copy_sym(r0, r1) (instr_rrr(OP_COPY_SYM, r0, r1, 0)) // heap addr result reg, const addr reg
-#define op_set_sym_field(symr, r1, n) (instr_rrr(OP_COPY_SYM, r0, r1, 0)) // heap sym addr reg, new value reg, field index
+#define op_set_sym_field(symr, r1, n) (instr_rrr(OP_SET_SYM_FIELD, symr, r1, n)) // heap sym addr reg, new value reg, field index
 
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))
