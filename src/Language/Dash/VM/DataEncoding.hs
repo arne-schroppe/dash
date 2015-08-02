@@ -4,40 +4,51 @@ module Language.Dash.VM.DataEncoding (
 , encodeNumber
 , encodePlainSymbol
 , encodeCompoundSymbolRef
+, encodeDynamicCompoundSymbolRef
 , encodeCompoundSymbolHeader
 , encodeMatchHeader
 , decodeMatchHeader
 , encodeMatchVar
-
 ) where
 
 import           Data.Bits
 import           Data.Word
 import           Language.Dash.IR.Data
 import           Language.Dash.VM.Types
+import           Language.Dash.VM.VM    (getVMHeapValue, getVMHeapArray)
 
 
-decode :: VMWord -> [Word32] -> SymbolNameList -> VMValue
+decode :: VMWord -> [Word32] -> SymbolNameList -> IO VMValue
 decode w ctable symNames =
   let tag = getTag w in
   let value = getValue w in
   decode' tag value
-  where decode' t v | t==tagNumber     = VMNumber v
-                    | t==tagPlainSymbol   = VMSymbol (symNames !! fromIntegral v) []
-                    | t==tagCompoundSymbol = decodeCompoundSymbol v ctable symNames
-                    | t==tagClosure = VMClosure
-                    | t==tagFunction = VMFunction
-                    | otherwise        = error $ "Unknown tag " ++ show t
+  where decode' t v | t==tagNumber                = return $ VMNumber v
+                    | t==tagPlainSymbol           = return $ VMSymbol (symNames !! fromIntegral v) []
+                    | t==tagCompoundSymbol        = decodeCompoundSymbol v ctable symNames
+                    | t==tagDynamicCompoundSymbol = decodeDynCompoundSymbol v ctable symNames
+                    | t==tagClosure               = return VMClosure
+                    | t==tagFunction              = return VMFunction
+                    | otherwise                   = error $ "Unknown tag " ++ show t
 
 
-decodeCompoundSymbol :: VMWord -> [VMWord] -> SymbolNameList -> VMValue
-decodeCompoundSymbol addr ctable symNames =
-  let subCTable = drop (fromIntegral addr) ctable in
-  let (symId, nArgs) = decodeCompoundSymbolHeader (head subCTable) in
-  let decoded = map (\v -> decode v ctable symNames)
-                    (take (fromIntegral nArgs) $ tail subCTable) in
-  let symName = symNames !! symIdToInt symId in
-  VMSymbol symName decoded
+decodeCompoundSymbol :: VMWord -> [VMWord] -> SymbolNameList -> IO VMValue
+decodeCompoundSymbol addr ctable symNames = do
+  let subCTable = drop (fromIntegral addr) ctable
+  let (symId, nArgs) = decodeCompoundSymbolHeader (head subCTable)
+  decoded <- mapM (\v -> decode v ctable symNames)
+                  (take (fromIntegral nArgs) $ tail subCTable)
+  let symName = symNames !! symIdToInt symId
+  return $ VMSymbol symName decoded
+
+decodeDynCompoundSymbol :: VMWord -> [VMWord] -> SymbolNameList -> IO VMValue
+decodeDynCompoundSymbol addr ctable symNames = do
+  symHeader <- getVMHeapValue addr
+  let (symId, count) = decodeCompoundSymbolHeader symHeader
+  let symName = symNames !! symIdToInt symId
+  values <- getVMHeapArray (addr + compoundSymbolHeaderLength) count
+  decoded <- mapM (\v -> decode v ctable symNames) values
+  return $ VMSymbol symName decoded
 
 encodeNumber :: Int -> VMWord
 encodeNumber = makeVMValue tagNumber . ensureRange . fromIntegral
@@ -50,6 +61,13 @@ encodeCompoundSymbolRef = makeVMValue tagCompoundSymbol
                           . ensureRange
                           . fromIntegral
                           . constAddrToInt
+
+encodeDynamicCompoundSymbolRef :: HeapAddr -> VMWord
+encodeDynamicCompoundSymbolRef = makeVMValue tagDynamicCompoundSymbol
+                                 . ensureRange
+                                 . fromIntegral
+                                 . heapAddrToInt
+
 
 ensureRange :: (Ord a, Num a) => a -> a
 ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
@@ -91,12 +109,15 @@ getTag v = (v .&. 0xF0000000) `rotateL` 4
 getValue v = v .&. 0x0FFFFFFF
 
 
-tagNumber ,tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagClosure:: VMWord
+tagNumber ,tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagDynamicCompoundSymbol, tagClosure:: VMWord
 tagNumber = 0x0
 tagPlainSymbol = 0x4
 tagCompoundSymbol = 0x5
 tagClosure = 0x6
 tagFunction = 0x7
+tagDynamicCompoundSymbol = 0x8
 tagMatchData = 0xF
 
+compoundSymbolHeaderLength :: VMWord
+compoundSymbolHeaderLength = 1
 

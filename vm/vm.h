@@ -12,6 +12,7 @@ typedef uint32_t vm_value;
 
 vm_value vm_execute(vm_instruction *program, int program_length, vm_value *const_table, int const_table_length);
 
+vm_value *vm_get_heap_pointer(vm_value addr);
 
 extern const vm_value vm_tag_number;
 extern const vm_value vm_tag_plain_symbol;

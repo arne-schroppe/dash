@@ -32,5 +32,8 @@ data Opcode =
   | OpcSetClVal Reg Reg Int
   | OpcFunHeader Int         -- arity
   | OpcEq Reg Reg Reg
+  | OpcCopySym Reg Reg
+  | OpcSetSymField Reg Reg Int
+
   deriving Show
 

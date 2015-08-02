@@ -16,6 +16,9 @@ module Language.Dash.IR.Data (
 , ConstAddr
 , mkConstAddr
 , constAddrToInt
+, HeapAddr
+, mkHeapAddr
+, heapAddrToInt
 , Name
 ) where
 
@@ -90,4 +93,16 @@ mkConstAddr i =
 
 constAddrToInt :: ConstAddr -> Int
 constAddrToInt (MkConstAddr i) = i
+
+
+newtype HeapAddr = MkHeapAddr Int
+  deriving (Eq, Show, Ord)
+
+mkHeapAddr :: Int -> HeapAddr
+mkHeapAddr i =
+  assert (i >= 0) $
+  MkHeapAddr i
+
+heapAddrToInt :: HeapAddr -> Int
+heapAddrToInt (MkHeapAddr i) = i
 

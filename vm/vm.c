@@ -831,5 +831,8 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 }
 
 
+vm_value *vm_get_heap_pointer(vm_value addr) {
+  return heap_get_pointer(addr);
+}
 
 

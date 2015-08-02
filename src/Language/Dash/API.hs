@@ -51,7 +51,7 @@ run prog = do
                                ||> compile
                                ||> assemble
                                ||> execute
-  return $ decode value ctable symNames
+  decode value ctable symNames
 
 
 -- Debugging functions
