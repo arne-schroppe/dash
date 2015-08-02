@@ -264,74 +264,28 @@ spec = do
                     OpcLoadCS 1 (mkConstAddr 3),
                     OpcCopySym 0 1,
                     OpcRet 0 ]]
-      let heapStart = mkHeapAddr 1
       result <- runProgTbl ctable prog
       let symNames = ["", "A", "", "B"]
       let decodeResult = decode result ctable symNames
       decodeResult `shouldReturn` (VMSymbol "B" [VMNumber 33, VMNumber 44])
 
-{-
     it "modifies a heap symbol" $ do
-      let ctable
--}
-
-{-
-
-
-  vm_value const_table[] = {
-    compound_symbol_header(5, 2),
-    make_tagged_val(55, vm_tag_number),
-    make_tagged_val(66, vm_tag_number),
-    compound_symbol_header(7, 2),
-    make_tagged_val(33, vm_tag_number),
-    make_tagged_val(44, vm_tag_number),
-  };
-  vm_instruction program[] = {
-    op_load_cs(0, 0),
-    op_load_cs(1, 3),
-    op_copy_sym(0, 1),
-    op_ret(0)
-  };
-  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, make_tagged_val(heap_start, vm_tag_dynamic_compound_symbol));
-
-  vm_value *heap_p = heap_get_pointer(heap_start);
-  vm_value sym_header = *heap_p;
-  is_equal(compound_symbol_count(sym_header), 2);
-  int header_size = 1;
-  is_equal(heap_p[header_size + 0], 33);
-  is_equal(heap_p[header_size + 1], 44);
-}
-
-it( modifies_a_heap_symbol ) {
-
-  vm_value const_table[] = {
-    compound_symbol_header(5, 2),
-    make_tagged_val(55, vm_tag_number),
-    make_tagged_val(66, vm_tag_number),
-    compound_symbol_header(7, 2),
-    make_tagged_val(33, vm_tag_number),
-    make_tagged_val(44, vm_tag_number),
-  };
-  vm_instruction program[] = {
-    op_load_cs(0, 0),
-    op_load_cs(1, 3),
-    op_copy_sym(0, 1),
-    op_load_ps(5, 77),
-    op_set_sym_field(0, 5, 1),
-    op_ret(0)
-  };
-  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, make_tagged_val(heap_start, vm_tag_dynamic_compound_symbol));
-
-  vm_value *heap_p = heap_get_pointer(heap_start);
-  vm_value sym_header = *heap_p;
-  is_equal(compound_symbol_count(sym_header), 2);
-  int header_size = 1;
-  is_equal(heap_p[header_size + 0], 33);
-  is_equal(heap_p[header_size + 1], make_tagged_val(77, vm_tag_plain_symbol));
-
--}
+      let ctable = [ encodeCompoundSymbolHeader (mkSymId 1) 2,
+                     encodeNumber 55,
+                     encodeNumber 66,
+                     encodeCompoundSymbolHeader (mkSymId 3) 2,
+                     encodeNumber 33,
+                     encodeNumber 44 ]
+      let prog = [[ OpcLoadCS 0 (mkConstAddr 0),
+                    OpcLoadCS 1 (mkConstAddr 3),
+                    OpcCopySym 0 1,
+                    OpcLoadPS 5 (mkSymId 6),
+                    OpcSetSymField 0 5 1,
+                    OpcRet 0 ]]
+      result <- runProgTbl ctable prog
+      let symNames = ["", "A", "", "B", "", "", "success"]
+      let decodeResult = decode result ctable symNames
+      decodeResult `shouldReturn` (VMSymbol "B" [VMNumber 33, VMSymbol "success" []])
 
 {- TODO
     it "decodes a number" $ property $

@@ -75,30 +75,31 @@ assembleTac funcAddrs addrConv opc =
   let caddr a = fromIntegral (addrConv a) in
   let faddr a = fromIntegral $ funcAddrs `Seq.index` funcAddrToInt a in
   case opc of
-    OpcRet r0             -> instructionRI   0 (r r0) 0
-    OpcLoadI r0 n         -> instructionRI   1 (r r0) n
-    OpcLoadAddr r0 a      -> instructionRI   1 (r r0) (caddr a)
-    OpcLoadPS r0 s        -> instructionRI   2 (r r0) (sym s)
-    OpcLoadCS r0 a        -> instructionRI   3 (r r0) (caddr a)
-    OpcLoadC r0 a         -> instructionRI   4 (r r0) (caddr a)
-    OpcLoadF r0 fa        -> instructionRI   5 (r r0) (faddr fa)
-    OpcAdd r0 r1 r2       -> instructionRRR  6 (r r0) (r r1) (r r2)
-    OpcSub r0 r1 r2       -> instructionRRR  7 (r r0) (r r1) (r r2)
-    OpcMul r0 r1 r2       -> instructionRRR  8 (r r0) (r r1) (r r2)
-    OpcDiv r0 r1 r2       -> instructionRRR  9 (r r0) (r r1) (r r2)
-    OpcMove r0 r1         -> instructionRRR 10 (r r0) (r r1) (i 0)
-    OpcCall r0 fr n       -> instructionRRR 11 (r r0) (r fr) (i n)
-    OpcGenAp r0 fr n      -> instructionRRR 12 (r r0) (r fr) (i n)
-    OpcTailCall fr n      -> instructionRRR 13 (i 0) (r fr) (i n)
-    OpcTailGenAp r0 fr n  -> instructionRRR 14 (r r0) (r fr) (i n)
-    OpcPartAp r0 fr n     -> instructionRRR 15 (r r0) (r fr) (i n)
-    OpcJmp n              -> instructionRI  16 0 (i n)
-    OpcMatch r0 r1 r2     -> instructionRRR 17 (r r0) (r r1) (r r2)
-    OpcSetArg arg r1 n    -> instructionRRR 18 (i arg) (r r1) (i n)
-    OpcSetClVal clr r1 n  -> instructionRRR 19 (r clr) (r r1) (i n)
-    OpcEq r0 r1 r2        -> instructionRRR 20 (r r0) (r r1) (r r2)
-    OpcCopySym r0 r1      -> instructionRRR 21 (r r0) (r r1) (i 0)
-    OpcFunHeader arity    -> instructionRI  63 (r 0) (i arity)
+    OpcRet r0              -> instructionRI   0 (r r0) 0
+    OpcLoadI r0 n          -> instructionRI   1 (r r0) n
+    OpcLoadAddr r0 a       -> instructionRI   1 (r r0) (caddr a)
+    OpcLoadPS r0 s         -> instructionRI   2 (r r0) (sym s)
+    OpcLoadCS r0 a         -> instructionRI   3 (r r0) (caddr a)
+    OpcLoadC r0 a          -> instructionRI   4 (r r0) (caddr a)
+    OpcLoadF r0 fa         -> instructionRI   5 (r r0) (faddr fa)
+    OpcAdd r0 r1 r2        -> instructionRRR  6 (r r0) (r r1) (r r2)
+    OpcSub r0 r1 r2        -> instructionRRR  7 (r r0) (r r1) (r r2)
+    OpcMul r0 r1 r2        -> instructionRRR  8 (r r0) (r r1) (r r2)
+    OpcDiv r0 r1 r2        -> instructionRRR  9 (r r0) (r r1) (r r2)
+    OpcMove r0 r1          -> instructionRRR 10 (r r0) (r r1) (i 0)
+    OpcCall r0 fr n        -> instructionRRR 11 (r r0) (r fr) (i n)
+    OpcGenAp r0 fr n       -> instructionRRR 12 (r r0) (r fr) (i n)
+    OpcTailCall fr n       -> instructionRRR 13 (i 0) (r fr) (i n)
+    OpcTailGenAp r0 fr n   -> instructionRRR 14 (r r0) (r fr) (i n)
+    OpcPartAp r0 fr n      -> instructionRRR 15 (r r0) (r fr) (i n)
+    OpcJmp n               -> instructionRI  16 0 (i n)
+    OpcMatch r0 r1 r2      -> instructionRRR 17 (r r0) (r r1) (r r2)
+    OpcSetArg arg r1 n     -> instructionRRR 18 (i arg) (r r1) (i n)
+    OpcSetClVal clr r1 n   -> instructionRRR 19 (r clr) (r r1) (i n)
+    OpcEq r0 r1 r2         -> instructionRRR 20 (r r0) (r r1) (r r2)
+    OpcCopySym r0 r1       -> instructionRRR 21 (r r0) (r r1) (i 0)
+    OpcSetSymField r0 r1 n -> instructionRRR 22 (r r0) (r r1) (i n)
+    OpcFunHeader arity     -> instructionRI  63 (r 0) (i arity)
 
 
 instBits, opcBits, regBits :: Int
