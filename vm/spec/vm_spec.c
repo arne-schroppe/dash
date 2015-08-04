@@ -673,6 +673,89 @@ it( modifies_a_heap_symbol ) {
 
 }
 
+it( compares_equal_dynamic_compound_symbols ) {
+  vm_value const_table[] = {
+    compound_symbol_header(11, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
+    compound_symbol_header(11, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
+  };
+
+  vm_instruction program[] = {
+    op_load_cs(1, 0),
+    op_load_cs(2, 3),
+    op_copy_sym(3, 1),
+    op_copy_sym(4, 2),
+    op_eq(0, 3, 4),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(1, vm_tag_plain_symbol));
+}
+
+it( compares_dynamic_compound_symbols_with_different_data ) {
+  vm_value const_table[] = {
+    compound_symbol_header(11, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
+    compound_symbol_header(11, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(77, vm_tag_number),
+  };
+  vm_instruction program[] = {
+    op_load_cs(1, 0),
+    op_load_cs(2, 3),
+    op_copy_sym(3, 1),
+    op_copy_sym(4, 2),
+    op_eq(0, 3, 4),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(0, vm_tag_plain_symbol));
+}
+
+it( compares_dynamic_compound_symbols_with_different_sym_ids ) {
+  vm_value const_table[] = {
+    compound_symbol_header(11, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
+    compound_symbol_header(12, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
+  };
+  vm_instruction program[] = {
+    op_load_cs(1, 0),
+    op_load_cs(2, 3),
+    op_copy_sym(3, 1),
+    op_copy_sym(4, 2),
+    op_eq(0, 3, 4),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(0, vm_tag_plain_symbol));
+}
+
+it( compares_dynamic_compound_symbols_with_different_counts ) {
+  vm_value const_table[] = {
+    compound_symbol_header(11, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
+    compound_symbol_header(11, 1),
+    make_tagged_val(55, vm_tag_number),
+  };
+  vm_instruction program[] = {
+    op_load_cs(1, 0),
+    op_load_cs(2, 3),
+    op_copy_sym(3, 1),
+    op_copy_sym(4, 2),
+    op_eq(0, 3, 4),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(0, vm_tag_plain_symbol));
+}
 
 // TODO equality and matching with dynamic comp symbols! (and between const and dyn symbols)
 
@@ -713,5 +796,9 @@ start_spec(vm_spec)
   example(compares_compound_symbols_with_different_counts)
   example(loads_a_symbol_on_the_heap)
   example(modifies_a_heap_symbol)
+  example(compares_equal_dynamic_compound_symbols)
+  example(compares_dynamic_compound_symbols_with_different_data)
+  example(compares_dynamic_compound_symbols_with_different_sym_ids)
+  example(compares_dynamic_compound_symbols_with_different_counts)
 end_spec
 

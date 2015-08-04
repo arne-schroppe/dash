@@ -286,7 +286,14 @@ bool is_equal(vm_value l, vm_value r) {
     return true;
   }
 
+  vm_value r_tag = get_tag(r);
+
   if ( l_tag == vm_tag_compound_symbol ) {
+
+    if ( r_tag != vm_tag_compound_symbol ) {
+      return false;
+    }
+
     int l_addr = get_val(l);
     int r_addr = get_val(r);
     vm_value l_header = const_table[l_addr];
@@ -307,6 +314,33 @@ bool is_equal(vm_value l, vm_value r) {
     return true;
   }
 
+  if ( l_tag == vm_tag_dynamic_compound_symbol) {
+
+    if ( r_tag != vm_tag_dynamic_compound_symbol ) {
+      return false;
+    }
+
+    int l_addr = get_val(l);
+    int r_addr = get_val(r);
+    vm_value *l_pointer = heap_get_pointer(l_addr);
+    vm_value *r_pointer = heap_get_pointer(r_addr);
+    vm_value l_header = l_pointer[0];
+    vm_value r_header = r_pointer[0];
+
+    int count = compound_symbol_count(l_header);
+    if( (compound_symbol_id(l_header) != compound_symbol_id(r_header))
+        || (count != compound_symbol_count(r_header)) ) {
+      return false;
+    }
+
+    for(int i = 1; i < count + 1; ++i) {
+      if(! is_equal(l_pointer[i], r_pointer[i])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
   return false;
 }
 
