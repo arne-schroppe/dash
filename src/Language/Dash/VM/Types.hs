@@ -39,5 +39,4 @@ instance Show VMValue where
       VMSymbol s fields ->  ":" ++ s ++ " " ++ (foldr (++) "" $ intersperse " " $ map showField fields)
 
 
--- TODO add a show instance that shows this like dash syntax (even with lists and tuples)
 

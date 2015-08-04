@@ -65,6 +65,12 @@ d = [2, 3, 4] ++ [5, 6, 7]
 
 cons a as = :list a as
 
-cons 1 [2, 3, 4]
+
+ls = cons 1 [2, 3, 4]
+
+match ls begin
+  [1, 2 | x] -> x
+  _ -> :error
+end
 
 
