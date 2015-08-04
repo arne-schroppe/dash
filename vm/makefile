@@ -8,7 +8,7 @@ OBJECTS=$(SOURCES:.c=.o)
 
 LIB_NAME=libandovm.a
 
-TEST_SOURCES=spec/spec_main.c spec/tiny_spec/tiny_spec.c spec/vm_spec.c
+TEST_SOURCES=spec/spec_main.c spec/tiny_spec/tiny_spec.c spec/vm_spec.c spec/vm_equality_spec.c
 TEST_OBJECTS=$(TEST_SOURCES:.c=.o)
 TEST_EXECUTABLE=vm_spec
 
