@@ -275,7 +275,55 @@ bool is_equal(vm_value l, vm_value r) {
 
   vm_value l_tag = get_tag(l);
 
-  if(l_tag != get_tag(r)) {
+  vm_value r_tag = get_tag(r);
+
+  if ( (l_tag == vm_tag_compound_symbol) || (l_tag == vm_tag_dynamic_compound_symbol) ) {
+
+    if ( (r_tag != vm_tag_compound_symbol) && (r_tag != vm_tag_dynamic_compound_symbol) ) {
+      return false;
+    }
+
+    int l_addr = get_val(l);
+    int r_addr = get_val(r);
+
+    vm_value *l_pointer;
+    vm_value *r_pointer;
+
+    if(l_tag == vm_tag_compound_symbol) {
+      l_pointer = const_table + l_addr;
+    }
+    else {
+      l_pointer = heap_get_pointer(l_addr);
+    }
+
+    if(r_tag == vm_tag_compound_symbol) {
+      r_pointer = const_table + r_addr;
+    }
+    else {
+      r_pointer = heap_get_pointer(r_addr);
+    }
+
+    vm_value l_header = *l_pointer;
+    vm_value r_header = *r_pointer;
+
+
+    int count = compound_symbol_count(l_header);
+    if( (compound_symbol_id(l_header) != compound_symbol_id(r_header))
+        || (count != compound_symbol_count(r_header)) ) {
+      return false;
+    }
+
+    for(int i = compound_symbol_header_size; i < compound_symbol_header_size + count; ++i) {
+      if(! is_equal(l_pointer[i], r_pointer[i])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+
+  if(l_tag != r_tag) {
     return false;
   }
 
@@ -286,61 +334,6 @@ bool is_equal(vm_value l, vm_value r) {
     return true;
   }
 
-  vm_value r_tag = get_tag(r);
-
-  if ( l_tag == vm_tag_compound_symbol ) {
-
-    if ( r_tag != vm_tag_compound_symbol ) {
-      return false;
-    }
-
-    int l_addr = get_val(l);
-    int r_addr = get_val(r);
-    vm_value l_header = const_table[l_addr];
-    vm_value r_header = const_table[r_addr];
-
-    int count = compound_symbol_count(l_header);
-    if( (compound_symbol_id(l_header) != compound_symbol_id(r_header))
-        || (count != compound_symbol_count(r_header)) ) {
-      return false;
-    }
-
-    for(int i = 1; i < count + 1; ++i) {
-      if(! is_equal(const_table[l_addr + i], const_table[r_addr + i])) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  if ( l_tag == vm_tag_dynamic_compound_symbol) {
-
-    if ( r_tag != vm_tag_dynamic_compound_symbol ) {
-      return false;
-    }
-
-    int l_addr = get_val(l);
-    int r_addr = get_val(r);
-    vm_value *l_pointer = heap_get_pointer(l_addr);
-    vm_value *r_pointer = heap_get_pointer(r_addr);
-    vm_value l_header = l_pointer[0];
-    vm_value r_header = r_pointer[0];
-
-    int count = compound_symbol_count(l_header);
-    if( (compound_symbol_id(l_header) != compound_symbol_id(r_header))
-        || (count != compound_symbol_count(r_header)) ) {
-      return false;
-    }
-
-    for(int i = 1; i < count + 1; ++i) {
-      if(! is_equal(l_pointer[i], r_pointer[i])) {
-        return false;
-      }
-    }
-
-    return true;
-  }
   return false;
 }
 
