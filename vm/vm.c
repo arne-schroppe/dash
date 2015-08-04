@@ -356,7 +356,9 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
     return true;
   }
 
-  if(pattern_tag != get_tag(subject)) {
+  vm_value subject_tag = get_tag(subject);
+  if(pattern_tag != vm_tag_compound_symbol
+      && pattern_tag != subject_tag) {
     return false;
   }
 
@@ -366,16 +368,29 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
       return pattern == subject;
 
     case vm_tag_compound_symbol: {
-      vm_value pattern_address = get_val(pattern);
+      if(subject_tag != vm_tag_compound_symbol
+          && subject_tag != vm_tag_dynamic_compound_symbol) {
+        return false;
+      }
 
+      vm_value pattern_address = get_val(pattern);
       check_ctable_index(pattern_address)
+
       vm_value pattern_header = const_table[pattern_address];
       vm_value pattern_id = compound_symbol_id(pattern_header);
 
       vm_value subject_address = get_val(subject);
+      vm_value *subject_pointer;
+      if(subject_tag == vm_tag_compound_symbol) {
+        check_ctable_index(subject_address)
+        subject_pointer = &const_table[subject_address];
+      }
+      else {
+        subject_pointer = heap_get_pointer(subject_address);
+      }
 
-      check_ctable_index(subject_address)
-      vm_value subject_header = const_table[subject_address];
+
+      vm_value subject_header = subject_pointer[0];
       vm_value subject_id = compound_symbol_id(subject_header);
       if(pattern_id != subject_id) {
         return false;
@@ -390,12 +405,12 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
 
       int i=0;
       for(; i<pattern_count; ++i) {
-        int rel_pattern_address = pattern_address + 1 + i;
-        int rel_subject_address = subject_address + 1 + i;
+        int rel_pattern_address = pattern_address + compound_symbol_header_size + i;
+        int rel_subject_address = compound_symbol_header_size + i;
 
         check_ctable_index(rel_pattern_address);
-        check_ctable_index(rel_subject_address);
-        if( !does_value_match(const_table[rel_pattern_address], const_table[rel_subject_address], start_register) ) {
+        //check_ctable_index(rel_subject_address);
+        if( !does_value_match(const_table[rel_pattern_address], subject_pointer[rel_subject_address], start_register) ) {
           return false;
         }
       }

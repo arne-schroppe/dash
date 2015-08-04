@@ -419,6 +419,128 @@ it( binds_a_value_in_a_nested_symbol ) {
   is_equal(result, make_tagged_val(11, vm_tag_number));
 }
 
+
+
+it( matches_a_dynamic_compound_symbol ) {
+
+  vm_value const_table[] = {
+    match_header(2),
+    make_tagged_val(3, vm_tag_compound_symbol),
+    make_tagged_val(6, vm_tag_compound_symbol),
+    compound_symbol_header(1, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
+    compound_symbol_header(1, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(77, vm_tag_number),
+    compound_symbol_header(1, 2), /* the subject */
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(77, vm_tag_number),
+  };
+
+  vm_instruction program[] = {
+    op_load_i(0, 600),
+    op_load_cs(1, 9),
+    op_copy_sym(5, 1), /* value to match */
+    op_load_i(2, 0), /* address of match pattern */
+    op_match(5, 2, 0),
+    op_jmp(1),
+    op_jmp(2),
+    op_load_i(0, 4),
+    op_ret(0),
+    op_load_i(0, 300),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(300, vm_tag_number));
+
+}
+
+it( binds_a_value_in_a_dynamic_symbol_match ) {
+
+  vm_value const_table[] = {
+    match_header(2),
+    make_tagged_val(3, vm_tag_compound_symbol),
+    make_tagged_val(6, vm_tag_compound_symbol),
+    compound_symbol_header(1, 2),
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(66, vm_tag_number),
+    compound_symbol_header(1, 2),
+    make_tagged_val(55, vm_tag_number),
+    match_var(1), /* store this match in start_reg + 1 */
+    compound_symbol_header(1, 2), /* the subject */
+    make_tagged_val(55, vm_tag_number),
+    make_tagged_val(77, vm_tag_number),
+  };
+
+  vm_instruction program[] = {
+    op_load_i(0, 600), /* initial wrong value */
+    op_load_i(4, 66), /* initial wrong value */
+
+    op_load_cs(1, 9),
+    op_copy_sym(5, 1), /* value to match */
+    op_load_i(2, 0), /* address of match pattern */
+    op_match(5, 2, 3), /* after matching, reg 3 + 1 should contain the matched value (77) */
+    op_jmp(1),
+    op_jmp(2),
+    op_load_i(0, 22), /* case 1 */
+    op_ret(0),
+    op_move(0, 4), /* case 2 */
+    op_ret(0)
+  };
+
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(77, vm_tag_number));
+}
+
+
+it( binds_a_value_in_a_nested_dynamic_symbol ) {
+
+  vm_value const_table[] = {
+    match_header(2),
+    make_tagged_val(3, vm_tag_compound_symbol),
+    make_tagged_val(8, vm_tag_compound_symbol),
+
+    compound_symbol_header(1, 2),
+    make_tagged_val(6, vm_tag_compound_symbol),
+    match_var(1),
+    compound_symbol_header(3, 1),
+    match_var(0),
+
+    compound_symbol_header(1, 2),
+    make_tagged_val(11, vm_tag_compound_symbol),
+    match_var(1),
+    compound_symbol_header(2, 1),
+    match_var(0),
+
+    compound_symbol_header(1, 2), /* the subject */ //13
+    make_tagged_val(16, vm_tag_compound_symbol),
+    make_tagged_val(55, vm_tag_number),
+    compound_symbol_header(2, 1), //16
+    make_tagged_val(66, vm_tag_number),
+
+  };
+
+  vm_instruction program[] = {
+    op_load_i(0, 600), /* initial wrong value */
+
+    op_load_cs(1, 13),
+    op_copy_sym(5, 1), /* value to match */
+    op_load_i(2, 0), /* address of match pattern */
+    op_match(5, 2, 3), /* after matching, reg 3 + 1 should contain the matched value (77) */
+    op_jmp(1),
+    op_jmp(2),
+    op_load_i(0, 100),
+    op_ret(0),
+    op_sub(0, 3, 4), /* there is only one case */
+    op_ret(0)
+  };
+
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(11, vm_tag_number));
+}
+
+
 it( creates_an_explicit_partial_application ) {
   const int fun_address = 8;
   vm_instruction program[] = {
@@ -566,6 +688,9 @@ start_spec(vm_spec)
   example(matches_a_compound_symbol)
   example(binds_a_value_in_a_match)
   example(binds_a_value_in_a_nested_symbol)
+  example(matches_a_dynamic_compound_symbol)
+  example(binds_a_value_in_a_dynamic_symbol_match)
+  example(binds_a_value_in_a_nested_dynamic_symbol)
   example(creates_an_explicit_partial_application)
   example(creates_a_partial_application_with_a_generic_application)
   example(does_a_generic_application_of_a_function)
