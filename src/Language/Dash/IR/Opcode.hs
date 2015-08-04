@@ -33,7 +33,7 @@ data Opcode =
   | OpcFunHeader Int         -- arity
   | OpcEq Reg Reg Reg
   | OpcCopySym Reg Reg
-  | OpcSetSymField Reg Reg Int
+  | OpcSetSymField Reg Reg Int -- reg with heap symbol, reg of new value, index
 
   deriving Show
 

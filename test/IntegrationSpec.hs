@@ -135,8 +135,6 @@ spec = do
               \     end \n\
               \   counter 9 \n\
               \ outer 3 995"
-              putStrLn $ show $ toAsm code
-              putStrLn $ show $ toNorm code
               let result = run code
               result `shouldReturn` VMNumber 995
 
@@ -469,7 +467,6 @@ spec = do
                           \     3 -> 44 \n\
                           \   end \n\
                           \ run 4 12 34 55"
-              putStrLn $ show $ toAsm code
               let result = run code
               result `shouldReturn` VMNumber 105
 

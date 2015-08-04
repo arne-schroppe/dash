@@ -66,9 +66,11 @@ compileAtom reg atom name isResultValue = case atom of
   NPlainSymbol sid -> do
       addCompileTimeConst name $ CTConstPlainSymbol sid
       return [OpcLoadPS reg sid]
-  NCompoundSymbol False cAddr ->
+  NCompoundSymbol [] cAddr ->
       -- addCompileTimeConst name $ CConstCompoundSymbol cAddr
       return [OpcLoadCS reg cAddr] -- TODO codeConstant?
+  NCompoundSymbol dynamicFields cAddr ->
+      compileDynamicSymbol reg dynamicFields cAddr
   NPrimOp primop ->
       compilePrimOp primop reg
   NLambda [] params expr -> do
@@ -121,6 +123,21 @@ compileCallInstr reg funVar numArgs isResultValue = do
           (False, False) -> [OpcGenAp reg rFun numArgs]
           (False, True)  -> [OpcTailGenAp reg rFun numArgs]
   return instr
+
+
+compileDynamicSymbol :: Reg -> [(Int, NstVar)] -> ConstAddr -> CodeGenState [Opcode]
+compileDynamicSymbol reg dynamicFields cAddr = do
+  -- We're writing to a temp reg first because otherwise we might overwrite arguments
+  -- in register 0 before we can apply them.
+  -- TODO find out if this is the only place that can happen!
+  tempReg <- newReg
+  let loadConstCode = [ OpcLoadCS tempReg cAddr
+                      , OpcCopySym tempReg tempReg] -- copy to heap and place new heap address in reg
+  modifyCode <- forM dynamicFields $ \ (index, var) -> do
+                        varReg <- getReg var
+                        return $ OpcSetSymField tempReg varReg index
+  let moveCode = [OpcMove reg tempReg]
+  return $ loadConstCode ++ modifyCode ++ moveCode
 
 
 compilePrimOp :: NstPrimOp -> Reg -> CodeGenState [Opcode]

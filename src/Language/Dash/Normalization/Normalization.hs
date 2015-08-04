@@ -105,7 +105,7 @@ atomizeExpr expr name k = case expr of
       normalizeMatchBranch matchedVars bodyExpr k
   LocalBinding (Binding bname boundExpr) restExpr ->
       -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
-      -- (So in that example "let b = ..." is the inner local binding
+      -- (So in that example "let b = ..." is the inner local binding)
       atomizeExpr boundExpr bname $ \ aExpr -> do
         let var = NVar bname NLocalVar
         addBinding bname (var, False)
@@ -123,17 +123,76 @@ normalizeSymbol :: String -> [Expr] -> Cont -> NormState NstExpr
 normalizeSymbol sname [] k = do
   symId <- addSymbolName sname
   k (NPlainSymbol symId)
-normalizeSymbol sname args k = do
-  (encConst, isDynamicSymbol) <- encodeCompoundSymbol sname args
-  cAddr <- addConstant encConst
-  -- TODO get a list of all dynamic values and their positions. Then
-  -- letbind the dynamic values. At the dynamic positions inside the
-  -- symbol just set 0. Codegen will then take that const symbol, copy
-  -- it to the heap, and set the letbound values at their respective
-  -- positions. So change isDynamic::Bool to freeVars::[LocalVar, Index]
-  -- New opcodes: LOAD_SYM heap_addr_reg sym_reg, SET_SYM_VAL heap_sym_reg val_reg
-  -- We also need a new tag for heap symbols
-  k (NCompoundSymbol isDynamicSymbol cAddr)
+normalizeSymbol sname args k =
+  if (isDynamicLiteral $ LitSymbol sname args) then
+    let indicesAndDynamicValues = indexedDynamicSymbolFields args in
+    let indices = map fst indicesAndDynamicValues in
+    let dynamicVars = map snd indicesAndDynamicValues in
+    nameExprList dynamicVars $ \ freeVars -> do
+      let zeroedFields = setZeroesAtIndices args indices
+      encConst <- encodeConstantCompoundSymbol sname zeroedFields
+      cAddr <- addConstant encConst
+      let indicesAndVars = zip indices freeVars
+      k $ NCompoundSymbol indicesAndVars cAddr
+    -- letbind all dynamic values
+    -- get indices of letbound values in symbol. Replace those with 0
+    -- load constant
+    -- setSymField of all these letbound vars (in codegen)
+  else do
+    encConst <- encodeConstantCompoundSymbol sname args
+    cAddr <- addConstant encConst
+    -- TODO get a list of all dynamic values and their positions. Then
+    -- letbind the dynamic values. At the dynamic positions inside the
+    -- symbol just set 0. Codegen will then take that const symbol, copy
+    -- it to the heap, and set the letbound values at their respective
+    -- positions. So change isDynamic::Bool to freeVars::[LocalVar, Index]
+    -- New opcodes: LOAD_SYM heap_addr_reg sym_reg, SET_SYM_VAL heap_sym_reg val_reg
+    -- We also need a new tag for heap symbols
+    k (NCompoundSymbol [] cAddr)
+
+-- Only dynamic values in the list and their index
+indexedDynamicSymbolFields :: [Expr] -> [(Int, Expr)]
+indexedDynamicSymbolFields fields =
+  filter (isDynamicLiteral.snd) $ zipWithIndex fields
+
+setZeroesAtIndices :: [Expr] -> [Int] -> [Expr]
+setZeroesAtIndices fields indices = 
+  map (\ (index, e) -> 
+    if index `elem` indices then
+      LitNumber 0
+    else
+      e) $
+    zipWithIndex fields
+
+
+isDynamicLiteral :: Expr -> Bool
+isDynamicLiteral v =
+  case v of
+    LitNumber _ -> False
+    LitSymbol _ [] -> False
+    LitSymbol _ args -> any isDynamicLiteral args
+    _ -> True
+
+encodeConstantCompoundSymbol :: Name -> [Expr] -> NormState Constant
+encodeConstantCompoundSymbol symName symArgs = do
+  symId <- addSymbolName symName
+  encodedArgs <- mapM encodeConstantLiteral symArgs
+  return $ CCompoundSymbol symId encodedArgs
+
+
+encodeConstantLiteral :: Expr -> NormState Constant
+encodeConstantLiteral v =
+  case v of
+    LitNumber n ->
+        return $ CNumber n
+    LitSymbol s [] -> do
+        sid <- addSymbolName s
+        return $ CPlainSymbol sid
+    LitSymbol s args ->
+        encodeConstantCompoundSymbol s args
+    _ ->
+        error "Expected a literal"
+
 
 
 -- This is only direct usage of a var (as a "return value")
@@ -270,7 +329,7 @@ nameExprList exprList =
     nameExprList' [] acc k' =
       k' $ reverse acc
     nameExprList' expLs acc k' =
-      nameExpr (head expLs)"" $ \ var ->
+      nameExpr (head expLs) "" $ \ var ->
         nameExprList' (tail expLs) (var : acc) k'
 
 
@@ -307,4 +366,7 @@ isDynamic aExpr =
     NString _ -> False
     NLambda [] _ _ -> False
     _ -> True
+
+zipWithIndex :: [a] -> [(Int, a)]
+zipWithIndex values = zip [0..(length values)] values
 
