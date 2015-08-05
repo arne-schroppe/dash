@@ -60,9 +60,9 @@ compileExpr expr =
 compileAtom :: Reg -> NstAtomicExpr -> Name -> Bool -> CodeGenState [Opcode]
 compileAtom reg atom name isResultValue = case atom of
   NNumber n -> do
-      when (n < 0 || n > maxInteger) $ error "Integer literal out of bounds"
-      addCompileTimeConst name $ CTConstNumber (fromIntegral n)
-      return [OpcLoadI reg (fromIntegral n)]
+      when (n < minInteger || n > maxInteger) $ error "Integer literal out of bounds"
+      addCompileTimeConst name $ CTConstNumber $ fromIntegral n
+      return [OpcLoadI reg n]
   NPlainSymbol sid -> do
       addCompileTimeConst name $ CTConstPlainSymbol sid
       return [OpcLoadPS reg sid]
@@ -159,7 +159,7 @@ compileConstantFreeVar reg name = do
   compConst <- getCompileTimeConstInSurroundingScopes name
   case compConst of
     -- TODO how about storing the constant in const table and simply load_c it here?
-    CTConstNumber n          -> return [OpcLoadI reg (fromIntegral n)]
+    CTConstNumber n          -> return [OpcLoadI reg $ fromIntegral n]
     CTConstPlainSymbol symId -> return [OpcLoadPS reg symId]
     -- CConstCompoundSymbol ConstAddr
     CTConstLambda funAddr    -> compileLoadLambda reg funAddr

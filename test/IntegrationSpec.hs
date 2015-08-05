@@ -483,7 +483,7 @@ spec = do
 
 
 
-    it "binds a value inside a nested symbol" $ do
+    it "resolves closed over vars in match-branches" $ do
       let code = " fib n =                       \n\
                  \   n' = n - 1                  \n\
                  \   n'' = n - 2                 \n\
@@ -526,6 +526,7 @@ spec = do
       let result = run code
       result `shouldReturn` VMSymbol tupleSymbolId [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
 
+
     it "has lists" $ do
       let code = "[1, 2, :sym]"
       let result = run code
@@ -560,7 +561,7 @@ spec = do
       let code = " ls = [1, 2, 3, 4]      \n\
                  \ match ls begin        \n\
                  \   [1, 2] -> :a \n\
-                 \   [1, 2 | tl] -> tl        \n\
+                 \   [1, 2 | tl] -> tl   \n\
                  \ end"
       let result = run code
       result `shouldReturn` VMSymbol listConsSymbolId [VMNumber 3,
@@ -578,6 +579,10 @@ spec = do
                                 VMSymbol listConsSymbolId [VMNumber 5,
                                 VMSymbol listEmptySymbolId []]]
 
+    it "has negative numbers" $ do
+      let code = " 0 - 7 + 3"
+      let result = run code
+      result `shouldReturn` VMNumber (-4)
 
 
 {-
@@ -598,6 +603,7 @@ K Use better types (Reg as member of Num typeclass)
 K operator precedence / limited set of operators
 - negative numbers (with bias)
 - strings (string concatenation, to-string)
+- runtime errors
 - garbage collection
 
 

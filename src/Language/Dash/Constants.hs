@@ -1,5 +1,6 @@
 module Language.Dash.Constants (
   maxRegisters
+, minInteger
 , maxInteger
 , maxSymbols
 , tupleSymbolId
@@ -7,12 +8,16 @@ module Language.Dash.Constants (
 , listEmptySymbolId
 , trueSymbolId
 , falseSymbolId
+, numberBias
 ) where
 
-maxRegisters, maxInteger, maxSymbols :: Int
+maxRegisters, minInteger, maxInteger, maxSymbols, numberBias :: Int
 maxRegisters = 32
-maxInteger = 0x1FFFFF
 maxSymbols = maxInteger
+
+maxInteger = 0xFFFFF
+minInteger = (-0xFFFFF)
+numberBias = maxInteger
 
 
 

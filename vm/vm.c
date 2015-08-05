@@ -515,7 +515,13 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
         check_reg(reg0);
-        get_reg(reg0) = arg1 + arg2;
+        int result = ((arg1 - number_bias) + (arg2 - number_bias)) + number_bias;
+        if(result < 0 || result > max_integer) {
+          fprintf(stderr, "Int overflow\n");
+          is_running = false;
+          break;
+        }
+        get_reg(reg0) = result;
         debug( printf("ADD    r%02i r%02i=%x r%02i=%x\n", reg0, reg1, arg1, reg2, arg2) );
       }
       break;
@@ -530,7 +536,13 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
         check_reg(reg0);
-        get_reg(reg0) = arg1 - arg2;
+        int result = ((arg1 - number_bias) - (arg2 - number_bias)) + number_bias;
+        if(result < 0 || result > max_integer) {
+          fprintf(stderr, "Int overflow\n");
+          is_running = false;
+          break;
+        }
+        get_reg(reg0) = result;
         debug( printf("SUB    r%02i r%02i=%x r%02i=%x\n", reg0, reg1, arg1, reg2, arg2) );
       }
       break;
@@ -545,7 +557,13 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
         check_reg(reg0);
-        get_reg(reg0) = arg1 * arg2;
+        int result = ((arg1 - number_bias) * (arg2 - number_bias)) + number_bias;
+        if(result < 0 || result > max_integer) {
+          fprintf(stderr, "Int overflow\n");
+          is_running = false;
+          break;
+        }
+        get_reg(reg0) = result;
         debug( printf("MUL    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
       }
       break;
@@ -559,15 +577,21 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         check_reg(reg2);
         int arg2 = get_reg(reg2);
         if(arg2 == 0) {
-          fprintf(stderr, "Division by 0");
+          fprintf(stderr, "Division by 0\n");
           is_running = false;
           break;
         }
 
         int reg0 = get_arg_r0(instr);
         check_reg(reg0);
-        get_reg(reg0) = arg1 / arg2;
-        debug( printf("MUL    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
+        int result = ((arg1 - number_bias) / (arg2 - number_bias)) + number_bias;
+        if(result < 0 || result > max_integer) {
+          fprintf(stderr, "Int overflow\n");
+          is_running = false;
+          break;
+        }
+        get_reg(reg0) = result;
+        debug( printf("DIV    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
       }
       break;
 

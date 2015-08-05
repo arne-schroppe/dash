@@ -63,6 +63,7 @@ d = [2, 3, 4] ++ [5, 6, 7]
 --/
 
 
+/--
 cons a as = :list a as
 
 head ls =
@@ -97,6 +98,10 @@ pl a b = a + b
 
 foldr pl 0 ls
 
+--/
+
+
+(0 - 2)
 
 
 

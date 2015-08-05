@@ -6,6 +6,7 @@ import           Language.Dash.IR.Opcode
 import           Language.Dash.IR.Data
 import           Language.Dash.VM.DataEncoding
 import           Language.Dash.VM.VM
+import           Language.Dash.Constants
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -15,7 +16,10 @@ runProg = runProgTbl []
 runProgTbl :: [Word32] -> [[Opcode]] -> IO Word32
 runProgTbl tbl prog = do
   (value, _, _) <- execute asm tbl' []
-  return value
+  decodedValue <- decode value [] []
+  case decodedValue of
+    VMNumber n -> return $ fromIntegral n -- this will subtract the number bias
+    _ -> return value
   where
     (asm, tbl', _) =
       assembleWithEncodedConstTable prog tbl (fromIntegral.constAddrToInt) []
@@ -156,10 +160,14 @@ spec = do
                     OpcRet 0 ]]
       (runProgTbl ctable prog) `shouldReturn` (33)
 
-    it "loads a data symbol" $ do
+    it "loads a compound symbol" $ do
+      let ctable = [ encodeNumber 1,
+                     encodeCompoundSymbolHeader (mkSymId 5) 1,
+                     encodeNumber 3
+                   ]
       let prog = [[ OpcLoadCS 0 (mkConstAddr 1),
                     OpcRet 0 ]]
-      (runProg prog) `shouldReturn` (encodeCompoundSymbolRef $ mkConstAddr 1)
+      (runProgTbl ctable prog) `shouldReturn` (encodeCompoundSymbolRef $ mkConstAddr 1)
 
 
     it "jumps forward" $ do
@@ -176,7 +184,7 @@ spec = do
                      encodeNumber 22 ]
       let prog = [[ OpcLoadI 0 600,
                     OpcLoadI 1 22,
-                    OpcLoadI 2 0,
+                    OpcLoadAddr 2 (mkConstAddr 0),
                     OpcMatch 1 2 0,
                     OpcJmp 1,
                     OpcJmp 2,
@@ -192,7 +200,7 @@ spec = do
                      encodePlainSymbol (mkSymId 22) ]
       let prog = [[ OpcLoadI 0 600,
                     OpcLoadPS 1 (mkSymId 22),
-                    OpcLoadI 2 0,
+                    OpcLoadAddr 2 (mkConstAddr 0),
                     OpcMatch 1 2 0,
                     OpcJmp 1,
                     OpcJmp 2,
@@ -217,7 +225,7 @@ spec = do
                      encodeNumber 77 ]
       let prog = [[ OpcLoadI 0 600,
                     OpcLoadCS 1 (mkConstAddr 9),
-                    OpcLoadI 2 0,
+                    OpcLoadAddr 2 (mkConstAddr 0),
                     OpcMatch 1 2 0,
                     OpcJmp 1,
                     OpcJmp 2,
@@ -243,7 +251,7 @@ spec = do
       let prog = [[ OpcLoadI 0 600,
                     OpcLoadI 4 66,
                     OpcLoadCS 1 (mkConstAddr 9),
-                    OpcLoadI 2 0,
+                    OpcLoadAddr 2 (mkConstAddr 0),
                     OpcMatch 1 2 3,
                     OpcJmp 1,
                     OpcJmp 2,

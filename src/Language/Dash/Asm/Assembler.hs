@@ -10,6 +10,7 @@ import           Language.Dash.Asm.DataAssembler
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Opcode
 import           Language.Dash.VM.Types
+import           Language.Dash.Constants
 
 
 {-
@@ -76,7 +77,7 @@ assembleTac funcAddrs addrConv opc =
   let faddr a = fromIntegral $ funcAddrs `Seq.index` funcAddrToInt a in
   case opc of
     OpcRet r0              -> instructionRI   0 (r r0) 0
-    OpcLoadI r0 n          -> instructionRI   1 (r r0) n
+    OpcLoadI r0 n          -> instructionRI   1 (r r0) (biasNumber n)
     OpcLoadAddr r0 a       -> instructionRI   1 (r r0) (caddr a)
     OpcLoadPS r0 s         -> instructionRI   2 (r r0) (sym s)
     OpcLoadCS r0 a         -> instructionRI   3 (r r0) (caddr a)
@@ -107,6 +108,8 @@ instBits = 32
 opcBits = 6
 regBits = 5
 
+biasNumber :: Int -> Int
+biasNumber n = n + numberBias
 
 -- an instruction containing a register and a number
 instructionRI :: Int -> Int -> Int -> VMWord

@@ -13,9 +13,10 @@ module Language.Dash.VM.DataEncoding (
 
 import           Data.Bits
 import           Data.Word
+import           Language.Dash.Constants
 import           Language.Dash.IR.Data
 import           Language.Dash.VM.Types
-import           Language.Dash.VM.VM    (getVMHeapValue, getVMHeapArray)
+import           Language.Dash.VM.VM     (getVMHeapArray, getVMHeapValue)
 
 
 decode :: VMWord -> [Word32] -> SymbolNameList -> IO VMValue
@@ -23,7 +24,7 @@ decode w ctable symNames =
   let tag = getTag w in
   let value = getValue w in
   decode' tag value
-  where decode' t v | t==tagNumber                = return $ VMNumber v
+  where decode' t v | t==tagNumber                = return $ VMNumber ((fromIntegral v) - numberBias)
                     | t==tagPlainSymbol           = return $ VMSymbol (symNames !! fromIntegral v) []
                     | t==tagCompoundSymbol        = decodeCompoundSymbol v ctable symNames
                     | t==tagDynamicCompoundSymbol = decodeDynCompoundSymbol v ctable symNames
@@ -51,7 +52,7 @@ decodeDynCompoundSymbol addr ctable symNames = do
   return $ VMSymbol symName decoded
 
 encodeNumber :: Int -> VMWord
-encodeNumber = makeVMValue tagNumber . ensureRange . fromIntegral
+encodeNumber = makeVMValue tagNumber . ensureRange . bias . fromIntegral
 
 encodePlainSymbol :: SymId -> VMWord
 encodePlainSymbol = makeVMValue tagPlainSymbol . ensureRange . fromIntegral . symIdToInt
@@ -68,9 +69,12 @@ encodeDynamicCompoundSymbolRef = makeVMValue tagDynamicCompoundSymbol
                                  . fromIntegral
                                  . heapAddrToInt
 
+bias :: Int -> VMWord
+bias n = fromIntegral $ n + numberBias
 
-ensureRange :: (Ord a, Num a) => a -> a
-ensureRange v = if v < 0 || v > 0x0FFFFFFF then error "Value outside of range" else v
+ensureRange :: (Ord a, Num a, Show a) => a -> a
+-- ensureRange v = if v < (fromIntegral 0) || v > (fromIntegral $ maxInteger + numberBias) then error ("Value outside of range: " ++ (show v)) else v
+ensureRange v = if v > (fromIntegral $ maxInteger + numberBias) then error ("Value outside of range: " ++ (show v)) else v
 
 data MatchDataType = MatchHeader | MatchVar
 
