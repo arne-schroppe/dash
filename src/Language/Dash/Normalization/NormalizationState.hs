@@ -26,6 +26,7 @@ import qualified Data.Map              as Map
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
+import           Language.Dash.Constants
 
 -- TODO this module's interface is way too fat !
 -- TODO give all values unique names
@@ -48,7 +49,7 @@ data NormEnv = NormEnv
 
 emptyNormEnv :: NormEnv
 emptyNormEnv = NormEnv
-  { symbolNames = Map.fromList[ ("false", mkSymId 0), ("true", mkSymId 1) ]
+  { symbolNames = Map.fromList[ (falseSymbolId, mkSymId 0), (trueSymbolId, mkSymId 1) ]
   , constTable = []
   , contexts = []
   , arities = Map.empty

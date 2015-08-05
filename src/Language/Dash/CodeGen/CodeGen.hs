@@ -6,7 +6,7 @@ import           Control.Monad.State
 import           Data.Foldable
 import           Data.Maybe                         (catMaybes)
 import           Language.Dash.CodeGen.CodeGenState
-import           Language.Dash.CodeGen.Limits
+import           Language.Dash.Constants
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Opcode

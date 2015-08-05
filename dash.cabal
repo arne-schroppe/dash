@@ -34,6 +34,7 @@ library
                     , Language.Dash.VM.DataEncoding
                     , Language.Dash.VM.Types
                     , Language.Dash.API
+                    , Language.Dash.Constants
   build-depends:      base
                     , array
                     , containers

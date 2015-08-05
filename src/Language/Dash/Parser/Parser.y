@@ -3,7 +3,7 @@ module Language.Dash.Parser.Parser where
 
 import Language.Dash.Parser.Lexer
 import Language.Dash.IR.Ast
-
+import Language.Dash.Constants
 
 }
 
@@ -186,7 +186,7 @@ ModuleFunDef:
 
 IfElse:
     if opt(eol) Expr opt(eol) then opt(eol) Expr opt(eol) else opt(eol) Expr  {
-      Match $3 [(PatSymbol "true" [], $7), (PatSymbol "false" [], $11)]
+      Match $3 [(PatSymbol trueSymbolId [], $7), (PatSymbol falseSymbolId [], $11)]
     }
 
 
@@ -263,10 +263,6 @@ LocalDoBinding:
 {
 
 -- TODO export these symbols so that tests can use them abstractly
-tupleSymbolId = "$tuple"
-
-listConsSymbolId = "list"
-listEmptySymbolId = "empty-list"
 
 makeMonad :: String -> [(String, Expr)] -> Expr
 makeMonad monad lines =

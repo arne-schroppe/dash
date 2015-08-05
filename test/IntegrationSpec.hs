@@ -2,6 +2,7 @@ module IntegrationSpec where
 
 import           Test.Hspec
 import           Language.Dash.API
+import           Language.Dash.Constants
 import           Language.Dash.VM.DataEncoding
 import           Numeric
 
@@ -523,15 +524,15 @@ spec = do
     it "has tuples" $ do
       let code = "(1, 2, :sym)"
       let result = run code
-      result `shouldReturn` VMSymbol "$tuple" [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
+      result `shouldReturn` VMSymbol tupleSymbolId [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
 
     it "has lists" $ do
       let code = "[1, 2, :sym]"
       let result = run code
-      result `shouldReturn` VMSymbol "list" [VMNumber 1,
-                              VMSymbol "list" [ VMNumber 2,
-                              VMSymbol "list" [ VMSymbol "sym" [], 
-                              VMSymbol "empty-list" []]]]
+      result `shouldReturn` VMSymbol listConsSymbolId [VMNumber 1,
+                              VMSymbol listConsSymbolId [ VMNumber 2,
+                              VMSymbol listConsSymbolId [ VMSymbol "sym" [], 
+                              VMSymbol listEmptySymbolId []]]]
 
 
     it "matches an empty list" $ do
@@ -562,7 +563,9 @@ spec = do
                  \   [1, 2 | tl] -> tl        \n\
                  \ end"
       let result = run code
-      result `shouldReturn` VMSymbol "list" [VMNumber 3, VMSymbol "list" [VMNumber 4, VMSymbol "empty-list" []]]
+      result `shouldReturn` VMSymbol listConsSymbolId [VMNumber 3,
+                                VMSymbol listConsSymbolId [VMNumber 4,
+                                VMSymbol listEmptySymbolId []]]
 
     it "matches a list's tail with a nested pattern" $ do
       let code = " ls = [1, 2, 3, 4, 5]      \n\
@@ -571,7 +574,9 @@ spec = do
                  \   [1 | [2 | [ 3 | tl]]] -> tl        \n\
                  \ end"
       let result = run code
-      result `shouldReturn` VMSymbol "list" [VMNumber 4, VMSymbol "list" [VMNumber 5, VMSymbol "empty-list" []]]
+      result `shouldReturn` VMSymbol listConsSymbolId [VMNumber 4,
+                                VMSymbol listConsSymbolId [VMNumber 5,
+                                VMSymbol listEmptySymbolId []]]
 
 
 

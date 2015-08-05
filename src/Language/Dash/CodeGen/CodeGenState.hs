@@ -6,7 +6,7 @@ module Language.Dash.CodeGen.CodeGenState where
 import           Control.Monad.State          hiding (state)
 import qualified Data.Map                     as Map
 import qualified Data.Sequence                as Seq
-import           Language.Dash.CodeGen.Limits
+import           Language.Dash.Constants
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Opcode

@@ -1,6 +1,7 @@
 module Language.Dash.Parser.ParserSpec where
 
 import           Language.Dash.IR.Ast
+import           Language.Dash.Constants
 import           Language.Dash.Parser.Lexer  as L
 import           Language.Dash.Parser.Parser
 import           Test.Hspec
@@ -25,12 +26,15 @@ spec = do
 
     it "parses if-then-else as match" $ do
       parse_string "if a then b else c" `shouldBe`
-        (Match (Var "a") [(PatSymbol "true" [], Var "b"), (PatSymbol "false" [], Var "c")])
+        (Match (Var "a") [(PatSymbol trueSymbolId [], Var "b"), (PatSymbol falseSymbolId [], Var "c")])
 
     it "parses an empty list" $ do
       parse_string "[]" `shouldBe`
-        LitSymbol "empty-list" []
+        LitSymbol listEmptySymbolId []
 
     it "parses a list" $ do
       parse_string "[1, a, 2]" `shouldBe`
-        LitSymbol "list" [LitNumber 1, LitSymbol "list" [Var "a", LitSymbol "list" [LitNumber 2, LitSymbol "empty-list" []]]]
+        LitSymbol listConsSymbolId [LitNumber 1,
+            LitSymbol listConsSymbolId [Var "a",
+            LitSymbol listConsSymbolId [LitNumber 2,
+            LitSymbol listEmptySymbolId []]]]

@@ -1,6 +1,7 @@
 module Language.Dash.Normalization.NormalizationSpec where
 
 import           Language.Dash.IR.Ast
+import           Language.Dash.Constants
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.Normalization.Normalization
@@ -23,7 +24,7 @@ spec = do
         norm `shouldBe` (NAtom $ NNumber 3)
 
       it "normalizes a simple symbol directly" $ do
-        let builtInSymbols = ["false", "true"]
+        let builtInSymbols = [falseSymbolId, trueSymbolId]
         let numBuiltInSymbols = length builtInSymbols
         let ast = LitSymbol "Test" []
         let (norm, _, syms) = normalize ast
@@ -394,8 +395,8 @@ spec = do
       it "has :true and :false as built-in symbols" $ do
         let ast = LocalBinding (Binding "x" $ LitSymbol "a" []) $
                   LocalBinding (Binding "y" $ LitSymbol "b" []) $
-                  LocalBinding (Binding "t" $ LitSymbol "true" []) $
-                  LocalBinding (Binding "f" $ LitSymbol "false" []) $
+                  LocalBinding (Binding "t" $ LitSymbol trueSymbolId []) $
+                  LocalBinding (Binding "f" $ LitSymbol falseSymbolId []) $
                   LitNumber 0
         let norm = pureNorm ast
         let expected = NLet (NVar "x" NLocalVar) (NPlainSymbol $ mkSymId 2) $
