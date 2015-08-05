@@ -505,6 +505,11 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 55
 
+    it "has correct precedence for math operators" $ do
+      let code = "12 + 6 / 2 - 3 * 2"
+      let result = run code
+      result `shouldReturn` VMNumber 9
+
 
     it "has if-then-else" $ do
       let code = " if :sym == :no-sym then  \n\
@@ -585,7 +590,7 @@ K Limits (integers, num local vars, num arguments, num symbols, etc)
 K Use better types (Reg as member of Num typeclass)
 - Lots and lots of cleanup. Unified names and parameter orders and smart constructors, etc
 
-- operator precedence / limited set of operators
+K operator precedence / limited set of operators
 - negative numbers (with bias)
 - strings (string concatenation, to-string)
 - garbage collection

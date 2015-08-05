@@ -35,11 +35,20 @@ import Language.Dash.IR.Ast
   begin     { TBegin }
   end       { TEnd }
   lam       { TLambda }
+  '+'       { TOperator "+" }
+  '-'       { TOperator "-" }
+  '/'       { TOperator "/" }
+  '*'       { TOperator "*" }
+  '=='      { TOperator "==" }
   operator  { TOperator $$ }
   '_'       { TUnderscore }
   ','       { TComma }
   '|'       { TVBar }
 
+
+%left '=='
+%left '+' '-'
+%left '*' '/'
 
 %%
 
@@ -87,6 +96,7 @@ SimpleExpr:
     Ident               { $1 }
   | NonIdentSimpleExpr  { $1 }
 
+
 NonIdentSimpleExpr:
     symbol         { LitSymbol $1 [] }
   | NonIdentNonSymbolSimpleExpr { $1 }
@@ -121,7 +131,17 @@ FunDefOrCallNext:
 
 
 InfixOperation:
-    SimpleExpr operator SimpleExpr             { FunAp (Var $2) [$1, $3] }
+    Operand '+' Operand         { FunAp (Var "+") [$1, $3] }
+  | Operand '-' Operand         { FunAp (Var "-") [$1, $3] }
+  | Operand '/' Operand         { FunAp (Var "/") [$1, $3] }
+  | Operand '*' Operand         { FunAp (Var "*") [$1, $3] }
+  | Operand '==' Operand        { FunAp (Var "==") [$1, $3] }
+  -- | Operand operator Operand    { FunAp (Var $2) [$1, $3] }
+
+Operand:
+    SimpleExpr     { $1 }
+  | InfixOperation { $1 }
+
 
 
 List:
@@ -266,3 +286,4 @@ parseError ts = error $ "Parse error " ++ (show ts)
 
 
 }
+
