@@ -65,12 +65,38 @@ d = [2, 3, 4] ++ [5, 6, 7]
 
 cons a as = :list a as
 
+head ls =
+  match ls begin
+    [a | _] -> a
+    _ -> :error
+  end
+
+tail ls =
+  match ls begin
+    [_ | as] -> as
+    _ -> []
+  end
+
+map f ls =
+  match ls begin
+    [] -> []
+    [a|rest] -> cons (f a) (map f rest)
+  end
+
+foldr f i ls =
+  match ls begin
+    [] -> i
+    [a|rest] -> f a (foldr f i rest)
+  end
 
 ls = cons 1 [2, 3, 4]
 
-match ls begin
-  [1, 2 | x] -> x
-  _ -> :error
-end
+-- map ( .\ a = a * 2 ) ls
+
+pl a b = a + b
+
+foldr pl 0 ls
+
+
 
 

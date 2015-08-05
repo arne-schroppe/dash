@@ -575,15 +575,21 @@ What's missing:
 
 immediate goals:
 K Refactoring
-- Proper error handling (Either result)
+x Proper error handling (Either result)
 - Negative integers
 - General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
 K TODO make it impossible to reassign values (d'oh!)
 K Limits (integers, num local vars, num arguments, num symbols, etc)
 - Put all compiler errors into a common error modules
 - unify naming, e.g. fun/func, get vs. no prefix, etc
-- Use better types (Reg as member of Num typeclass)
+K Use better types (Reg as member of Num typeclass)
 - Lots and lots of cleanup. Unified names and parameter orders and smart constructors, etc
+
+- operator precedence / limited set of operators
+- negative numbers (with bias)
+- strings (string concatenation, to-string)
+- garbage collection
+
 
 missing language features:
 K Closures
@@ -601,7 +607,7 @@ x inlining of match branches (provide map for arguments, shift base reg, transfo
 x if a closure doesn't escape the current context, apply free variables directly
 - Strings
 - Garbage collection
-- Creating symbols (symbol arity is known statically)
+K Creating symbols (symbol arity is known statically)
 K tuples
 K Lists
 - Static modules
@@ -624,21 +630,15 @@ K Lists
 
 - A proper number type (big decimal?)
 
-- compact list representation
-  - list sections are stored as arrays
-  - only when storing a permanent reference to parts of a list, is that section split off
-    - TODO how does this behave with caching and pipelining?
-    - We'd also have to check on every return whether something is a list. not very fast 
-      in a dynamic language
 
 After release ?
 
 - Dynamic modules
 
-- indentation syntax
+- off-site syntax
 - Mutual recursion in module top-level
 - Multiple files
-- Operator precedence
+- Operator precedence with arbitrary operators
 - Debugging. Stack traces (or breadcrumbs?)
 
 - private/secret symbols
