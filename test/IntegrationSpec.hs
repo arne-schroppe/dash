@@ -590,7 +590,7 @@ K Limits (integers, num local vars, num arguments, num symbols, etc)
 K Use better types (Reg as member of Num typeclass)
 - Lots and lots of cleanup. Unified names and parameter orders and smart constructors, etc
 
-- operator precedence / limited set of operators
+K operator precedence / limited set of operators
 - negative numbers (with bias)
 - strings (string concatenation, to-string)
 - garbage collection
