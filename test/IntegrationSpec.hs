@@ -595,8 +595,8 @@ What's missing:
 immediate goals:
 K Refactoring
 x Proper error handling (Either result)
-- Negative integers
-- General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
+K Negative integers
+K General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
 K TODO make it impossible to reassign values (d'oh!)
 K Limits (integers, num local vars, num arguments, num symbols, etc)
 - Put all compiler errors into a common error modules
@@ -605,7 +605,7 @@ K Use better types (Reg as member of Num typeclass)
 - Lots and lots of cleanup. Unified names and parameter orders and smart constructors, etc
 
 K operator precedence / limited set of operators
-- negative numbers (with bias)
+K negative numbers (with bias)
 - strings (string concatenation, to-string)
 - runtime errors
 - garbage collection
