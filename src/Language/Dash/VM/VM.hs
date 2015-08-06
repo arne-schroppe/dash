@@ -12,6 +12,7 @@ import           Foreign.Ptr
 import           Language.Dash.IR.Data  (SymbolNameList)
 import           Language.Dash.VM.Types
 
+-- TODO change order in return value! (sym names and const table)
 execute :: [VMWord] -> [VMWord] -> SymbolNameList -> IO (VMWord, [VMWord], SymbolNameList)
 execute prog ctable symNames =
   withArray (map CUInt prog) (\progPtr ->

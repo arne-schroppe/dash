@@ -15,8 +15,8 @@ runProg = runProgTbl []
 
 runProgTbl :: [Word32] -> [[Opcode]] -> IO Word32
 runProgTbl tbl prog = do
-  (value, _, _) <- execute asm tbl' []
-  decodedValue <- decode value [] []
+  (value, tbl', symnames) <- execute asm tbl' []
+  decodedValue <- decode value tbl' symnames
   case decodedValue of
     VMNumber n -> return $ fromIntegral n -- this will subtract the number bias
     _ -> return value
