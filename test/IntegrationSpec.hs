@@ -584,6 +584,10 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber (-4)
 
+    it "has a prefix minus operator" $ do
+      let code = " -7 - -13"
+      let result = run code
+      result `shouldReturn` VMNumber 6
 
 {-
 What's missing:
