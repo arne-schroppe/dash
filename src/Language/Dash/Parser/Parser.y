@@ -131,9 +131,7 @@ FunDefOrCallNext:
   |                                            { ([], \ a args -> FunAp a args) }
 
 
--- TODO we could optimize prefix minus by emitting a fake function (e.g. "$neg") here
--- and which can be implemented more efficiently in codegen by reusing the register
--- holding the 0.
+
 InfixOperation:
     Operand '+' Operand         { FunAp (Var "+") [$1, $3] }
   | Operand '-' Operand         { FunAp (Var "-") [$1, $3] }

@@ -18,7 +18,7 @@ $opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \^]
 @ident      = $alpha( ($alphanum+ \-)* $alphanum+ )?
 @namespaces = (@ident \/)*
 
-@integer    = $digit $digit*
+@integer    = "-"? $digit $digit*
 
 @operator   = "==" | $opsymbol ($opsymbol | "=")*
 

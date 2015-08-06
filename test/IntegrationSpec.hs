@@ -378,6 +378,14 @@ spec = do
               let result = run code
               result `shouldReturn` VMSymbol "one" []
 
+            it "matches a value against a negative number" $ do
+              let code = " a = 3 \n\
+                         \ match -a begin\n\
+                         \   -3 -> :three \n\
+                         \ end"
+              let result = run code
+              result `shouldReturn` VMSymbol "three" []
+
             it "matches a value against numbers" $ do
               let code = " match 7 begin\n\
                          \   1 -> :one \n\
@@ -585,7 +593,9 @@ spec = do
       result `shouldReturn` VMNumber (-4)
 
     it "has a prefix minus operator" $ do
-      let code = " -7 - -13"
+      let code = " a = 7 \n\
+                 \ b = 13 \n\
+                 \ -a - -b"
       let result = run code
       result `shouldReturn` VMNumber 6
 
@@ -606,6 +616,7 @@ K Use better types (Reg as member of Num typeclass)
 
 K operator precedence / limited set of operators
 K negative numbers (with bias)
+- inequality operators
 - strings (string concatenation, to-string)
 - runtime errors
 - garbage collection
