@@ -23,6 +23,10 @@ spec = do
       let result = run ":dash"
       result `shouldReturn` VMSymbol "dash" []
 
+    it "evaluates a string" $ do
+      let result = run "\"dash!\""
+      result `shouldReturn` VMString "dash!"
+
     it "applies built-in add function" $ do
       let result = run "2 + 3"
       result `shouldReturn` VMNumber 5

@@ -22,7 +22,8 @@ $opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \^]
 
 @operator   = "==" | $opsymbol ($opsymbol | "=")*
 
--- TODO strings
+@stringchars = [^ \"]*
+
 
 
 tokens :-
@@ -54,6 +55,8 @@ tokens :-
   "_"           { mkTok TUnderscore }
   ","           { mkTok TComma }
   "|"           { mkTok TVBar }
+  \" @stringchars \"
+                { mkTokS (\s -> TString (init $ tail s)) }
   @integer      { mkTokS (\s -> TInt (read s)) }
   @ident        { mkTokS (\s -> TId s) }
   @operator     { mkTokS (\s -> TOperator s) }

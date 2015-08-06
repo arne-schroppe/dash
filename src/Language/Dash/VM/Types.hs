@@ -8,6 +8,7 @@ type VMWord = Word32
 data VMValue =
     VMNumber Int
   | VMSymbol String [VMValue]
+  | VMString String
   | VMClosure -- TODO add meaningful data 
   | VMFunction -- TODO add meaningful data (name, arguments, etc)
   deriving (Eq)
