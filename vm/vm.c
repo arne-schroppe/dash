@@ -510,6 +510,16 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       break;
 
 
+      case OP_LOAD_str: {
+        int reg0 = get_arg_r0(instr);
+        int value = get_arg_i(instr);
+        check_reg(reg0);
+        get_reg(reg0) = make_tagged_val(value, vm_tag_string);
+        debug( printf("LOADstr  r%02i #%i\n", reg0, value) );
+      }
+      break;
+
+
       case OP_ADD: {
         int reg1 = get_arg_r1(instr);
         int reg2 = get_arg_r2(instr);
