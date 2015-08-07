@@ -294,6 +294,13 @@ spec = do
       let decodeResult = decode result ctable symNames
       decodeResult `shouldReturn` (VMSymbol "B" [VMNumber 33, VMSymbol "success" []])
 
+
+    it "loads a string into a register" $ do
+      let prog = [[ OpcLoadStr 0 (mkConstAddr 55),
+                    OpcRet 0 ]]
+      (runProg prog) `shouldReturn` (encodeStringRef $ mkConstAddr 55)
+
+
 {- TODO
     it "decodes a number" $ property $
       choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encodeNumber) x == (VMNumber x)
