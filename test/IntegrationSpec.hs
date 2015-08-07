@@ -625,6 +625,9 @@ K negative numbers (with bias)
 - runtime errors
 - garbage collection
 
+- repl: Compile and eval one expression at a time. Store constant results in an
+  internal table. Recompile functions every time (?)
+
 
 missing language features:
 K Closures

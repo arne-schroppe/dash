@@ -60,7 +60,6 @@ spec = do
                     OpcLoadI  1 100,
                     OpcAdd  2 0 1,
                     OpcRet 2]]
-
       (runProg prog) `shouldReturn` 138
 
     it "calls a closure downwards" $ do

@@ -31,7 +31,8 @@ showNestedList vs =
 instance Show VMValue where
   show v =
     case v of
-      VMNumber i -> show i -- TODO we need to properly convert this to int to show negative numbers
+      VMNumber i -> show i
+      VMString s -> "\"" ++ s ++ "\""
       VMClosure -> "<closure>"
       VMFunction -> "<function>"
       VMSymbol "empty-list" [] -> "[]"

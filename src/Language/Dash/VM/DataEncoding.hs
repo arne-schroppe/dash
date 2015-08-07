@@ -113,13 +113,14 @@ getTag v = (v .&. 0xF0000000) `rotateL` 4
 getValue v = v .&. 0x0FFFFFFF
 
 
-tagNumber ,tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagDynamicCompoundSymbol, tagClosure:: VMWord
+tagNumber, tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagDynamicCompoundSymbol, tagClosure, tagString :: VMWord
 tagNumber = 0x0
 tagPlainSymbol = 0x4
 tagCompoundSymbol = 0x5
 tagClosure = 0x6
 tagFunction = 0x7
 tagDynamicCompoundSymbol = 0x8
+tagString = 0x9
 tagMatchData = 0xF
 
 compoundSymbolHeaderLength :: VMWord

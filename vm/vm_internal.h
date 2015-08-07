@@ -5,8 +5,8 @@
 
 #define num_regs 32
 
-const int max_integer = 0x1FFFFF;
-const int number_bias = 0xFFFFF;
+extern const int max_integer;
+extern const int number_bias;
 
 struct _stack_frame {
   vm_value reg[num_regs];

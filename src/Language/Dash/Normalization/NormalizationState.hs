@@ -47,9 +47,12 @@ data NormEnv = NormEnv
   } deriving (Eq, Show)
 
 
+builtInSymbols :: [(String, SymId)]
+builtInSymbols = [ (falseSymbolId, mkSymId 0), (trueSymbolId, mkSymId 1) ]
+
 emptyNormEnv :: NormEnv
 emptyNormEnv = NormEnv
-  { symbolNames = Map.fromList[ (falseSymbolId, mkSymId 0), (trueSymbolId, mkSymId 1) ]
+  { symbolNames = Map.fromList builtInSymbols
   , constTable = []
   , contexts = []
   , arities = Map.empty

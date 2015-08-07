@@ -33,6 +33,9 @@ TODO use computed Goto
 
 static int invocation = 0;
 
+const int max_integer = 0x1FFFFF;
+const int number_bias = 0xFFFFF;
+
 // Constants
 static const vm_value symbol_id_false = 0;
 static const vm_value symbol_id_true = 1;
@@ -46,6 +49,7 @@ const vm_value vm_tag_compound_symbol = 0x5;
 const vm_value vm_tag_pap = 0x6;
 const vm_value vm_tag_function = 0x7;
 const vm_value vm_tag_dynamic_compound_symbol = 0x8;
+const vm_value vm_tag_string = 0x9;
 const vm_value vm_tag_match_data = 0xF;
 
 
@@ -403,7 +407,7 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
         return false;
       }
 
-      int i=0;
+      int i = 0;
       for(; i<pattern_count; ++i) {
         int rel_pattern_address = pattern_address + compound_symbol_header_size + i;
         int rel_subject_address = compound_symbol_header_size + i;
@@ -437,7 +441,7 @@ void reset() {
 
 
 vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctable, int ctable_length) {
-  ++ invocation;
+  ++invocation;
   reset();
   const_table = ctable;
   const_table_length = ctable_length;

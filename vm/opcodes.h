@@ -33,6 +33,7 @@ typedef enum {
   OP_EQ = 20,
   OP_COPY_SYM = 21,  // copies a constant compound symbol to the heap
   OP_SET_SYM_FIELD = 22, // sets a field of a heap compound symbol
+  OP_LOAD_str = 23,
 
   FUN_HEADER = 63
 } vm_opcode;
@@ -84,6 +85,7 @@ typedef enum {
 #define op_eq(r0, r1, r2) (instr_rrr(OP_EQ, r0, r1, r2))
 #define op_copy_sym(r0, r1) (instr_rrr(OP_COPY_SYM, r0, r1, 0)) // heap addr result reg, const addr reg
 #define op_set_sym_field(symr, r1, n) (instr_rrr(OP_SET_SYM_FIELD, symr, r1, n)) // heap sym addr reg, new value reg, field index
+#define op_load_str(r0, i) (instr_ri(OP_LOAD_str, r0, i)) // result reg, const addr
 
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))

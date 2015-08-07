@@ -17,12 +17,13 @@ vm_value *vm_get_heap_pointer(vm_value addr);
 extern const vm_value vm_tag_number;
 extern const vm_value vm_tag_plain_symbol;
 extern const vm_value vm_tag_compound_symbol;
+extern const vm_value vm_tag_dynamic_compound_symbol;
+extern const vm_value vm_tag_match_data;
+extern const vm_value vm_tag_string;
 
 extern const vm_value vm_tag_closure;
 extern const vm_value vm_tag_function;
 
-extern const vm_value vm_tag_dynamic_compound_symbol;
-extern const vm_value vm_tag_match_data;
 
 
 

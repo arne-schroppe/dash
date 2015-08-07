@@ -71,6 +71,8 @@ compileAtom reg atom name isResultValue = case atom of
       return [OpcLoadCS reg cAddr] -- TODO codeConstant?
   NCompoundSymbol dynamicFields cAddr ->
       compileDynamicSymbol reg dynamicFields cAddr
+  NString strAddr ->
+      error "string compilation" -- TODO
   NPrimOp primop ->
       compilePrimOp primop reg
   NLambda [] params expr -> do
@@ -102,8 +104,6 @@ compileAtom reg atom name isResultValue = case atom of
       let numArgs = length args
       let partApInst = [OpcPartAp reg rFun numArgs]
       return $ argInstrs ++ partApInst
-  x ->
-      error $ "Unable to compile " ++ show x
   where
     moveVarToReg :: NstVar -> Reg -> CodeGenState [Opcode]
     moveVarToReg var dest = do

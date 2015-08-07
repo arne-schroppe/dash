@@ -22,7 +22,7 @@ data NstAtomicExpr =
     NNumber Int
   | NPlainSymbol SymId
   | NCompoundSymbol [(Int, NstVar)] ConstAddr  -- IsDynamic SymbolAddr
-  | NString Name
+  | NString ConstAddr
   | NVarExpr NstVar
   | NLambda [Name] [Name] NstExpr -- FreeVars FormalParams Body
   | NMatchBranch [Name] [Name] NstExpr -- FreeVars FormalParams Body
@@ -83,7 +83,7 @@ instance Show NstAtomicExpr where
     NNumber n            -> show n
     NPlainSymbol s       -> "sym #" ++ show s
     NCompoundSymbol free sa -> "sym " ++ (show free) ++ " @" ++ show sa
-    NString str          -> "\"" ++ str ++ "\""
+    NString strAddr      -> "str @" ++ show strAddr
     NVarExpr v           -> "var " ++ show v
     NLambda free params body ->
                             "λ f" ++ show free ++ " p" ++ show params

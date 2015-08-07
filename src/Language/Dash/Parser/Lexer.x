@@ -47,7 +47,7 @@ tokens :-
   "with"        { mkTok TWith }
   "begin"       { mkTok TBegin }
   "end"         { mkTok TEnd }
-  ".\"          { mkTok TLambda }
+  ".\"          { mkTok TLambda } -- " -- fixes syntax highlighting
   ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
   "="           { mkTok TDefine }
   "->"          { mkTok TArrow_R }

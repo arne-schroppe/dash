@@ -95,6 +95,8 @@ atomizeExpr expr name k = case expr of
       normalizeNumber n k
   LitSymbol sname args ->
       normalizeSymbol sname args k
+  LitString s ->
+      normalizeString s k
   Var vname ->
       normalizeVar vname k
   Match matchedExpr patterns ->
@@ -118,6 +120,10 @@ atomizeExpr expr name k = case expr of
 normalizeNumber :: Int -> Cont -> NormState NstExpr
 normalizeNumber n k = k (NNumber n)
 
+normalizeString :: String -> Cont -> NormState NstExpr
+normalizeString s k = do
+  let stringAddress = mkConstAddr 0 -- TODO encode string
+  k (NString stringAddress)
 
 normalizeSymbol :: String -> [Expr] -> Cont -> NormState NstExpr
 normalizeSymbol sname [] k = do
@@ -192,6 +198,7 @@ encodeConstantLiteral v =
         encodeConstantCompoundSymbol s args
     _ ->
         error "Expected a literal"
+
 
 
 
