@@ -157,6 +157,7 @@ List:
 ListNext:
     Expr              { LitSymbol listConsSymbolId [$1, LitSymbol listEmptySymbolId []] }
   | Expr ',' ListNext { LitSymbol listConsSymbolId [$1, $3] }
+  | Expr '|' Expr     { LitSymbol listConsSymbolId [$1, $3] }
   |                   { LitSymbol listEmptySymbolId [] }
 
 
