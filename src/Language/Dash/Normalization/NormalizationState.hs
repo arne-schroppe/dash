@@ -13,7 +13,6 @@ module Language.Dash.Normalization.NormalizationState (
 , getSymbolNames
 , constTable
 , addConstant
-, encodeMatchPattern
 , arity
 , addArity
 ) where
@@ -23,7 +22,6 @@ import           Control.Monad.State   hiding (state)
 import           Data.Function         (on)
 import           Data.List
 import qualified Data.Map              as Map
-import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.Constants
@@ -254,34 +252,6 @@ addConstant c = do
 
 
 
-encodeMatchPattern :: Int -> Pattern -> NormState ([String], Constant)
-encodeMatchPattern nextMatchVar pat =
-  case pat of
-    PatNumber n ->
-        return ([], CNumber n)
-    PatSymbol s [] -> do
-        sid <- addSymbolName s
-        return ([], CPlainSymbol sid)
-    PatSymbol s params -> do
-        symId <- addSymbolName s
-        (vars, pats) <- encodePatternCompoundSymbolArgs nextMatchVar params
-        return (vars, CCompoundSymbol symId pats)
-    PatVar n ->
-        return ([n], CMatchVar nextMatchVar)
-    PatWildcard ->
-        return (["_"], CMatchVar nextMatchVar) -- TODO be a bit more sophisticated here
-                                               -- and don't encode this as a var that is
-                                               -- passed to the match branch
-
--- TODO use inner state ?
-encodePatternCompoundSymbolArgs :: Int -> [Pattern] -> NormState ([String], [Constant])
-encodePatternCompoundSymbolArgs nextMatchVar args = do
-  (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
-    (vars, encoded) <- encodeMatchPattern nextMV p
-    return (nextMV + fromIntegral (length vars), accVars ++ vars, pats ++ [encoded])
-    ) (nextMatchVar, [], []) args  -- TODO get that O(n*m) out and make it more clear
-                                   -- what this does
-  return (vars, entries)
 
 
 

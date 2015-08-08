@@ -11,6 +11,7 @@ import qualified Data.Map                      as Map
 import           Language.Dash.IR.Data
 import qualified Language.Dash.VM.DataEncoding as Enc
 import           Language.Dash.VM.Types
+import Data.List.Split
 
 {-
 
@@ -29,6 +30,8 @@ TODO rename const table to constant pool?
 
 -- TODO explain the algorithm or simplify it (the latter is probably better)
 
+bytesPerVMWord :: Int
+bytesPerVMWord = 4
 
 type ConstAddressMap = ConstAddr -> VMWord
 type ConstAtomizationState a = State ConstAtomizationEnv a
@@ -72,6 +75,7 @@ atomizeConstant c = case c of
   CPlainSymbol sid         -> addAtomized [ACPlainSymbol sid]
   CCompoundSymbol sid args -> atomizeCompoundSymbol sid args
   CMatchData args          -> atomizeMatchData args
+  CString str              -> atomizeString str
   x -> error $ "Unable to encode top-level constant " ++ show x
 
 
@@ -91,6 +95,19 @@ atomizeMatchData args = do
   atomizedArgs <- mapM atomizeConstArg args
   addAtomized $ matchHeader : atomizedArgs
   setReservedSpace 0
+
+
+atomizeString :: String -> ConstAtomizationState ()
+atomizeString str = do
+  let numParts = numStringPartsForString str
+  let nullString = str ++ "\0"
+  -- fill rest of string with zeroes
+  let adjustedString = nullString ++ replicate (4 - (length nullString `rem` 4)) '\0'
+  let parts = chunksOf 4 adjustedString
+  let encParts = map (\ [c1, c2, c3, c4] -> ACStringPart c1 c2 c3 c4) parts
+  let header = ACStringHeader numParts
+  addAtomized $ header : encParts
+
 
 
 atomizeConstArg :: Constant -> ConstAtomizationState AtomicConstant
@@ -182,7 +199,14 @@ spaceNeededByConstant c = case c of
   CMatchVar _            -> 1
   CCompoundSymbol _ args -> 1 + length args
   CMatchData args        -> 1 + length args
+  CString str            -> 1 + numStringPartsForString str
 
+numStringPartsForString :: String -> Int
+numStringPartsForString str =
+  let len = length str + 1 in -- add 1 for terminating \0
+  let (numParts, remainder) = len `divMod` bytesPerVMWord in
+  let adjust = if remainder /= 0 then 1 else 0 in
+  numParts + adjust
 
 addAtomized :: [AtomicConstant] -> ConstAtomizationState ()
 addAtomized atoms = do
@@ -196,6 +220,7 @@ setReservedSpace n = do
   put $ state { reservedSpace = n }
 
 
+
 -- Byte encoding for data
 
 data AtomicConstant =
@@ -205,6 +230,8 @@ data AtomicConstant =
   | ACNumber Int
   | ACMatchHeader Int
   | ACMatchVar Int
+  | ACStringHeader Int     -- num parts
+  | ACStringPart Char Char Char Char -- with ascii chars and VMWord as Word32 this would be 4 chars per string part
   deriving (Show, Eq)
 
 
@@ -216,4 +243,6 @@ encodeConstant c = case c of
   ACNumber n                   -> Enc.encodeNumber n
   ACMatchHeader n              -> Enc.encodeMatchHeader n
   ACMatchVar n                 -> Enc.encodeMatchVar n
+  ACStringHeader n             -> Enc.encodeStringHeader n
+  ACStringPart b1 b2 b3 b4     -> Enc.encodeStringPart b1 b2 b3 b4
 

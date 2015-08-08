@@ -122,8 +122,9 @@ normalizeNumber n k = k (NNumber n)
 
 normalizeString :: String -> Cont -> NormState NstExpr
 normalizeString s k = do
-  let stringAddress = mkConstAddr 0 -- TODO encode string
-  k (NString stringAddress)
+  encString <- encodeConstantString s
+  strAddr <- addConstant encString
+  k (NString strAddr)
 
 normalizeSymbol :: String -> [Expr] -> Cont -> NormState NstExpr
 normalizeSymbol sname [] k = do
@@ -178,27 +179,6 @@ isDynamicLiteral v =
     LitSymbol _ [] -> False
     LitSymbol _ args -> any isDynamicLiteral args
     _ -> True
-
-encodeConstantCompoundSymbol :: Name -> [Expr] -> NormState Constant
-encodeConstantCompoundSymbol symName symArgs = do
-  symId <- addSymbolName symName
-  encodedArgs <- mapM encodeConstantLiteral symArgs
-  return $ CCompoundSymbol symId encodedArgs
-
-
-encodeConstantLiteral :: Expr -> NormState Constant
-encodeConstantLiteral v =
-  case v of
-    LitNumber n ->
-        return $ CNumber n
-    LitSymbol s [] -> do
-        sid <- addSymbolName s
-        return $ CPlainSymbol sid
-    LitSymbol s args ->
-        encodeConstantCompoundSymbol s args
-    _ ->
-        error "Expected a literal"
-
 
 
 
@@ -376,4 +356,62 @@ isDynamic aExpr =
 
 zipWithIndex :: [a] -> [(Int, a)]
 zipWithIndex values = zip [0..(length values)] values
+
+
+-- Encoding
+
+encodeConstantCompoundSymbol :: Name -> [Expr] -> NormState Constant
+encodeConstantCompoundSymbol symName symArgs = do
+  symId <- addSymbolName symName
+  encodedArgs <- mapM encodeConstantLiteral symArgs
+  return $ CCompoundSymbol symId encodedArgs
+
+encodeConstantString :: String -> NormState Constant
+encodeConstantString str = do
+  return $ CString str
+
+encodeConstantLiteral :: Expr -> NormState Constant
+encodeConstantLiteral v =
+  case v of
+    LitNumber n ->
+        return $ CNumber n
+    LitSymbol s [] -> do
+        sid <- addSymbolName s
+        return $ CPlainSymbol sid
+    LitSymbol s args ->
+        encodeConstantCompoundSymbol s args
+    _ ->
+        error "Expected a literal"
+
+
+encodeMatchPattern :: Int -> Pattern -> NormState ([String], Constant)
+encodeMatchPattern nextMatchVar pat =
+  case pat of
+    PatNumber n ->
+        return ([], CNumber n)
+    PatSymbol s [] -> do
+        sid <- addSymbolName s
+        return ([], CPlainSymbol sid)
+    PatSymbol s params -> do
+        symId <- addSymbolName s
+        (vars, pats) <- encodePatternCompoundSymbolArgs nextMatchVar params
+        return (vars, CCompoundSymbol symId pats)
+    PatVar n ->
+        return ([n], CMatchVar nextMatchVar)
+    PatWildcard ->
+        return (["_"], CMatchVar nextMatchVar) -- TODO be a bit more sophisticated here
+                                               -- and don't encode this as a var that is
+                                               -- passed to the match branch
+
+-- TODO use inner state ?
+encodePatternCompoundSymbolArgs :: Int -> [Pattern] -> NormState ([String], [Constant])
+encodePatternCompoundSymbolArgs nextMatchVar args = do
+  (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
+    (vars, encoded) <- encodeMatchPattern nextMV p
+    return (nextMV + fromIntegral (length vars), accVars ++ vars, pats ++ [encoded])
+    ) (nextMatchVar, [], []) args  -- TODO get that O(n*m) out and make it more clear
+                                   -- what this does
+  return (vars, entries)
+
+
 

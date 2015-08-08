@@ -30,6 +30,7 @@ import           Language.Dash.Constants
 data Constant =
     CPlainSymbol SymId
   | CCompoundSymbol SymId [Constant]
+  | CString String
   | CNumber Int
   | CMatchData [Constant]
   | CMatchVar Int -- Can only be used inside CMatchData

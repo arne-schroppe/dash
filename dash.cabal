@@ -39,6 +39,8 @@ library
                     , array
                     , containers
                     , mtl
+                    , split
+                    , bytestring
   include-dirs:       vm
   c-sources:          vm/vm.c
                     , vm/heap.c

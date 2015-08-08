@@ -72,7 +72,7 @@ compileAtom reg atom name isResultValue = case atom of
   NCompoundSymbol dynamicFields cAddr ->
       compileDynamicSymbol reg dynamicFields cAddr
   NString strAddr ->
-      error "string compilation" -- TODO
+      return [OpcLoadStr reg strAddr]
   NPrimOp primop ->
       compilePrimOp primop reg
   NLambda [] params expr -> do

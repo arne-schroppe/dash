@@ -10,14 +10,18 @@ module Language.Dash.VM.DataEncoding (
 , decodeMatchHeader
 , encodeMatchVar
 , encodeStringRef
+, encodeStringHeader
+, encodeStringPart
 ) where
 
 import           Data.Bits
 import           Data.Word
+import           Foreign.C.String        (castCharToCChar, castCCharToChar)
 import           Language.Dash.Constants
 import           Language.Dash.IR.Data
 import           Language.Dash.VM.Types
 import           Language.Dash.VM.VM     (getVMHeapArray, getVMHeapValue)
+import Numeric
 
 
 decode :: VMWord -> [Word32] -> SymbolNameList -> IO VMValue
@@ -31,7 +35,7 @@ decode w ctable symNames =
                     | t==tagDynamicCompoundSymbol = decodeDynCompoundSymbol v ctable symNames
                     | t==tagClosure               = return VMClosure
                     | t==tagFunction              = return VMFunction
-                    | t==tagString                = return $ VMString "TODO"
+                    | t==tagString                = decodeConstantString v ctable
                     | otherwise                   = error $ "Unknown tag " ++ show t
 
 
@@ -52,6 +56,15 @@ decodeDynCompoundSymbol addr ctable symNames = do
   values <- getVMHeapArray (addr + compoundSymbolHeaderLength) count
   decoded <- mapM (\v -> decode v ctable symNames) values
   return $ VMSymbol symName decoded
+
+decodeConstantString :: VMWord -> [VMWord] ->  IO VMValue
+decodeConstantString addr ctable = do
+  let subCTable = drop (fromIntegral addr) ctable
+  let numParts = decodeStringHeader (head subCTable)
+  let decodedParts = map decodeStringPart (take numParts $ tail subCTable)
+  let str = concat decodedParts
+  return $ VMString str
+
 
 encodeNumber :: Int -> VMWord
 encodeNumber = makeVMValue tagNumber . ensureNumberRange . bias . fromIntegral
@@ -76,6 +89,31 @@ encodeStringRef = makeVMValue tagString
                   . ensureRange
                   . fromIntegral
                   . constAddrToInt
+
+
+encodeStringHeader :: Int -> VMWord
+encodeStringHeader = fromIntegral
+
+decodeStringHeader :: VMWord -> Int
+decodeStringHeader = fromIntegral
+
+-- TODO rename to encodeStringChunk !
+encodeStringPart :: Char -> Char -> Char -> Char -> VMWord
+encodeStringPart c1 c2 c3 c4 =
+  (fromIntegral $ castCharToCChar c1) `shiftL` (3 * 8)
+  .|. (fromIntegral $ castCharToCChar c2) `shiftL` (2 * 8)
+  .|. (fromIntegral $ castCharToCChar c3) `shiftL` (1 * 8)
+  .|. (fromIntegral $ castCharToCChar c4)
+
+
+decodeStringPart :: VMWord -> String
+decodeStringPart encoded =
+  let c1 = castCCharToChar $ fromIntegral $ (encoded .&. 0xFF000000) `rotateR` (3 * 8) in
+  let c2 = castCCharToChar $ fromIntegral $ (encoded .&. 0x00FF0000) `rotateR` (2 * 8) in
+  let c3 = castCCharToChar $ fromIntegral $ (encoded .&. 0x0000FF00) `rotateR` (1 * 8) in
+  let c4 = castCCharToChar $ fromIntegral $ (encoded .&. 0x000000FF) in
+  let str = [c1, c2, c3, c4] in
+  filter (/= '\0') str
 
 
 bias :: Int -> VMWord
