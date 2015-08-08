@@ -36,6 +36,7 @@ data Opcode =
   | OpcSetSymField Reg Reg Int -- reg with heap symbol, reg of new value, index
   | OpcLoadStr Reg ConstAddr  -- load string
   | OpcStrLen Reg Reg
-
+  | OpcLT Reg Reg Reg
+  | OpcGT Reg Reg Reg
   deriving Show
 

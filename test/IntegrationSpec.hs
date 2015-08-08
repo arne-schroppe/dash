@@ -523,6 +523,16 @@ spec = do
       let result = run code
       result `shouldReturn` VMSymbol "true" []
 
+    it "has less-than operator" $ do
+      let code = "1 < 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "has greater-than operator" $ do
+      let code = "3 > 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
     -- TODO should this work without parentheses?
     it "determines equality between compound symbols" $ do
       let code = "(:test 1 2 :three) == (:test 1 2 :three)"
@@ -654,7 +664,7 @@ K Use better types (Reg as member of Num typeclass)
 
 K operator precedence / limited set of operators
 K negative numbers (with bias)
-- inequality operators
+K inequality operators
 - strings (string concatenation, to-string, substring, string length)
 - runtime errors
 - garbage collection

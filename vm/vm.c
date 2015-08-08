@@ -869,6 +869,53 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       }
       break;
 
+      case OP_LT: {
+        check_reg(get_arg_r1(instr));
+        check_reg(get_arg_r2(instr));
+        vm_value l = get_reg(get_arg_r1(instr));
+        vm_value r = get_reg(get_arg_r2(instr));
+        int result_reg = get_arg_r0(instr);
+        check_reg(result_reg);
+
+        if(get_tag(l) != vm_tag_number || get_tag(r) != vm_tag_number) {
+          fprintf(stderr, "Expected a number\n");
+          is_running = false;
+          break;
+        }
+
+        if( l < r) {
+          get_reg(result_reg) = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+        }
+        else {
+          get_reg(result_reg) = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        }
+      }
+      break;
+
+      case OP_GT: {
+        check_reg(get_arg_r1(instr));
+        check_reg(get_arg_r2(instr));
+        vm_value l = get_reg(get_arg_r1(instr));
+        vm_value r = get_reg(get_arg_r2(instr));
+        int result_reg = get_arg_r0(instr);
+        check_reg(result_reg);
+
+        if(get_tag(l) != vm_tag_number || get_tag(r) != vm_tag_number) {
+          fprintf(stderr, "Expected a number\n");
+          is_running = false;
+          break;
+        }
+
+        if( l > r) {
+          get_reg(result_reg) = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+        }
+        else {
+          get_reg(result_reg) = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        }
+      }
+      break;
+
+
       case OP_COPY_SYM: {
         check_reg(get_arg_r0(instr));
         check_reg(get_arg_r1(instr));

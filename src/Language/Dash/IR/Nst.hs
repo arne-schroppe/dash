@@ -56,6 +56,8 @@ data NstPrimOp =
   | NPrimOpMul NstVar NstVar
   | NPrimOpDiv NstVar NstVar
   | NPrimOpEq  NstVar NstVar
+  | NPrimOpLessThan  NstVar NstVar
+  | NPrimOpGreaterThan  NstVar NstVar
   | NPrimOpStrLen NstVar
   deriving (Eq, Ord, Show)
 
