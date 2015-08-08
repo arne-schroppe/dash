@@ -110,14 +110,30 @@ guess a =
 guess 2
 --/
 
+concat-list a b =
+  match a begin
+    []      -> b
+    [hd|tl] -> [hd | concat-list tl b]
+  end
 
 reverse-list l =
   rev-list' l acc =
     match l begin
-      []    -> acc
-      [h|t] -> rev-list' t [h | acc]
+      []      -> acc
+      [hd|tl] -> rev-list' tl [hd | acc]
     end
   rev-list' l []
 
-reverse-list [1, 2, 3, 4]
+-- tl = [3, 4]
+-- reverse-list [1, 2 | tl]
+
+replicate n v =
+  match n begin
+    0 -> []
+    _ -> [v | replicate (n - 1) v]
+  end
+
+:lyrics (concat-list (replicate 16 "na") ["Batmaaan!"])
+
+
 
