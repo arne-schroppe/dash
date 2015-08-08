@@ -523,6 +523,16 @@ spec = do
       let result = run code
       result `shouldReturn` VMSymbol "true" []
 
+    it "has less-than operator" $ do
+      let code = "1 < 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "has greater-than operator" $ do
+      let code = "3 > 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
     -- TODO should this work without parentheses?
     it "determines equality between compound symbols" $ do
       let code = "(:test 1 2 :three) == (:test 1 2 :three)"

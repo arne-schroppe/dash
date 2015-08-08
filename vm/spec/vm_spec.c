@@ -66,6 +66,28 @@ it( divides_two_numbers ) {
   is_equal(result, bias(3));
 }
 
+it( has_a_less_than_opcode ) {
+  vm_instruction program[] = {
+    op_load_i(1, bias(2)),
+    op_load_i(2, bias(3)),
+    op_lt(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, make_tagged_val(1, vm_tag_plain_symbol));
+}
+
+it( has_a_greater_than_opcode ) {
+  vm_instruction program[] = {
+    op_load_i(1, bias(6)),
+    op_load_i(2, bias(3)),
+    op_gt(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, make_tagged_val(1, vm_tag_plain_symbol));
+}
+
 it( moves_a_register ) {
   vm_instruction program[] = {
     op_load_i(2, bias(37)),
@@ -724,5 +746,7 @@ start_spec(vm_spec)
   example(modifies_a_heap_symbol)
   example(loads_a_constant_string_into_a_register)
   example(determines_the_length_of_a_string)
+  example(has_a_less_than_opcode)
+  example(has_a_greater_than_opcode)
 end_spec
 

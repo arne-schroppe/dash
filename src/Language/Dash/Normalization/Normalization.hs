@@ -224,6 +224,8 @@ normalizeFunAp funExpr args k =
     (Var "-", [a, b])  -> normalizeBinaryPrimOp NPrimOpSub a b
     (Var "*", [a, b])  -> normalizeBinaryPrimOp NPrimOpMul a b
     (Var "/", [a, b])  -> normalizeBinaryPrimOp NPrimOpDiv a b
+    (Var "<", [a, b])  -> normalizeBinaryPrimOp NPrimOpLessThan a b
+    (Var ">", [a, b])  -> normalizeBinaryPrimOp NPrimOpGreaterThan a b
     (Var "==", [a, b]) -> normalizeBinaryPrimOp NPrimOpEq  a b
     -- TODO prevent user from defining a "string-length" function
     (Var "string-length", [a]) -> normalizeUnaryPrimOp NPrimOpStrLen a

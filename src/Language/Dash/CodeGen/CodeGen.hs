@@ -147,6 +147,8 @@ compilePrimOp primop reg = case primop of
   NPrimOpMul a b -> compileBinaryPrimOp OpcMul a b
   NPrimOpDiv a b -> compileBinaryPrimOp OpcDiv a b
   NPrimOpEq a b  -> compileBinaryPrimOp OpcEq  a b
+  NPrimOpLessThan a b    -> compileBinaryPrimOp OpcLT a b
+  NPrimOpGreaterThan a b -> compileBinaryPrimOp OpcGT a b
   NPrimOpStrLen a -> compileUnaryPrimOp OpcStrLen a
   where
     compileUnaryPrimOp op a = do
