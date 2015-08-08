@@ -225,6 +225,8 @@ normalizeFunAp funExpr args k =
     (Var "*", [a, b])  -> normalizeBinaryPrimOp NPrimOpMul a b
     (Var "/", [a, b])  -> normalizeBinaryPrimOp NPrimOpDiv a b
     (Var "==", [a, b]) -> normalizeBinaryPrimOp NPrimOpEq  a b
+    -- TODO prevent user from defining a "string-length" function
+    (Var "string-length", [a]) -> normalizeUnaryPrimOp NPrimOpStrLen a
 
     -- TODO name this anonymous function
     _ -> nameExpr funExpr "" $ \ funVar -> do
@@ -240,6 +242,13 @@ normalizeFunAp funExpr args k =
     normalizeBinaryPrimOp primOp a b =
       nameExprList [a, b] $ \ [aVar, bVar] ->
           k $ NPrimOp $ primOp aVar bVar
+
+    normalizeUnaryPrimOp :: (NstVar -> NstPrimOp)
+                          -> Expr
+                          -> NormState NstExpr
+    normalizeUnaryPrimOp primOp a =
+      nameExprList [a] $ \ [aVar] ->
+          k $ NPrimOp $ primOp aVar
 
     applyUnknownFunction :: NstVar -> NormState NstExpr
     applyUnknownFunction funVar =

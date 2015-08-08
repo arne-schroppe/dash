@@ -147,7 +147,12 @@ compilePrimOp primop reg = case primop of
   NPrimOpMul a b -> compileBinaryPrimOp OpcMul a b
   NPrimOpDiv a b -> compileBinaryPrimOp OpcDiv a b
   NPrimOpEq a b  -> compileBinaryPrimOp OpcEq  a b
+  NPrimOpStrLen a -> compileUnaryPrimOp OpcStrLen a
   where
+    compileUnaryPrimOp op a = do
+      ra <- getReg a
+      return [op reg ra]
+
     compileBinaryPrimOp op a b = do
       ra <- getReg a
       rb <- getReg b
