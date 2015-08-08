@@ -21,6 +21,7 @@ numberBias = maxInteger
 
 
 
+-- TODO rename these to *SymbolName
 tupleSymbolId, listConsSymbolId, listEmptySymbolId, trueSymbolId, falseSymbolId :: String
 trueSymbolId = "true"
 falseSymbolId = "false"

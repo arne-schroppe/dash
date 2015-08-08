@@ -111,4 +111,13 @@ guess 2
 --/
 
 
+reverse-list l =
+  rev-list' l acc =
+    match l begin
+      [] -> acc
+      [h|t] -> rev-list' t (:list h acc)
+    end
+  rev-list' l []
+
+reverse-list [1, 2, 3, 4]
 
