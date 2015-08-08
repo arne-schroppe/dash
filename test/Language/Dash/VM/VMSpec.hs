@@ -15,11 +15,8 @@ runProg = runProgTbl []
 
 runProgTbl :: [Word32] -> [[Opcode]] -> IO Word32
 runProgTbl tbl prog = do
-  (value, tbl', symnames) <- execute asm tbl' []
-  decodedValue <- decode value tbl' symnames
-  case decodedValue of
-    VMNumber n -> return $ fromIntegral n -- this will subtract the number bias
-    _ -> return value
+  (value, _, _) <- execute asm tbl' []
+  return value
   where
     (asm, tbl', _) =
       assembleWithEncodedConstTable prog tbl (fromIntegral.constAddrToInt) []
@@ -32,7 +29,9 @@ spec = do
     it "loads a number into a register" $ do
       let prog = [[ OpcLoadI 0 55,
                     OpcRet 0 ]]
-      (runProg prog) `shouldReturn` 55
+      result <- runProg prog
+      decodedResult <- decode result [] []
+      decodedResult `shouldBe` (VMNumber 55)
 
 
     it "adds two numbers" $ do
@@ -40,13 +39,17 @@ spec = do
                     OpcLoadI 2 32,
                     OpcAdd 0 1 2,
                     OpcRet 0 ]]
-      (runProg prog) `shouldReturn` 37
+      result <- runProg prog
+      decodedResult <- decode result [] []
+      decodedResult `shouldBe` (VMNumber 37)
 
     it "moves a register" $ do
       let prog = [[ OpcLoadI  2 37,
                     OpcMove  0 2,
                     OpcRet 0 ]]
-      (runProg prog) `shouldReturn` 37
+      result <- runProg prog
+      decodedResult <- decode result [] []
+      decodedResult `shouldBe` (VMNumber 37)
 
     it "directly calls a function" $ do
       let prog = [[ OpcLoadI  1 15,
@@ -60,7 +63,9 @@ spec = do
                     OpcLoadI  1 100,
                     OpcAdd  2 0 1,
                     OpcRet 2]]
-      (runProg prog) `shouldReturn` 138
+      result <- runProg prog
+      decodedResult <- decode result [] []
+      decodedResult `shouldBe` (VMNumber 138)
 
     it "calls a closure downwards" $ do
       let prog = [[ OpcLoadF 2 (mkFuncAddr 2),
@@ -84,7 +89,9 @@ spec = do
                     OpcFunHeader 2,
                     OpcSub 2 1 0,
                     OpcRet 2 ]]
-      (runProg prog) `shouldReturn` 58 -- 115 + 23 - 80
+      result <- runProg prog
+      decodedResult <- decode result [] []
+      decodedResult `shouldBe` (VMNumber 58) -- 115 + 23 - 80
 
     it "calls a closure upwards" $ do
       let prog = [[ OpcLoadF 1 (mkFuncAddr 1),
@@ -104,7 +111,9 @@ spec = do
                     OpcFunHeader 2,
                     OpcSub 2 1 0,
                     OpcRet 2 ]]
-      (runProg prog) `shouldReturn` 56 -- 80 - 24
+      result <- runProg prog
+      decodedResult <- decode result [] []
+      decodedResult `shouldBe` (VMNumber 56) -- 80 - 24
 
     it "modifies a closure" $ do
       let prog = [[ OpcLoadF 1 (mkFuncAddr 1),
@@ -127,7 +136,9 @@ spec = do
                     OpcFunHeader 3,
                     OpcSub 3 0 1,
                     OpcRet 3 ]]
-      (runProg prog) `shouldReturn` 44 -- 77 - 33
+      result <- runProg prog
+      decodedResult <- decode result [] []
+      decodedResult `shouldBe` (VMNumber 44) -- 77 - 33
 
 
 
@@ -157,7 +168,9 @@ spec = do
       let ctable = [ encodeNumber 33 ]
       let prog = [[ OpcLoadC 0 (mkConstAddr 0),
                     OpcRet 0 ]]
-      (runProgTbl ctable prog) `shouldReturn` (33)
+      result <- runProgTbl ctable prog
+      decodedResult <- decode result ctable []
+      decodedResult `shouldBe` (VMNumber 33)
 
     it "loads a compound symbol" $ do
       let ctable = [ encodeNumber 1,
@@ -175,7 +188,9 @@ spec = do
                     OpcRet 0,
                     OpcLoadI 0 70,
                     OpcRet 0 ]]
-      (runProg prog) `shouldReturn` 70
+      result <- runProg prog
+      decodedResult <- decode result [] []
+      decodedResult `shouldBe` (VMNumber 70)
 
     it "matches a number" $ do
       let ctable = [ encodeMatchHeader 2,
@@ -191,7 +206,9 @@ spec = do
                     OpcRet 0,
                     OpcLoadI 0 300,
                     OpcRet 0 ]]
-      (runProgTbl ctable prog) `shouldReturn` 300
+      result <- runProgTbl ctable prog
+      decodedResult <- decode result ctable []
+      decodedResult `shouldBe` (VMNumber 300)
 
     it "matches a symbol" $ do
       let ctable = [ encodeMatchHeader 2,
@@ -207,7 +224,9 @@ spec = do
                     OpcRet 0,
                     OpcLoadI 0 300,
                     OpcRet 0 ]]
-      (runProgTbl ctable prog) `shouldReturn` 300
+      result <- runProgTbl ctable prog
+      decodedResult <- decode result ctable []
+      decodedResult `shouldBe` (VMNumber 300)
 
     it "matches a data symbol" $ do
       let ctable = [ encodeMatchHeader 2,
@@ -232,7 +251,9 @@ spec = do
                     OpcRet 0,
                     OpcLoadI 0 300,
                     OpcRet 0 ]]
-      (runProgTbl ctable prog) `shouldReturn` 300
+      result <- runProgTbl ctable prog
+      decodedResult <- decode result ctable []
+      decodedResult `shouldBe` (VMNumber 300)
 
     it "binds a value in a match" $ do
       let ctable = [ encodeMatchHeader 2,
@@ -258,7 +279,9 @@ spec = do
                     OpcRet 0,
                     OpcMove 0 4, -- reg 4 contains match var 1 (see pattern in ctable)
                     OpcRet 0 ]]
-      (runProgTbl ctable prog) `shouldReturn` 77
+      result <- runProgTbl ctable prog
+      decodedResult <- decode result [] []
+      decodedResult `shouldBe` (VMNumber 77)
 
     it "loads a symbol on the heap" $ do
       let ctable = [ encodeCompoundSymbolHeader (mkSymId 1) 2,
@@ -300,14 +323,15 @@ spec = do
                     OpcRet 0 ]]
       (runProg prog) `shouldReturn` (encodeStringRef $ mkConstAddr 55)
 
-
-{- TODO
-    it "decodes a number" $ property $
-      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encodeNumber) x == (VMNumber x)
-
-
-    it "decodes a symbol" $ property $
-      choose (0, 0x0FFFFFFF) >>= \x -> return $ (decode . encodePlainSymbol) x == (VMSymbol x [])
--}
+    it "determines the length of a string" $ do
+      let ctable = [ encodeStringHeader 5 2,
+                     encodeStringChunk 'd' 'a' 's' 'h',
+                     encodeStringChunk '!' '\0' '\0' '\0' ]
+      let prog = [[ OpcLoadStr 1 (mkConstAddr 0),
+                    OpcStrLen 0 1,
+                    OpcRet 0 ]]
+      result <- runProgTbl ctable prog
+      decodedResult <- decode result ctable []
+      decodedResult `shouldBe` (VMNumber 5)
 
 

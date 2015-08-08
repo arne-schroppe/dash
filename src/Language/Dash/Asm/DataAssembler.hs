@@ -104,7 +104,7 @@ atomizeString str = do
         replicate (bytesPerVMWord - (length nullString `rem` bytesPerVMWord)) '\0'
   let chunks = chunksOf bytesPerVMWord adjustedString
   let encChunks = map (\ [c1, c2, c3, c4] -> ACStringChunk c1 c2 c3 c4) chunks
-  let header = ACStringHeader numChunks
+  let header = ACStringHeader (length str) numChunks
   addAtomized $ header : encChunks
 
 
@@ -233,7 +233,7 @@ data AtomicConstant =
   | ACNumber Int
   | ACMatchHeader Int
   | ACMatchVar Int
-  | ACStringHeader Int     -- num chunks
+  | ACStringHeader Int Int     -- string length, num chunks
   | ACStringChunk Char Char Char Char -- with ascii chars and VMWord as Word32 this would be 4 chars per string chunk
   deriving (Show, Eq)
 
@@ -246,6 +246,6 @@ encodeConstant c = case c of
   ACNumber n                   -> Enc.encodeNumber n
   ACMatchHeader n              -> Enc.encodeMatchHeader n
   ACMatchVar n                 -> Enc.encodeMatchVar n
-  ACStringHeader n             -> Enc.encodeStringHeader n
+  ACStringHeader len numChunks -> Enc.encodeStringHeader len numChunks
   ACStringChunk b1 b2 b3 b4    -> Enc.encodeStringChunk b1 b2 b3 b4
 

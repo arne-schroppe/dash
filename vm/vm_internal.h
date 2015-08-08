@@ -21,7 +21,6 @@ typedef struct _stack_frame stack_frame;
 
 #define __tag_bits 4
 
-// reading values
 
 #define __tag_mask(t) ((t & 0xF) << (sizeof(vm_value) * 8 - __tag_bits))
 #define make_tagged_val(x, t) (x | __tag_mask(t))
@@ -40,7 +39,6 @@ typedef struct _stack_frame stack_frame;
 //TODO rename match to something with pattern
 
 
-// creating values
 
 #define number(x) get_val(x, vm_type_number)
 #define plain_symbol(x) get_val(x, vm_type_plain_symbol)
@@ -58,5 +56,10 @@ typedef struct _stack_frame stack_frame;
 #define match_header(n) __match_data_mask(1, n)
 #define match_wildcard __match_data_mask(0, match_wildcard_value)
 #define match_var(n) __match_data_mask(0, n)
+
+#define string_header(len, num_chunks) ((len << 16) | num_chunks)
+#define string_length(header) ((header & 0xFFFF0000) >> 16)
+#define string_chunk_count(header) (header & 0xFFFF)
+
 
 #endif

@@ -624,6 +624,11 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 6
 
+    it "knows the length of a string" $ do
+      let code = "string-length \"1234567\""
+      let result = run code
+      result `shouldReturn` VMNumber 7
+
 {-
 What's missing:
 

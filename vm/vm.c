@@ -923,6 +923,27 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       }
       break;
 
+
+      case OP_STR_LEN: {
+        check_reg(get_arg_r0(instr));
+        check_reg(get_arg_r1(instr));
+
+        vm_value const_string = get_reg(get_arg_r1(instr));
+
+        if ( get_tag(const_string) != vm_tag_string ) {
+          fprintf(stderr, "Expected a strign, got tag: %d\n", get_tag(const_string));
+          is_running = false;
+          break;
+        }
+
+        int c_addr = get_val(const_string);
+        vm_value c_str_header = const_table[c_addr];
+
+        int count = string_length(c_str_header);
+        get_reg(get_arg_r0(instr)) = make_tagged_val(count + number_bias, vm_tag_number);
+      }
+      break;
+
       default:
         fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);
         is_running = false;

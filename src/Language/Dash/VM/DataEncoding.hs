@@ -60,7 +60,7 @@ decodeDynCompoundSymbol addr ctable symNames = do
 decodeConstantString :: VMWord -> [VMWord] ->  IO VMValue
 decodeConstantString addr ctable = do
   let subCTable = drop (fromIntegral addr) ctable
-  let numChunks = decodeStringHeader (head subCTable)
+  let (_, numChunks) = decodeStringHeader (head subCTable)
   let decodedChunks = map decodeStringChunk (take numChunks $ tail subCTable)
   let str = concat decodedChunks
   return $ VMString str
@@ -91,13 +91,14 @@ encodeStringRef = makeVMValue tagString
                   . constAddrToInt
 
 
-encodeStringHeader :: Int -> VMWord
-encodeStringHeader = fromIntegral
+encodeStringHeader :: Int -> Int -> VMWord
+encodeStringHeader len numChunks = fromIntegral $ (len `shiftL` 16) .|. numChunks
 
-decodeStringHeader :: VMWord -> Int
-decodeStringHeader = fromIntegral
+decodeStringHeader :: VMWord -> (Int, Int)
+decodeStringHeader v = (fromIntegral $ (v .&. 0xFFFF0000) `rotateL` 16,
+                        fromIntegral $ v .&. 0x0000FFFF)
 
--- TODO rename to encodeStringChunk !
+
 encodeStringChunk :: Char -> Char -> Char -> Char -> VMWord
 encodeStringChunk c1 c2 c3 c4 =
   (fromIntegral $ castCharToCChar c1) `shiftL` (3 * 8)

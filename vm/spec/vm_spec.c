@@ -664,7 +664,6 @@ it( modifies_a_heap_symbol ) {
   int header_size = 1;
   is_equal(heap_p[header_size + 0], bias(33));
   is_equal(heap_p[header_size + 1], make_tagged_val(77, vm_tag_plain_symbol));
-
 }
 
 
@@ -675,6 +674,21 @@ it( loads_a_constant_string_into_a_register ) {
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
   is_equal(result, make_tagged_val(55, vm_tag_string));
+}
+
+
+it( determines_the_length_of_a_string ) {
+  vm_value const_table[] = {
+    string_header(6, 2)
+    // we're cheating here and leaving out the actual string content
+  };
+  vm_instruction program[] = {
+    op_load_str(1, 0),
+    op_str_len(0, 1),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(bias(6), vm_tag_number));
 }
 
 
@@ -709,5 +723,6 @@ start_spec(vm_spec)
   example(loads_a_symbol_on_the_heap)
   example(modifies_a_heap_symbol)
   example(loads_a_constant_string_into_a_register)
+  example(determines_the_length_of_a_string)
 end_spec
 
