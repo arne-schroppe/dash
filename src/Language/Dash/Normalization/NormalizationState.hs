@@ -120,7 +120,7 @@ lookupName name = do
 
 
 lookupNameInContext :: String -> [Context] -> NormState (NstVar, Bool)
-lookupNameInContext name [] = error $ "Identifier " ++ name ++ " not found"
+lookupNameInContext name [] = error $ "Unknown variable '" ++ name ++ "'"
 lookupNameInContext name conts = do
   let binds = bindings $ head conts
   case Map.lookup name binds of

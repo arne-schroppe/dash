@@ -100,15 +100,12 @@ foldr pl 0 ls
 
 --/
 
-/--
-guess a =
-  match a begin
-    2 -> "Win!"
+guess s =
+  match string-length s begin
+    4 -> "Win!"
     _ -> "Fail!"
   end
 
-guess 2
---/
-
+guess "dash!"
 
 

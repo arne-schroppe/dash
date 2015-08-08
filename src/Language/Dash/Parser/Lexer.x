@@ -27,39 +27,40 @@ $opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \^]
 
 
 tokens :-
-  $space+       ;
-  "/--"
-   (. | \n)*
-   "--/"        ;
-  "--" .*       ;
-  ($space* $endline $newl* $space*)+
-                { mkTok TEOL }
-  "("           { mkTok TOpen_Par }
-  ")"           { mkTok TClose_Par }
-  "["           { mkTok TOpen_Bracket }
-  "]"           { mkTok TClose_Bracket }
-  "module"      { mkTok TModule }
-  "if"          { mkTok TIf }
-  "then"        { mkTok TThen }
-  "else"        { mkTok TElse }
-  "match"       { mkTok TMatch }
-  "do"          { mkTok TDo }
-  "with"        { mkTok TWith }
-  "begin"       { mkTok TBegin }
-  "end"         { mkTok TEnd }
-  ".\"          { mkTok TLambda } -- " -- fixes syntax highlighting
-  ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
-  "="           { mkTok TDefine }
-  "->"          { mkTok TArrow_R }
-  "<-"          { mkTok TArrow_L }
-  "_"           { mkTok TUnderscore }
-  ","           { mkTok TComma }
-  "|"           { mkTok TVBar }
-  \" @stringchars \"
-                { mkTokS (\s -> TString (init $ tail s)) }
-  @integer      { mkTokS (\s -> TInt (read s)) }
-  @ident        { mkTokS (\s -> TId s) }
-  @operator     { mkTokS (\s -> TOperator s) }
+  <0> $space+       ;
+      "/--" (. | \n)* "--/" ;
+      "--" .*       ;
+      ($space* $endline $newl* $space*)+
+                    { mkTok TEOL }
+  <0> "("           { mkTok TOpen_Par }
+  <0> ")"           { mkTok TClose_Par }
+  <0> "["           { mkTok TOpen_Bracket }
+  <0> "]"           { mkTok TClose_Bracket }
+  <0> "module"      { mkTok TModule }
+  <0> "if"          { mkTok TIf }
+  <0> "then"        { mkTok TThen }
+  <0> "else"        { mkTok TElse }
+  <0> "match"       { mkTok TMatch }
+  <0> "do"          { mkTok TDo }
+  <0> "with"        { mkTok TWith }
+  <0> "begin"       { mkTok TBegin }
+  <0> "end"         { mkTok TEnd }
+  <0> ".\"          { mkTok TLambda } -- " -- fixes syntax highlighting
+  <0> ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
+  <0> "="           { mkTok TDefine }
+  <0> "->"          { mkTok TArrow_R }
+  <0> "<-"          { mkTok TArrow_L }
+  <0> "_"           { mkTok TUnderscore }
+  <0> ","           { mkTok TComma }
+  <0> "|"           { mkTok TVBar }
+  <0> \"\"          { mkTok $ TString "" }
+  <0> \"            { begin str }
+  <str> @stringchars
+                    { mkTokS (\s -> TString s) }
+  <str> \"          { begin 0 }
+  <0> @integer      { mkTokS (\s -> TInt (read s)) }
+  <0> @ident        { mkTokS (\s -> TId s) }
+  <0> @operator     { mkTokS (\s -> TOperator s) }
 
 
 {
@@ -114,6 +115,7 @@ data Token  = TEOL
             | TId String
             -- | TQId ([String], String)
             | TString String
+            | TInterpString [Token]
             | TInt Int
             | TMatch
             | TDo

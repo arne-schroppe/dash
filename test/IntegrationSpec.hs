@@ -629,6 +629,14 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 7
 
+    it "interpolates strings" $ do
+      let code =  " a = \"ab\" \n\
+                  \ b = 2 \n\
+                  \ c = \"ef\" \n\
+                  \ \"\\(a)\\(b * 3)cd\\(c)\""
+      let result = run code
+      result `shouldReturn` VMString "ab6cdef"
+
 {-
 What's missing:
 
