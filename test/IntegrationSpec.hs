@@ -656,7 +656,7 @@ K Use better types (Reg as member of Num typeclass)
 
 K operator precedence / limited set of operators
 K negative numbers (with bias)
-- inequality operators
+K inequality operators
 - strings (string concatenation, to-string, substring, string length)
 - runtime errors
 - garbage collection
