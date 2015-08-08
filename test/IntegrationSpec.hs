@@ -611,6 +611,7 @@ spec = do
                                 VMSymbol listConsSymbolId [VMNumber 4,
                                 VMSymbol listEmptySymbolId []]]
 
+
     it "matches a list's tail with a nested pattern" $ do
       let code = " ls = [1, 2, 3, 4, 5]      \n\
                  \ match ls begin        \n\
@@ -621,6 +622,16 @@ spec = do
       result `shouldReturn` VMSymbol listConsSymbolId [VMNumber 4,
                                 VMSymbol listConsSymbolId [VMNumber 5,
                                 VMSymbol listEmptySymbolId []]]
+
+    it "cons a list" $ do
+      let code = " tail = [3, 4] \n\
+                 \ [1, 2 | tail]"
+      let result = run code
+      result `shouldReturn` VMSymbol listConsSymbolId [VMNumber 1,
+                                VMSymbol listConsSymbolId [VMNumber 2,
+                                VMSymbol listConsSymbolId [VMNumber 3,
+                                VMSymbol listConsSymbolId [VMNumber 4,
+                                VMSymbol listEmptySymbolId []]]]]
 
     it "has negative numbers" $ do
       let code = " 0 - 7 + 3"
