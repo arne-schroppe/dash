@@ -326,6 +326,36 @@ bool is_equal(vm_value l, vm_value r) {
     return true;
   }
 
+  if(l_tag == vm_tag_string && r_tag == vm_tag_string) {
+
+    int l_addr = get_val(l);
+    int r_addr = get_val(r);
+
+    vm_value *l_pointer;
+    vm_value *r_pointer;
+
+    if(l_tag == vm_tag_string) {
+      l_pointer = const_table + l_addr;
+    }
+    else {
+      exit(-1); // TODO
+    }
+
+    if(r_tag == vm_tag_string) {
+      r_pointer = const_table + r_addr;
+    }
+    else {
+      exit(-1); // TODO
+    }
+
+    //vm_value l_header = *l_pointer;
+    //vm_value r_header = *r_pointer;
+
+    char *l_str_start = (char *) (l_pointer + 1);
+    char *r_str_start = (char *) (r_pointer + 1);
+
+    return strcmp(l_str_start, r_str_start) == 0;
+  }
 
   if(l_tag != r_tag) {
     return false;

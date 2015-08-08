@@ -3,11 +3,10 @@
 
 #include "vm.h"
 
-// TODO we need an opcode that allows us to compare two values
 // TODO add more mathematical operators
 // TODO group opcodes in meaningful way
 // TODO if we're keeping set_arg, then how about versions that allow to set values directly? (instead of from registers)
-// TODO really lrge numbers spill over into the tag. prevent that (in compiler and when adding)
+// TODO we could just use load_c for all const pool types if they had a tag in the pool
 
 typedef enum {
   OP_RET = 0,

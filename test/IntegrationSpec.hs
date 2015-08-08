@@ -518,6 +518,27 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 55
 
+    it "determines equality between numbers" $ do
+      let code = "2 == 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    -- TODO should this work without parentheses?
+    it "determines equality between compound symbols" $ do
+      let code = "(:test 1 2 :three) == (:test 1 2 :three)"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "determines equality between strings" $ do
+      let code = "\"test\" == \"test\""
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "determines equality between empty strings" $ do
+      let code = "\"\" == \"\""
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
     it "has correct precedence for math operators" $ do
       let code = "12 + 6 / 2 - 3 * 2"
       let result = run code
@@ -621,9 +642,13 @@ K Use better types (Reg as member of Num typeclass)
 K operator precedence / limited set of operators
 K negative numbers (with bias)
 - inequality operators
-- strings (string concatenation, to-string)
+- strings (string concatenation, to-string, substring, string length)
 - runtime errors
 - garbage collection
+
+- `type` method ... represents types as symbols. Should it also give
+  data, e.g. :symbol name args (where name is a string and args a list)? 
+  or just :symbol?
 
 - repl: Compile and eval one expression at a time. Store constant results in an
   internal table. Recompile functions every time (?)
