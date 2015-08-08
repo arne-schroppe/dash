@@ -11,7 +11,7 @@ module Language.Dash.VM.DataEncoding (
 , encodeMatchVar
 , encodeStringRef
 , encodeStringHeader
-, encodeStringPart
+, encodeStringChunk
 ) where
 
 import           Data.Bits
@@ -60,9 +60,9 @@ decodeDynCompoundSymbol addr ctable symNames = do
 decodeConstantString :: VMWord -> [VMWord] ->  IO VMValue
 decodeConstantString addr ctable = do
   let subCTable = drop (fromIntegral addr) ctable
-  let numParts = decodeStringHeader (head subCTable)
-  let decodedParts = map decodeStringPart (take numParts $ tail subCTable)
-  let str = concat decodedParts
+  let numChunks = decodeStringHeader (head subCTable)
+  let decodedChunks = map decodeStringChunk (take numChunks $ tail subCTable)
+  let str = concat decodedChunks
   return $ VMString str
 
 
@@ -98,16 +98,16 @@ decodeStringHeader :: VMWord -> Int
 decodeStringHeader = fromIntegral
 
 -- TODO rename to encodeStringChunk !
-encodeStringPart :: Char -> Char -> Char -> Char -> VMWord
-encodeStringPart c1 c2 c3 c4 =
+encodeStringChunk :: Char -> Char -> Char -> Char -> VMWord
+encodeStringChunk c1 c2 c3 c4 =
   (fromIntegral $ castCharToCChar c1) `shiftL` (3 * 8)
   .|. (fromIntegral $ castCharToCChar c2) `shiftL` (2 * 8)
   .|. (fromIntegral $ castCharToCChar c3) `shiftL` (1 * 8)
   .|. (fromIntegral $ castCharToCChar c4)
 
 
-decodeStringPart :: VMWord -> String
-decodeStringPart encoded =
+decodeStringChunk :: VMWord -> String
+decodeStringChunk encoded =
   let c1 = castCCharToChar $ fromIntegral $ (encoded .&. 0xFF000000) `rotateR` (3 * 8) in
   let c2 = castCCharToChar $ fromIntegral $ (encoded .&. 0x00FF0000) `rotateR` (2 * 8) in
   let c3 = castCCharToChar $ fromIntegral $ (encoded .&. 0x0000FF00) `rotateR` (1 * 8) in
