@@ -278,7 +278,7 @@ it( jumps_forward ) {
   is_equal(result, make_tagged_val(bias(70), vm_tag_number));
 }
 
-it( jumps_if_equal ) {
+it( jumps_if_condition_is_true ) {
   vm_instruction program[] = {
     op_load_i(1, bias(2)), // initial value / counter
     op_load_i(2, bias(5)), // target value
@@ -748,7 +748,7 @@ start_spec(vm_spec)
   example(loads_a_constant)
   example(loads_a_compound_symbol)
   example(jumps_forward)
-  example(jumps_if_equal)
+  example(jumps_if_condition_is_true)
   example(matches_a_number)
   example(matches_a_symbol)
   example(matches_a_compound_symbol)

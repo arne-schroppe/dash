@@ -192,6 +192,24 @@ spec = do
       decodedResult <- decode result [] []
       decodedResult `shouldBe` (VMNumber 70)
 
+
+    it "jumps if condition true" $ do
+      let prog = [[ OpcLoadI 1 2, -- counter
+                    OpcLoadI 2 5, -- target value
+                    OpcLoadI 0 0, -- accumulator
+                    OpcLoadI 3 1,
+                    OpcEq 4 1 2,
+                    OpcJmpTrue 4 3,
+                    OpcAdd 0 0 1,
+                    OpcAdd 1 1 3,
+                    OpcJmp (-5),
+                    OpcRet 0 ]]
+      result <- runProg prog
+      decodedResult <- decode result [] []
+      -- result: 2 + 3 + 4 = 9
+      decodedResult `shouldBe` (VMNumber 9)
+
+
     it "matches a number" $ do
       let ctable = [ encodeMatchHeader 2,
                      encodeNumber 11,
