@@ -74,10 +74,16 @@ normalize expr =
 normalizeInContext :: Expr -> NormState NstExpr
 normalizeInContext expr = do
   enterContext []
+  addBIFPlaceholder "$string-concat" 2
   nExpr <- normalizeExpr expr
   leaveContext
   return nExpr
 
+addBIFPlaceholder :: String -> Int -> NormState ()
+addBIFPlaceholder name ar = do
+  let var = NVar name NConstant
+  addBinding name (var, False)
+  addArity name 0 ar
 
 normalizeExpr :: Expr -> NormState NstExpr
 normalizeExpr expr = case expr of
@@ -227,7 +233,7 @@ normalizeFunAp funExpr args k =
     (Var "<", [a, b])  -> normalizeBinaryPrimOp NPrimOpLessThan a b
     (Var ">", [a, b])  -> normalizeBinaryPrimOp NPrimOpGreaterThan a b
     (Var "==", [a, b]) -> normalizeBinaryPrimOp NPrimOpEq  a b
-    -- TODO prevent user from defining a "string-length" function
+    -- TODO create a bif that calls the primap internally
     (Var "string-length", [a]) -> normalizeUnaryPrimOp NPrimOpStrLen a
 
     -- TODO name this anonymous function

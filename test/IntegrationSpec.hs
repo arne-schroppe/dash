@@ -654,6 +654,7 @@ spec = do
       let code =  " s1 = \"ab\" \n\
                   \ s3 = \"ef\" \n\
                   \ s1 ++ \"cd\" ++ s3"
+      putStrLn $ show $ toNorm code
       let result = run code
       result `shouldReturn` VMString "abcdef"
 
@@ -676,7 +677,7 @@ r5 <- new_string r4
 r6 <- load_i 0
 r7 <- load_i 1
 loop1:
-jmp_gte r6 r2 next  -- maybe we could flip this to jmp_lt ?
+jmp_gte r6 r2 next  -- we could turn this into a jmp_eq and then use existing ops
 r8 <- read_char r0 r6
 write_char r5 r8 r6
 r6 <- add r6 r7
@@ -684,7 +685,7 @@ jmp loop1
 next:
 r6 <- load_i 0
 loop2:
-jmp_gte r6 r3 done  -- maybe we could flip this to jmp_lt ?
+jmp_gte r6 r3 done
 r8 <- read_char r1 r6
 r9 <- add r2 r6
 write_char r5 r8 r9

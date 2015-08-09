@@ -18,30 +18,62 @@ import           Language.Dash.IR.Opcode
 
 -- TODO 'atom' could be misleading. Rename to 'atomExpr' or something like that
 
+bifStringConcatName :: String
+bifStringConcatName = "$string-concat"
+
+builtInFunctions :: [(Name, [Name], [Opcode])]
+builtInFunctions = [ (bifStringConcatName, ["a", "b"], [
+                       OpcRet 0
+                     ])
+                   ]
+
 
 compile :: NstExpr
         -> ConstTable
         -> SymbolNameList
         -> ([[Opcode]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
-  let result = execState (compileFunc [] [] expr "" False) emptyCompEnv in
+  let result = execState (compileCompilationUnit expr) emptyCompEnv in
   (toList (instructions result), cTable, symlist)
 
 
+compileCompilationUnit :: NstExpr -> CodeGenState ()
+compileCompilationUnit expr = do
+  funAddr <- beginFunction [] []
+  addBuiltInFunctions
+  funcCode <- compileExpr expr
+  -- Don't add func header for wrapping function
+  endFunction funAddr funcCode
+
+
+addBuiltInFunctions :: CodeGenState ()
+addBuiltInFunctions =
+  void $ forM builtInFunctions $ \ (name, params, code) ->
+          addBuiltInFunction name params code
+
+
+addBuiltInFunction :: Name -> [Name] -> [Opcode] -> CodeGenState ()
+addBuiltInFunction name params code = do
+  funAddr <- beginFunction [] params
+  let arity = length params
+  let funcCode' = OpcFunHeader arity : code
+  endFunction funAddr funcCode'
+  addCompileTimeConst name $ CTConstLambda funAddr -- Have to re-add to outer scope
+  return ()
+
+
+
 -- TODO can we get rid of the shouldAddHeader parameter?
-compileFunc :: [Name] -> [Name] -> NstExpr -> Name -> Bool -> CodeGenState FuncAddr
-compileFunc freeVars params expr name shouldAddHeader = do
+compileFunc :: [Name] -> [Name] -> NstExpr -> Name -> CodeGenState FuncAddr
+compileFunc freeVars params expr name = do
   funAddr <- beginFunction freeVars params
   -- we add the name already here for recursion
   addCompileTimeConst name $ CTConstLambda funAddr
   funcCode <- compileExpr expr
 
-  if shouldAddHeader then do
-    let arity = length freeVars + length params
-    let funcCode' = OpcFunHeader arity : funcCode
-    endFunction funAddr funcCode'
-  else
-    endFunction funAddr funcCode
+  let arity = length freeVars + length params
+  let funcCode' = OpcFunHeader arity : funcCode
+  endFunction funAddr funcCode'
 
   addCompileTimeConst name $ CTConstLambda funAddr -- Have to re-add to outer scope
   return funAddr
@@ -76,19 +108,17 @@ compileAtom reg atom name isResultValue = case atom of
   NPrimOp primop ->
       compilePrimOp primop reg
   NLambda [] params expr -> do
-      funAddr <- compileFunc [] params expr name True
+      funAddr <- compileFunc [] params expr name
       compileLoadLambda reg funAddr
   NLambda freeVars params expr ->
       compileClosure reg freeVars params expr name
   NMatchBranch freeVars matchedVars expr -> do
       -- free vars are applied directly in match branches, so we can compile them
       -- without creating a closure on the heap
-      funAddr <- compileFunc freeVars matchedVars expr "" True
+      funAddr <- compileFunc freeVars matchedVars expr ""
       compileLoadLambda reg funAddr
   NFunAp funVar args -> do
-      argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
-      callInstr <- compileCallInstr reg funVar (length args) isResultValue
-      return $ argInstrs ++ callInstr
+      compileFunAp reg funVar args isResultValue
   NVarExpr var ->
       case var of
         NVar _ NLocalVar     -> moveVarToReg var reg
@@ -109,6 +139,13 @@ compileAtom reg atom name isResultValue = case atom of
     moveVarToReg var dest = do
       r <- getReg var
       return [OpcMove dest r]
+
+
+compileFunAp :: Reg -> NstVar -> [NstVar] -> Bool -> CodeGenState [Opcode]
+compileFunAp reg funVar args isResultValue = do
+  argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
+  callInstr <- compileCallInstr reg funVar (length args) isResultValue
+  return $ argInstrs ++ callInstr
 
 
 compileCallInstr :: Reg -> NstVar -> Int -> Bool -> CodeGenState [Opcode]
@@ -150,6 +187,7 @@ compilePrimOp primop reg = case primop of
   NPrimOpLessThan a b    -> compileBinaryPrimOp OpcLT a b
   NPrimOpGreaterThan a b -> compileBinaryPrimOp OpcGT a b
   NPrimOpStrLen a -> compileUnaryPrimOp OpcStrLen a
+  -- NPrimOpStrConcat a b -> compileFunAp reg bifStringConcatName [a, b] False
   where
     compileUnaryPrimOp op a = do
       ra <- getReg a
@@ -213,7 +251,7 @@ canBeCalledDirectly atom =
 
 compileClosure :: Reg -> [Name] -> [Name] -> NstExpr -> Name -> CodeGenState [Opcode]
 compileClosure reg freeVars params expr name = do
-  funAddr <- compileFunc freeVars params expr name True
+  funAddr <- compileFunc freeVars params expr name
   -- TODO optimize argInstrs by using last parameter in set_arg (i.e. if we have arguments
   -- in consecutive registers, we can emit a single instruction for them)
 

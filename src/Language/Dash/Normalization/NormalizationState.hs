@@ -28,8 +28,6 @@ import           Language.Dash.Constants
 
 -- TODO this module's interface is way too fat !
 -- TODO give all values unique names
--- TODO explicitly name *all* variables, even temp ones (maybe we should drop the 
--- localvar thing)
 
 type NormState a = State NormEnv a
 
@@ -120,7 +118,7 @@ lookupName name = do
 
 
 lookupNameInContext :: String -> [Context] -> NormState (NstVar, Bool)
-lookupNameInContext name [] = error $ "Unknown variable '" ++ name ++ "'"
+lookupNameInContext name [] = error $ "Unknown variable \"" ++ name ++ "\""
 lookupNameInContext name conts = do
   let binds = bindings $ head conts
   case Map.lookup name binds of
