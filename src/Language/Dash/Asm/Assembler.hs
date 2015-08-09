@@ -102,9 +102,10 @@ assembleTac funcAddrs addrConv opc =
     OpcSetSymField r0 r1 n -> instructionRRR 22 (r r0) (r r1) (i n)
     OpcLoadStr r0 a        -> instructionRI  23 (r r0) (caddr a)
     OpcStrLen r0 r1        -> instructionRRR 24 (r r0) (r r1) 0
+    OpcNewStr r0 r1        -> instructionRRR 25 (r r0) (r r1) 0
     OpcLT r0 r1 r2         -> instructionRRR 28 (r r0) (r r1) (r r2)
     OpcGT r0 r1 r2         -> instructionRRR 29 (r r0) (r r1) (r r2)
-    OpcJmpTrue r0 n        -> instructionRI  30 (r r0) (i n)
+    OpcJmpTrue r0 n        -> instructionRI  30 (r r0) (biasNumber n)
     OpcFunHeader arity     -> instructionRI  63 (r 0) (i arity)
 
 

@@ -36,6 +36,7 @@ decode w ctable symNames =
                     | t==tagClosure               = return VMClosure
                     | t==tagFunction              = return VMFunction
                     | t==tagString                = decodeConstantString v ctable
+                    | t==tagDynamicString         = decodeDynamicString v ctable
                     | otherwise                   = error $ "Unknown tag " ++ show t
 
 
@@ -57,7 +58,7 @@ decodeDynCompoundSymbol addr ctable symNames = do
   decoded <- mapM (\v -> decode v ctable symNames) values
   return $ VMSymbol symName decoded
 
-decodeConstantString :: VMWord -> [VMWord] ->  IO VMValue
+decodeConstantString :: VMWord -> [VMWord] -> IO VMValue
 decodeConstantString addr ctable = do
   let subCTable = drop (fromIntegral addr) ctable
   let (_, numChunks) = decodeStringHeader (head subCTable)
@@ -65,6 +66,14 @@ decodeConstantString addr ctable = do
   let str = concat decodedChunks
   return $ VMString str
 
+decodeDynamicString :: VMWord -> [VMWord] -> IO VMValue
+decodeDynamicString addr ctable = do
+  stringHeader <- getVMHeapValue addr
+  let (_, numChunks) = decodeStringHeader stringHeader
+  stringBody <- getVMHeapArray (addr + stringHeaderLength) numChunks
+  let decodedChunks = mapM decodeStringChunk stringBody
+  let str = concat decodedChunks
+  return $ VMString str
 
 encodeNumber :: Int -> VMWord
 encodeNumber = makeVMValue tagNumber . ensureNumberRange . bias . fromIntegral
@@ -165,7 +174,7 @@ getTag v = (v .&. 0xF0000000) `rotateL` 4
 getValue v = v .&. 0x0FFFFFFF
 
 
-tagNumber, tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagDynamicCompoundSymbol, tagClosure, tagString :: VMWord
+tagNumber, tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagDynamicCompoundSymbol, tagClosure, tagString, tagDynamicString :: VMWord
 tagNumber = 0x0
 tagPlainSymbol = 0x4
 tagCompoundSymbol = 0x5
@@ -173,8 +182,10 @@ tagClosure = 0x6
 tagFunction = 0x7
 tagDynamicCompoundSymbol = 0x8
 tagString = 0x9
+tagDynamicString = 0xA
 tagMatchData = 0xF
 
-compoundSymbolHeaderLength :: VMWord
+compoundSymbolHeaderLength, stringHeaderLength :: VMWord
 compoundSymbolHeaderLength = 1
+stringHeaderLength = 1
 

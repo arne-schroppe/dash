@@ -282,13 +282,14 @@ it( jumps_if_condition_is_true ) {
   vm_instruction program[] = {
     op_load_i(1, bias(2)), // initial value / counter
     op_load_i(2, bias(5)), // target value
-    op_load_i(0, bias(0)), // accumulator
+    op_load_i(5, bias(0)), // accumulator
     op_load_i(3, bias(1)), // 1
     op_eq(4, 1, 2),
     op_jmp_true(4, bias(3)),
-    op_add(0, 0, 1),
+    op_add(5, 5, 1),
     op_add(1, 1, 3),
     op_jmp(bias(-5)),
+    op_move(0, 5),
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
@@ -731,7 +732,6 @@ it( determines_the_length_of_a_string ) {
 }
 
 it( creates_a_new_string ) {
-
   vm_instruction program[] = {
     op_load_i(1, bias(8)),
     op_new_str(0, 1),

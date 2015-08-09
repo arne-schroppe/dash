@@ -196,13 +196,14 @@ spec = do
     it "jumps if condition true" $ do
       let prog = [[ OpcLoadI 1 2, -- counter
                     OpcLoadI 2 5, -- target value
-                    OpcLoadI 0 0, -- accumulator
+                    OpcLoadI 5 0, -- accumulator
                     OpcLoadI 3 1,
                     OpcEq 4 1 2,
                     OpcJmpTrue 4 3,
-                    OpcAdd 0 0 1,
+                    OpcAdd 5 5 1,
                     OpcAdd 1 1 3,
                     OpcJmp (-5),
+                    OpcMove 0 5,
                     OpcRet 0 ]]
       result <- runProg prog
       decodedResult <- decode result [] []
@@ -352,4 +353,11 @@ spec = do
       decodedResult <- decode result ctable []
       decodedResult `shouldBe` (VMNumber 5)
 
+    it "creates a new string" $ do
+      let prog = [[ OpcLoadI 1 8,
+                    OpcNewStr 0 1,
+                    OpcRet 0 ]]
+      result <- runProg  prog
+      decodedResult <- decode result [] []
+      decodedResult `shouldBe` (VMString "")
 

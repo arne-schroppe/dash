@@ -654,7 +654,6 @@ spec = do
       let code =  " s1 = \"ab\" \n\
                   \ s3 = \"ef\" \n\
                   \ s1 ++ \"cd\" ++ s3"
-      putStrLn $ show $ toNorm code
       let result = run code
       result `shouldReturn` VMString "abcdef"
 
