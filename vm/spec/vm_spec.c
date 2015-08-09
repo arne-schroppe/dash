@@ -731,6 +731,19 @@ it( determines_the_length_of_a_string ) {
   is_equal(result, make_tagged_val(bias(6), vm_tag_number));
 }
 
+
+it( determines_the_length_of_a_dynamic_string ) {
+  vm_instruction program[] = {
+    op_load_i(2, bias(6)),
+    op_new_str(1, 2),
+    op_str_len(0, 1),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  is_equal(result, make_tagged_val(bias(6), vm_tag_number));
+}
+
+
 it( creates_a_new_string ) {
   vm_instruction program[] = {
     op_load_i(1, bias(8)),
@@ -776,6 +789,7 @@ start_spec(vm_spec)
   example(modifies_a_heap_symbol)
   example(loads_a_constant_string_into_a_register)
   example(determines_the_length_of_a_string)
+  example(determines_the_length_of_a_dynamic_string)
   example(has_a_less_than_opcode)
   example(has_a_greater_than_opcode)
   example(creates_a_new_string)

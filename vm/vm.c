@@ -1002,18 +1002,27 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         check_reg(get_arg_r0(instr));
         check_reg(get_arg_r1(instr));
 
-        vm_value const_string = get_reg(get_arg_r1(instr));
-
-        if ( get_tag(const_string) != vm_tag_string ) {
-          fprintf(stderr, "Expected a string, got tag: %d\n", get_tag(const_string));
+        vm_value str = get_reg(get_arg_r1(instr));
+        int tag = get_tag(str);
+        if (tag != vm_tag_string && tag != vm_tag_dynamic_string ) {
+          fprintf(stderr, "Expected a string, got tag: %d\n", tag);
           is_running = false;
           break;
         }
 
-        int c_addr = get_val(const_string);
-        vm_value c_str_header = const_table[c_addr];
+        int str_addr = get_val(str);
+        vm_value *str_pointer;
 
-        int count = string_length(c_str_header);
+        if(tag == vm_tag_string) {
+          str_pointer = const_table + str_addr;
+        }
+        else {
+          str_pointer = heap_get_pointer(str_addr);
+        }
+
+        vm_value str_header = *str_pointer;
+
+        int count = string_length(str_header);
         get_reg(get_arg_r0(instr)) = make_tagged_val(count + number_bias, vm_tag_number);
       }
       break;
@@ -1031,10 +1040,11 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           break;
         }
 
-        int length = r1_value - number_bias + 1; // allow space for trailing '\0'
-        int num_chunks = length / charPerStringChunk;
-        if( (length % charPerStringChunk) != 0 ) {
-          num_chunks += charPerStringChunk - (length % charPerStringChunk);
+        int length = r1_value - number_bias;
+        int adjusted_length = length + 1; // allow space for trailing '\0'
+        int num_chunks = adjusted_length / charPerStringChunk;
+        if( (adjusted_length % charPerStringChunk) != 0 ) {
+          num_chunks += charPerStringChunk - (adjusted_length % charPerStringChunk);
         }
 
         size_t total_size = string_header_size + num_chunks;
