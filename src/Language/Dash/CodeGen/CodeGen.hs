@@ -4,7 +4,8 @@ module Language.Dash.CodeGen.CodeGen (
 
 import           Control.Monad.State
 import           Data.Foldable
-import           Data.Maybe                         (catMaybes)
+import           Data.Maybe                             (catMaybes)
+import           Language.Dash.CodeGen.BuiltInFunctions
 import           Language.Dash.CodeGen.CodeGenState
 import           Language.Dash.Constants
 import           Language.Dash.IR.Data
@@ -17,15 +18,6 @@ import           Language.Dash.IR.Opcode
 -- TODO when there is more time, do dataflow analysis to reuse registers
 
 -- TODO 'atom' could be misleading. Rename to 'atomExpr' or something like that
-
-bifStringConcatName :: String
-bifStringConcatName = "$string-concat"
-
-builtInFunctions :: [(Name, Int, [Opcode])]
-builtInFunctions = [ (bifStringConcatName, 2, [
-                       OpcRet 0
-                     ])
-                   ]
 
 
 compile :: NstExpr

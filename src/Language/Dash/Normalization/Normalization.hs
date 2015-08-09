@@ -3,6 +3,7 @@ module Language.Dash.Normalization.Normalization (
 ) where
 
 import           Control.Monad.State                            hiding (state)
+import           Language.Dash.CodeGen.BuiltInFunctions         (builtInFunctions)
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
@@ -74,10 +75,15 @@ normalize expr =
 normalizeInContext :: Expr -> NormState NstExpr
 normalizeInContext expr = do
   enterContext []
-  addBIFPlaceholder "$string-concat" 2  -- TODO move this and the bif from codegen to a common module
+  addBIFPlaceholders
   nExpr <- normalizeExpr expr
   leaveContext
   return nExpr
+
+addBIFPlaceholders :: NormState ()
+addBIFPlaceholders =
+  void $ forM builtInFunctions $ \ (name, bifArity, _) ->
+                 addBIFPlaceholder name bifArity
 
 addBIFPlaceholder :: String -> Int -> NormState ()
 addBIFPlaceholder name ar = do
@@ -169,8 +175,8 @@ indexedDynamicSymbolFields fields =
   filter (isDynamicLiteral.snd) $ zipWithIndex fields
 
 setZeroesAtIndices :: [Expr] -> [Int] -> [Expr]
-setZeroesAtIndices fields indices = 
-  map (\ (index, e) -> 
+setZeroesAtIndices fields indices =
+  map (\ (index, e) ->
     if index `elem` indices then
       LitNumber 0
     else
