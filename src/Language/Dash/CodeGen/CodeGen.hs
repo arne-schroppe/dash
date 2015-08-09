@@ -21,8 +21,8 @@ import           Language.Dash.IR.Opcode
 bifStringConcatName :: String
 bifStringConcatName = "$string-concat"
 
-builtInFunctions :: [(Name, [Name], [Opcode])]
-builtInFunctions = [ (bifStringConcatName, ["a", "b"], [
+builtInFunctions :: [(Name, Int, [Opcode])]
+builtInFunctions = [ (bifStringConcatName, 2, [
                        OpcRet 0
                      ])
                    ]
@@ -48,12 +48,15 @@ compileCompilationUnit expr = do
 
 addBuiltInFunctions :: CodeGenState ()
 addBuiltInFunctions =
-  void $ forM builtInFunctions $ \ (name, params, code) ->
-          addBuiltInFunction name params code
+  void $ forM builtInFunctions $ \ (name, arity, code) ->
+          addBuiltInFunction name arity code
 
 
-addBuiltInFunction :: Name -> [Name] -> [Opcode] -> CodeGenState ()
-addBuiltInFunction name params code = do
+addBuiltInFunction :: Name -> Int -> [Opcode] -> CodeGenState ()
+addBuiltInFunction name bifArity code = do
+  -- we're using some fake param names here because that's what beginFunction expects
+  let params = map (\ (s, i) -> s ++ (show i)) $
+                       zip (replicate bifArity "p") [0..bifArity]
   funAddr <- beginFunction [] params
   let arity = length params
   let funcCode' = OpcFunHeader arity : code

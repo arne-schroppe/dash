@@ -74,7 +74,7 @@ normalize expr =
 normalizeInContext :: Expr -> NormState NstExpr
 normalizeInContext expr = do
   enterContext []
-  addBIFPlaceholder "$string-concat" 2
+  addBIFPlaceholder "$string-concat" 2  -- TODO move this and the bif from codegen to a common module
   nExpr <- normalizeExpr expr
   leaveContext
   return nExpr
