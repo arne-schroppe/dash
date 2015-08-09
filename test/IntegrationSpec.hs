@@ -681,7 +681,7 @@ K Use better types (Reg as member of Num typeclass)
 K operator precedence / limited set of operators
 K negative numbers (with bias)
 K inequality operators
-- strings (string concatenation, to-string, substring, string length)
+K strings (string concatenation, substring, string length)
 - runtime errors
 - garbage collection
 
@@ -710,7 +710,7 @@ K More math operators
 K infix operators
 x inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
 x if a closure doesn't escape the current context, apply free variables directly
-- Strings
+K Strings
 - Garbage collection
 K Creating symbols (symbol arity is known statically)
 K tuples
