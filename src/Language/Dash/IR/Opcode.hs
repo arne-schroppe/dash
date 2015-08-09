@@ -38,5 +38,6 @@ data Opcode =
   | OpcStrLen Reg Reg
   | OpcLT Reg Reg Reg
   | OpcGT Reg Reg Reg
+  | OpcJmpTrue Reg Int
   deriving Show
 

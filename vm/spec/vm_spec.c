@@ -278,6 +278,23 @@ it( jumps_forward ) {
   is_equal(result, make_tagged_val(bias(70), vm_tag_number));
 }
 
+it( jumps_if_condition_is_true ) {
+  vm_instruction program[] = {
+    op_load_i(1, bias(2)), // initial value / counter
+    op_load_i(2, bias(5)), // target value
+    op_load_i(0, bias(0)), // accumulator
+    op_load_i(3, bias(1)), // 1
+    op_eq(4, 1, 2),
+    op_jmp_true(4, bias(3)),
+    op_add(0, 0, 1),
+    op_add(1, 1, 3),
+    op_jmp(bias(-5)),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), 0, 0);
+  // result: 2 + 3 + 4 = 9
+  is_equal(result, make_tagged_val(bias(9), vm_tag_number));
+}
 
 it( matches_a_number ) {
   vm_value const_table[] = {
@@ -731,6 +748,7 @@ start_spec(vm_spec)
   example(loads_a_constant)
   example(loads_a_compound_symbol)
   example(jumps_forward)
+  example(jumps_if_condition_is_true)
   example(matches_a_number)
   example(matches_a_symbol)
   example(matches_a_compound_symbol)
