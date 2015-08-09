@@ -533,6 +533,37 @@ spec = do
       let result = run code
       result `shouldReturn` VMSymbol "true" []
 
+    it "less-than-equal operator with true result" $ do
+      let code = "1 <= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "less-than-equal operator with true result 2" $ do
+      let code = "2 <= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "less-than-equal operator with false result" $ do
+      let code = "3 <= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "false" []
+
+    it "greater-than-equal operator with true result" $ do
+      let code = "3 >= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "greater-than-equal operator with true result 2" $ do
+      let code = "2 >= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "greater-than-equal operator with false result" $ do
+      let code = "1 >= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "false" []
+
+
     it "boolean 'or' with true result" $ do
       let code = ":false || :true"
       let result = run code

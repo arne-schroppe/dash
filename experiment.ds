@@ -141,13 +141,13 @@ replicate n v =
 
 chunk-string n s =
   len = string-length s
-  if len < n || len == n then
+  if len <= n then
     [s]
   else
     chunk = sub-string 0 n s
     rest = sub-string n (len - n) s
     rest-length = string-length rest
-    if rest-length < n || rest-length == n  then
+    if rest-length <= n then
       [chunk, rest]
     else
       [chunk|chunk-string n rest]

@@ -60,6 +60,20 @@ builtInFunctions = [  (bifStringConcatName, 2, [
                         -- next:
                         OpcMove 0 3,
                         OpcRet 0
+                      ]),
+                      ("<=", 2, [
+                        OpcLT 2 0 1,
+                        OpcJmpTrue 2 1,
+                        OpcEq 2 0 1,
+                        OpcMove 0 2,
+                        OpcRet 0
+                      ]),
+                      (">=", 2, [
+                        OpcGT 2 0 1,
+                        OpcJmpTrue 2 1,
+                        OpcEq 2 0 1,
+                        OpcMove 0 2,
+                        OpcRet 0
                       ])
                    ]
 
