@@ -650,13 +650,53 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 7
 
-    it "interpolates strings" $ do
-      let code =  " a = \"ab\" \n\
-                  \ b = 2 \n\
-                  \ c = \"ef\" \n\
-                  \ \"\\(a)\\(b * 3)cd\\(c)\""
+    it "concatenates strings" $ do
+      let code =  " s1 = \"ab\" \n\
+                  \ s3 = \"ef\" \n\
+                  \ s1 ++ \"cd\" ++ s3"
       let result = run code
-      result `shouldReturn` VMString "ab6cdef"
+      result `shouldReturn` VMString "abcdef"
+
+{-
+
+what we need to implement this:
+
+op_new_string r0 length
+op_read_char r0 source index
+op_write_char target char_reg index
+
+and some way to loop (jmp backwards and jmp_lt)
+
+-- r0 and r1 are string arguments
+
+r2 <- str_len r0
+r3 <- str_len r1
+r4 <- add r2 r3
+r5 <- new_string r4
+r6 <- load_i 0
+r7 <- load_i 1
+loop1:
+jmp_gte r6 r2 next  -- maybe we could flip this to jmp_lt ?
+r8 <- read_char r0 r6
+write_char r5 r8 r6
+r6 <- add r6 r7
+jmp loop1
+next:
+r6 <- load_i 0
+loop2:
+jmp_gte r6 r3 done  -- maybe we could flip this to jmp_lt ?
+r8 <- read_char r1 r6
+r9 <- add r2 r6
+write_char r5 r8 r9
+r6 <- add r6 r7
+jmp loop2
+done:
+r0 <- move r5
+ret r0
+
+
+
+-}
 
 {-
 What's missing:
@@ -686,7 +726,10 @@ K inequality operators
 
 - repl: Compile and eval one expression at a time. Store constant results in an
   internal table. Recompile functions every time (?)
-
+  Simpler: store top-level bindings in memory. Execute simple expressions by
+  concatenating them to the bindings and executing the whole thing.
+  "Execute" bindings by attaching the name of the binding at the end. (so
+  for a function the output will be "<function>", etc)
 
 missing language features:
 K Closures

@@ -142,7 +142,7 @@ InfixOperation:
   | Operand '==' Operand        { FunAp (Var "==") [$1, $3] }
   | Operand '<' Operand         { FunAp (Var "<") [$1, $3] }
   | Operand '>' Operand         { FunAp (Var ">") [$1, $3] }
-  | '-' Operand %prec NEG       { FunAp (Var "-") [LitNumber 0, $2] } 
+  | '-' Operand %prec NEG       { FunAp (Var "-") [LitNumber 0, $2] }
   -- | Operand operator Operand    { FunAp (Var $2) [$1, $3] }
 
 Operand:
