@@ -269,7 +269,7 @@ it( loads_a_compound_symbol ) {
 it( jumps_forward ) {
   vm_instruction program[] = {
     op_load_i(0, bias(66)),
-    op_jmp(1),
+    op_jmp(bias(1)),
     op_ret(0),
     op_load_i(0, bias(70)),
     op_ret(0)
@@ -291,8 +291,8 @@ it( matches_a_number ) {
     op_load_i(1, bias(22)), /* value to match */
     op_load_i(2, 0), /* address of match pattern */
     op_match(1, 2, 0),
-    op_jmp(1),
-    op_jmp(2),
+    op_jmp(bias(1)),
+    op_jmp(bias(2)),
     op_load_i(0, bias(4)),
     op_ret(0),
     op_load_i(0, bias(300)),
@@ -314,8 +314,8 @@ it( matches_a_symbol ) {
     op_load_ps(1, bias(22)), /* value to match */
     op_load_i(2, 0), /* address of match pattern */
     op_match(1, 2, 0),
-    op_jmp(1),
-    op_jmp(2),
+    op_jmp(bias(1)),
+    op_jmp(bias(2)),
     op_load_i(0, bias(4)),
     op_ret(0),
     op_load_i(0, bias(300)),
@@ -348,8 +348,8 @@ it( matches_a_compound_symbol ) {
     op_load_cs(1, 9), /* value to match */
     op_load_i(2, 0), /* address of match pattern */
     op_match(1, 2, 0),
-    op_jmp(1),
-    op_jmp(2),
+    op_jmp(bias(1)),
+    op_jmp(bias(2)),
     op_load_i(0, bias(4)),
     op_ret(0),
     op_load_i(0, bias(300)),
@@ -384,8 +384,8 @@ it( binds_a_value_in_a_match ) {
     op_load_cs(1, 9), /* value to match */
     op_load_i(2, 0), /* address of match pattern */
     op_match(1, 2, 3), /* after matching, reg 3 + 1 should contain the matched value (77) */
-    op_jmp(1),
-    op_jmp(2),
+    op_jmp(bias(1)),
+    op_jmp(bias(2)),
     op_load_i(0, bias(22)), /* case 1 */
     op_ret(0),
     op_move(0, 4), /* case 2 */
@@ -430,8 +430,8 @@ it( binds_a_value_in_a_nested_symbol ) {
     op_load_cs(1, 13), /* value to match */
     op_load_i(2, 0), /* address of match pattern */
     op_match(1, 2, 3), /* after matching, reg 3 + 1 should contain the matched value (77) */
-    op_jmp(1),
-    op_jmp(2),
+    op_jmp(bias(1)),
+    op_jmp(bias(2)),
     op_load_i(0, bias(100)),
     op_ret(0),
     op_sub(0, 3, 4), /* there is only one case */
@@ -467,8 +467,8 @@ it( matches_a_dynamic_compound_symbol ) {
     op_copy_sym(5, 1), /* value to match */
     op_load_i(2, 0), /* address of match pattern */
     op_match(5, 2, 0),
-    op_jmp(1),
-    op_jmp(2),
+    op_jmp(bias(1)),
+    op_jmp(bias(2)),
     op_load_i(0, bias(4)),
     op_ret(0),
     op_load_i(0, bias(300)),
@@ -504,8 +504,8 @@ it( binds_a_value_in_a_dynamic_symbol_match ) {
     op_copy_sym(5, 1), /* value to match */
     op_load_i(2, 0), /* address of match pattern */
     op_match(5, 2, 3), /* after matching, reg 3 + 1 should contain the matched value (77) */
-    op_jmp(1),
-    op_jmp(2),
+    op_jmp(bias(1)),
+    op_jmp(bias(2)),
     op_load_i(0, bias(22)), /* case 1 */
     op_ret(0),
     op_move(0, 4), /* case 2 */
@@ -551,8 +551,8 @@ it( binds_a_value_in_a_nested_dynamic_symbol ) {
     op_copy_sym(5, 1), /* value to match */
     op_load_i(2, 0), /* address of match pattern */
     op_match(5, 2, 3), /* after matching, reg 3 + 1 should contain the matched value (77) */
-    op_jmp(1),
-    op_jmp(2),
+    op_jmp(bias(1)),
+    op_jmp(bias(2)),
     op_load_i(0, bias(100)),
     op_ret(0),
     op_sub(0, 3, 4), /* there is only one case */
