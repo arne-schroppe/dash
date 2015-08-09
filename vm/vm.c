@@ -733,6 +733,11 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_JMP: {
         int offset = get_arg_i(instr) - number_bias;
         program_pointer += offset;
+        if(program_pointer < 0 || program_pointer > program_length) {
+          fprintf(stderr, "Illegal address!\n");
+          is_running = false;
+          break;
+        }
         debug( printf("JMP %i\n", offset) );
       }
       break;
