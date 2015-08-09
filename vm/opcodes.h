@@ -34,7 +34,7 @@ typedef enum {
   OP_SET_SYM_FIELD = 22, // sets a field of a heap compound symbol
   OP_LOAD_str = 23,
   OP_STR_LEN = 24,
-  // OP_STR_CONCAT = 25,
+  OP_NEW_STR = 25,
   // OP_STR_SUB = 26,
   // OP_STR_REV = 27,
   OP_LT = 28,
@@ -96,6 +96,7 @@ typedef enum {
 #define op_lt(r0, r1, r2) (instr_rrr(OP_LT, r0, r1, r2))
 #define op_gt(r0, r1, r2) (instr_rrr(OP_GT, r0, r1, r2))
 #define op_jmp_true(b, n) (instr_ri(OP_JMP_TRUE, b, n))
+#define op_new_str(r0, r1) (instr_rrr(OP_NEW_STR, r0, r1, 0))
 
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))

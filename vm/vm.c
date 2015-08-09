@@ -36,12 +36,15 @@ static int invocation = 0;
 const int max_integer = 0x1FFFFF;
 const int number_bias = 0xFFFFF;
 
+const int charPerStringChunk = sizeof(vm_value) / sizeof(char);
+
 // Constants
 static const vm_value symbol_id_false = 0;
 static const vm_value symbol_id_true = 1;
 static const int fun_header_size = 1;
 static const int pap_header_size = 2;
 static const int compound_symbol_header_size = 1;
+static const int string_header_size = 1;
 
 const vm_value vm_tag_number = 0x0;
 const vm_value vm_tag_plain_symbol = 0x4;
@@ -50,6 +53,7 @@ const vm_value vm_tag_pap = 0x6;
 const vm_value vm_tag_function = 0x7;
 const vm_value vm_tag_dynamic_compound_symbol = 0x8;
 const vm_value vm_tag_string = 0x9;
+const vm_value vm_tag_dynamic_string = 0xA;
 const vm_value vm_tag_match_data = 0xF;
 
 
@@ -1001,7 +1005,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         vm_value const_string = get_reg(get_arg_r1(instr));
 
         if ( get_tag(const_string) != vm_tag_string ) {
-          fprintf(stderr, "Expected a strign, got tag: %d\n", get_tag(const_string));
+          fprintf(stderr, "Expected a string, got tag: %d\n", get_tag(const_string));
           is_running = false;
           break;
         }
@@ -1013,6 +1017,38 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         get_reg(get_arg_r0(instr)) = make_tagged_val(count + number_bias, vm_tag_number);
       }
       break;
+
+      case OP_NEW_STR: {
+        int result_reg = get_arg_r0(instr);
+        check_reg(result_reg);
+        check_reg(get_arg_r1(instr));
+
+        vm_value r1_value = get_reg(get_arg_r1(instr));
+        if(get_tag(r1_value) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, got tag: %d\n", get_tag(r1_value));
+          is_running = false;
+          break;
+        }
+
+        int length = r1_value - number_bias + 1; // allow space for trailing '\0'
+        int num_chunks = length / charPerStringChunk;
+        if( (length % charPerStringChunk) != 0 ) {
+          num_chunks += charPerStringChunk - (length % charPerStringChunk);
+        }
+
+        size_t total_size = string_header_size + num_chunks;
+        heap_address string_address = heap_alloc(total_size);
+        vm_value *str_pointer = heap_get_pointer(string_address);
+
+        memset(str_pointer, 0, total_size * sizeof(vm_value));
+        *str_pointer = string_header(length, num_chunks);
+
+        get_reg(result_reg) = make_tagged_val(string_address, vm_tag_dynamic_string);
+
+      }
+      break;
+
+
 
       default:
         fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);
