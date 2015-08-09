@@ -51,11 +51,11 @@ import Language.Dash.Constants
   '|'       { TVBar }
 
 
+%left '||' '&&'
 %left '+' '-' '++'
 %left '*' '/'
 %left NEG
 %left '==' '<' '>'
-%left '||' '&&'
 
 %%
 
