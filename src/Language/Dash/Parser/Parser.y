@@ -52,10 +52,10 @@ import Language.Dash.Constants
 
 
 %left '||' '&&'
+%left '==' '<' '>'
 %left '+' '-' '++'
 %left '*' '/'
 %left NEG
-%left '==' '<' '>'
 
 %%
 

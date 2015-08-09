@@ -152,5 +152,5 @@ chunk-string n s =
     else
       [chunk|chunk-string n rest]
 
-chunk-string 2 "ab"
+chunk-string 2 "abcdefgh"
 
