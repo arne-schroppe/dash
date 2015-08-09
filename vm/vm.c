@@ -742,6 +742,24 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       }
       break;
 
+      case OP_JMP_TRUE: {
+        check_reg(get_arg_r0(instr));
+        vm_value bool_value = get_reg(get_arg_r0(instr));
+
+        if( is_equal(bool_value, make_tagged_val(symbol_id_true, vm_tag_plain_symbol) )) {
+          int offset = get_arg_i(instr) - number_bias;
+          program_pointer += offset;
+          if(program_pointer < 0 || program_pointer > program_length) {
+            fprintf(stderr, "Illegal address: %i\n", program_pointer);
+            is_running = false;
+            break;
+          }
+        }
+        // else: do nothing
+
+        //debug( printf("JMP_EQ %i\n", offset) );
+      }
+      break;
 
       case OP_MATCH: {
         check_reg(get_arg_r0(instr));
