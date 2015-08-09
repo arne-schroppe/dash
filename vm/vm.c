@@ -1041,6 +1041,12 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         }
 
         int length = r1_value - number_bias;
+        if(length < 0) {
+          fprintf(stderr, "Negative length for new string, got: %d\n", length);
+          is_running = false;
+          break;
+        }
+
         int adjusted_length = length + 1; // allow space for trailing '\0'
         int num_chunks = adjusted_length / charPerStringChunk;
         if( (adjusted_length % charPerStringChunk) != 0 ) {

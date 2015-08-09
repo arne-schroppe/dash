@@ -84,11 +84,6 @@ map f ls =
     [a|rest] -> cons (f a) (map f rest)
   end
 
-foldr f i ls =
-  match ls begin
-    [] -> i
-    [a|rest] -> f a (foldr f i rest)
-  end
 
 ls = cons 1 [2, 3, 4]
 
@@ -109,6 +104,13 @@ guess s =
 
 guess "dash!"
 --/
+
+foldr f i ls =
+  match ls begin
+    [] -> i
+    [a|rest] -> f a (foldr f i rest)
+  end
+
 
 concat-list a b =
   match a begin
@@ -133,7 +135,8 @@ replicate n v =
     _ -> [v | replicate (n - 1) v]
   end
 
-:lyrics (concat-list (replicate 16 "na") ["Batmaaan!"])
+lyrics = (concat-list (replicate 16 (sub-string 2 -1 "banana")) ["Batmaaan!"])
 
+foldr ( .\ a b = a ++ " " ++ b ) "" lyrics
 
 
