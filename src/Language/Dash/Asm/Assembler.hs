@@ -93,7 +93,7 @@ assembleTac funcAddrs addrConv opc =
     OpcTailCall fr n       -> instructionRRR 13 (i 0) (r fr) (i n)
     OpcTailGenAp r0 fr n   -> instructionRRR 14 (r r0) (r fr) (i n)
     OpcPartAp r0 fr n      -> instructionRRR 15 (r r0) (r fr) (i n)
-    OpcJmp n               -> instructionRI  16 0 (i n)
+    OpcJmp n               -> instructionRI  16 0 (biasNumber n)
     OpcMatch r0 r1 r2      -> instructionRRR 17 (r r0) (r r1) (r r2)
     OpcSetArg arg r1 n     -> instructionRRR 18 (i arg) (r r1) (i n)
     OpcSetClVal clr r1 n   -> instructionRRR 19 (r clr) (r r1) (i n)
