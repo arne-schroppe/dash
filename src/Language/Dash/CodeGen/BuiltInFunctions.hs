@@ -6,11 +6,12 @@ module Language.Dash.CodeGen.BuiltInFunctions (
 import Language.Dash.IR.Data
 import Language.Dash.IR.Opcode
 
-bifStringConcatName :: String
+bifStringConcatName, bifStringLengthName :: String
 bifStringConcatName = "$string-concat"
+bifStringLengthName = "string-length"
 
 builtInFunctions :: [(Name, Int, [Opcode])]
-builtInFunctions = [ (bifStringConcatName, 2, [
+builtInFunctions = [  (bifStringConcatName, 2, [
                         OpcStrLen 2 0,
                         OpcStrLen 3 1,
                         OpcAdd 4 2 3,
@@ -37,7 +38,11 @@ builtInFunctions = [ (bifStringConcatName, 2, [
                         -- done:
                         OpcMove 0 5,
                         OpcRet 0
-                     ])
+                      ]),
+                      (bifStringLengthName, 1, [
+                        OpcStrLen 0 0,
+                        OpcRet 0
+                      ])
                    ]
 
 
