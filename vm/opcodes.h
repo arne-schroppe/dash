@@ -40,6 +40,9 @@ typedef enum {
   OP_LT = 28,
   OP_GT = 29,
   OP_JMP_TRUE = 30,
+  OP_OR = 31,
+  OP_AND = 32,
+  OP_NOT = 33,
 
   FUN_HEADER = 63
 } vm_opcode;
@@ -99,8 +102,9 @@ typedef enum {
 #define op_lt(r0, r1, r2) (instr_rrr(OP_LT, r0, r1, r2))
 #define op_gt(r0, r1, r2) (instr_rrr(OP_GT, r0, r1, r2))
 #define op_jmp_true(b, n) (instr_ri(OP_JMP_TRUE, b, n))
-
+#define op_or(r0, r1, r2) (instr_rrr(OP_OR, r0, r1, r2))
+#define op_and(r0, r1, r2) (instr_rrr(OP_AND, r0, r1, r2))
+#define op_not(r0, r1) (instr_rrr(OP_NOT, r0, r1))
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
-// #define op_space(n) (instr_ri(OP_SPACE, 0, n))
 
 #endif

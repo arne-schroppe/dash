@@ -43,6 +43,8 @@ import Language.Dash.Constants
   '<'       { TOperator "<" }
   '>'       { TOperator ">" }
   '++'      { TOperator "++" }
+  '||'      { TOperator "||" }
+  '&&'      { TOperator "&&" }
   operator  { TOperator $$ }
   '_'       { TUnderscore }
   ','       { TComma }
@@ -53,6 +55,7 @@ import Language.Dash.Constants
 %left '*' '/'
 %left NEG
 %left '==' '<' '>'
+%left '||' '&&'
 
 %%
 
@@ -144,6 +147,8 @@ InfixOperation:
   | Operand '<' Operand         { FunAp (Var "<") [$1, $3] }
   | Operand '>' Operand         { FunAp (Var ">") [$1, $3] }
   | Operand '++' Operand        { FunAp (Var "$string-concat") [$1, $3] }
+  | Operand '||' Operand        { FunAp (Var "||") [$1, $3] }
+  | Operand '&&' Operand        { FunAp (Var "&&") [$1, $3] }
   | '-' Operand %prec NEG       { FunAp (Var "-") [LitNumber 0, $2] }
   -- | Operand operator Operand    { FunAp (Var $2) [$1, $3] }
 

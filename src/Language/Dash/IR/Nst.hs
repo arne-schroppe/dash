@@ -50,6 +50,7 @@ data NstVar = NVar Name NstVarType
   deriving (Eq, Ord)
 
 
+-- TODO make it possible to hide the names of primops
 data NstPrimOp =
     NPrimOpAdd NstVar NstVar
   | NPrimOpSub NstVar NstVar
@@ -58,6 +59,9 @@ data NstPrimOp =
   | NPrimOpEq  NstVar NstVar
   | NPrimOpLessThan  NstVar NstVar
   | NPrimOpGreaterThan  NstVar NstVar
+  | NPrimOpOr NstVar NstVar
+  | NPrimOpAnd NstVar NstVar
+  | NPrimOpNot NstVar
   deriving (Eq, Ord, Show)
 
 

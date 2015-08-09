@@ -135,8 +135,22 @@ replicate n v =
     _ -> [v | replicate (n - 1) v]
   end
 
-lyrics = (concat-list (replicate 16 (sub-string 2 -1 "banana")) ["Batmaaan!"])
+-- lyrics = (concat-list (replicate 16 (sub-string 2 2 "banana")) ["Batmaaan!"])
 
-foldr ( .\ a b = a ++ " " ++ b ) "" lyrics
+-- foldr ( .\ a b = a ++ " " ++ b ) "" lyrics
 
+chunk-string n s =
+  len = string-length s
+  if len < n || len == n then
+    [s]
+  else
+    chunk = sub-string 0 n s
+    rest = sub-string n (len - n) s
+    rest-length = string-length rest
+    if rest-length < n || rest-length == n  then
+      [chunk, rest]
+    else
+      [chunk|chunk-string n rest]
+
+chunk-string 2 "ab"
 

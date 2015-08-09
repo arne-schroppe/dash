@@ -42,5 +42,8 @@ data Opcode =
   | OpcLT Reg Reg Reg
   | OpcGT Reg Reg Reg
   | OpcJmpTrue Reg Int
+  | OpcOr Reg Reg Reg
+  | OpcAnd Reg Reg Reg
+  | OpcNot Reg Reg
   deriving Show
 

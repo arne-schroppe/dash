@@ -12,7 +12,7 @@ $alpha      = [a-zA-Z]
 $digit      = [0-9]
 $space      = [\ \t]
 $endline    = [\; $newl]
-$opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \^]
+$opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \| \^]
 
 
 @ident      = $alpha( ($alphanum+ \-)* $alphanum+ )?

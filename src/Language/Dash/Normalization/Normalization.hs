@@ -238,7 +238,10 @@ normalizeFunAp funExpr args k =
     (Var "/", [a, b])  -> normalizeBinaryPrimOp NPrimOpDiv a b
     (Var "<", [a, b])  -> normalizeBinaryPrimOp NPrimOpLessThan a b
     (Var ">", [a, b])  -> normalizeBinaryPrimOp NPrimOpGreaterThan a b
-    (Var "==", [a, b]) -> normalizeBinaryPrimOp NPrimOpEq  a b
+    (Var "||", [a, b]) -> normalizeBinaryPrimOp NPrimOpOr a b
+    (Var "&&", [a, b]) -> normalizeBinaryPrimOp NPrimOpAnd a b
+    (Var "not", [a])   -> normalizeUnaryPrimOp NPrimOpNot a
+    (Var "==", [a, b]) -> normalizeBinaryPrimOp NPrimOpEq a b
     -- TODO create a bif that calls the primap internally
 
     -- TODO name this anonymous function
@@ -248,6 +251,13 @@ normalizeFunAp funExpr args k =
         Nothing -> applyUnknownFunction funVar
         Just (numFree, ar) -> applyKnownFunction funVar numFree ar
   where
+    normalizeUnaryPrimOp :: (NstVar -> NstPrimOp)
+                          -> Expr
+                          -> NormState NstExpr
+    normalizeUnaryPrimOp primOp a =
+      nameExprList [a] $ \ [aVar] ->
+          k $ NPrimOp $ primOp aVar
+
     normalizeBinaryPrimOp :: (NstVar -> NstVar -> NstPrimOp)
                           -> Expr
                           -> Expr

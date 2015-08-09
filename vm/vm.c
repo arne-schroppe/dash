@@ -1148,6 +1148,63 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       break;
 
 
+      case OP_OR: {
+        int reg1 = get_arg_r1(instr);
+        int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
+        int arg1 = get_reg(reg1);
+        check_reg(reg2);
+        int arg2 = get_reg(reg2);
+        int reg0 = get_arg_r0(instr);
+        check_reg(reg0);
+
+        vm_value result = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        vm_value true_sym = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+        if(arg1 == true_sym || arg2 == true_sym) {
+          result = true_sym;
+        }
+        get_reg(reg0) = result;
+      }
+      break;
+
+
+      case OP_AND: {
+        int reg1 = get_arg_r1(instr);
+        int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
+        int arg1 = get_reg(reg1);
+        check_reg(reg2);
+        int arg2 = get_reg(reg2);
+        int reg0 = get_arg_r0(instr);
+        check_reg(reg0);
+
+        vm_value result = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        vm_value true_sym = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+        if(arg1 == true_sym && arg2 == true_sym) {
+          result = true_sym;
+        }
+        get_reg(reg0) = result;
+      }
+      break;
+
+
+      case OP_NOT: {
+        int reg1 = get_arg_r1(instr);
+        check_reg(reg1);
+        int arg1 = get_reg(reg1);
+        int reg0 = get_arg_r0(instr);
+        check_reg(reg0);
+
+        vm_value result = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        vm_value true_sym = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+        if(arg1 != true_sym) {
+          result = true_sym;
+        }
+        //else: result is already set to false
+        get_reg(reg0) = result;
+      }
+      break;
+
 
       default:
         fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);

@@ -533,6 +533,31 @@ spec = do
       let result = run code
       result `shouldReturn` VMSymbol "true" []
 
+    it "boolean 'or' with true result" $ do
+      let code = ":false || :true"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "boolean 'or' with false result" $ do
+      let code = ":false || :false"
+      let result = run code
+      result `shouldReturn` VMSymbol "false" []
+
+    it "boolean 'and' with true result" $ do
+      let code = ":true && :true"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "boolean 'and' with false result" $ do
+      let code = ":true && :false"
+      let result = run code
+      result `shouldReturn` VMSymbol "false" []
+
+    it "boolean 'not'" $ do
+      let code = "not :false"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
     -- TODO should this work without parentheses?
     it "determines equality between compound symbols" $ do
       let code = "(:test 1 2 :three) == (:test 1 2 :three)"
@@ -682,6 +707,7 @@ K operator precedence / limited set of operators
 K negative numbers (with bias)
 K inequality operators
 K strings (string concatenation, substring, string length)
+- boolean operators
 - runtime errors
 - garbage collection
 

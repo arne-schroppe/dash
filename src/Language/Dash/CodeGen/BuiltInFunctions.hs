@@ -44,7 +44,7 @@ builtInFunctions = [  (bifStringConcatName, 2, [
                         OpcStrLen 0 0,
                         OpcRet 0
                       ]),
-                      (bifSubStringName, 3, [
+                      (bifSubStringName, 3, [ -- TODO truncate length if needed
                         OpcNewStr 3 1,
                         OpcLoadI 6 1,
                         OpcLoadI 7 0, -- counter
