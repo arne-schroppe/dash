@@ -181,7 +181,6 @@ compilePrimOp primop reg = case primop of
   NPrimOpEq a b  -> compileBinaryPrimOp OpcEq  a b
   NPrimOpLessThan a b    -> compileBinaryPrimOp OpcLT a b
   NPrimOpGreaterThan a b -> compileBinaryPrimOp OpcGT a b
-  -- NPrimOpStrConcat a b -> compileFunAp reg bifStringConcatName [a, b] False
   where
     compileBinaryPrimOp op a b = do
       ra <- getReg a

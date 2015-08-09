@@ -1098,7 +1098,6 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int character = char_pointer[index];
 
         get_reg(result_reg) = make_tagged_val(character, vm_tag_number);
-        fprintf(stderr, "get String : %s %i\n", char_pointer, index);
 
       }
       break;
@@ -1139,9 +1138,6 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
         char *char_pointer = (char *) (str_pointer + string_header_size);
         char_pointer[index] = (char) character;
-
-        fprintf(stderr, "String : %s %i\n", char_pointer, index);
-
       }
       break;
 

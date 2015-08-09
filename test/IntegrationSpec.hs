@@ -657,6 +657,11 @@ spec = do
       let result = run code
       result `shouldReturn` VMString "abcdef"
 
+    it "creates a sub-strings" $ do
+      let code =  " s1 = \"abcdefghijklmn\" \n\
+                  \ sub-string 2 5 s1"
+      let result = run code
+      result `shouldReturn` VMString "cdefg"
 
 {-
 What's missing:
