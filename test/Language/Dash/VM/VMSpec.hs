@@ -361,3 +361,29 @@ spec = do
       decodedResult <- decode result [] []
       decodedResult `shouldBe` (VMString "")
 
+    it "copies a string" $ do
+      let loop = (-6);
+      let end = 4;
+      let ctable = [ encodeStringHeader 5 2,
+                     encodeStringChunk 'd' 'a' 's' 'h',
+                     encodeStringChunk '!' '\0' '\0' '\0' ]
+      let prog = [[ OpcLoadStr 6 (mkConstAddr 0),
+                    OpcStrLen 1 6,
+                    OpcLoadI 2 0, -- index
+                    OpcLoadI 5 1,
+                    OpcNewStr 3 1,
+                    -- loop:
+                    OpcEq 7 2 1,
+                    OpcJmpTrue 7 end,
+                    OpcGetChar 4 6 2,
+                    OpcPutChar 4 3 2,
+                    OpcAdd 2 2 5,
+                    OpcJmp loop,
+                    -- end:
+                    OpcMove 0 3,
+                    OpcRet 0 ]]
+      result <- runProgTbl ctable prog
+      decodedResult <- decode result ctable []
+      decodedResult `shouldBe` (VMString "dash!")
+
+

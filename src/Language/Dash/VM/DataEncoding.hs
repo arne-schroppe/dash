@@ -71,7 +71,7 @@ decodeDynamicString addr ctable = do
   stringHeader <- getVMHeapValue addr
   let (_, numChunks) = decodeStringHeader stringHeader
   stringBody <- getVMHeapArray (addr + stringHeaderLength) numChunks
-  let decodedChunks = mapM decodeStringChunk stringBody
+  let decodedChunks = map decodeStringChunk stringBody
   let str = concat decodedChunks
   return $ VMString str
 
@@ -110,18 +110,18 @@ decodeStringHeader v = (fromIntegral $ (v .&. 0xFFFF0000) `rotateL` 16,
 
 encodeStringChunk :: Char -> Char -> Char -> Char -> VMWord
 encodeStringChunk c1 c2 c3 c4 =
-  (fromIntegral $ castCharToCChar c1) `shiftL` (3 * 8)
-  .|. (fromIntegral $ castCharToCChar c2) `shiftL` (2 * 8)
-  .|. (fromIntegral $ castCharToCChar c3) `shiftL` (1 * 8)
-  .|. (fromIntegral $ castCharToCChar c4)
+  (fromIntegral $ castCharToCChar c4) `shiftL` (3 * 8)
+  .|. (fromIntegral $ castCharToCChar c3) `shiftL` (2 * 8)
+  .|. (fromIntegral $ castCharToCChar c2) `shiftL` (1 * 8)
+  .|. (fromIntegral $ castCharToCChar c1)
 
 
 decodeStringChunk :: VMWord -> String
 decodeStringChunk encoded =
-  let c1 = castCCharToChar $ fromIntegral $ (encoded .&. 0xFF000000) `rotateR` (3 * 8) in
-  let c2 = castCCharToChar $ fromIntegral $ (encoded .&. 0x00FF0000) `rotateR` (2 * 8) in
-  let c3 = castCCharToChar $ fromIntegral $ (encoded .&. 0x0000FF00) `rotateR` (1 * 8) in
-  let c4 = castCCharToChar $ fromIntegral $ (encoded .&. 0x000000FF) in
+  let c4 = castCCharToChar $ fromIntegral $ (encoded .&. 0xFF000000) `rotateR` (3 * 8) in
+  let c3 = castCCharToChar $ fromIntegral $ (encoded .&. 0x00FF0000) `rotateR` (2 * 8) in
+  let c2 = castCCharToChar $ fromIntegral $ (encoded .&. 0x0000FF00) `rotateR` (1 * 8) in
+  let c1 = castCCharToChar $ fromIntegral $ (encoded .&. 0x000000FF) in
   let str = [c1, c2, c3, c4] in
   filter (/= '\0') str
 

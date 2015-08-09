@@ -35,8 +35,8 @@ typedef enum {
   OP_LOAD_str = 23,
   OP_STR_LEN = 24,
   OP_NEW_STR = 25,
-  // OP_STR_SUB = 26,
-  // OP_STR_REV = 27,
+  OP_GET_CHAR = 26,
+  OP_PUT_CHAR = 27,
   OP_LT = 28,
   OP_GT = 29,
   OP_JMP_TRUE = 30,
@@ -93,10 +93,12 @@ typedef enum {
 #define op_set_sym_field(symr, r1, n) (instr_rrr(OP_SET_SYM_FIELD, symr, r1, n)) // heap sym addr reg, new value reg, field index
 #define op_load_str(r0, i) (instr_ri(OP_LOAD_str, r0, i)) // result reg, const addr
 #define op_str_len(r0, r1) (instr_rrr(OP_STR_LEN, r0, r1, 0))
+#define op_new_str(r0, r1) (instr_rrr(OP_NEW_STR, r0, r1, 0))
+#define op_get_char(r0, r1, r2) (instr_rrr(OP_GET_CHAR, r0, r1, r2))
+#define op_put_char(r0, r1, r2) (instr_rrr(OP_PUT_CHAR, r0, r1, r2))
 #define op_lt(r0, r1, r2) (instr_rrr(OP_LT, r0, r1, r2))
 #define op_gt(r0, r1, r2) (instr_rrr(OP_GT, r0, r1, r2))
 #define op_jmp_true(b, n) (instr_ri(OP_JMP_TRUE, b, n))
-#define op_new_str(r0, r1) (instr_rrr(OP_NEW_STR, r0, r1, 0))
 
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
 // #define op_space(n) (instr_ri(OP_SPACE, 0, n))

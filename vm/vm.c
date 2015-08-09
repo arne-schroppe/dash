@@ -1018,6 +1018,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       }
       break;
 
+
       case OP_NEW_STR: {
         int result_reg = get_arg_r0(instr);
         check_reg(result_reg);
@@ -1044,6 +1045,92 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         *str_pointer = string_header(length, num_chunks);
 
         get_reg(result_reg) = make_tagged_val(string_address, vm_tag_dynamic_string);
+
+      }
+      break;
+
+
+      case OP_GET_CHAR: {
+        int result_reg = get_arg_r0(instr);
+        check_reg(result_reg);
+        check_reg(get_arg_r1(instr));
+        check_reg(get_arg_r2(instr));
+
+        vm_value str = get_reg(get_arg_r1(instr));
+        vm_value str_tag = get_tag(str);
+        if(str_tag != vm_tag_string && str_tag != vm_tag_dynamic_string) {
+          fprintf(stderr, "Expected a string, got tag: %d\n", str_tag);
+          is_running = false;
+          break;
+        }
+
+        int str_addr = get_val(str);
+        vm_value *str_pointer;
+
+        if(str_tag == vm_tag_string) {
+          str_pointer = const_table + str_addr;
+        }
+        else {
+          str_pointer = heap_get_pointer(str_addr);
+        }
+
+        vm_value str_header = *str_pointer;
+
+        int index = get_reg(get_arg_r2(instr)) - number_bias;
+        int str_length = string_length(str_header);
+        if(index < 0 || index > str_length) {
+          fprintf(stderr, "Illegal string index: %d\n", index);
+          is_running = false;
+          break;
+        }
+
+        char *char_pointer = (char *) (str_pointer + string_header_size);
+        int character = char_pointer[index];
+
+        get_reg(result_reg) = make_tagged_val(character, vm_tag_number);
+        fprintf(stderr, "get String : %s %i\n", char_pointer, index);
+
+      }
+      break;
+
+
+      case OP_PUT_CHAR: {
+        check_reg(get_arg_r0(instr));
+        check_reg(get_arg_r1(instr));
+        check_reg(get_arg_r2(instr));
+
+        vm_value str = get_reg(get_arg_r1(instr));
+        vm_value str_tag = get_tag(str);
+        if(str_tag != vm_tag_dynamic_string) {
+          fprintf(stderr, "Expected a dynamic string, got tag: %d\n", str_tag);
+          is_running = false;
+          break;
+        }
+
+        int character = get_reg(get_arg_r0(instr));
+        if(get_tag(character) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, got tag: %d\n", str_tag);
+          is_running = false;
+          break;
+        }
+
+        int str_addr = get_val(str);
+        vm_value *str_pointer = heap_get_pointer(str_addr);
+
+        vm_value str_header = *str_pointer;
+
+        int index = get_reg(get_arg_r2(instr)) - number_bias;
+        int str_length = string_length(str_header);
+        if(index < 0 || index > str_length) {
+          fprintf(stderr, "Illegal string index: %d\n", index);
+          is_running = false;
+          break;
+        }
+
+        char *char_pointer = (char *) (str_pointer + string_header_size);
+        char_pointer[index] = (char) character;
+
+        fprintf(stderr, "String : %s %i\n", char_pointer, index);
 
       }
       break;

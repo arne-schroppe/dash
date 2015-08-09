@@ -37,6 +37,8 @@ data Opcode =
   | OpcLoadStr Reg ConstAddr  -- load string
   | OpcStrLen Reg Reg
   | OpcNewStr Reg Reg
+  | OpcGetChar Reg Reg Reg   -- result reg, string reg, index reg
+  | OpcPutChar Reg Reg Reg   -- char reg, string reg, index reg
   | OpcLT Reg Reg Reg
   | OpcGT Reg Reg Reg
   | OpcJmpTrue Reg Int

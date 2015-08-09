@@ -741,32 +741,6 @@ it( creates_a_new_string ) {
   is_equal(result, make_tagged_val(heap_start, vm_tag_dynamic_string));
 }
 
-/*
-0
-r3 <- str_len r1
-r4 <- add r2 r3
-r5 <- new_string r4
-r6 <- load_i 0
-r7 <- load_i 1
-loop1:
-jmp_gte r6 r2 next  -- we could turn this into a jmp_eq and then use existing ops
-r8 <- read_char r0 r6
-write_char r5 r8 r6
-r6 <- add r6 r7
-jmp loop1
-next:
-r6 <- load_i 0
-loop2:
-jmp_gte r6 r3 done
-r8 <- read_char r1 r6
-r9 <- add r2 r6
-write_char r5 r8 r9
-r6 <- add r6 r7
-jmp loop2
-done:
-r0 <- move r5
-ret r0
-*/
 
 
 start_spec(vm_spec)
