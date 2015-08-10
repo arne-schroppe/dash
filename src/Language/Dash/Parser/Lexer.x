@@ -8,7 +8,7 @@ import Debug.Trace
 
 $newl       = [\n\r]
 $alphanum   = [a-zA-Z0-9']
-$alpha      = [a-zA-Z]
+$alpha      = [a-zA-Z_]
 $digit      = [0-9]
 $space      = [\ \t]
 $endline    = [\; $newl]

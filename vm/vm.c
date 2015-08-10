@@ -66,6 +66,7 @@ static vm_value *const_table = 0;
 static int const_table_length = 0;
 
 
+bool check_io_action(vm_value result, vm_instruction *program);
 
 //TODO do this once instead of all the time
 #define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
@@ -479,9 +480,13 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
   reset();
   const_table = ctable;
   const_table_length = ctable_length;
+
+
   bool is_running = true;
 
   debug( printf("----- start %d\n", invocation) );
+
+restart:
   while(is_running && program_pointer < program_length) {
     //debug( print_registers(current_frame) );
 
@@ -1219,8 +1224,128 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
   //fprintf(stderr, "End invocation: %i\n", invocation);
 
   vm_value result = stack[stack_pointer].reg[0];
+
+
+  if(check_io_action(result, program)) {
+    is_running = true;
+    goto restart;
+  }
+
+
   debug( printf("Result: %u\n", result) );
   return result;
+}
+
+
+// TODO put into separate file and keep in sync with compiler
+const int symbol_id_io = 2;
+const int action_id_printline = 3;
+const int action_id_readline = 4;
+const int action_id_return = 5;
+
+// TODO turn into macro, also use it for new_str opcode
+vm_value new_string(size_t length) {
+
+  size_t adjusted_length = length + 1; // allow space for trailing '\0'
+  int num_chunks = adjusted_length / charPerStringChunk;
+  if( (adjusted_length % charPerStringChunk) != 0 ) {
+    num_chunks += charPerStringChunk - (adjusted_length % charPerStringChunk);
+  }
+
+  size_t total_size = string_header_size + num_chunks;
+  heap_address string_address = heap_alloc(total_size);
+  vm_value *str_pointer = heap_get_pointer(string_address);
+
+  memset(str_pointer, 0, total_size * sizeof(vm_value));
+  *str_pointer = string_header(length, num_chunks);
+
+  return string_address;
+}
+
+
+
+bool check_io_action(vm_value result, vm_instruction *program) {
+
+  if(get_tag(result) == vm_tag_dynamic_compound_symbol) {
+
+    vm_value addr = get_val(result);
+    vm_value *p = heap_get_pointer(addr);
+    vm_value header = p[0];
+    if(compound_symbol_id(header) == symbol_id_io) {
+      vm_value action_type = p[1];
+      vm_value action_param = p[2];
+      vm_value next_action = p[3];
+
+      //TODO check that it is a plain symbol
+      int action_id = get_val(action_type);
+
+      vm_value next_param = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+      switch (action_id) {
+
+        case action_id_printline:
+          printf("io print line\n");
+          next_param = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+          break;
+
+        case action_id_readline: {
+            // printf("io read line\n");
+            char *line = NULL;
+            size_t buffer_size = 0;
+            printf("> "); // TODO use parameter as prompt
+            int length = getline(&line, &buffer_size, stdin); //TODO check for -1
+            if(length == -1) {
+              printf("Failure!\n");
+              exit(-1);
+            }
+            else
+            {
+              //cut off trailing newline
+              length -= 1;
+              line[length] = '\0';
+
+              vm_value string_address = new_string(length);
+              vm_value *str_pointer = heap_get_pointer(string_address);
+              vm_value *str_start = str_pointer + 1;
+
+              strcpy((char *)str_start, line);
+              next_param = make_tagged_val(string_address, vm_tag_dynamic_string);
+            }
+          }
+          break;
+
+        case action_id_return:
+          printf("io return\n");
+          break;
+
+        default:
+          printf("Malformed io action\n");
+      }
+
+      if(get_tag(next_action) == vm_tag_function || get_tag(next_action) == vm_tag_pap) {
+        stack_pointer = 0;
+
+        current_frame.reg[0] = next_action;
+        next_frame.reg[0] = next_param;
+        vm_instruction instr = op_gen_ap(0, 0, 1);
+        int return_pointer = do_gen_ap(&current_frame, instr, program);
+        if (return_pointer != -1) {
+          current_frame.return_address = return_pointer;
+          current_frame.result_register = 0;
+
+          return true;
+        }
+      }
+      else {
+        //TODO this doesn't work. Split into is_io_action and execute_io_action or provide enum result
+        printf("No next action\n");
+        result = next_param;
+      }
+    }
+
+
+  }
+
+  return false;
 }
 
 

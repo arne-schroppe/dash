@@ -22,7 +22,7 @@ import           Control.Monad.State                      hiding (state)
 import           Data.Function                            (on)
 import           Data.List
 import qualified Data.Map                                 as Map
-import           Language.Dash.CodeGen.BuiltInDefinitions
+import           Language.Dash.CodeGen.BuiltInDefinitions (builtInSymbols)
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 

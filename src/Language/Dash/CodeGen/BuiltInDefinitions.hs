@@ -23,7 +23,15 @@ listEmptySymbolName = "empty-list"
 
 builtInSymbols :: [(String, SymId)]
 builtInSymbols = [ (falseSymbolName, mkSymId 0)
-                 , (trueSymbolName, mkSymId 1) 
+                 , (trueSymbolName, mkSymId 1)
+
+                  -- IO symbols
+                  -- TODO prevent user from accessing these directly
+                 , ("_io", mkSymId 2)
+                 , ("_io-print-line", mkSymId 3)
+                 , ("_io-read-line", mkSymId 4)
+                 , ("_io-return", mkSymId 5)
+                  -- end IO symbols
                  ]
 
 
@@ -102,4 +110,12 @@ builtInFunctions = [  (bifStringConcatName, 2, [
                       ])
                    ]
 
+
+{-
+preamble :: String
+preamble = "\n\
+\ io-bind action next =  \n\
+\   
+
+-}
 

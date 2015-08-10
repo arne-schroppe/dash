@@ -157,8 +157,8 @@ let chunky = chunk-string 4 combined-lyrics
 
 -- TODO add namespaces / static modules
 do io begin
-  name <- read-line :nil
-  print-line ("Hello " ++ name)
+  name <- io-read-line ""
+  io-print-line ("Hello " ++ name)
 end
 
 
