@@ -1,8 +1,8 @@
 module Language.Dash.Parser.ParserSpec where
 
+import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.IR.Ast
-import           Language.Dash.Constants
-import           Language.Dash.Parser.Lexer  as L
+import           Language.Dash.Parser.Lexer               as L
 import           Language.Dash.Parser.Parser
 import           Test.Hspec
 
@@ -26,18 +26,18 @@ spec = do
 
     it "parses if-then-else as match" $ do
       parse_string "if a then b else c" `shouldBe`
-        (Match (Var "a") [(PatSymbol trueSymbolId [], Var "b"), (PatSymbol falseSymbolId [], Var "c")])
+        (Match (Var "a") [(PatSymbol trueSymbolName [], Var "b"), (PatSymbol falseSymbolName [], Var "c")])
 
     it "parses an empty list" $ do
       parse_string "[]" `shouldBe`
-        LitSymbol listEmptySymbolId []
+        LitSymbol listEmptySymbolName []
 
     it "parses a list" $ do
       parse_string "[1, a, 2]" `shouldBe`
-        LitSymbol listConsSymbolId [LitNumber 1,
-            LitSymbol listConsSymbolId [Var "a",
-            LitSymbol listConsSymbolId [LitNumber 2,
-            LitSymbol listEmptySymbolId []]]]
+        LitSymbol listConsSymbolName [LitNumber 1,
+            LitSymbol listConsSymbolName [Var "a",
+            LitSymbol listConsSymbolName [LitNumber 2,
+            LitSymbol listEmptySymbolName []]]]
 
     -- TODO it should be possible to "call" action2 without a parameter
     it "parses a do-expression" $ do
@@ -53,7 +53,7 @@ spec = do
                             (Lambda ["_"] $
                                 FunAp (Var "maybe-bind") [
                                     FunAp (Var "action2") [LitNumber 0],
-                                    (Lambda ["a"] $ 
+                                    (Lambda ["a"] $
                                         FunAp (Var "maybe-bind") [
                                            FunAp (Var "action3") [Var "a"],
                                            (Lambda ["_"] $
@@ -73,7 +73,7 @@ spec = do
                             (Lambda ["_"] $
                                 FunAp (Var "maybe-bind") [
                                     FunAp (Var "maybe-return") [LitNumber 0],
-                                    (Lambda ["a"] $ 
+                                    (Lambda ["a"] $
                                         FunAp (Var "maybe-bind") [
                                            FunAp (Var "action3") [Var "a"],
                                            (Lambda ["_"] $
@@ -93,7 +93,7 @@ spec = do
                             (Lambda ["_"] $
                                 FunAp (Var "maybe-bind") [
                                     Var "action2",
-                                    (Lambda ["a"] $ 
+                                    (Lambda ["a"] $
                                         FunAp (Var "maybe-bind") [
                                            FunAp (Var "action3") [Var "a"],
                                            (Lambda ["_"] $

@@ -1,10 +1,31 @@
-module Language.Dash.CodeGen.BuiltInFunctions (
+module Language.Dash.CodeGen.BuiltInDefinitions (
   builtInFunctions
+, builtInSymbols
 , bifStringConcatName
+, tupleSymbolName
+, listConsSymbolName
+, listEmptySymbolName
+, trueSymbolName
+, falseSymbolName
 ) where
 
-import Language.Dash.IR.Data
-import Language.Dash.IR.Opcode
+import           Language.Dash.IR.Data
+import           Language.Dash.IR.Opcode
+
+
+
+tupleSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName :: String
+trueSymbolName = "true"
+falseSymbolName = "false"
+tupleSymbolName = "tuple"
+listConsSymbolName = "list"
+listEmptySymbolName = "empty-list"
+
+builtInSymbols :: [(String, SymId)]
+builtInSymbols = [ (falseSymbolName, mkSymId 0)
+                 , (trueSymbolName, mkSymId 1) 
+                 ]
+
 
 bifStringConcatName, bifStringLengthName, bifSubStringName :: String
 bifStringConcatName = "$string-concat"

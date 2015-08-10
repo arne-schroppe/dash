@@ -1,7 +1,7 @@
 module Language.Dash.Normalization.NormalizationSpec where
 
+import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.IR.Ast
-import           Language.Dash.Constants
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.Normalization.Normalization
@@ -24,7 +24,7 @@ spec = do
         norm `shouldBe` (NAtom $ NNumber 3)
 
       it "normalizes a simple symbol directly" $ do
-        let builtInSymbols = [falseSymbolId, trueSymbolId]
+        let builtInSymbols = [falseSymbolName, trueSymbolName]
         let numBuiltInSymbols = length builtInSymbols
         let ast = LitSymbol "Test" []
         let (norm, _, syms) = normalize ast
@@ -179,7 +179,7 @@ spec = do
         let expected = NLet (NVar (lvn 0) NLocalVar) (NNumber 2) $
                        NLet (NVar (lvn 1) NLocalVar) (NMatchBranch [] [] $ NAtom $ NNumber 33) $
                        NLet (NVar (lvn 2) NLocalVar) (NMatchBranch [] [] $ NAtom $ NNumber 44) $
-                       NAtom $ NMatch 0 (NVar (lvn 0) NLocalVar) (mkConstAddr 0) 
+                       NAtom $ NMatch 0 (NVar (lvn 0) NLocalVar) (mkConstAddr 0)
                               [ ([], [], NVar (lvn 1) NLocalVar)
                               , ([], [], NVar (lvn 2) NLocalVar)]
         norm `shouldBe` expected
@@ -226,7 +226,7 @@ spec = do
         let expected = NLet (NVar (lvn 0) NLocalVar) (NNumber 2) $
                        NLet (NVar (lvn 1) NLocalVar) (NMatchBranch [] ["n"] $ NAtom $ NVarExpr $ NVar "n" NFunParam) $
                        NLet (NVar (lvn 2) NLocalVar) (NMatchBranch [] ["m"] $ NAtom $ NVarExpr $ NVar "m" NFunParam) $
-                       NAtom $ NMatch 1 (NVar (lvn 0) NLocalVar) (mkConstAddr 0) 
+                       NAtom $ NMatch 1 (NVar (lvn 0) NLocalVar) (mkConstAddr 0)
                                [ ([], ["n"], NVar (lvn 1) NLocalVar)
                                , ([], ["m"], NVar (lvn 2) NLocalVar)]
         norm `shouldBe` expected
@@ -245,7 +245,7 @@ spec = do
         let expected = NLet (NVar (lvn 0) NLocalVar) (NNumber 2) $
                        NLet (NVar (lvn 1) NLocalVar) (NMatchBranch [] ["n", "o", "p"] $ NAtom $ NVarExpr $ NVar "n" NFunParam) $
                        NLet (NVar (lvn 2) NLocalVar) (NMatchBranch [] ["m", "l"] $ NAtom $ NVarExpr $ NVar "m" NFunParam) $
-                       NAtom $ NMatch 3 (NVar (lvn 0) NLocalVar) (mkConstAddr 0) 
+                       NAtom $ NMatch 3 (NVar (lvn 0) NLocalVar) (mkConstAddr 0)
                                [ ([], ["n", "o", "p"], NVar (lvn 1) NLocalVar)
                                , ([], ["m", "l"], NVar (lvn 2) NLocalVar)]
         ctable `shouldBe` expectedCTable
@@ -395,8 +395,8 @@ spec = do
       it "has :true and :false as built-in symbols" $ do
         let ast = LocalBinding (Binding "x" $ LitSymbol "a" []) $
                   LocalBinding (Binding "y" $ LitSymbol "b" []) $
-                  LocalBinding (Binding "t" $ LitSymbol trueSymbolId []) $
-                  LocalBinding (Binding "f" $ LitSymbol falseSymbolId []) $
+                  LocalBinding (Binding "t" $ LitSymbol trueSymbolName []) $
+                  LocalBinding (Binding "f" $ LitSymbol falseSymbolName []) $
                   LitNumber 0
         let norm = pureNorm ast
         let expected = NLet (NVar "x" NLocalVar) (NPlainSymbol $ mkSymId 2) $

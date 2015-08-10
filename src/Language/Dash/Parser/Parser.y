@@ -3,7 +3,7 @@ module Language.Dash.Parser.Parser where
 
 import Language.Dash.Parser.Lexer
 import Language.Dash.IR.Ast
-import Language.Dash.Constants
+import Language.Dash.CodeGen.BuiltInDefinitions
 
 }
 
@@ -117,7 +117,7 @@ NonIdentNonSymbolSimpleExpr:
   | '(' Expr star(TupleNextExpr) ')' {
                   case $3 of
                   [] -> $2
-                  es -> LitSymbol tupleSymbolId ($2 : $3) }
+                  es -> LitSymbol tupleSymbolName ($2 : $3) }
 
 TupleNextExpr:
     ',' Expr   { $2 }
@@ -166,10 +166,10 @@ List:
     '[' ListNext ']'       { $2 }
 
 ListNext:
-    Expr              { LitSymbol listConsSymbolId [$1, LitSymbol listEmptySymbolId []] }
-  | Expr ',' ListNext { LitSymbol listConsSymbolId [$1, $3] }
-  | Expr '|' Expr     { LitSymbol listConsSymbolId [$1, $3] }
-  |                   { LitSymbol listEmptySymbolId [] }
+    Expr              { LitSymbol listConsSymbolName [$1, LitSymbol listEmptySymbolName []] }
+  | Expr ',' ListNext { LitSymbol listConsSymbolName [$1, $3] }
+  | Expr '|' Expr     { LitSymbol listConsSymbolName [$1, $3] }
+  |                   { LitSymbol listEmptySymbolName [] }
 
 
 
@@ -205,7 +205,7 @@ ModuleFunDef:
 
 IfElse:
     if opt(eol) Expr opt(eol) then opt(eol) Expr opt(eol) else opt(eol) Expr  {
-      Match $3 [(PatSymbol trueSymbolId [], $7), (PatSymbol falseSymbolId [], $11)]
+      Match $3 [(PatSymbol trueSymbolName [], $7), (PatSymbol falseSymbolName [], $11)]
     }
 
 
@@ -226,7 +226,7 @@ SimplePattern:
   | '(' Pattern star(TupleNextPattern) ')' { 
       case $3 of
         [] -> $2
-        _  -> PatSymbol tupleSymbolId ($2 : $3)
+        _  -> PatSymbol tupleSymbolName ($2 : $3)
     }
   | PatList  { $1 }
 
@@ -244,11 +244,11 @@ PatList:
     '[' PatListNext ']'  { $2 }
 
 PatListNext:
-    Pattern                  { PatSymbol listConsSymbolId [$1, PatSymbol listEmptySymbolId []] }
-  | Pattern ',' PatListNext  { PatSymbol listConsSymbolId [$1, $3] }
-  | Pattern '|' PatId        { PatSymbol listConsSymbolId [$1, $3] }
-  | Pattern '|' PatList      { PatSymbol listConsSymbolId [$1, $3] }
-  |                          { PatSymbol listEmptySymbolId [] }
+    Pattern                  { PatSymbol listConsSymbolName [$1, PatSymbol listEmptySymbolName []] }
+  | Pattern ',' PatListNext  { PatSymbol listConsSymbolName [$1, $3] }
+  | Pattern '|' PatId        { PatSymbol listConsSymbolName [$1, $3] }
+  | Pattern '|' PatList      { PatSymbol listConsSymbolName [$1, $3] }
+  |                          { PatSymbol listEmptySymbolName [] }
 
 
 DoExpr:

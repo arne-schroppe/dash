@@ -2,7 +2,7 @@ module IntegrationSpec where
 
 import           Test.Hspec
 import           Language.Dash.API
-import           Language.Dash.Constants
+import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.VM.DataEncoding
 import           Numeric
 
@@ -623,16 +623,16 @@ spec = do
     it "has tuples" $ do
       let code = "(1, 2, :sym)"
       let result = run code
-      result `shouldReturn` VMSymbol tupleSymbolId [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
+      result `shouldReturn` VMSymbol tupleSymbolName [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
 
 
     it "has lists" $ do
       let code = "[1, 2, :sym]"
       let result = run code
-      result `shouldReturn` VMSymbol listConsSymbolId [VMNumber 1,
-                              VMSymbol listConsSymbolId [ VMNumber 2,
-                              VMSymbol listConsSymbolId [ VMSymbol "sym" [], 
-                              VMSymbol listEmptySymbolId []]]]
+      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 1,
+                              VMSymbol listConsSymbolName [ VMNumber 2,
+                              VMSymbol listConsSymbolName [ VMSymbol "sym" [], 
+                              VMSymbol listEmptySymbolName []]]]
 
 
     it "matches an empty list" $ do
@@ -663,9 +663,9 @@ spec = do
                  \   [1, 2 | tl] -> tl   \n\
                  \ end"
       let result = run code
-      result `shouldReturn` VMSymbol listConsSymbolId [VMNumber 3,
-                                VMSymbol listConsSymbolId [VMNumber 4,
-                                VMSymbol listEmptySymbolId []]]
+      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 3,
+                                VMSymbol listConsSymbolName [VMNumber 4,
+                                VMSymbol listEmptySymbolName []]]
 
 
     it "matches a list's tail with a nested pattern" $ do
@@ -675,19 +675,19 @@ spec = do
                  \   [1 | [2 | [ 3 | tl]]] -> tl        \n\
                  \ end"
       let result = run code
-      result `shouldReturn` VMSymbol listConsSymbolId [VMNumber 4,
-                                VMSymbol listConsSymbolId [VMNumber 5,
-                                VMSymbol listEmptySymbolId []]]
+      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 4,
+                                VMSymbol listConsSymbolName [VMNumber 5,
+                                VMSymbol listEmptySymbolName []]]
 
     it "cons a list" $ do
       let code = " tail = [3, 4] \n\
                  \ [1, 2 | tail]"
       let result = run code
-      result `shouldReturn` VMSymbol listConsSymbolId [VMNumber 1,
-                                VMSymbol listConsSymbolId [VMNumber 2,
-                                VMSymbol listConsSymbolId [VMNumber 3,
-                                VMSymbol listConsSymbolId [VMNumber 4,
-                                VMSymbol listEmptySymbolId []]]]]
+      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 1,
+                                VMSymbol listConsSymbolName [VMNumber 2,
+                                VMSymbol listConsSymbolName [VMNumber 3,
+                                VMSymbol listConsSymbolName [VMNumber 4,
+                                VMSymbol listEmptySymbolName []]]]]
 
     it "has negative numbers" $ do
       let code = " 0 - 7 + 3"

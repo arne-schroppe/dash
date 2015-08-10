@@ -3,7 +3,7 @@ module Language.Dash.Normalization.Normalization (
 ) where
 
 import           Control.Monad.State                            hiding (state)
-import           Language.Dash.CodeGen.BuiltInFunctions         (builtInFunctions)
+import           Language.Dash.CodeGen.BuiltInDefinitions       (builtInFunctions)
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst

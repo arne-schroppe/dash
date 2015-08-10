@@ -18,13 +18,13 @@ module Language.Dash.Normalization.NormalizationState (
 ) where
 
 
-import           Control.Monad.State   hiding (state)
-import           Data.Function         (on)
+import           Control.Monad.State                      hiding (state)
+import           Data.Function                            (on)
 import           Data.List
-import qualified Data.Map              as Map
+import qualified Data.Map                                 as Map
+import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
-import           Language.Dash.Constants
 
 -- TODO this module's interface is way too fat !
 -- TODO give all values unique names
@@ -43,8 +43,6 @@ data NormEnv = NormEnv
   } deriving (Eq, Show)
 
 
-builtInSymbols :: [(String, SymId)]
-builtInSymbols = [ (falseSymbolId, mkSymId 0), (trueSymbolId, mkSymId 1) ]
 
 emptyNormEnv :: NormEnv
 emptyNormEnv = NormEnv

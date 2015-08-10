@@ -5,7 +5,7 @@ module Language.Dash.CodeGen.CodeGen (
 import           Control.Monad.State
 import           Data.Foldable
 import           Data.Maybe                             (catMaybes)
-import           Language.Dash.CodeGen.BuiltInFunctions
+import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.CodeGen.CodeGenState
 import           Language.Dash.Constants
 import           Language.Dash.IR.Data

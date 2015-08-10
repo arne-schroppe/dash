@@ -21,7 +21,7 @@ library
                     , Language.Dash.Parser.Parser
                     , Language.Dash.CodeGen.CodeGen
                     , Language.Dash.CodeGen.CodeGenState
-                    , Language.Dash.CodeGen.BuiltInFunctions
+                    , Language.Dash.CodeGen.BuiltInDefinitions
                     , Language.Dash.Normalization.Normalization
                     , Language.Dash.Normalization.NormalizationState
                     , Language.Dash.Normalization.Recursion
