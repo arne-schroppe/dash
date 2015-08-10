@@ -38,3 +38,66 @@ spec = do
             LitSymbol listConsSymbolId [Var "a",
             LitSymbol listConsSymbolId [LitNumber 2,
             LitSymbol listEmptySymbolId []]]]
+
+    -- TODO it should be possible to "call" action2 without a parameter
+    it "parses a do-expression" $ do
+      let source = " do maybe begin   \n\
+                   \   action1 1 2    \n\
+                   \   a <- action2 0   \n\
+                   \   action3 a      \n\
+                   \   return b       \n\
+                   \ end"
+      let parsed = parse_string source
+      parsed `shouldBe` (FunAp (Var "maybe-bind") [
+                            FunAp (Var "action1") [LitNumber 1, LitNumber 2],
+                            (Lambda ["_"] $
+                                FunAp (Var "maybe-bind") [
+                                    FunAp (Var "action2") [LitNumber 0],
+                                    (Lambda ["a"] $ 
+                                        FunAp (Var "maybe-bind") [
+                                           FunAp (Var "action3") [Var "a"],
+                                           (Lambda ["_"] $
+                                              FunAp (Var "maybe-return") [Var "b"])])])])
+
+
+    it "parses a do-expression 2" $ do
+      let source = " do maybe begin   \n\
+                   \   action1 1 2    \n\
+                   \   a <- return 0  \n\
+                   \   action3 a      \n\
+                   \   return b       \n\
+                   \ end"
+      let parsed = parse_string source
+      parsed `shouldBe` (FunAp (Var "maybe-bind") [
+                            FunAp (Var "action1") [LitNumber 1, LitNumber 2],
+                            (Lambda ["_"] $
+                                FunAp (Var "maybe-bind") [
+                                    FunAp (Var "maybe-return") [LitNumber 0],
+                                    (Lambda ["a"] $ 
+                                        FunAp (Var "maybe-bind") [
+                                           FunAp (Var "action3") [Var "a"],
+                                           (Lambda ["_"] $
+                                              FunAp (Var "maybe-return") [Var "b"])])])])
+
+
+    it "parses a do-expression 3" $ do
+      let source = " do maybe begin   \n\
+                   \   action1 1 2    \n\
+                   \   a <- action2   \n\
+                   \   action3 a      \n\
+                   \   return b       \n\
+                   \ end"
+      let parsed = parse_string source
+      parsed `shouldBe` (FunAp (Var "maybe-bind") [
+                            FunAp (Var "action1") [LitNumber 1, LitNumber 2],
+                            (Lambda ["_"] $
+                                FunAp (Var "maybe-bind") [
+                                    Var "action2",
+                                    (Lambda ["a"] $ 
+                                        FunAp (Var "maybe-bind") [
+                                           FunAp (Var "action3") [Var "a"],
+                                           (Lambda ["_"] $
+                                              FunAp (Var "maybe-return") [Var "b"])])])])
+
+
+

@@ -11,6 +11,10 @@ bifStringConcatName = "$string-concat"
 bifStringLengthName = "string-length"
 bifSubStringName = "sub-string"
 
+
+-- TODO instead of "special" handling for primops, we could
+-- also add a bif for every primop and then inline some functions
+-- (e.g. those with less than n opcodes, etc)
 builtInFunctions :: [(Name, Int, [Opcode])]
 builtInFunctions = [  (bifStringConcatName, 2, [
                         OpcStrLen 2 0,

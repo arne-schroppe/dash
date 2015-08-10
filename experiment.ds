@@ -135,9 +135,9 @@ replicate n v =
     _ -> [v | replicate (n - 1) v]
   end
 
--- lyrics = (concat-list (replicate 16 (sub-string 2 2 "banana")) ["Batmaaan!"])
+lyrics = (concat-list (replicate 16 (sub-string 2 2 "banana")) ["Batmaaan!"])
 
--- foldr ( .\ a b = a ++ " " ++ b ) "" lyrics
+combined-lyrics = foldr ( .\ a b = a ++ " " ++ b ) "" lyrics
 
 chunk-string n s =
   len = string-length s
@@ -150,7 +150,15 @@ chunk-string n s =
     if rest-length <= n then
       [chunk, rest]
     else
-      [chunk|chunk-string n rest]
+      [chunk | chunk-string n rest]
 
-chunk-string 2 "abcdefgh"
+
+let chunky = chunk-string 4 combined-lyrics
+
+-- TODO add namespaces / static modules
+do io begin
+  name <- read-line :nil
+  print-line ("Hello " ++ name)
+end
+
 

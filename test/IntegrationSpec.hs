@@ -738,9 +738,10 @@ K operator precedence / limited set of operators
 K negative numbers (with bias)
 K inequality operators
 K strings (string concatenation, substring, string length)
-- boolean operators
-- runtime errors
+K boolean operators
+- runtime errors ?
 - garbage collection
+- IO
 
 - `type` method ... represents types as symbols. Should it also give
   data, e.g. :symbol name args (where name is a string and args a list)? 

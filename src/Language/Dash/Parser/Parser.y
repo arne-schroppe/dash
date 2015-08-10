@@ -263,11 +263,11 @@ DoLine:
 
 
 DoLineExpr:
-    Ident          { $1 }
+    Ident              { $1 }
   | NonIdentSimpleExpr { $1 }
-  | LocalDoBinding        { $1 }  
-  | MatchExpr     { $1 }
-  | FunAp          { $1 }
+  | LocalDoBinding     { $1 }
+  | MatchExpr          { $1 }
+  | FunAp              { $1 }
 
 
 FunAp:
@@ -286,15 +286,22 @@ LocalDoBinding:
 makeMonad :: String -> [(String, Expr)] -> Expr
 makeMonad monad lines =
   case (reverse lines) of
-    (_, call) : []     -> call
-    ("_", call) : rest -> foldl (\acc (nid, ncall) ->
-          let ns = (Namespace monad (Var "bind")) in
-          let args = [ncall, Lambda [nid] acc] in
-          FunAp ns args)
-        call rest
+    (_, call) : []     -> adjustNameForMonad call monad
+    ("_", action) : rest ->
+            foldl (\acc (varname, action') ->
+                -- TODO use namespace here instead of string concatenation
+                let qname = (Var $ monad ++ "-bind") in -- (Namespace monad (Var "bind")) in
+                let args = [(adjustNameForMonad action' monad), Lambda [varname] acc] in
+                FunAp qname args) (adjustNameForMonad action monad) rest
     (_, _) : rest -> error "Last line in do-block can't be an assignment"
     [] -> error "Malformed do-block"
 
+
+adjustNameForMonad :: Expr -> String -> Expr
+adjustNameForMonad e mon =
+  case e of
+    FunAp (Var "return") a -> FunAp (Var (mon ++ "-return")) a
+    _ -> e
 
 parseError :: [Token] -> a
 parseError ts = error $ "Parse error " ++ (show ts)
