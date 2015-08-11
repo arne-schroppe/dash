@@ -1,25 +1,9 @@
 
 
--- TODO allow multiple params in actions
-io-bind action next =
-  match action begin
-    :_io type param (:false) -> :_io type param next
-    _ -> :error "Malformed io action"
-  end
-
-io-return a =
-  :_io :_io-return a :false
-
-
-io-read-line a =
-  :_io :_io-read-line a :false
-
-io-print-line a =
-  :_io :_io-print-line a :false
-
-
 do io begin
-  name <- io-read-line ""
-  io-print-line ("Hello " ++ name)
-  -- return ("Hello " ++ name)
+  prompt <- return "What is your name? "
+  name <- io-read-line prompt
+  io-print-line ("Hello, " ++ name ++ "!")
 end
+
+

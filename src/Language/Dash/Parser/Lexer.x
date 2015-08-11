@@ -7,7 +7,7 @@ import Debug.Trace
 %wrapper "monadUserState"
 
 $newl       = [\n\r]
-$alphanum   = [a-zA-Z0-9']
+$alphanum   = [a-zA-Z0-9'_]
 $alpha      = [a-zA-Z_]
 $digit      = [0-9]
 $space      = [\ \t]

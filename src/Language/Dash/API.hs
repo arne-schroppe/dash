@@ -8,6 +8,7 @@ module Language.Dash.API
 import qualified Data.Map                                  as Map
 import           Language.Dash.Asm.Assembler
 import           Language.Dash.Asm.DataAssembler
+import           Language.Dash.CodeGen.BuiltInDefinitions (preamble)
 import           Language.Dash.CodeGen.CodeGen
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
@@ -44,7 +45,8 @@ import           Prelude                                   hiding (lex)
 
 run :: String -> IO VMValue
 run prog = do
-  (value, ctable, symNames) <- prog
+  let prog' = preamble ++ prog
+  (value, ctable, symNames) <- prog'
                                |> lex
                                |> parse
                                |> normalize

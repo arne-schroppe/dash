@@ -7,6 +7,7 @@ module Language.Dash.CodeGen.BuiltInDefinitions (
 , listEmptySymbolName
 , trueSymbolName
 , falseSymbolName
+, preamble
 ) where
 
 import           Language.Dash.IR.Data
@@ -27,10 +28,7 @@ builtInSymbols = [ (falseSymbolName, mkSymId 0)
 
                   -- IO symbols
                   -- TODO prevent user from accessing these directly
-                 , ("_io", mkSymId 2)
-                 , ("_io-print-line", mkSymId 3)
-                 , ("_io-read-line", mkSymId 4)
-                 , ("_io-return", mkSymId 5)
+                 , ("_internal_io", mkSymId 2)
                   -- end IO symbols
                  ]
 
@@ -111,11 +109,26 @@ builtInFunctions = [  (bifStringConcatName, 2, [
                    ]
 
 
-{-
+returnActionId, readLineActionId, printLineActionId :: Int
+returnActionId = 0
+readLineActionId = 1
+printLineActionId = 2
+
 preamble :: String
 preamble = "\n\
-\ io-bind action next =  \n\
-\   
-
--}
+\  io-bind action next =                                 \n\
+\    match action begin                                  \n\
+\      :_internal_io type param (:false) -> :_internal_io type param next  \n\
+\      _ -> :error \"Malformed io action\"               \n\
+\    end                                                 \n\
+\                                                        \n\
+\  io-return a =                                         \n\
+\    :_internal_io " ++ (show returnActionId) ++ " a :false       \n\
+\                                                        \n\
+\                                                        \n\
+\  io-read-line a =                                      \n\
+\    :_internal_io " ++ (show readLineActionId) ++ " a :false     \n\
+\                                                        \n\
+\  io-print-line a =                                     \n\
+\    :_internal_io " ++ (show printLineActionId) ++ " a :false    "
 

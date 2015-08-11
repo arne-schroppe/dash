@@ -66,7 +66,14 @@ static vm_value *const_table = 0;
 static int const_table_length = 0;
 
 
-bool check_io_action(vm_value result, vm_instruction *program);
+
+typedef enum {
+  no_io_action = 0,
+  intermediary_io_action = 1,
+  final_io_action = 2
+} io_action_result;
+
+io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result);
 
 //TODO do this once instead of all the time
 #define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
@@ -1038,14 +1045,14 @@ restart:
         check_reg(result_reg);
         check_reg(get_arg_r1(instr));
 
-        vm_value r1_value = get_reg(get_arg_r1(instr));
-        if(get_tag(r1_value) != vm_tag_number) {
-          fprintf(stderr, "Expected a number, got tag: %d\n", get_tag(r1_value));
+        vm_value length_value = get_reg(get_arg_r1(instr));
+        if(get_tag(length_value) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, got tag: %d\n", get_tag(length_value));
           is_running = false;
           break;
         }
 
-        int length = r1_value - number_bias;
+        int length = length_value - number_bias;
         if(length < 0) {
           fprintf(stderr, "Negative length for new string, got: %d\n", length);
           is_running = false;
@@ -1226,9 +1233,25 @@ restart:
   vm_value result = stack[stack_pointer].reg[0];
 
 
-  if(check_io_action(result, program)) {
-    is_running = true;
-    goto restart;
+  vm_value io_result_value = 0;
+  io_action_result action_result = check_io_action(result, program, &io_result_value);
+
+  switch(action_result) {
+    case no_io_action:
+      // do nothing
+      break;
+
+    case intermediary_io_action:
+      is_running = true;
+      goto restart;
+
+    case final_io_action:
+      result = io_result_value;
+      break;
+
+    default:
+      fprintf(stderr, "Unknown result of io action: %d\n", action_result);
+      exit(-1);
   }
 
 
@@ -1239,9 +1262,9 @@ restart:
 
 // TODO put into separate file and keep in sync with compiler
 const int symbol_id_io = 2;
-const int action_id_printline = 3;
-const int action_id_readline = 4;
-const int action_id_return = 5;
+const int action_id_printline = 2;
+const int action_id_readline = 1;
+const int action_id_return = 0;
 
 // TODO turn into macro, also use it for new_str opcode
 vm_value new_string(size_t length) {
@@ -1263,94 +1286,133 @@ vm_value new_string(size_t length) {
 }
 
 
+char *read_string(vm_value string_value) {
 
-bool check_io_action(vm_value result, vm_instruction *program) {
-
-  if(get_tag(result) == vm_tag_dynamic_compound_symbol) {
-
-    vm_value addr = get_val(result);
-    vm_value *p = heap_get_pointer(addr);
-    vm_value header = p[0];
-    if(compound_symbol_id(header) == symbol_id_io) {
-      vm_value action_type = p[1];
-      vm_value action_param = p[2];
-      vm_value next_action = p[3];
-
-      //TODO check that it is a plain symbol
-      int action_id = get_val(action_type);
-
-      vm_value next_param = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
-      switch (action_id) {
-
-        case action_id_printline:
-          printf("io print line\n");
-          next_param = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
-          break;
-
-        case action_id_readline: {
-            // printf("io read line\n");
-            char *line = NULL;
-            size_t buffer_size = 0;
-            printf("> "); // TODO use parameter as prompt
-            int length = getline(&line, &buffer_size, stdin); //TODO check for -1
-            if(length == -1) {
-              printf("Failure!\n");
-              exit(-1);
-            }
-            else
-            {
-              //cut off trailing newline
-              length -= 1;
-              line[length] = '\0';
-
-              vm_value string_address = new_string(length);
-              vm_value *str_pointer = heap_get_pointer(string_address);
-              vm_value *str_start = str_pointer + 1;
-
-              strcpy((char *)str_start, line);
-              next_param = make_tagged_val(string_address, vm_tag_dynamic_string);
-            }
-          }
-          break;
-
-        case action_id_return:
-          printf("io return\n");
-          break;
-
-        default:
-          printf("Malformed io action\n");
-      }
-
-      if(get_tag(next_action) == vm_tag_function || get_tag(next_action) == vm_tag_pap) {
-        stack_pointer = 0;
-
-        current_frame.reg[0] = next_action;
-        next_frame.reg[0] = next_param;
-        vm_instruction instr = op_gen_ap(0, 0, 1);
-        int return_pointer = do_gen_ap(&current_frame, instr, program);
-        if (return_pointer != -1) {
-          current_frame.return_address = return_pointer;
-          current_frame.result_register = 0;
-
-          return true;
-        }
-      }
-      else {
-        //TODO this doesn't work. Split into is_io_action and execute_io_action or provide enum result
-        printf("No next action\n");
-        result = next_param;
-      }
-    }
-
-
+  if(get_tag(string_value) != vm_tag_dynamic_string
+      && get_tag(string_value) != vm_tag_string) {
+    fprintf(stderr, "Expected a string\n");
+    exit(-1);
   }
 
-  return false;
+  int str_addr = get_val(string_value);
+
+  vm_value *str_p;
+  if(get_tag(string_value) ==vm_tag_dynamic_string) {
+    str_p = heap_get_pointer(str_addr);
+  }
+  else {
+    str_p = const_table + str_addr;
+  }
+
+  vm_value *string_start = str_p + 1;
+  return (char *)string_start;
 }
+
 
 
 vm_value *vm_get_heap_pointer(vm_value addr) {
   return heap_get_pointer(addr);
 }
 
+
+
+
+io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result) {
+
+  if(get_tag(result) != vm_tag_dynamic_compound_symbol) {
+    return no_io_action;
+  }
+
+  vm_value addr = get_val(result);
+  vm_value *p = heap_get_pointer(addr);
+  vm_value header = p[0];
+  if(compound_symbol_id(header) != symbol_id_io) {
+    return no_io_action;
+  }
+
+  vm_value action_type = p[1] - number_bias;
+  vm_value action_param = p[2];
+  vm_value next_action = p[3];
+
+  if(get_tag(action_type) != vm_tag_number) {
+    fprintf(stderr, "Malformed io action: %d\n", action_type);
+    exit(-1);
+  }
+  int action_id = get_val(action_type);
+
+  vm_value next_param = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+  switch (action_id) {
+
+    case action_id_printline: {
+        char *param = read_string(action_param);
+        printf("%s\n", param);
+        next_param = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+      }
+      break;
+
+    case action_id_readline: {
+        // printf("io read line\n");
+        char *line = NULL;
+        size_t buffer_size = 0;
+        char *prompt = read_string(action_param);
+        printf("%s", prompt);
+        int length = getline(&line, &buffer_size, stdin); //TODO check for -1
+        if(length == -1) {
+          fprintf(stderr, "Failure!\n");
+          exit(-1);
+        }
+        else
+        {
+          //cut off trailing newline
+          length -= 1;
+          line[length] = '\0';
+
+          vm_value string_address = new_string(length);
+          vm_value *str_pointer = heap_get_pointer(string_address);
+          vm_value *str_start = str_pointer + 1;
+
+          strcpy((char *)str_start, line);
+          next_param = make_tagged_val(string_address, vm_tag_dynamic_string);
+        }
+      }
+      break;
+
+    case action_id_return:
+      next_param = action_param;
+      break;
+
+    default:
+      fprintf(stderr, "malformed io action: %d\n", action_id);
+      exit(-1);
+  }
+
+  if(get_tag(next_action) == vm_tag_function || get_tag(next_action) == vm_tag_pap) {
+    stack_pointer = 0;
+
+    current_frame.reg[0] = next_action;
+    next_frame.reg[0] = next_param;
+    vm_instruction instr = op_gen_ap(0, 0, 1);
+    int return_pointer = do_gen_ap(&current_frame, instr, program);
+    if (return_pointer != -1) {
+      current_frame.return_address = return_pointer;
+      current_frame.result_register = 0;
+
+      return intermediary_io_action;
+    }
+    else {
+      // TODO is this malformed?
+      fprintf(stderr, "malformed bound lambda in io action\n");
+      exit(-1);
+    }
+  }
+  else {
+    if(final_result) {
+      *final_result = next_param;
+    }
+    return final_io_action;
+  }
+
+  fprintf(stderr, "Error in io action\n");
+  exit(-1);
+}
 
