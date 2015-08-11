@@ -130,5 +130,43 @@ preamble = "\n\
 \    :_internal_io " ++ (show readLineActionId) ++ " a :false     \n\
 \                                                        \n\
 \  io-print-line a =                                     \n\
-\    :_internal_io " ++ (show printLineActionId) ++ " a :false    "
+\    :_internal_io " ++ (show printLineActionId) ++ " a :false    \n\
+\                                                        \n\
+\  head ls =                                             \n\
+\    match ls begin                                      \n\
+\      [a | _] -> a                                      \n\
+\      _ -> :error \"Empty list!\"                       \n\
+\    end                                                 \n\
+\                                                        \n\
+\  tail ls =                                             \n\
+\    match ls begin                                      \n\
+\      [_ | as] -> as                                    \n\
+\      _ -> []                                           \n\
+\    end                                                 \n\
+\                                                        \n\
+\  map f ls =                                            \n\
+\    match ls begin                                      \n\
+\      [] -> []                                          \n\
+\      [a|rest] -> [f a|map f rest]                      \n\
+\    end                                                 \n\
+\                                                        \n\
+\  foldr f i ls =                                        \n\
+\    match ls begin                                      \n\
+\      [] -> i                                           \n\
+\      [a|rest] -> f a (foldr f i rest)                  \n\
+\    end                                                 \n\
+\                                                        \n\
+\  concatenate a b =                                     \n\
+\    match a begin                                       \n\
+\      []      -> b                                      \n\
+\      [hd|tl] -> [hd | concatenate tl b]                \n\
+\    end                                                 \n\
+\                                                        \n\
+\  reverse l =                                           \n\
+\    rev-list' l acc =                                   \n\
+\      match l begin                                     \n\
+\        []      -> acc                                  \n\
+\        [hd|tl] -> rev-list' tl [hd | acc]              \n\
+\      end                                               \n\
+\    rev-list' l []                                      "
 
