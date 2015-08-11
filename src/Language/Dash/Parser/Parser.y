@@ -260,7 +260,8 @@ DoBody:
 DoLine:
     id '<-' DoLineExpr eol  { ($1, $3) }
   | DoLineExpr eol          { ("_", $1) }
-  | Binding id '<-' DoLineExpr eol  { ($2, LocalBinding $1 $4) }
+  | Binding DoLine          { let (v, e) = $2 in 
+                              (v, LocalBinding $1 e) }
 
 DoLineExpr:
     Ident              { $1 }
