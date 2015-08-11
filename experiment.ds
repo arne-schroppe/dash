@@ -1,8 +1,29 @@
 
 
-do io begin
-  p = "> "
-  n <- io-read-line p
-  n
+maybe-bind v l =
+  match v begin
+    :some x -> l x
+    :none -> :none
+  end
+
+maybe-return v = :some v
+
+
+maybe-something x =
+  if x > 5 then
+    :some x
+  else
+    :none
+
+
+
+do maybe begin
+
+  a <- maybe-something 6
+  b <- maybe-something 8
+  c <- maybe-something 12
+
+  return (a + b + c)
 end
+
 
