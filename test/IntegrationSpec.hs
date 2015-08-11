@@ -741,7 +741,7 @@ K strings (string concatenation, substring, string length)
 K boolean operators
 - runtime errors ?
 - garbage collection
-- IO
+K IO
 
 - `type` method ... represents types as symbols. Should it also give
   data, e.g. :symbol name args (where name is a string and args a list)? 
@@ -774,7 +774,7 @@ K Creating symbols (symbol arity is known statically)
 K tuples
 K Lists
 - Static modules
-- I/O
+K I/O
 
 - maps/dictionaries as built-in type (because that's fairly useful)
   - under the hood these could be somewhat similar to modules, maybe. Or modules can't be modified at runtime,

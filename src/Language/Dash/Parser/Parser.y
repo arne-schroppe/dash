@@ -306,6 +306,5 @@ adjustNameForMonad e mon =
 parseError :: [Token] -> a
 parseError ts = error $ "Parse error " ++ (show ts)
 
-
 }
 
