@@ -299,6 +299,7 @@ adjustNameForMonad :: Expr -> String -> Expr
 adjustNameForMonad e mon =
   case e of
     FunAp (Var "return") a -> FunAp (Var (mon ++ "-return")) a
+    LocalBinding b e -> LocalBinding b (adjustNameForMonad e mon)
     _ -> e
 
 parseError :: [Token] -> a

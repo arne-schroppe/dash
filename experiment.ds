@@ -23,7 +23,8 @@ do maybe begin
   b <- maybe-something 8
   c <- maybe-something 12
 
-  return (a + b + c)
+  d = 10
+  return (a + b + c + d)
 end
 
 
