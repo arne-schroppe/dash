@@ -255,7 +255,7 @@ DoExpr:
     do id DoBody  { makeMonad $2 $3 }
 
 DoBody:
-    begin opt(eol) plus(DoLine) end eol  { $3 }
+    begin opt(eol) plus(DoLine) end { $3 }
 
 DoLine:
     id '<-' DoLineExpr eol  { ($1, $3) }

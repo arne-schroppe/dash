@@ -1,5 +1,8 @@
 
 
+readln = io-read-line "> "
+
+
 maybe-bind v l =
   match v begin
     :some x -> l x
@@ -17,7 +20,7 @@ maybe-something x =
 
 
 
-do maybe begin
+result = do maybe begin
 
   a <- maybe-something 6
   b <- maybe-something 8
@@ -27,4 +30,9 @@ do maybe begin
   return (a + b + c + d)
 end
 
+
+do io begin
+  a <- readln
+  io-print-line ("Hello " ++ a)
+end
 
