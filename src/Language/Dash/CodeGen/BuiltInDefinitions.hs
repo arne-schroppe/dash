@@ -168,5 +168,5 @@ preamble = "\n\
 \        []      -> acc                                  \n\
 \        [hd|tl] -> rev-list' tl [hd | acc]              \n\
 \      end                                               \n\
-\    rev-list' l []                                      "
+\    rev-list' l []                                      \n"
 

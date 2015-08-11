@@ -101,3 +101,22 @@ spec = do
 
 
 
+    it "parses a do-expression 4" $ do
+      let source = " do maybe begin   \n\
+                   \   action1 1 2    \n\
+                   \   x = 3          \n\
+                   \   a <- action2   \n\
+                   \   action3 a      \n\
+                   \   return b       \n\
+                   \ end"
+      let parsed = parse_string source
+      parsed `shouldBe` (FunAp (Var "maybe-bind") [
+                            FunAp (Var "action1") [LitNumber 1, LitNumber 2],
+                            (Lambda ["_"] $
+                                FunAp (Var "maybe-bind") [
+                                    LocalBinding (Binding "x" $ LitNumber 3) (Var "action2"),
+                                    (Lambda ["a"] $
+                                        FunAp (Var "maybe-bind") [
+                                           FunAp (Var "action3") [Var "a"],
+                                           (Lambda ["_"] $
+                                              FunAp (Var "maybe-return") [Var "b"])])])])

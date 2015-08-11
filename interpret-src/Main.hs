@@ -9,5 +9,5 @@ main = do
   when ( (length args) == 0) $ error "Expected script path"
   let scriptPath = args !! 0
   fileContent <- readFile scriptPath
-  result <- run fileContent
+  result <- runWithPreamble fileContent
   print result

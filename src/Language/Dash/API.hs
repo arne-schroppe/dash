@@ -1,5 +1,6 @@
 module Language.Dash.API
 ( run
+, runWithPreamble
 , toNorm
 , toAsm
 , toAtomicConstants
@@ -42,11 +43,14 @@ import           Prelude                                   hiding (lex)
 
 -- TODO don't call this "API", unless it re-exports functions and types
 
+runWithPreamble :: String -> IO VMValue
+runWithPreamble prog =
+  let prog' = preamble ++ prog in
+  run prog'
 
 run :: String -> IO VMValue
 run prog = do
-  let prog' = preamble ++ prog
-  (value, ctable, symNames) <- prog'
+  (value, ctable, symNames) <- prog
                                |> lex
                                |> parse
                                |> normalize

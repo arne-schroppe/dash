@@ -1,6 +1,7 @@
 module Language.Dash.Normalization.NormalizationSpec where
 
 import           Language.Dash.CodeGen.BuiltInDefinitions
+import           Language.Dash.CodeGen.BuiltInDefinitions  (builtInSymbols)
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
@@ -24,12 +25,11 @@ spec = do
         norm `shouldBe` (NAtom $ NNumber 3)
 
       it "normalizes a simple symbol directly" $ do
-        let builtInSymbols = [falseSymbolName, trueSymbolName]
         let numBuiltInSymbols = length builtInSymbols
         let ast = LitSymbol "Test" []
         let (norm, _, syms) = normalize ast
         (length syms) `shouldBe` (numBuiltInSymbols + 1)
-        syms `shouldBe` (builtInSymbols ++ ["Test"])
+        syms `shouldBe` ((map fst builtInSymbols) ++ ["Test"])
         norm `shouldBe` (NAtom $ NPlainSymbol $ mkSymId (numBuiltInSymbols + 0))
 
       it "splits a complex addition operation" $ do
@@ -239,8 +239,8 @@ spec = do
                   ]
         let (norm, ctable, _) = normalize ast
         let expectedCTable = [ CMatchData [
-                               CCompoundSymbol (mkSymId 2) [CMatchVar 0, CMatchVar 1, CMatchVar 2],
-                               CCompoundSymbol (mkSymId 3) [CMatchVar 0, CMatchVar 1]
+                               CCompoundSymbol (mkSymId 3) [CMatchVar 0, CMatchVar 1, CMatchVar 2],
+                               CCompoundSymbol (mkSymId 4) [CMatchVar 0, CMatchVar 1]
                              ]]
         let expected = NLet (NVar (lvn 0) NLocalVar) (NNumber 2) $
                        NLet (NVar (lvn 1) NLocalVar) (NMatchBranch [] ["n", "o", "p"] $ NAtom $ NVarExpr $ NVar "n" NFunParam) $
@@ -399,8 +399,8 @@ spec = do
                   LocalBinding (Binding "f" $ LitSymbol falseSymbolName []) $
                   LitNumber 0
         let norm = pureNorm ast
-        let expected = NLet (NVar "x" NLocalVar) (NPlainSymbol $ mkSymId 2) $
-                       NLet (NVar "y" NLocalVar) (NPlainSymbol $ mkSymId 3) $
+        let expected = NLet (NVar "x" NLocalVar) (NPlainSymbol $ mkSymId 3) $
+                       NLet (NVar "y" NLocalVar) (NPlainSymbol $ mkSymId 4) $
                        NLet (NVar "t" NLocalVar) (NPlainSymbol $ mkSymId 1) $
                        NLet (NVar "f" NLocalVar) (NPlainSymbol $ mkSymId 0) $
                        NAtom $ NNumber 0
