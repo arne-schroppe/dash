@@ -35,8 +35,8 @@ do io begin
   x1 = 1
   x2 = 2
   x3 = 3
-  -- a <- readln
-  a = "abc"
+  a <- readln
+  -- a = "abc"
   io-print-line ("Hello " ++ a)
 end
 

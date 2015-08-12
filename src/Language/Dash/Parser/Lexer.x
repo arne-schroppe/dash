@@ -2,6 +2,8 @@
 module Language.Dash.Parser.Lexer where
 
 import Debug.Trace
+import Control.Monad
+
 }
 
 %wrapper "monadUserState"
@@ -22,6 +24,7 @@ $opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \| \^]
 
 @operator   = "==" | $opsymbol ($opsymbol | "=")*
 
+-- TODO parse \n etc properly
 @stringchars = [^ \"]*
 
 
@@ -87,6 +90,8 @@ getHasEmittedEol = Alex $ \st@AlexState{alex_ust = ust} -> Right (st, has_emitte
 setHasEmittedEol :: Bool -> Alex ()
 setHasEmittedEol b = Alex $ \st -> Right (st{alex_ust = (alex_ust st){has_emitted_final_eol = b}}, ())
 
+getPosition :: Alex Int
+getPosition = Alex $ \st@AlexState{alex_pos = AlexPn pos _ _} -> Right (st, pos)
 
 getLastToken :: Alex Token
 getLastToken = Alex $ \st@AlexState{alex_ust = ust} -> Right (st, last_token ust)

@@ -1316,6 +1316,7 @@ vm_value *vm_get_heap_pointer(vm_value addr) {
 
 
 
+// Put vm state into a struct and move this to another file
 
 io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result) {
 
@@ -1351,13 +1352,13 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
       break;
 
     case action_id_readline: {
-        // printf("io read line\n");
         char *line = NULL;
         size_t buffer_size = 0;
         char *prompt = read_string(action_param);
-        printf("%s", prompt);
-        int length = getline(&line, &buffer_size, stdin); //TODO check for -1
+        printf("%s", prompt); // TODO get rid of this prompt
+        int length = getline(&line, &buffer_size, stdin);
         if(length == -1) {
+          //TODO return :eof instead?
           fprintf(stderr, "Failure!\n");
           exit(-1);
         }
@@ -1387,6 +1388,8 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
   }
 
   if(get_tag(next_action) == vm_tag_function || get_tag(next_action) == vm_tag_pap) {
+    // The io action includes a bound lambda. Set up the vm so that it is called
+    // with the result form our io action.
     stack_pointer = 0;
 
     current_frame.reg[0] = next_action;
@@ -1406,6 +1409,8 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
     }
   }
   else {
+    // There is no binding following this io action. The action's result
+    // is the final result.
     if(final_result) {
       *final_result = next_param;
     }

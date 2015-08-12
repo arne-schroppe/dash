@@ -739,8 +739,10 @@ K negative numbers (with bias)
 K inequality operators
 K strings (string concatenation, substring, string length)
 K boolean operators
-- runtime errors ?
+- runtime errors? at least a `fail` method
 - garbage collection
+- modules
+- multiple source files
 K IO
 
 - `type` method ... represents types as symbols. Should it also give
