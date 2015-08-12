@@ -3,11 +3,10 @@
 
 #include "vm.h"
 
-// TODO we need an opcode that allows us to compare two values
 // TODO add more mathematical operators
 // TODO group opcodes in meaningful way
 // TODO if we're keeping set_arg, then how about versions that allow to set values directly? (instead of from registers)
-// TODO really lrge numbers spill over into the tag. prevent that (in compiler and when adding)
+// TODO we could just use load_c for all const pool types if they had a tag in the pool
 
 typedef enum {
   OP_RET = 0,
@@ -29,8 +28,21 @@ typedef enum {
   OP_JMP = 16,
   OP_MATCH = 17,
   OP_SET_ARG = 18,
-  OP_SET_CL_VAL = 19,
+  OP_SET_CL_VAL = 19, // TODO rename to SET_CL_FIELD
   OP_EQ = 20,
+  OP_COPY_SYM = 21,  // copies a constant compound symbol to the heap
+  OP_SET_SYM_FIELD = 22, // sets a field of a heap compound symbol
+  OP_LOAD_str = 23,
+  OP_STR_LEN = 24,
+  OP_NEW_STR = 25,
+  OP_GET_CHAR = 26,
+  OP_PUT_CHAR = 27,
+  OP_LT = 28,
+  OP_GT = 29,
+  OP_JMP_TRUE = 30,
+  OP_OR = 31,
+  OP_AND = 32,
+  OP_NOT = 33,
 
   FUN_HEADER = 63
 } vm_opcode;
@@ -59,6 +71,7 @@ typedef enum {
                                             (reg2 << (instr_size - (__opcb + 3 * __regb))))
 
 // TODO make it clear which opcodes expect a function address and which expect a closure!!
+// TODO describe all arguments!
 #define op_load_i(r0, i) (instr_ri(OP_LOAD_i, r0, i))
 #define op_load_ps(r0, i) (instr_ri(OP_LOAD_ps, r0, i))
 #define op_load_cs(r0, i) (instr_ri(OP_LOAD_cs, r0, i))
@@ -79,8 +92,19 @@ typedef enum {
 #define op_set_cl_val(clr, r1, n) (instr_rrr(OP_SET_CL_VAL, clr, r1, n)) // reg with closure addr (heap), value reg, argument index
 #define op_part_ap(r0, fr, n) (instr_rrr(OP_PART_AP, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 #define op_eq(r0, r1, r2) (instr_rrr(OP_EQ, r0, r1, r2))
-
+#define op_copy_sym(r0, r1) (instr_rrr(OP_COPY_SYM, r0, r1, 0)) // heap addr result reg, const addr reg
+#define op_set_sym_field(symr, r1, n) (instr_rrr(OP_SET_SYM_FIELD, symr, r1, n)) // heap sym addr reg, new value reg, field index
+#define op_load_str(r0, i) (instr_ri(OP_LOAD_str, r0, i)) // result reg, const addr
+#define op_str_len(r0, r1) (instr_rrr(OP_STR_LEN, r0, r1, 0))
+#define op_new_str(r0, r1) (instr_rrr(OP_NEW_STR, r0, r1, 0))
+#define op_get_char(r0, r1, r2) (instr_rrr(OP_GET_CHAR, r0, r1, r2))
+#define op_put_char(r0, r1, r2) (instr_rrr(OP_PUT_CHAR, r0, r1, r2))
+#define op_lt(r0, r1, r2) (instr_rrr(OP_LT, r0, r1, r2))
+#define op_gt(r0, r1, r2) (instr_rrr(OP_GT, r0, r1, r2))
+#define op_jmp_true(b, n) (instr_ri(OP_JMP_TRUE, b, n))
+#define op_or(r0, r1, r2) (instr_rrr(OP_OR, r0, r1, r2))
+#define op_and(r0, r1, r2) (instr_rrr(OP_AND, r0, r1, r2))
+#define op_not(r0, r1) (instr_rrr(OP_NOT, r0, r1))
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
-// #define op_space(n) (instr_ri(OP_SPACE, 0, n))
 
 #endif

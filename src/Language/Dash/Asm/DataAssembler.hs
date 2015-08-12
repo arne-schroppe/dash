@@ -6,11 +6,12 @@ module Language.Dash.Asm.DataAssembler (
 , AtomicConstant(..)
 ) where
 
-import           Control.Monad.State    hiding (state)
-import qualified Data.IntMap            as IntMap
+import           Control.Monad.State           hiding (state)
+import qualified Data.Map                      as Map
 import           Language.Dash.IR.Data
-import qualified Language.Dash.VM.DataEncoding  as Enc
+import qualified Language.Dash.VM.DataEncoding as Enc
 import           Language.Dash.VM.Types
+import Data.List.Split
 
 {-
 
@@ -30,8 +31,7 @@ TODO rename const table to constant pool?
 -- TODO explain the algorithm or simplify it (the latter is probably better)
 
 
-
-type ConstAddressMap = Int -> VMWord
+type ConstAddressMap = ConstAddr -> VMWord
 type ConstAtomizationState a = State ConstAtomizationEnv a
 
 
@@ -40,14 +40,14 @@ type ConstAtomizationState a = State ConstAtomizationEnv a
 encodeConstTable :: ConstTable -> ([VMWord], ConstAddressMap)
 encodeConstTable ctable =
   let (atoms, mapping) = atomizeConstTable ctable in
-  (map encodeConstant atoms, (mapping IntMap.!) )
+  (map encodeConstant atoms, (mapping Map.!) )
 
 
 -- We receive data as an array of Data.Constant objects. The first step is
 -- to split this representation into their atomic parts. This is what this
 -- function does. The next step encodes those atomic parts into their
 -- byte representation for the vm.
-atomizeConstTable :: ConstTable -> ([AtomicConstant], IntMap.IntMap VMWord)
+atomizeConstTable :: ConstTable -> ([AtomicConstant], Map.Map ConstAddr VMWord)
 atomizeConstTable ctable =
   let state = execState encTable (emptyConstAtomizationEnv ctable) in
   (atomized state, addrMap state)
@@ -55,7 +55,9 @@ atomizeConstTable ctable =
     encTable = whileJust atomizeConstant popWorkItem
 
 
-whileJust :: (b -> ConstAtomizationState a) -> ConstAtomizationState (Maybe b) -> ConstAtomizationState ()
+whileJust :: (b -> ConstAtomizationState a)
+          -> ConstAtomizationState (Maybe b)
+          -> ConstAtomizationState ()
 whileJust f source = do
   next <- source
   case next of
@@ -65,20 +67,20 @@ whileJust f source = do
       whileJust f source
 
 
-
 atomizeConstant :: Constant -> ConstAtomizationState ()
 atomizeConstant c = case c of
   CNumber n                -> addAtomized [ACNumber n]
   CPlainSymbol sid         -> addAtomized [ACPlainSymbol sid]
   CCompoundSymbol sid args -> atomizeCompoundSymbol sid args
   CMatchData args          -> atomizeMatchData args
+  CString str              -> atomizeString str
   x -> error $ "Unable to encode top-level constant " ++ show x
 
 
 atomizeCompoundSymbol :: SymId -> [Constant] -> ConstAtomizationState ()
 atomizeCompoundSymbol sid args = do
   setReservedSpace (1 + length args)
-  let symbolHeader = ACCompoundSymbolHeader (fromIntegral sid) (fromIntegral $ length args)
+  let symbolHeader = ACCompoundSymbolHeader sid (fromIntegral $ length args)
   atomizedArgs <- mapM atomizeConstArg args
   addAtomized $ symbolHeader : atomizedArgs
   setReservedSpace 0
@@ -90,7 +92,31 @@ atomizeMatchData args = do
   let matchHeader = ACMatchHeader (fromIntegral $ length args)
   atomizedArgs <- mapM atomizeConstArg args
   addAtomized $ matchHeader : atomizedArgs
-  setReservedSpace $ 0
+  setReservedSpace 0
+
+
+atomizeString :: String -> ConstAtomizationState ()
+atomizeString str = do
+  let numChunks = numStringChunksForString str
+  let nullString = str ++ "\0"
+  -- fill rest of string with zeroes
+  let adjustedString = nullString ++
+        replicate (bytesPerVMWord - (length nullString `rem` bytesPerVMWord)) '\0'
+  let chunks = chunksOf bytesPerVMWord adjustedString
+  let encChunks = map (\ [c1, c2, c3, c4] -> ACStringChunk c1 c2 c3 c4) chunks
+  let header = ACStringHeader (length str) numChunks
+  addAtomized $ header : encChunks
+
+
+bytesPerVMWord :: Int
+bytesPerVMWord = 4
+
+numStringChunksForString :: String -> Int
+numStringChunksForString str =
+  let len = length str + 1 in -- add 1 for terminating \0
+  let (numChunks, remainder) = len `divMod` bytesPerVMWord in
+  let adjust = if remainder /= 0 then 1 else 0 in
+  numChunks + adjust
 
 
 atomizeConstArg :: Constant -> ConstAtomizationState AtomicConstant
@@ -105,23 +131,23 @@ atomizeConstArg c = case c of
   x -> error $ "Unable to encode constant as argument: " ++ show x
 
 
-
------ State
+-- State
 
 data ConstAtomizationEnv = ConstAtomizationEnv {
   constants         :: [Constant]
 , workQueue         :: [Constant]
-, addrMap           :: IntMap.IntMap VMWord
+, addrMap           :: Map.Map ConstAddr VMWord
 , atomized          :: [AtomicConstant] -- should be a Sequence
 , reservedSpace     :: Int
 , numAtomizedConsts :: Int
 }
 
+
 emptyConstAtomizationEnv :: [Constant] -> ConstAtomizationEnv
 emptyConstAtomizationEnv ctable = ConstAtomizationEnv {
   constants         = ctable
 , workQueue         = []
-, addrMap           = IntMap.fromList []
+, addrMap           = Map.empty
 , atomized          = []
 , reservedSpace     = 0
 , numAtomizedConsts = 0
@@ -137,22 +163,24 @@ popWorkItem :: ConstAtomizationState (Maybe Constant)
 popWorkItem = do
   state <- get
   case (workQueue state, constants state) of
-    ([], []) -> return Nothing
+    ([], []) ->
+        return Nothing
     ([], cs) -> do
-          numAtomized <- gets numAtomizedConsts
-          let currentAddr = length $ atomized state
-          addAddrMapping numAtomized $ fromIntegral currentAddr
-          state' <- get
-          put $ state' { numAtomizedConsts = numAtomized + 1, constants = tail cs }
-          return $ Just $ head cs
+        numAtomized <- gets numAtomizedConsts
+        let currentAddr = fromIntegral $ length $ atomized state
+        addAddrMapping (mkConstAddr numAtomized) currentAddr
+        state' <- get
+        put $ state' { numAtomizedConsts = numAtomized + 1, constants = tail cs }
+        return $ Just $ head cs
     (ws, _) -> do
-          put (state { workQueue = tail ws })
-          return $ Just $ head ws
+        put (state { workQueue = tail ws })
+        return $ Just $ head ws
 
-addAddrMapping :: Int -> VMWord -> ConstAtomizationState ()
+
+addAddrMapping :: ConstAddr -> VMWord -> ConstAtomizationState ()
 addAddrMapping src dest = do
   state <- get
-  let newMap = IntMap.insert src dest (addrMap state)
+  let newMap = Map.insert src dest (addrMap state)
   put $ state { addrMap = newMap }
 
 
@@ -163,14 +191,14 @@ pushWorkItem c = do
   put $ state { workQueue = workQ ++ [c] }
 
 
-nextFreeAddress :: ConstAtomizationState Int
+nextFreeAddress :: ConstAtomizationState ConstAddr
 nextFreeAddress = do
   state <- get
   let used = length $ atomized state
   let reserved = reservedSpace state
   let pendingItems = workQueue state
-  let pending = foldl (\acc c -> acc + (spaceNeededByConstant c)) 0 pendingItems
-  return $ used + reserved + pending
+  let pending = foldl (\acc c -> acc + spaceNeededByConstant c) 0 pendingItems
+  return $ mkConstAddr $ used + reserved + pending
 
 
 spaceNeededByConstant :: Constant -> Int
@@ -180,12 +208,13 @@ spaceNeededByConstant c = case c of
   CMatchVar _            -> 1
   CCompoundSymbol _ args -> 1 + length args
   CMatchData args        -> 1 + length args
+  CString str            -> 1 + numStringChunksForString str
 
 
 addAtomized :: [AtomicConstant] -> ConstAtomizationState ()
 addAtomized atoms = do
   state <- get
-  put $ state { atomized = (atomized state) ++ atoms }
+  put $ state { atomized = atomized state ++ atoms }
 
 
 setReservedSpace :: Int -> ConstAtomizationState ()
@@ -195,7 +224,7 @@ setReservedSpace n = do
 
 
 
------ Byte encoding for data
+-- Byte encoding for data
 
 data AtomicConstant =
     ACPlainSymbol SymId
@@ -204,16 +233,19 @@ data AtomicConstant =
   | ACNumber Int
   | ACMatchHeader Int
   | ACMatchVar Int
+  | ACStringHeader Int Int     -- string length, num chunks
+  | ACStringChunk Char Char Char Char -- with ascii chars and VMWord as Word32 this would be 4 chars per string chunk
   deriving (Show, Eq)
 
 
 encodeConstant :: AtomicConstant -> VMWord
 encodeConstant c = case c of
-  ACPlainSymbol sid            -> Enc.encodePlainSymbol $ fromIntegral sid
-  ACCompoundSymbolRef addr     -> Enc.encodeCompoundSymbolRef $ fromIntegral addr
-  ACCompoundSymbolHeader sid n -> Enc.encodeCompoundSymbolHeader (fromIntegral sid) (fromIntegral n)
-  ACNumber n                   -> Enc.encodeNumber $ fromIntegral n
-  ACMatchHeader n              -> Enc.encodeMatchHeader $ fromIntegral n
-  ACMatchVar n                 -> Enc.encodeMatchVar $ fromIntegral n
-
+  ACPlainSymbol sid            -> Enc.encodePlainSymbol sid
+  ACCompoundSymbolRef addr     -> Enc.encodeCompoundSymbolRef addr
+  ACCompoundSymbolHeader sid n -> Enc.encodeCompoundSymbolHeader sid n
+  ACNumber n                   -> Enc.encodeNumber n
+  ACMatchHeader n              -> Enc.encodeMatchHeader n
+  ACMatchVar n                 -> Enc.encodeMatchVar n
+  ACStringHeader len numChunks -> Enc.encodeStringHeader len numChunks
+  ACStringChunk b1 b2 b3 b4    -> Enc.encodeStringChunk b1 b2 b3 b4
 

@@ -2,6 +2,7 @@ module IntegrationSpec where
 
 import           Test.Hspec
 import           Language.Dash.API
+import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.VM.DataEncoding
 import           Numeric
 
@@ -21,6 +22,10 @@ spec = do
     it "evaluates a symbol" $ do
       let result = run ":dash"
       result `shouldReturn` VMSymbol "dash" []
+
+    it "evaluates a string" $ do
+      let result = run "\"dash!\""
+      result `shouldReturn` VMString "dash!"
 
     it "applies built-in add function" $ do
       let result = run "2 + 3"
@@ -77,7 +82,6 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 120
 
-    -- TODO When returning a lambda from a function (as seen here) it would be more secure to have a tag for lambdas
     it "returns a simple lambda" $ do
       let code =  " make-adder x = \n\
                   \   .\\ y = 22 + y \n\
@@ -89,7 +93,6 @@ spec = do
 
 
 
-{- TODO reenable
     it "optimizes tail calls" $ do
       let code = "\
       \ counter acc = \n\
@@ -102,9 +105,7 @@ spec = do
       \ y "
       let result = run code
       result `shouldReturn` VMNumber 43
--}
 
-    -- TODO when changing `counter x` to use `next`, there is a compiler error. Investigate (reason is that next is handled as a constant free var)
 
 
 
@@ -122,7 +123,7 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 43
 
-            -- TODO this test triggers an illegal partial application but still manages to pass
+
             it "handles nested self-recursion of closure" $ do
               -- We add the dummy closure so that it is the closure at memory index 0.
               -- This way we know that the inner use of `counter` is not simply using
@@ -349,16 +350,27 @@ spec = do
               result `shouldReturn` VMSymbol "success" []
 
 
-
-
     context "when using compound symbols" $ do
 
             it "interprets a compound symbol" $ do
               let result = run ":sym 2 3"
               result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]
 
-            -- TODO dynamic compound symbols
+            it "creates a symbol at runtime" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   :sym a \n\
+              \ fun 7"
+              let result = run code
+              result `shouldReturn` VMSymbol "sym" [VMNumber 7]
 
+            it "creates a nested symbol at runtime" $ do
+              let code = "\
+              \ fun a =   \n\
+              \   :sym 1 (:sym2 a) 3 \n\
+              \ fun 2"
+              let result = run code
+              result `shouldReturn` VMSymbol "sym" [VMNumber 1, VMSymbol "sym2" [VMNumber 2], VMNumber 3]
 
 
     context "when matching" $ do
@@ -369,6 +381,14 @@ spec = do
                          \ end"
               let result = run code
               result `shouldReturn` VMSymbol "one" []
+
+            it "matches a value against a negative number" $ do
+              let code = " a = 3 \n\
+                         \ match -a begin\n\
+                         \   -3 -> :three \n\
+                         \ end"
+              let result = run code
+              result `shouldReturn` VMSymbol "three" []
 
             it "matches a value against numbers" $ do
               let code = " match 7 begin\n\
@@ -452,6 +472,17 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 44
 
+            it "correctly applies free variables" $ do
+              let code =  " run a b c d = \n\
+                          \   match 2 begin \n\
+                          \     1 -> 22 \n\
+                          \     2 -> (a + b) + (c + d) \n\
+                          \     3 -> 44 \n\
+                          \   end \n\
+                          \ run 4 12 34 55"
+              let result = run code
+              result `shouldReturn` VMNumber 105
+
 
             it "binds a value inside a tuple" $ do
               let code =  " match (4, 8, 15) begin \n\
@@ -464,7 +495,7 @@ spec = do
 
 
 
-    it "binds a value inside a nested symbol" $ do
+    it "resolves closed over vars in match-branches" $ do
       let code = " fib n =                       \n\
                  \   n' = n - 1                  \n\
                  \   n'' = n - 2                 \n\
@@ -487,6 +518,98 @@ spec = do
       let result = run code
       result `shouldReturn` VMNumber 55
 
+    it "determines equality between numbers" $ do
+      let code = "2 == 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "has less-than operator" $ do
+      let code = "1 < 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "has greater-than operator" $ do
+      let code = "3 > 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "less-than-equal operator with true result" $ do
+      let code = "1 <= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "less-than-equal operator with true result 2" $ do
+      let code = "2 <= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "less-than-equal operator with false result" $ do
+      let code = "3 <= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "false" []
+
+    it "greater-than-equal operator with true result" $ do
+      let code = "3 >= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "greater-than-equal operator with true result 2" $ do
+      let code = "2 >= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "greater-than-equal operator with false result" $ do
+      let code = "1 >= 2"
+      let result = run code
+      result `shouldReturn` VMSymbol "false" []
+
+
+    it "boolean 'or' with true result" $ do
+      let code = ":false || :true"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "boolean 'or' with false result" $ do
+      let code = ":false || :false"
+      let result = run code
+      result `shouldReturn` VMSymbol "false" []
+
+    it "boolean 'and' with true result" $ do
+      let code = ":true && :true"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "boolean 'and' with false result" $ do
+      let code = ":true && :false"
+      let result = run code
+      result `shouldReturn` VMSymbol "false" []
+
+    it "boolean 'not'" $ do
+      let code = "not :false"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    -- TODO should this work without parentheses?
+    it "determines equality between compound symbols" $ do
+      let code = "(:test 1 2 :three) == (:test 1 2 :three)"
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "determines equality between strings" $ do
+      let code = "\"test\" == \"test\""
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "determines equality between empty strings" $ do
+      let code = "\"\" == \"\""
+      let result = run code
+      result `shouldReturn` VMSymbol "true" []
+
+    it "has correct precedence for math operators" $ do
+      let code = "12 + 6 / 2 - 3 * 2"
+      let result = run code
+      result `shouldReturn` VMNumber 9
+
 
     it "has if-then-else" $ do
       let code = " if :sym == :no-sym then  \n\
@@ -500,24 +623,138 @@ spec = do
     it "has tuples" $ do
       let code = "(1, 2, :sym)"
       let result = run code
-      result `shouldReturn` VMSymbol "$tuple" [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
+      result `shouldReturn` VMSymbol tupleSymbolName [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
 
 
+    it "has lists" $ do
+      let code = "[1, 2, :sym]"
+      let result = run code
+      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 1,
+                              VMSymbol listConsSymbolName [ VMNumber 2,
+                              VMSymbol listConsSymbolName [ VMSymbol "sym" [], 
+                              VMSymbol listEmptySymbolName []]]]
 
+
+    it "matches an empty list" $ do
+      let code = " ls = []      \n\
+                 \ match ls begin        \n\
+                 \   [1, 2] -> :a \n\
+                 \   [1, 2, 3] -> :b        \n\
+                 \   [] -> :c        \n\
+                 \ end"
+      let result = run code
+      result `shouldReturn` VMSymbol "c" []
+
+
+    it "matches an exact list" $ do
+      let code = " ls = [1, 2, 3]      \n\
+                 \ match ls begin        \n\
+                 \   [1, 2] -> :a \n\
+                 \   [1, 2, 3] -> :b        \n\
+                 \ end"
+      let result = run code
+      result `shouldReturn` VMSymbol "b" []
+
+
+    it "matches a list's tail" $ do
+      let code = " ls = [1, 2, 3, 4]      \n\
+                 \ match ls begin        \n\
+                 \   [1, 2] -> :a \n\
+                 \   [1, 2 | tl] -> tl   \n\
+                 \ end"
+      let result = run code
+      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 3,
+                                VMSymbol listConsSymbolName [VMNumber 4,
+                                VMSymbol listEmptySymbolName []]]
+
+
+    it "matches a list's tail with a nested pattern" $ do
+      let code = " ls = [1, 2, 3, 4, 5]      \n\
+                 \ match ls begin        \n\
+                 \   [1, 2] -> :a \n\
+                 \   [1 | [2 | [ 3 | tl]]] -> tl        \n\
+                 \ end"
+      let result = run code
+      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 4,
+                                VMSymbol listConsSymbolName [VMNumber 5,
+                                VMSymbol listEmptySymbolName []]]
+
+    it "cons a list" $ do
+      let code = " tail = [3, 4] \n\
+                 \ [1, 2 | tail]"
+      let result = run code
+      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 1,
+                                VMSymbol listConsSymbolName [VMNumber 2,
+                                VMSymbol listConsSymbolName [VMNumber 3,
+                                VMSymbol listConsSymbolName [VMNumber 4,
+                                VMSymbol listEmptySymbolName []]]]]
+
+    it "has negative numbers" $ do
+      let code = " 0 - 7 + 3"
+      let result = run code
+      result `shouldReturn` VMNumber (-4)
+
+    it "has a prefix minus operator" $ do
+      let code = " a = 7 \n\
+                 \ b = 13 \n\
+                 \ -a - -b"
+      let result = run code
+      result `shouldReturn` VMNumber 6
+
+    it "knows the length of a string" $ do
+      let code = "string-length \"1234567\""
+      let result = run code
+      result `shouldReturn` VMNumber 7
+
+    it "concatenates strings" $ do
+      let code =  " s1 = \"ab\" \n\
+                  \ s3 = \"ef\" \n\
+                  \ s1 ++ \"cd\" ++ s3"
+      let result = run code
+      result `shouldReturn` VMString "abcdef"
+
+    it "creates a sub-strings" $ do
+      let code =  " s1 = \"abcdefghijklmn\" \n\
+                  \ sub-string 2 5 s1"
+      let result = run code
+      result `shouldReturn` VMString "cdefg"
 
 {-
 What's missing:
 
 immediate goals:
 K Refactoring
-- Proper error handling (Either result)
-- Negative integers
-- General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
-- Inline match branches !!!
+x Proper error handling (Either result)
+K Negative integers
+K General clean up. Try with real code samples! fix everything that doesn't work. Clean up code.
 K TODO make it impossible to reassign values (d'oh!)
-- Limits (integers, num local vars, num arguments, num symbols, etc)
-- Big refactoring: instead of all the data we have in state, attach a meta-data object to every object
-  in the various IRs. In normalization, let the var have a reference to the thing it is pointing to
+K Limits (integers, num local vars, num arguments, num symbols, etc)
+- Put all compiler errors into a common error modules
+- unify naming, e.g. fun/func, get vs. no prefix, etc
+K Use better types (Reg as member of Num typeclass)
+- Lots and lots of cleanup. Unified names and parameter orders and smart constructors, etc
+
+K operator precedence / limited set of operators
+K negative numbers (with bias)
+K inequality operators
+K strings (string concatenation, substring, string length)
+K boolean operators
+- runtime errors? at least a `fail` method
+- garbage collection
+- modules
+- multiple source files
+K IO
+
+- `type` method ... represents types as symbols. Should it also give
+  data, e.g. :symbol name args (where name is a string and args a list)? 
+  or just :symbol?
+
+- repl: Compile and eval one expression at a time. Store constant results in an
+  internal table. Recompile functions every time (?)
+  Simpler: store top-level bindings in memory. Execute simple expressions by
+  concatenating them to the bindings and executing the whole thing.
+  "Execute" bindings by attaching the name of the binding at the end. (so
+  for a function the output will be "<function>", etc)
 
 missing language features:
 K Closures
@@ -532,18 +769,21 @@ K pattern wildcard (can be used multiple times)
 K More math operators
 K infix operators
 x inlining of match branches (provide map for arguments, shift base reg, transform norm, then inline)
-- if a closure doesn't escape the current context, apply free variables directly
-- Strings
-- Creating symbols (symbol arity is known statically)
+x if a closure doesn't escape the current context, apply free variables directly
+K Strings
+- Garbage collection
+K Creating symbols (symbol arity is known statically)
 K tuples
-- Lists
+K Lists
+- Static modules
+K I/O
+
 - maps/dictionaries as built-in type (because that's fairly useful)
   - under the hood these could be somewhat similar to modules, maybe. Or modules can't be modified at runtime,
     but then we're not very dynamic
   - map functions: hasKeys, merge (for entitas)
-- Static modules
-- I/O
 
+- Change tags and runtime representation of values
 - Garbage collection
 - Reducing the amount of created garbage
 
@@ -555,21 +795,15 @@ K tuples
 
 - A proper number type (big decimal?)
 
-- compact list representation
-  - list sections are stored as arrays
-  - only when storing a permanent reference to parts of a list, is that section split off
-    - TODO how does this behave with caching and pipelining?
-    - We'd also have to check on every return whether something is a list. not very fast 
-      in a dynamic language
 
 After release ?
 
 - Dynamic modules
 
-- indentation syntax
+- off-site syntax
 - Mutual recursion in module top-level
 - Multiple files
-- Operator precedence
+- Operator precedence with arbitrary operators
 - Debugging. Stack traces (or breadcrumbs?)
 
 - private/secret symbols

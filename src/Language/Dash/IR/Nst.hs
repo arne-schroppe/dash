@@ -2,11 +2,12 @@ module Language.Dash.IR.Nst (
   NstExpr (..)
 , NstAtomicExpr (..)
 , NstVar (..)
+, NstVarType (..)
 , NstPrimOp (..)
 ) where
 
 
-import           Language.Dash.IR.Data  (ConstAddr)
+import           Language.Dash.IR.Data (ConstAddr, Name, SymId)
 
 -- NST, the Normalized Syntax Tree
 
@@ -17,65 +18,89 @@ data NstExpr =
   deriving (Eq, Ord)
 
 
-type VarName = String
-type ParamName = String
-
--- TODO Should every code branch in a match expression really be a closure?
 data NstAtomicExpr =
     NNumber Int
-  | NPlainSymbol Int
-  | NCompoundSymbol Bool ConstAddr  -- IsDynamic SymbolAddr
-  | NString String
-  | NVar NstVar -- This is only for returning a var as a result
-  | NLambda [VarName] [ParamName] NstExpr -- FreeVars FormalParams Body
+  | NPlainSymbol SymId
+  | NCompoundSymbol [(Int, NstVar)] ConstAddr  -- IsDynamic SymbolAddr
+  | NString ConstAddr
+  | NVarExpr NstVar
+  | NLambda [Name] [Name] NstExpr -- FreeVars FormalParams Body
+  | NMatchBranch [Name] [Name] NstExpr -- FreeVars FormalParams Body
   | NPrimOp NstPrimOp
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
   | NFunAp NstVar [NstVar]
-  | NMatch Int NstVar ConstAddr [([VarName], NstVar)] -- MaxCaptures Subject PatternAddr [MatchedVars, Var-That-Holds-Closure]
+  | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures Subject
+                                                           -- PatternAddr
+                                                           -- [ MatchBranchFreeVars
+                                                           -- , MatchedVars
+                                                           -- , MatchBranchVar]
   deriving (Eq, Ord)
 
 
-data NstVar =
-    NLocalVar Int String
-  | NFunParam String
-  | NDynamicFreeVar String
-  | NConstantFreeVar String -- We should rename this to StaticFreeVar
-  | NRecursiveVar String
+data NstVarType =
+    NLocalVar
+  | NFunParam
+  | NFreeVar
+  | NConstant -- Global constants, e.g. named functions without free vars or literals
+  | NRecursiveVar
   deriving (Eq, Ord)
 
+
+data NstVar = NVar Name NstVarType
+  deriving (Eq, Ord)
+
+
+-- TODO make it possible to hide the names of primops
 data NstPrimOp =
     NPrimOpAdd NstVar NstVar
   | NPrimOpSub NstVar NstVar
   | NPrimOpMul NstVar NstVar
   | NPrimOpDiv NstVar NstVar
   | NPrimOpEq  NstVar NstVar
+  | NPrimOpLessThan  NstVar NstVar
+  | NPrimOpGreaterThan  NstVar NstVar
+  | NPrimOpOr NstVar NstVar
+  | NPrimOpAnd NstVar NstVar
+  | NPrimOpNot NstVar
   deriving (Eq, Ord, Show)
-
 
 
 instance Show NstExpr where
   show expr = case expr of
-    NAtom atom -> "return " ++ (show atom) ++ "\n"
-    NLet var atom rest -> (show var) ++ " <- " ++ (show atom) ++ "\n" ++ (show rest)
+    NAtom atom -> "return " ++ show atom ++ "\n"
+    NLet var atom rest -> show var ++ " <- " ++ show atom ++ "\n" ++ show rest
+
+
+instance Show NstVarType where
+  show v = case v of
+    NLocalVar     -> "l"
+    NFunParam     -> "p"
+    NFreeVar      -> "f"
+    NConstant     -> "g"
+    NRecursiveVar -> "r"
+
 
 instance Show NstVar where
-  show v = case v of
-    NLocalVar i name -> "r" ++ (show i) ++ (if not (null name) then " '" ++ name ++ "'" else "")
-    NFunParam name -> "p '" ++ name ++ "'"
-    NDynamicFreeVar name -> "λ '" ++ name ++ "'"
-    NConstantFreeVar name -> "g '" ++ name ++ "'"
-    NRecursiveVar name -> "r '" ++ name ++ "'"
+  show (NVar name vartype) = show vartype ++ "'" ++ name ++ "'"
+
 
 instance Show NstAtomicExpr where
   show atom = case atom of
-    NNumber n -> show n
-    NPlainSymbol s -> "sym #" ++ (show s)
-    NCompoundSymbol b sa -> "sym @" ++ (show sa) ++ (if b then " (dynamic)" else "")
-    NString str -> "\"" ++ str ++ "\""
-    NVar v -> "var " ++ (show v)
-    NLambda free params body -> "λ f" ++ (show free) ++ " p" ++ (show params) ++ " {\n" ++ (show body) ++ "}"
-    NPrimOp p -> show p
-    NPartAp v args -> "pap " ++ (show v) ++ " " ++ (show args)
-    NFunAp v args -> "ap " ++ (show v) ++ " " ++ (show args)
-    NMatch maxv subj pat body -> "match (max " ++ (show maxv) ++ ") [" ++ (show subj) ++ "] @" ++ (show pat) ++ " " ++ (show body)
+    NNumber n            -> show n
+    NPlainSymbol s       -> "sym #" ++ show s
+    NCompoundSymbol free sa -> "sym " ++ (show free) ++ " @" ++ show sa
+    NString strAddr      -> "str @" ++ show strAddr
+    NVarExpr v           -> "var " ++ show v
+    NLambda free params body ->
+                            "λ f" ++ show free ++ " p" ++ show params
+                            ++ " {\n" ++ show body ++ "}"
+    NMatchBranch free matchedVars body ->
+                            "mλ f" ++ show free ++ " m" ++ show matchedVars
+                            ++ " {\n" ++ show body ++ "}"
+    NPrimOp p            -> show p
+    NPartAp v args       -> "pap " ++ show v ++ " " ++ show args
+    NFunAp v args        -> "ap " ++ show v ++ " " ++ show args
+    NMatch maxv subj pat body ->
+                            "match (max " ++ show maxv ++ ") [" ++ show subj ++ "] @"
+                            ++ show pat ++ " " ++ show body
 

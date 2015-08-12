@@ -6,8 +6,13 @@
 
 #define NUM_REGS 32
 
+#define num_regs 32
+
+extern const int max_integer;
+extern const int number_bias;
+
 struct _stack_frame {
-  vm_value reg[NUM_REGS];
+  vm_value reg[num_regs];
   int return_address;
   int result_register;
 
@@ -19,11 +24,10 @@ typedef struct _stack_frame stack_frame;
 
 #define __tag_bits 4
 
-// reading values
 
 #define __tag_mask(t) ((t & 0xF) << (sizeof(vm_value) * 8 - __tag_bits))
-#define val(x, t) (x | __tag_mask(t))
-#define from_val(v) (v & 0x0FFFFFFF)
+#define make_tagged_val(x, t) (x | __tag_mask(t))
+#define get_val(v) (v & 0x0FFFFFFF)
 #define get_tag(x) (x >> (sizeof(vm_value) * 8 - __tag_bits))
 
 #define pap_header(arity, num_vars) ((arity << 16) | num_vars)
@@ -38,11 +42,10 @@ typedef struct _stack_frame stack_frame;
 //TODO rename match to something with pattern
 
 
-// creating values
 
-#define number(x) val(x, vm_type_number)
-#define plain_symbol(x) val(x, vm_type_plain_symbol)
-#define compound_symbol(x) val(x, vm_type_compound_symbol)
+#define number(x) get_val(x, vm_type_number)
+#define plain_symbol(x) get_val(x, vm_type_plain_symbol)
+#define compound_symbol(x) get_val(x, vm_type_compound_symbol)
 
 // In addition to the usual tag, match data also uses the bit after the tag (currently the
 // fifth bit from the left) to encode additional information. If the bit is set, the value
@@ -56,5 +59,10 @@ typedef struct _stack_frame stack_frame;
 #define match_header(n) __match_data_mask(1, n)
 #define match_wildcard __match_data_mask(0, match_wildcard_value)
 #define match_var(n) __match_data_mask(0, n)
+
+#define string_header(len, num_chunks) ((len << 16) | num_chunks)
+#define string_length(header) ((header & 0xFFFF0000) >> 16)
+#define string_chunk_count(header) (header & 0xFFFF)
+
 
 #endif

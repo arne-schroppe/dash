@@ -21,11 +21,12 @@ library
                     , Language.Dash.Parser.Parser
                     , Language.Dash.CodeGen.CodeGen
                     , Language.Dash.CodeGen.CodeGenState
+                    , Language.Dash.CodeGen.BuiltInDefinitions
                     , Language.Dash.Normalization.Normalization
                     , Language.Dash.Normalization.NormalizationState
                     , Language.Dash.Normalization.Recursion
                     , Language.Dash.IR.Ast
-                    , Language.Dash.IR.Tac
+                    , Language.Dash.IR.Opcode
                     , Language.Dash.IR.Data
                     , Language.Dash.IR.Nst
                     , Language.Dash.Asm.Assembler
@@ -34,10 +35,13 @@ library
                     , Language.Dash.VM.DataEncoding
                     , Language.Dash.VM.Types
                     , Language.Dash.API
+                    , Language.Dash.Constants
   build-depends:      base
                     , array
                     , containers
                     , mtl
+                    , split
+                    , bytestring
   include-dirs:       vm
   c-sources:          vm/vm.c
                     , vm/heap.c

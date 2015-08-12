@@ -1,28 +1,24 @@
 
 
-
-/--
-check-maybe x <maybe> =
-  a <- might-fail
-  b <- might-also-fail
-  wrap $ a + b
---/
+readln = io-read-line "> "
 
 
-/--
-rec n =
-  match n - 1 begin
-    0 -> 4
-    x ->
-      rec x
+maybe-bind v l =
+  match v begin
+    :some x -> l x
+    :none -> :none
   end
 
-
-rec 4000000
-
+maybe-return v = :some v
 
 
---/
+maybe-something x =
+  if x > 5 then
+    :some x
+  else
+    :none
+
+
 
 /--
 
@@ -35,7 +31,24 @@ fib n =
     _ -> (fib (n - one)) + (fib (n - two))
   end
 
-fib 35
+result = do maybe begin
+
+  a <- maybe-something 6
+  b <- maybe-something 8
+  c <- maybe-something 12
+
+  d = 10
+  return (a + b + c + d)
+end
+
+do io begin
+  x1 = 1
+  x2 = 2
+  x3 = 3
+  a <- readln
+  -- a = "abc"
+  io-print-line ("Hello " ++ a)
+end
 
 --/
 

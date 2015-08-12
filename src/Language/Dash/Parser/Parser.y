@@ -3,7 +3,7 @@ module Language.Dash.Parser.Parser where
 
 import Language.Dash.Parser.Lexer
 import Language.Dash.IR.Ast
-
+import Language.Dash.CodeGen.BuiltInDefinitions
 
 }
 
@@ -15,6 +15,8 @@ import Language.Dash.IR.Ast
   eol       { TEOL }
   '('       { TOpen_Par }
   ')'       { TClose_Par }
+  '['       { TOpen_Bracket }
+  ']'       { TClose_Bracket }
   module    { TModule }
   if        { TIf }
   then      { TThen }
@@ -33,10 +35,29 @@ import Language.Dash.IR.Ast
   begin     { TBegin }
   end       { TEnd }
   lam       { TLambda }
+  '+'       { TOperator "+" }
+  '-'       { TOperator "-" }
+  '/'       { TOperator "/" }
+  '*'       { TOperator "*" }
+  '=='      { TOperator "==" }
+  '<'       { TOperator "<" }
+  '>'       { TOperator ">" }
+  '<='      { TOperator "<=" }
+  '>='      { TOperator ">=" }
+  '++'      { TOperator "++" }
+  '||'      { TOperator "||" }
+  '&&'      { TOperator "&&" }
   operator  { TOperator $$ }
   '_'       { TUnderscore }
   ','       { TComma }
+  '|'       { TVBar }
 
+
+%left '||' '&&'
+%left '==' '<' '>' '<=' '>='
+%left '+' '-' '++'
+%left '*' '/'
+%left NEG
 
 %%
 
@@ -84,6 +105,7 @@ SimpleExpr:
     Ident               { $1 }
   | NonIdentSimpleExpr  { $1 }
 
+
 NonIdentSimpleExpr:
     symbol         { LitSymbol $1 [] }
   | NonIdentNonSymbolSimpleExpr { $1 }
@@ -91,10 +113,11 @@ NonIdentSimpleExpr:
 NonIdentNonSymbolSimpleExpr:
     int            { LitNumber $1 }
   | string         { LitString $1 }
+  | List           { $1 }
   | '(' Expr star(TupleNextExpr) ')' {
                   case $3 of
                   [] -> $2
-                  es -> LitSymbol tupleSymbolId ($2 : $3) }
+                  es -> LitSymbol tupleSymbolName ($2 : $3) }
 
 TupleNextExpr:
     ',' Expr   { $2 }
@@ -116,8 +139,37 @@ FunDefOrCallNext:
   |                                            { ([], \ a args -> FunAp a args) }
 
 
+
 InfixOperation:
-    SimpleExpr operator SimpleExpr             { FunAp (Var $2) [$1, $3] }
+    Operand '+' Operand         { FunAp (Var "+") [$1, $3] }
+  | Operand '-' Operand         { FunAp (Var "-") [$1, $3] }
+  | Operand '/' Operand         { FunAp (Var "/") [$1, $3] }
+  | Operand '*' Operand         { FunAp (Var "*") [$1, $3] }
+  | Operand '==' Operand        { FunAp (Var "==") [$1, $3] }
+  | Operand '<' Operand         { FunAp (Var "<") [$1, $3] }
+  | Operand '>' Operand         { FunAp (Var ">") [$1, $3] }
+  | Operand '++' Operand        { FunAp (Var "$string-concat") [$1, $3] }
+  | Operand '||' Operand        { FunAp (Var "||") [$1, $3] }
+  | Operand '&&' Operand        { FunAp (Var "&&") [$1, $3] }
+  | Operand '<=' Operand        { FunAp (Var "<=") [$1, $3] }
+  | Operand '>=' Operand        { FunAp (Var ">=") [$1, $3] }
+  | '-' Operand %prec NEG       { FunAp (Var "-") [LitNumber 0, $2] }
+  -- | Operand operator Operand    { FunAp (Var $2) [$1, $3] }
+
+Operand:
+    SimpleExpr     { $1 }
+  | InfixOperation { $1 }
+
+
+
+List:
+    '[' ListNext ']'       { $2 }
+
+ListNext:
+    Expr              { LitSymbol listConsSymbolName [$1, LitSymbol listEmptySymbolName []] }
+  | Expr ',' ListNext { LitSymbol listConsSymbolName [$1, $3] }
+  | Expr '|' Expr     { LitSymbol listConsSymbolName [$1, $3] }
+  |                   { LitSymbol listEmptySymbolName [] }
 
 
 
@@ -153,7 +205,7 @@ ModuleFunDef:
 
 IfElse:
     if opt(eol) Expr opt(eol) then opt(eol) Expr opt(eol) else opt(eol) Expr  {
-      Match $3 [(PatSymbol "true" [], $7), (PatSymbol "false" [], $11)]
+      Match $3 [(PatSymbol trueSymbolName [], $7), (PatSymbol falseSymbolName [], $11)]
     }
 
 
@@ -170,13 +222,17 @@ Pattern:
 
 SimplePattern:
     int { PatNumber $1 }
-  | id  { PatVar $1 }
-  | '_' { PatWildcard }
+  | PatId { $1 }
   | '(' Pattern star(TupleNextPattern) ')' { 
       case $3 of
         [] -> $2
-        _  -> PatSymbol tupleSymbolId ($2 : $3)
+        _  -> PatSymbol tupleSymbolName ($2 : $3)
     }
+  | PatList  { $1 }
+
+PatId:
+    id  { PatVar $1 }
+  | '_' { PatWildcard }
 
 TupleNextPattern:
     ',' Pattern   { $2 }
@@ -184,26 +240,35 @@ TupleNextPattern:
 SymbolPattern:
     symbol star(SimplePattern) { PatSymbol $1 $2 }
 
+PatList:
+    '[' PatListNext ']'  { $2 }
 
+PatListNext:
+    Pattern                  { PatSymbol listConsSymbolName [$1, PatSymbol listEmptySymbolName []] }
+  | Pattern ',' PatListNext  { PatSymbol listConsSymbolName [$1, $3] }
+  | Pattern '|' PatId        { PatSymbol listConsSymbolName [$1, $3] }
+  | Pattern '|' PatList      { PatSymbol listConsSymbolName [$1, $3] }
+  |                          { PatSymbol listEmptySymbolName [] }
 
 
 DoExpr:
     do id DoBody  { makeMonad $2 $3 }
 
 DoBody:
-    begin opt(eol) plus(DoLine) end eol  { $3 }
+    begin opt(eol) plus(DoLine) end { $3 }
 
 DoLine:
     id '<-' DoLineExpr eol  { ($1, $3) }
   | DoLineExpr eol          { ("_", $1) }
-
+  | Binding DoLine          { let (v, e) = $2 in 
+                              (v, LocalBinding $1 e) }
 
 DoLineExpr:
-    Ident          { $1 }
+    Ident              { $1 }
   | NonIdentSimpleExpr { $1 }
-  | LocalDoBinding        { $1 }  
-  | MatchExpr     { $1 }
-  | FunAp          { $1 }
+  | LocalDoBinding     { $1 }
+  | MatchExpr          { $1 }
+  | FunAp              { $1 }
 
 
 FunAp:
@@ -213,27 +278,33 @@ LocalDoBinding:
     Binding DoLineExpr  { LocalBinding $1 $2 }
 
 
-
-
 {
 
-tupleSymbolId = "$tuple"
+-- TODO export these symbols so that tests can use them abstractly
 
-
+makeMonad :: String -> [(String, Expr)] -> Expr
 makeMonad monad lines =
   case (reverse lines) of
-    (_, call) : []     -> call
-    ("_", call) : rest -> foldl (\acc (nid, ncall) ->
-          let ns = (Namespace monad (Var "bind")) in
-          let args = [ncall, Lambda [nid] acc] in
-          FunAp ns args)
-        call rest
+    (_, call) : []     -> adjustNameForMonad call monad
+    ("_", action) : rest ->
+            foldl (\acc (varname, action') ->
+                -- TODO use namespace here instead of string concatenation
+                let qname = (Var $ monad ++ "-bind") in -- (Namespace monad (Var "bind")) in
+                let args = [(adjustNameForMonad action' monad), Lambda [varname] acc] in
+                FunAp qname args) (adjustNameForMonad action monad) rest
     (_, _) : rest -> error "Last line in do-block can't be an assignment"
     [] -> error "Malformed do-block"
 
 
+adjustNameForMonad :: Expr -> String -> Expr
+adjustNameForMonad e mon =
+  case e of
+    FunAp (Var "return") a -> FunAp (Var (mon ++ "-return")) a
+    LocalBinding b e -> LocalBinding b (adjustNameForMonad e mon)
+    _ -> e
+
 parseError :: [Token] -> a
 parseError ts = error $ "Parse error " ++ (show ts)
 
-
 }
+

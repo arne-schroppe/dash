@@ -12,7 +12,17 @@ typedef uint32_t vm_value;
 
 vm_value vm_execute(vm_instruction *program, int program_length, vm_value *const_table, int const_table_length);
 
+vm_value *vm_get_heap_pointer(vm_value addr);
 
+extern const vm_value vm_tag_number;
+extern const vm_value vm_tag_plain_symbol;
+extern const vm_value vm_tag_compound_symbol;
+extern const vm_value vm_tag_dynamic_compound_symbol;
+extern const vm_value vm_tag_match_data;
+extern const vm_value vm_tag_string;
+extern const vm_value vm_tag_dynamic_string;
+extern const vm_value vm_tag_pap; // partial applications and closures are currently the same
+extern const vm_value vm_tag_function;
 
 
 

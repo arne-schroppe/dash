@@ -35,17 +35,27 @@ TODO use computed Goto
 
 static int invocation = 0;
 
+const int max_integer = 0x1FFFFF;
+const int number_bias = 0xFFFFF;
+
+const int charPerStringChunk = sizeof(vm_value) / sizeof(char);
+
 // Constants
 static const vm_value symbol_id_false = 0;
 static const vm_value symbol_id_true = 1;
 static const int fun_header_size = 1;
-static const int pap_header_size = 2; \
+static const int pap_header_size = 2;
+static const int compound_symbol_header_size = 1;
+static const int string_header_size = 1;
 
 const vm_value vm_tag_number = 0x0;
 const vm_value vm_tag_plain_symbol = 0x4;
 const vm_value vm_tag_compound_symbol = 0x5;
 const vm_value vm_tag_pap = 0x6;
 const vm_value vm_tag_function = 0x7;
+const vm_value vm_tag_dynamic_compound_symbol = 0x8;
+const vm_value vm_tag_string = 0x9;
+const vm_value vm_tag_dynamic_string = 0xA;
 const vm_value vm_tag_match_data = 0xF;
 
 // match data will never appear on the heap, so we can reuse the tag
@@ -62,11 +72,20 @@ static int const_table_length = 0;
 
 
 
+typedef enum {
+  no_io_action = 0,
+  intermediary_io_action = 1,
+  final_io_action = 2
+} io_action_result;
+
+io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result);
+
 //TODO do this once instead of all the time
 #define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
     printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
     return false; }
 
+#define check_reg(i) { int r = (i); if(r >= num_regs) { fprintf(stderr, "Illegal register: %i", r); exit(-1); }}
 #define get_reg(i) stack[stack_pointer].reg[(i)]
 #define current_frame (stack[stack_pointer])
 #define next_frame (stack[stack_pointer + 1])
@@ -75,13 +94,14 @@ static int const_table_length = 0;
   int return_pointer;                 \
   bool call_failed = false;              \
   {                                   \
+    check_reg(func_reg); \
     int func = get_reg(func_reg);     \
     if(get_tag(func) != vm_tag_function) { \
       fprintf(stderr, "expected a function (do call)\n"); \
       call_failed = true;                \
     } \
     else {                            \
-      int func_address = from_val(func); \
+      int func_address = get_val(func); \
       if(frame != &next_frame) { \
         int num_args = get_arg_r2(instr); \
         memcpy(frame->reg, next_frame.reg, num_args * sizeof(vm_value)); \
@@ -102,7 +122,7 @@ vm_value *pap_pointer; \
   *pap_pointer = pap_header(pap_arity, num_pap_args); /* write header */ \
   *(pap_pointer + 1) = func_address; \
   memcpy(pap_pointer + pap_header_size + offset, next_frame.reg, num_args * sizeof(vm_value)); \
-  pap_value = val( (vm_value) pap_address, vm_tag_pap ); \
+  pap_value = make_tagged_val( (vm_value) pap_address, vm_tag_pap ); \
 }
 
 
@@ -159,12 +179,13 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     current_frame.spilled_arguments = 0;
   }
 
+  check_reg(lambda_reg);
   vm_value lambda = get_reg(lambda_reg);
 
   vm_value tag = get_tag(lambda);
   if(tag == vm_tag_pap ) {
 
-    heap_address cl_address = (heap_address)from_val(lambda);
+    heap_address cl_address = (heap_address)get_val(lambda);
 
     vm_value *cl_pointer = heap_get_pointer(cl_address);
     int header = *cl_pointer;
@@ -196,6 +217,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       build_pap(num_pap_args, pap_arity, offset, num_args, func_address)
       memcpy(pap_pointer + pap_header_size, cl_pointer + pap_header_size, num_cl_vars * sizeof(vm_value));
 
+      check_reg(reg0);
       get_reg(reg0) = pap_value;
       return -1;
     }
@@ -220,7 +242,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
   else if (tag == vm_tag_function) {
 
-    int func_address = from_val(lambda);
+    int func_address = get_val(lambda);
     vm_instruction fun_header = program[func_address];
     //TODO check fun header "opcode"
     int arity = get_arg_i(fun_header);
@@ -245,6 +267,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
       build_pap(num_args, pap_arity, 0, num_args, func_address)
 
+      check_reg(reg0);
       get_reg(reg0) = pap_value;
       return -1;
     }
@@ -274,22 +297,37 @@ bool is_equal(vm_value l, vm_value r) {
 
   vm_value l_tag = get_tag(l);
 
-  if(l_tag != get_tag(r)) {
-    return false;
-  }
+  vm_value r_tag = get_tag(r);
 
-  if (l_tag == vm_tag_plain_symbol || l_tag == vm_tag_number) {
-    if(l != r) {
+  if ( (l_tag == vm_tag_compound_symbol) || (l_tag == vm_tag_dynamic_compound_symbol) ) {
+
+    if ( (r_tag != vm_tag_compound_symbol) && (r_tag != vm_tag_dynamic_compound_symbol) ) {
       return false;
     }
-    return true;
-  }
 
-  if ( l_tag == vm_tag_compound_symbol ) {
-    int l_addr = from_val(l);
-    int r_addr = from_val(r);
-    vm_value l_header = const_table[l_addr];
-    vm_value r_header = const_table[r_addr];
+    int l_addr = get_val(l);
+    int r_addr = get_val(r);
+
+    vm_value *l_pointer;
+    vm_value *r_pointer;
+
+    if(l_tag == vm_tag_compound_symbol) {
+      l_pointer = const_table + l_addr;
+    }
+    else {
+      l_pointer = heap_get_pointer(l_addr);
+    }
+
+    if(r_tag == vm_tag_compound_symbol) {
+      r_pointer = const_table + r_addr;
+    }
+    else {
+      r_pointer = heap_get_pointer(r_addr);
+    }
+
+    vm_value l_header = *l_pointer;
+    vm_value r_header = *r_pointer;
+
 
     int count = compound_symbol_count(l_header);
     if( (compound_symbol_id(l_header) != compound_symbol_id(r_header))
@@ -297,12 +335,54 @@ bool is_equal(vm_value l, vm_value r) {
       return false;
     }
 
-    for(int i = 1; i < count + 1; ++i) {
-      if(! is_equal(const_table[l_addr + i], const_table[r_addr + i])) {
+    for(int i = compound_symbol_header_size; i < compound_symbol_header_size + count; ++i) {
+      if(! is_equal(l_pointer[i], r_pointer[i])) {
         return false;
       }
     }
 
+    return true;
+  }
+
+  if(l_tag == vm_tag_string && r_tag == vm_tag_string) {
+
+    int l_addr = get_val(l);
+    int r_addr = get_val(r);
+
+    vm_value *l_pointer;
+    vm_value *r_pointer;
+
+    if(l_tag == vm_tag_string) {
+      l_pointer = const_table + l_addr;
+    }
+    else {
+      exit(-1); // TODO
+    }
+
+    if(r_tag == vm_tag_string) {
+      r_pointer = const_table + r_addr;
+    }
+    else {
+      exit(-1); // TODO
+    }
+
+    //vm_value l_header = *l_pointer;
+    //vm_value r_header = *r_pointer;
+
+    char *l_str_start = (char *) (l_pointer + 1);
+    char *r_str_start = (char *) (r_pointer + 1);
+
+    return strcmp(l_str_start, r_str_start) == 0;
+  }
+
+  if(l_tag != r_tag) {
+    return false;
+  }
+
+  if (l_tag == vm_tag_plain_symbol || l_tag == vm_tag_number) {
+    if(l != r) {
+      return false;
+    }
     return true;
   }
 
@@ -316,18 +396,21 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
 
   vm_value pattern_tag = get_tag(pattern);
 
-  //if bit 27 (32 - 5) is set, this is a match header, otherwise it is a variable
+  //if bit 27 (NUM_REGS - 5) is set, this is a match header, otherwise it is a variable
   bool is_match_var = !(pattern & 0x8000000);
   if(pattern_tag == vm_tag_match_data && is_match_var) {
     //capturing match
     int relative_reg = from_match_value(pattern);
     if(relative_reg != match_wildcard_value) {
+      check_reg(start_register + relative_reg);
       get_reg(start_register + relative_reg) = subject;
     }
     return true;
   }
 
-  if(pattern_tag != get_tag(subject)) {
+  vm_value subject_tag = get_tag(subject);
+  if(pattern_tag != vm_tag_compound_symbol
+      && pattern_tag != subject_tag) {
     return false;
   }
 
@@ -337,16 +420,29 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
       return pattern == subject;
 
     case vm_tag_compound_symbol: {
-      vm_value pattern_address = from_val(pattern);
+      if(subject_tag != vm_tag_compound_symbol
+          && subject_tag != vm_tag_dynamic_compound_symbol) {
+        return false;
+      }
 
+      vm_value pattern_address = get_val(pattern);
       check_ctable_index(pattern_address)
+
       vm_value pattern_header = const_table[pattern_address];
       vm_value pattern_id = compound_symbol_id(pattern_header);
 
-      vm_value subject_address = from_val(subject);
+      vm_value subject_address = get_val(subject);
+      vm_value *subject_pointer;
+      if(subject_tag == vm_tag_compound_symbol) {
+        check_ctable_index(subject_address)
+        subject_pointer = &const_table[subject_address];
+      }
+      else {
+        subject_pointer = heap_get_pointer(subject_address);
+      }
 
-      check_ctable_index(subject_address)
-      vm_value subject_header = const_table[subject_address];
+
+      vm_value subject_header = subject_pointer[0];
       vm_value subject_id = compound_symbol_id(subject_header);
       if(pattern_id != subject_id) {
         return false;
@@ -359,14 +455,14 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
         return false;
       }
 
-      int i=0;
+      int i = 0;
       for(; i<pattern_count; ++i) {
-        int rel_pattern_address = pattern_address + 1 + i;
-        int rel_subject_address = subject_address + 1 + i;
+        int rel_pattern_address = pattern_address + compound_symbol_header_size + i;
+        int rel_subject_address = compound_symbol_header_size + i;
 
         check_ctable_index(rel_pattern_address);
-        check_ctable_index(rel_subject_address);
-        if( !does_value_match(const_table[rel_pattern_address], const_table[rel_subject_address], start_register) ) {
+        //check_ctable_index(rel_subject_address);
+        if( !does_value_match(const_table[rel_pattern_address], subject_pointer[rel_subject_address], start_register) ) {
           return false;
         }
       }
@@ -394,13 +490,17 @@ void reset() {
 
 
 vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctable, int ctable_length) {
-  ++ invocation;
+  ++invocation;
   reset();
   const_table = ctable;
   const_table_length = ctable_length;
+
+
   bool is_running = true;
 
   debug( printf("----- start %d\n", invocation) );
+
+restart:
   while(is_running && program_pointer < program_length) {
     //debug( print_registers(current_frame) );
 
@@ -414,6 +514,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_LOAD_i: {
         int reg0 = get_arg_r0(instr);
         int val = get_arg_i(instr);
+        check_reg(reg0);
         get_reg(reg0) = val;
         debug( printf("LOADi  r%02i #%i\n", reg0, val) );
       }
@@ -423,7 +524,8 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_LOAD_ps: {
         int reg0 = get_arg_r0(instr);
         int value = get_arg_i(instr);
-        get_reg(reg0) = val(value, vm_tag_plain_symbol);
+        check_reg(reg0);
+        get_reg(reg0) = make_tagged_val(value, vm_tag_plain_symbol);
         debug( printf("LOADss  r%02i #%i\n", reg0, value) );
       }
       break;
@@ -432,7 +534,8 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_LOAD_cs: {
         int reg0 = get_arg_r0(instr);
         int value = get_arg_i(instr);
-        get_reg(reg0) = val(value, vm_tag_compound_symbol);
+        check_reg(reg0);
+        get_reg(reg0) = make_tagged_val(value, vm_tag_compound_symbol);
         debug( printf("LOADcs r%02i #%i\n", reg0, value) );
       }
       break;
@@ -443,6 +546,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
         int table_index = get_arg_i(instr);
 
         check_ctable_index(table_index)
+        check_reg(reg1);
         get_reg(reg1) = const_table[table_index];
         debug( printf("LOADc  r%02i #%i value: %i\n", reg1, table_index, const_table[table_index]) );
       }
@@ -452,8 +556,19 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_LOAD_f: {
         int reg0 = get_arg_r0(instr);
         int value = get_arg_i(instr);
-        get_reg(reg0) = val(value, vm_tag_function);
+        check_reg(reg0);
+        get_reg(reg0) = make_tagged_val(value, vm_tag_function);
         debug( printf("LOADf  r%02i #%i\n", reg0, value) );
+      }
+      break;
+
+
+      case OP_LOAD_str: {
+        int reg0 = get_arg_r0(instr);
+        int value = get_arg_i(instr);
+        check_reg(reg0);
+        get_reg(reg0) = make_tagged_val(value, vm_tag_string);
+        debug( printf("LOADstr  r%02i #%i\n", reg0, value) );
       }
       break;
 
@@ -461,10 +576,19 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_ADD: {
         int reg1 = get_arg_r1(instr);
         int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
         int arg1 = get_reg(reg1);
+        check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
-        get_reg(reg0) = arg1 + arg2;
+        check_reg(reg0);
+        int result = ((arg1 - number_bias) + (arg2 - number_bias)) + number_bias;
+        if(result < 0 || result > max_integer) {
+          fprintf(stderr, "Int overflow\n");
+          is_running = false;
+          break;
+        }
+        get_reg(reg0) = result;
         debug( printf("ADD    r%02i r%02i=%x r%02i=%x\n", reg0, reg1, arg1, reg2, arg2) );
       }
       break;
@@ -473,10 +597,19 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_SUB: {
         int reg1 = get_arg_r1(instr);
         int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
         int arg1 = get_reg(reg1);
+        check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
-        get_reg(reg0) = arg1 - arg2;
+        check_reg(reg0);
+        int result = ((arg1 - number_bias) - (arg2 - number_bias)) + number_bias;
+        if(result < 0 || result > max_integer) {
+          fprintf(stderr, "Int overflow\n");
+          is_running = false;
+          break;
+        }
+        get_reg(reg0) = result;
         debug( printf("SUB    r%02i r%02i=%x r%02i=%x\n", reg0, reg1, arg1, reg2, arg2) );
       }
       break;
@@ -485,10 +618,19 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_MUL: {
         int reg1 = get_arg_r1(instr);
         int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
         int arg1 = get_reg(reg1);
+        check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
-        get_reg(reg0) = arg1 * arg2;
+        check_reg(reg0);
+        int result = ((arg1 - number_bias) * (arg2 - number_bias)) + number_bias;
+        if(result < 0 || result > max_integer) {
+          fprintf(stderr, "Int overflow\n");
+          is_running = false;
+          break;
+        }
+        get_reg(reg0) = result;
         debug( printf("MUL    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
       }
       break;
@@ -497,11 +639,26 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_DIV: {
         int reg1 = get_arg_r1(instr);
         int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
         int arg1 = get_reg(reg1);
+        check_reg(reg2);
         int arg2 = get_reg(reg2);
+        if(arg2 == 0) {
+          fprintf(stderr, "Division by 0\n");
+          is_running = false;
+          break;
+        }
+
         int reg0 = get_arg_r0(instr);
-        get_reg(reg0) = arg1 / arg2;
-        debug( printf("MUL    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
+        check_reg(reg0);
+        int result = ((arg1 - number_bias) / (arg2 - number_bias)) + number_bias;
+        if(result < 0 || result > max_integer) {
+          fprintf(stderr, "Int overflow\n");
+          is_running = false;
+          break;
+        }
+        get_reg(reg0) = result;
+        debug( printf("DIV    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
       }
       break;
 
@@ -509,6 +666,8 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_MOVE: {
         int reg0 = get_arg_r0(instr);
         int reg1 = get_arg_r1(instr);
+        check_reg(reg0);
+        check_reg(reg1);
         get_reg(reg0) = get_reg(reg1);
         debug( printf("MOVE   r%02i r%02i\n", reg0, reg1) );
       }
@@ -597,17 +756,43 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
 
       case OP_JMP: {
-        int offset = get_arg_i(instr);
+        int offset = get_arg_i(instr) - number_bias;
         program_pointer += offset;
+        if(program_pointer < 0 || program_pointer > program_length) {
+          fprintf(stderr, "Illegal address!\n");
+          is_running = false;
+          break;
+        }
         debug( printf("JMP %i\n", offset) );
       }
       break;
 
+      case OP_JMP_TRUE: {
+        check_reg(get_arg_r0(instr));
+        vm_value bool_value = get_reg(get_arg_r0(instr));
+
+        if( is_equal(bool_value, make_tagged_val(symbol_id_true, vm_tag_plain_symbol) )) {
+          int offset = get_arg_i(instr) - number_bias;
+          program_pointer += offset;
+          if(program_pointer < 0 || program_pointer > program_length) {
+            fprintf(stderr, "Illegal address: %i\n", program_pointer);
+            is_running = false;
+            break;
+          }
+        }
+        // else: do nothing
+
+        //debug( printf("JMP_EQ %i\n", offset) );
+      }
+      break;
 
       case OP_MATCH: {
+        check_reg(get_arg_r0(instr));
         int subject = get_reg(get_arg_r0(instr));
+        check_reg(get_arg_r1(instr));
         int patterns_addr = get_reg(get_arg_r1(instr));
         int capture_reg = get_arg_r2(instr);
+        check_reg(capture_reg);
 
         check_ctable_index(patterns_addr)
         vm_value match_header = const_table[patterns_addr];
@@ -651,6 +836,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
       case OP_SET_CL_VAL: {
         int cl_reg = get_arg_r0(instr);
+        check_reg(cl_reg);
         vm_value closure = get_reg(cl_reg);
 
         if( get_tag(closure) != vm_tag_pap ) {
@@ -659,7 +845,8 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           break;
         }
 
-        heap_address cl_address = from_val(closure);
+        heap_address cl_address = get_val(closure);
+        check_reg(get_arg_r1(instr));
         vm_value new_value = get_reg(get_arg_r1(instr));
         int arg_index = get_arg_r2(instr);
 
@@ -681,6 +868,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
       case OP_PART_AP: {
         int reg0 = get_arg_r0(instr);
         int func_reg = get_arg_r1(instr);
+        check_reg(func_reg);
         int func = get_reg(func_reg);
 
         if( get_tag(func) != vm_tag_function ) {
@@ -689,7 +877,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
           break;
         }
 
-        int func_address = from_val(func);
+        int func_address = get_val(func);
         int num_args = get_arg_r2(instr);
 
         vm_value function_header = program[func_address];
@@ -705,6 +893,7 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
         int pap_arity = arity - num_args;
         build_pap(num_args, pap_arity, 0, num_args, func_address);
+        check_reg(reg0);
         get_reg(reg0) = pap_value;
         debug( printf("PART_AP\n") );
       }
@@ -712,16 +901,328 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
 
 
       case OP_EQ: {
+        check_reg(get_arg_r1(instr));
+        check_reg(get_arg_r2(instr));
         vm_value l = get_reg(get_arg_r1(instr));
         vm_value r = get_reg(get_arg_r2(instr));
         int result_reg = get_arg_r0(instr);
+        check_reg(result_reg);
 
         if( is_equal(l, r)) {
-          get_reg(result_reg) = val(symbol_id_true, vm_tag_plain_symbol);
+          get_reg(result_reg) = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
         }
         else {
-          get_reg(result_reg) = val(symbol_id_false, vm_tag_plain_symbol);
+          get_reg(result_reg) = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
         }
+      }
+      break;
+
+      case OP_LT: {
+        check_reg(get_arg_r1(instr));
+        check_reg(get_arg_r2(instr));
+        vm_value l = get_reg(get_arg_r1(instr));
+        vm_value r = get_reg(get_arg_r2(instr));
+        int result_reg = get_arg_r0(instr);
+        check_reg(result_reg);
+
+        if(get_tag(l) != vm_tag_number || get_tag(r) != vm_tag_number) {
+          fprintf(stderr, "Expected a number\n");
+          is_running = false;
+          break;
+        }
+
+        if( l < r) {
+          get_reg(result_reg) = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+        }
+        else {
+          get_reg(result_reg) = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        }
+      }
+      break;
+
+      case OP_GT: {
+        check_reg(get_arg_r1(instr));
+        check_reg(get_arg_r2(instr));
+        vm_value l = get_reg(get_arg_r1(instr));
+        vm_value r = get_reg(get_arg_r2(instr));
+        int result_reg = get_arg_r0(instr);
+        check_reg(result_reg);
+
+        if(get_tag(l) != vm_tag_number || get_tag(r) != vm_tag_number) {
+          fprintf(stderr, "Expected a number\n");
+          is_running = false;
+          break;
+        }
+
+        if( l > r) {
+          get_reg(result_reg) = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+        }
+        else {
+          get_reg(result_reg) = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        }
+      }
+      break;
+
+
+      case OP_COPY_SYM: {
+        check_reg(get_arg_r0(instr));
+        check_reg(get_arg_r1(instr));
+        vm_value const_symbol = get_reg(get_arg_r1(instr));
+
+        if ( get_tag(const_symbol) != vm_tag_compound_symbol ) {
+          fprintf(stderr, "Expected a const symbol, got tag: %d\n", get_tag(const_symbol));
+          is_running = false;
+          break;
+        }
+
+        int c_addr = get_val(const_symbol);
+        vm_value c_sym_header = const_table[c_addr];
+
+        int count = compound_symbol_count(c_sym_header);
+
+        size_t total_size = compound_symbol_header_size + count;
+        heap_address dyn_sym_address = heap_alloc(total_size);
+        vm_value *sym_pointer = heap_get_pointer(dyn_sym_address);  \
+        memcpy(sym_pointer, &(const_table[c_addr]), total_size * sizeof(vm_value));
+
+        get_reg(get_arg_r0(instr)) = make_tagged_val(dyn_sym_address, vm_tag_dynamic_compound_symbol);
+
+      }
+      break;
+
+      case OP_SET_SYM_FIELD: {
+        check_reg(get_arg_r0(instr));
+        check_reg(get_arg_r1(instr));
+        vm_value heap_symbol = get_reg(get_arg_r0(instr));
+
+        if ( get_tag(heap_symbol) != vm_tag_dynamic_compound_symbol ) {
+          fprintf(stderr, "Expected a dynamic symbol, got tag: %d\n", get_tag(heap_symbol));
+          is_running = false;
+          break;
+        }
+
+        int h_addr = get_val(heap_symbol);
+        vm_value *p = heap_get_pointer(h_addr);
+        vm_value h_sym_header = *p;
+
+        int count = compound_symbol_count(h_sym_header);
+
+        int index = get_arg_r2(instr);
+        if(index < 0 || index >= count) {
+          fprintf(stderr, "Illegal index while setting symbol field: %d\n", index);
+          is_running = false;
+          break;
+        }
+
+        p[compound_symbol_header_size + index] = get_reg(get_arg_r1(instr));
+      }
+      break;
+
+
+      case OP_STR_LEN: {
+        check_reg(get_arg_r0(instr));
+        check_reg(get_arg_r1(instr));
+
+        vm_value str = get_reg(get_arg_r1(instr));
+        int tag = get_tag(str);
+        if (tag != vm_tag_string && tag != vm_tag_dynamic_string ) {
+          fprintf(stderr, "Expected a string, got tag: %d\n", tag);
+          is_running = false;
+          break;
+        }
+
+        int str_addr = get_val(str);
+        vm_value *str_pointer;
+
+        if(tag == vm_tag_string) {
+          str_pointer = const_table + str_addr;
+        }
+        else {
+          str_pointer = heap_get_pointer(str_addr);
+        }
+
+        vm_value str_header = *str_pointer;
+
+        int count = string_length(str_header);
+        get_reg(get_arg_r0(instr)) = make_tagged_val(count + number_bias, vm_tag_number);
+      }
+      break;
+
+
+      case OP_NEW_STR: {
+        int result_reg = get_arg_r0(instr);
+        check_reg(result_reg);
+        check_reg(get_arg_r1(instr));
+
+        vm_value length_value = get_reg(get_arg_r1(instr));
+        if(get_tag(length_value) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, got tag: %d\n", get_tag(length_value));
+          is_running = false;
+          break;
+        }
+
+        int length = length_value - number_bias;
+        if(length < 0) {
+          fprintf(stderr, "Negative length for new string, got: %d\n", length);
+          is_running = false;
+          break;
+        }
+
+        int adjusted_length = length + 1; // allow space for trailing '\0'
+        int num_chunks = adjusted_length / charPerStringChunk;
+        if( (adjusted_length % charPerStringChunk) != 0 ) {
+          num_chunks += charPerStringChunk - (adjusted_length % charPerStringChunk);
+        }
+
+        size_t total_size = string_header_size + num_chunks;
+        heap_address string_address = heap_alloc(total_size);
+        vm_value *str_pointer = heap_get_pointer(string_address);
+
+        memset(str_pointer, 0, total_size * sizeof(vm_value));
+        *str_pointer = string_header(length, num_chunks);
+
+        get_reg(result_reg) = make_tagged_val(string_address, vm_tag_dynamic_string);
+
+      }
+      break;
+
+
+      case OP_GET_CHAR: {
+        int result_reg = get_arg_r0(instr);
+        check_reg(result_reg);
+        check_reg(get_arg_r1(instr));
+        check_reg(get_arg_r2(instr));
+
+        vm_value str = get_reg(get_arg_r1(instr));
+        vm_value str_tag = get_tag(str);
+        if(str_tag != vm_tag_string && str_tag != vm_tag_dynamic_string) {
+          fprintf(stderr, "Expected a string, got tag: %d\n", str_tag);
+          is_running = false;
+          break;
+        }
+
+        int str_addr = get_val(str);
+        vm_value *str_pointer;
+
+        if(str_tag == vm_tag_string) {
+          str_pointer = const_table + str_addr;
+        }
+        else {
+          str_pointer = heap_get_pointer(str_addr);
+        }
+
+        vm_value str_header = *str_pointer;
+
+        int index = get_reg(get_arg_r2(instr)) - number_bias;
+        int str_length = string_length(str_header);
+        if(index < 0 || index > str_length) {
+          fprintf(stderr, "Illegal string index: %d\n", index);
+          is_running = false;
+          break;
+        }
+
+        char *char_pointer = (char *) (str_pointer + string_header_size);
+        int character = char_pointer[index];
+
+        get_reg(result_reg) = make_tagged_val(character, vm_tag_number);
+
+      }
+      break;
+
+
+      case OP_PUT_CHAR: {
+        check_reg(get_arg_r0(instr));
+        check_reg(get_arg_r1(instr));
+        check_reg(get_arg_r2(instr));
+
+        vm_value str = get_reg(get_arg_r1(instr));
+        vm_value str_tag = get_tag(str);
+        if(str_tag != vm_tag_dynamic_string) {
+          fprintf(stderr, "Expected a dynamic string, got tag: %d\n", str_tag);
+          is_running = false;
+          break;
+        }
+
+        int character = get_reg(get_arg_r0(instr));
+        if(get_tag(character) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, got tag: %d\n", str_tag);
+          is_running = false;
+          break;
+        }
+
+        int str_addr = get_val(str);
+        vm_value *str_pointer = heap_get_pointer(str_addr);
+
+        vm_value str_header = *str_pointer;
+
+        int index = get_reg(get_arg_r2(instr)) - number_bias;
+        int str_length = string_length(str_header);
+        if(index < 0 || index > str_length) {
+          fprintf(stderr, "Illegal string index: %d\n", index);
+          is_running = false;
+          break;
+        }
+
+        char *char_pointer = (char *) (str_pointer + string_header_size);
+        char_pointer[index] = (char) character;
+      }
+      break;
+
+
+      case OP_OR: {
+        int reg1 = get_arg_r1(instr);
+        int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
+        int arg1 = get_reg(reg1);
+        check_reg(reg2);
+        int arg2 = get_reg(reg2);
+        int reg0 = get_arg_r0(instr);
+        check_reg(reg0);
+
+        vm_value result = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        vm_value true_sym = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+        if(arg1 == true_sym || arg2 == true_sym) {
+          result = true_sym;
+        }
+        get_reg(reg0) = result;
+      }
+      break;
+
+
+      case OP_AND: {
+        int reg1 = get_arg_r1(instr);
+        int reg2 = get_arg_r2(instr);
+        check_reg(reg1);
+        int arg1 = get_reg(reg1);
+        check_reg(reg2);
+        int arg2 = get_reg(reg2);
+        int reg0 = get_arg_r0(instr);
+        check_reg(reg0);
+
+        vm_value result = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        vm_value true_sym = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+        if(arg1 == true_sym && arg2 == true_sym) {
+          result = true_sym;
+        }
+        get_reg(reg0) = result;
+      }
+      break;
+
+
+      case OP_NOT: {
+        int reg1 = get_arg_r1(instr);
+        check_reg(reg1);
+        int arg1 = get_reg(reg1);
+        int reg0 = get_arg_r0(instr);
+        check_reg(reg0);
+
+        vm_value result = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        vm_value true_sym = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+        if(arg1 != true_sym) {
+          result = true_sym;
+        }
+        //else: result is already set to false
+        get_reg(reg0) = result;
       }
       break;
 
@@ -739,10 +1240,193 @@ vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctabl
   //fprintf(stderr, "End invocation: %i\n", invocation);
 
   vm_value result = stack[stack_pointer].reg[0];
+
+
+  vm_value io_result_value = 0;
+  io_action_result action_result = check_io_action(result, program, &io_result_value);
+
+  switch(action_result) {
+    case no_io_action:
+      // do nothing
+      break;
+
+    case intermediary_io_action:
+      is_running = true;
+      goto restart;
+
+    case final_io_action:
+      result = io_result_value;
+      break;
+
+    default:
+      fprintf(stderr, "Unknown result of io action: %d\n", action_result);
+      exit(-1);
+  }
+
+
   debug( printf("Result: %u\n", result) );
   return result;
 }
 
 
+// TODO put into separate file and keep in sync with compiler
+const int symbol_id_io = 2;
+const int action_id_printline = 2;
+const int action_id_readline = 1;
+const int action_id_return = 0;
 
+// TODO turn into macro, also use it for new_str opcode
+vm_value new_string(size_t length) {
+
+  size_t adjusted_length = length + 1; // allow space for trailing '\0'
+  int num_chunks = adjusted_length / charPerStringChunk;
+  if( (adjusted_length % charPerStringChunk) != 0 ) {
+    num_chunks += charPerStringChunk - (adjusted_length % charPerStringChunk);
+  }
+
+  size_t total_size = string_header_size + num_chunks;
+  heap_address string_address = heap_alloc(total_size);
+  vm_value *str_pointer = heap_get_pointer(string_address);
+
+  memset(str_pointer, 0, total_size * sizeof(vm_value));
+  *str_pointer = string_header(length, num_chunks);
+
+  return string_address;
+}
+
+
+char *read_string(vm_value string_value) {
+
+  if(get_tag(string_value) != vm_tag_dynamic_string
+      && get_tag(string_value) != vm_tag_string) {
+    fprintf(stderr, "Expected a string\n");
+    exit(-1);
+  }
+
+  int str_addr = get_val(string_value);
+
+  vm_value *str_p;
+  if(get_tag(string_value) ==vm_tag_dynamic_string) {
+    str_p = heap_get_pointer(str_addr);
+  }
+  else {
+    str_p = const_table + str_addr;
+  }
+
+  vm_value *string_start = str_p + 1;
+  return (char *)string_start;
+}
+
+
+
+vm_value *vm_get_heap_pointer(vm_value addr) {
+  return heap_get_pointer(addr);
+}
+
+
+
+// Put vm state into a struct and move this to another file
+
+io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result) {
+
+  if(get_tag(result) != vm_tag_dynamic_compound_symbol) {
+    return no_io_action;
+  }
+
+  vm_value addr = get_val(result);
+  vm_value *p = heap_get_pointer(addr);
+  vm_value header = p[0];
+  if(compound_symbol_id(header) != symbol_id_io) {
+    return no_io_action;
+  }
+
+  vm_value action_type = p[1] - number_bias;
+  vm_value action_param = p[2];
+  vm_value next_action = p[3];
+
+  if(get_tag(action_type) != vm_tag_number) {
+    fprintf(stderr, "Malformed io action: %d\n", action_type);
+    exit(-1);
+  }
+  int action_id = get_val(action_type);
+
+  vm_value next_param = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+  switch (action_id) {
+
+    case action_id_printline: {
+        char *param = read_string(action_param);
+        printf("%s\n", param);
+        next_param = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
+      }
+      break;
+
+    case action_id_readline: {
+        char *line = NULL;
+        size_t buffer_size = 0;
+        char *prompt = read_string(action_param);
+        printf("%s", prompt); // TODO get rid of this prompt
+        int length = getline(&line, &buffer_size, stdin);
+        if(length == -1) {
+          //TODO return :eof instead?
+          fprintf(stderr, "Failure!\n");
+          exit(-1);
+        }
+        else
+        {
+          //cut off trailing newline
+          length -= 1;
+          line[length] = '\0';
+
+          vm_value string_address = new_string(length);
+          vm_value *str_pointer = heap_get_pointer(string_address);
+          vm_value *str_start = str_pointer + 1;
+
+          strcpy((char *)str_start, line);
+          next_param = make_tagged_val(string_address, vm_tag_dynamic_string);
+        }
+      }
+      break;
+
+    case action_id_return:
+      next_param = action_param;
+      break;
+
+    default:
+      fprintf(stderr, "malformed io action: %d\n", action_id);
+      exit(-1);
+  }
+
+  if(get_tag(next_action) == vm_tag_function || get_tag(next_action) == vm_tag_pap) {
+    // The io action includes a bound lambda. Set up the vm so that it is called
+    // with the result form our io action.
+    stack_pointer = 0;
+
+    current_frame.reg[0] = next_action;
+    next_frame.reg[0] = next_param;
+    vm_instruction instr = op_gen_ap(0, 0, 1);
+    int return_pointer = do_gen_ap(&current_frame, instr, program);
+    if (return_pointer != -1) {
+      current_frame.return_address = return_pointer;
+      current_frame.result_register = 0;
+
+      return intermediary_io_action;
+    }
+    else {
+      // TODO is this malformed?
+      fprintf(stderr, "malformed bound lambda in io action\n");
+      exit(-1);
+    }
+  }
+  else {
+    // There is no binding following this io action. The action's result
+    // is the final result.
+    if(final_result) {
+      *final_result = next_param;
+    }
+    return final_io_action;
+  }
+
+  fprintf(stderr, "Error in io action\n");
+  exit(-1);
+}
 
