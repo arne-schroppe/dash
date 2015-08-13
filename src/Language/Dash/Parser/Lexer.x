@@ -24,6 +24,9 @@ $opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \| \^]
 
 @operator   = "==" | $opsymbol ($opsymbol | "=")*
 
+@hashBang   = "#!" .* \n
+
+
 -- TODO parse \n etc properly
 @stringchars = [^ \"]*
 
@@ -64,9 +67,12 @@ tokens :-
   <0> @integer      { mkTokS (\s -> TInt (read s)) }
   <0> @ident        { mkTokS (\s -> TId s) }
   <0> @operator     { mkTokS (\s -> TOperator s) }
+  <0> @hashBang     { skip }
 
 
 {
+
+
 
 mkTok :: Token -> AlexInput -> Int -> Alex Token
 mkTok t _ _ = return t
