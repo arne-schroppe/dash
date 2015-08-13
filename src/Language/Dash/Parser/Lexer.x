@@ -59,7 +59,7 @@ tokens :-
   <0> \"\"          { mkTok $ TString "" }
   <0> \"            { begin str }
   <str> @stringchars
-                    { mkTokS (\s -> TString s) }
+                    { mkTokS (\s -> TString $ convertEscapeSequences s) }
   <str> \"          { begin 0 }
   <0> @integer      { mkTokS (\s -> TInt (read s)) }
   <0> @ident        { mkTokS (\s -> TId s) }
@@ -77,6 +77,25 @@ mkTokS f (_, _, _, str) len = return $ f (take len str)
 alexEOF :: Alex Token
 alexEOF = return TEOF
 
+
+convertEscapeSequences :: String -> String
+convertEscapeSequences s =
+  conv' s ""
+  where
+    conv' (c:rest@(c1:cs)) acc = 
+      case c of
+        '\\' -> parseEscapeChar c1 cs acc
+        _ -> conv' rest (acc ++ [c])
+    conv' (c:[]) acc = acc ++ [c]
+    conv' [] acc = acc
+
+    parseEscapeChar ec cs acc =
+      case ec of
+        '\\' -> conv' cs (acc ++ "\\") -- "
+        'n' -> conv' cs (acc ++ "\n")
+        '"' -> conv' cs (acc ++ "\"")
+        't' -> conv' cs (acc ++ "\t")
+        other -> conv' cs (acc ++ [other])
 
 
 data AlexUserState = AlexUserState {

@@ -32,9 +32,9 @@ spec = do
       parse_string "[]" `shouldBe`
         LitSymbol listEmptySymbolName []
 
-    --it "lexes a newline sequence" $ do
-    --  parse_string "\"\n\"" `shouldBe`
-    --    LitString "\n"
+    it "lexes a newline sequence" $ do
+      parse_string "\"dash\\n\"" `shouldBe`
+        LitString "dash\n"
 
 
     it "parses a list" $ do
