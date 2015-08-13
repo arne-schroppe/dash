@@ -275,6 +275,7 @@ DoLineExpr:
   | NonIdentSimpleExpr { $1 }
   | LocalDoBinding     { $1 }
   | MatchExpr          { $1 }
+  | IfElse             { $1 }
   | FunAp              { $1 }
 
 

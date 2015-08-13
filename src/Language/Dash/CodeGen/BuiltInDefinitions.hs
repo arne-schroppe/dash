@@ -30,6 +30,7 @@ builtInSymbols = [ (falseSymbolName, mkSymId 0)
                   -- TODO prevent user from accessing these directly
                  , ("_internal_io", mkSymId 2)
                   -- end IO symbols
+                 , ("eof", mkSymId 3)
                  ]
 
 
@@ -126,11 +127,14 @@ preamble = "\n\
 \    :_internal_io " ++ (show returnActionId) ++ " a :false       \n\
 \                                                        \n\
 \                                                        \n\
-\  io-read-line a =                                      \n\
-\    :_internal_io " ++ (show readLineActionId) ++ " a :false     \n\
+\  io-read-ln =                                          \n\
+\    :_internal_io " ++ (show readLineActionId) ++ " :nil :false     \n\
 \                                                        \n\
-\  io-print-line a =                                     \n\
+\  io-print a =                                     \n\
 \    :_internal_io " ++ (show printLineActionId) ++ " a :false    \n\
+\                                                        \n\
+\  io-print-ln a =                                       \n\
+\    :_internal_io " ++ (show printLineActionId) ++ " (a ++ \"\\n\") :false    \n\
 \                                                        \n\
 \  head ls =                                             \n\
 \    match ls begin                                      \n\

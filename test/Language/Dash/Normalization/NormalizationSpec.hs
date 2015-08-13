@@ -239,8 +239,8 @@ spec = do
                   ]
         let (norm, ctable, _) = normalize ast
         let expectedCTable = [ CMatchData [
-                               CCompoundSymbol (mkSymId 3) [CMatchVar 0, CMatchVar 1, CMatchVar 2],
-                               CCompoundSymbol (mkSymId 4) [CMatchVar 0, CMatchVar 1]
+                               CCompoundSymbol (mkSymId 4) [CMatchVar 0, CMatchVar 1, CMatchVar 2],
+                               CCompoundSymbol (mkSymId 5) [CMatchVar 0, CMatchVar 1]
                              ]]
         let expected = NLet (NVar (lvn 0) NLocalVar) (NNumber 2) $
                        NLet (NVar (lvn 1) NLocalVar) (NMatchBranch [] ["n", "o", "p"] $ NAtom $ NVarExpr $ NVar "n" NFunParam) $
@@ -399,8 +399,8 @@ spec = do
                   LocalBinding (Binding "f" $ LitSymbol falseSymbolName []) $
                   LitNumber 0
         let norm = pureNorm ast
-        let expected = NLet (NVar "x" NLocalVar) (NPlainSymbol $ mkSymId 3) $
-                       NLet (NVar "y" NLocalVar) (NPlainSymbol $ mkSymId 4) $
+        let expected = NLet (NVar "x" NLocalVar) (NPlainSymbol $ mkSymId 4) $
+                       NLet (NVar "y" NLocalVar) (NPlainSymbol $ mkSymId 5) $
                        NLet (NVar "t" NLocalVar) (NPlainSymbol $ mkSymId 1) $
                        NLet (NVar "f" NLocalVar) (NPlainSymbol $ mkSymId 0) $
                        NAtom $ NNumber 0

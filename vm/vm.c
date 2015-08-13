@@ -38,11 +38,15 @@ static int invocation = 0;
 const int max_integer = 0x1FFFFF;
 const int number_bias = 0xFFFFF;
 
-const int charPerStringChunk = sizeof(vm_value) / sizeof(char);
+const int char_per_string_chunk = sizeof(vm_value) / sizeof(char);
 
 // Constants
+// KEEP THESE IN SYNC WITH COMPILER
 static const vm_value symbol_id_false = 0;
 static const vm_value symbol_id_true = 1;
+static const vm_value symbol_id_eof = 3;
+
+
 static const int fun_header_size = 1;
 static const int pap_header_size = 2;
 static const int compound_symbol_header_size = 1;
@@ -80,12 +84,56 @@ typedef enum {
 
 io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result);
 
+void set_error_result() {
+  stack[0].reg[0] = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+}
+
+void panic_exit() {
+  set_error_result();
+  exit(-1);
+}
+
+#define panic_stop_vm() { set_error_result(); is_running = false; break; }
+
+
+
+char *tag_to_string(vm_value tag) {
+
+  switch(tag) {
+
+    case vm_tag_number:
+      return "number";
+
+    case vm_tag_plain_symbol:
+    case vm_tag_compound_symbol:
+    case vm_tag_dynamic_compound_symbol:
+      return "symbol";
+
+    case vm_tag_pap:
+    case vm_tag_function:
+      return "function";
+
+    case vm_tag_string:
+    case vm_tag_dynamic_string:
+      return "string";
+
+    case vm_tag_match_data:
+      return "match pattern";
+
+    default:
+      return "unknown";
+  }
+
+  return "";
+}
+
+
 //TODO do this once instead of all the time
 #define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
     printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
     return false; }
 
-#define check_reg(i) { int r = (i); if(r >= num_regs) { fprintf(stderr, "Illegal register: %i", r); exit(-1); }}
+#define check_reg(i) { int r = (i); if(r >= num_regs) { fprintf(stderr, "Illegal register: %i", r); panic_exit(); }}
 #define get_reg(i) stack[stack_pointer].reg[(i)]
 #define current_frame (stack[stack_pointer])
 #define next_frame (stack[stack_pointer + 1])
@@ -283,7 +331,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
   }
 
   else {
-    fprintf(stderr, "Expected a function: %x (gen ap)\n", tag);
+    fprintf(stderr, "Expected a function, but got %s \n", tag_to_string(tag));
     //exit(-1);
   }
 
@@ -349,21 +397,21 @@ bool is_equal(vm_value l, vm_value r) {
     int l_addr = get_val(l);
     int r_addr = get_val(r);
 
-    vm_value *l_pointer;
-    vm_value *r_pointer;
+    vm_value *l_pointer = NULL;
+    vm_value *r_pointer = NULL;
 
     if(l_tag == vm_tag_string) {
       l_pointer = const_table + l_addr;
     }
     else {
-      exit(-1); // TODO
+      panic_exit(); // TODO
     }
 
     if(r_tag == vm_tag_string) {
       r_pointer = const_table + r_addr;
     }
     else {
-      exit(-1); // TODO
+      panic_exit(); // TODO
     }
 
     //vm_value l_header = *l_pointer;
@@ -475,7 +523,6 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
   }
 }
 
-
 void reset() {
   program_pointer = 0;
   stack_pointer = 0;
@@ -581,18 +628,21 @@ restart:
         check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
-        if(get_tag(arg1) != vm_tag_number || get_tag(arg2) != vm_tag_number) {
-          fprintf(stderr, "Expected a number\n");
-          is_running = false;
-          break;
+        if(get_tag(arg1) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s \n", tag_to_string(get_tag(arg1)));
+          panic_stop_vm();
+        }
+
+        else if(get_tag(arg2) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s \n", tag_to_string(get_tag(arg2)) );
+          panic_stop_vm();
         }
 
         check_reg(reg0);
         int result = ((arg1 - number_bias) + (arg2 - number_bias)) + number_bias;
         if(result < 0 || result > max_integer) {
           fprintf(stderr, "Int overflow\n");
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
         get_reg(reg0) = result;
         debug( printf("ADD    r%02i r%02i=%x r%02i=%x\n", reg0, reg1, arg1, reg2, arg2) );
@@ -608,18 +658,21 @@ restart:
         check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
-        if(get_tag(arg1) != vm_tag_number || get_tag(arg2) != vm_tag_number) {
-          fprintf(stderr, "Expected a number\n");
-          is_running = false;
-          break;
+        if(get_tag(arg1) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s \n", tag_to_string(get_tag(arg1)) );
+          panic_stop_vm();
+        }
+
+        if(get_tag(arg2) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s \n", tag_to_string(get_tag(arg2)) );
+          panic_stop_vm();
         }
 
         check_reg(reg0);
         int result = ((arg1 - number_bias) - (arg2 - number_bias)) + number_bias;
         if(result < 0 || result > max_integer) {
           fprintf(stderr, "Int overflow\n");
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
         get_reg(reg0) = result;
         debug( printf("SUB    r%02i r%02i=%x r%02i=%x\n", reg0, reg1, arg1, reg2, arg2) );
@@ -635,18 +688,21 @@ restart:
         check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
-        if(get_tag(arg1) != vm_tag_number || get_tag(arg2) != vm_tag_number) {
-          fprintf(stderr, "Expected a number\n");
-          is_running = false;
-          break;
+        if(get_tag(arg1) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s \n", tag_to_string(get_tag(arg1)) );
+          panic_stop_vm();
+        }
+
+        if(get_tag(arg2) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s \n", tag_to_string(get_tag(arg2)) );
+          panic_stop_vm();
         }
 
         check_reg(reg0);
         int result = ((arg1 - number_bias) * (arg2 - number_bias)) + number_bias;
         if(result < 0 || result > max_integer) {
           fprintf(stderr, "Int overflow\n");
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
         get_reg(reg0) = result;
         debug( printf("MUL    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
@@ -663,23 +719,26 @@ restart:
         int arg2 = get_reg(reg2);
         if(arg2 == 0) {
           fprintf(stderr, "Division by 0\n");
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
 
-        if(get_tag(arg1) != vm_tag_number || get_tag(arg2) != vm_tag_number) {
-          fprintf(stderr, "Expected a number\n");
-          is_running = false;
-          break;
+        if(get_tag(arg1) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s \n", tag_to_string(get_tag(arg1)) );
+          panic_stop_vm();
         }
+
+        if(get_tag(arg2) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s \n", tag_to_string(get_tag(arg2)) );
+          panic_stop_vm();
+        }
+
 
         int reg0 = get_arg_r0(instr);
         check_reg(reg0);
         int result = ((arg1 - number_bias) / (arg2 - number_bias)) + number_bias;
         if(result < 0 || result > max_integer) {
           fprintf(stderr, "Int overflow\n");
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
         get_reg(reg0) = result;
         debug( printf("DIV    r%02i r%02i r%02i\n", reg0, reg1, reg2) );
@@ -701,16 +760,14 @@ restart:
       case OP_CALL: {
         if (stack_pointer + 1 == STACK_SIZE) {
           printf("STACK OVERFLOW (call)!\n");
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
 
         // this macro will create `return_pointer`
         do_call((&next_frame), get_arg_r1(instr), instr);
         if (call_failed) {
           fprintf(stderr, "call failed\n"); //TODO give a better error description
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
 
         next_frame.return_address = return_pointer;
@@ -726,7 +783,7 @@ restart:
         do_call((&current_frame), get_arg_r1(instr), instr);
         if (call_failed) {
           fprintf(stderr, "call failed\n"); //TODO give a better error description
-          is_running = false;
+          panic_stop_vm();
         }
 
         debug( printf("TL CALL\n") );
@@ -737,8 +794,7 @@ restart:
       case OP_GEN_AP: {
         if (stack_pointer + 1 == STACK_SIZE) {
           printf("Stack overflow (call cl)!\n");
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
 
         int return_pointer = do_gen_ap((&next_frame), instr, program);
@@ -784,8 +840,7 @@ restart:
         program_pointer += offset;
         if(program_pointer < 0 || program_pointer > program_length) {
           fprintf(stderr, "Illegal address!\n");
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
         debug( printf("JMP %i\n", offset) );
       }
@@ -800,8 +855,7 @@ restart:
           program_pointer += offset;
           if(program_pointer < 0 || program_pointer > program_length) {
             fprintf(stderr, "Illegal address: %i\n", program_pointer);
-            is_running = false;
-            break;
+            panic_stop_vm();
           }
         }
         // else: do nothing
@@ -839,8 +893,7 @@ restart:
 
         if(i == number_of_patterns) {
           fprintf(stderr, "Pattern match failed!\n");
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
 
         program_pointer += i;
@@ -864,9 +917,8 @@ restart:
         vm_value closure = get_reg(cl_reg);
 
         if( get_tag(closure) != vm_tag_pap ) {
-          fprintf(stderr, "Expected a closure!\n");
-          is_running = false;
-          break;
+          fprintf(stderr, "Expected a closure, but got: %s\n", tag_to_string(get_tag(closure)));
+          panic_stop_vm();
         }
 
         heap_address cl_address = get_val(closure);
@@ -879,8 +931,7 @@ restart:
         int num_env_args = pap_var_count(header);
         if(arg_index >= num_env_args) {
           fprintf(stderr, "Illegal closure modification (index: %i, num env vars: %i)\n", arg_index, num_env_args);
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
         cl_pointer[pap_header_size + arg_index] = new_value;
 
@@ -896,9 +947,8 @@ restart:
         int func = get_reg(func_reg);
 
         if( get_tag(func) != vm_tag_function ) {
-          fprintf(stderr, "Expected a function (op_part_ap)\n");
-          is_running = false;
-          break;
+          fprintf(stderr, "Expected a function, but got: %s \n", tag_to_string(get_tag(func)));
+          panic_stop_vm();
         }
 
         int func_address = get_val(func);
@@ -911,8 +961,7 @@ restart:
         // TODO this was >= earlier, which apparently gave false positives. Find out why, and find out if > is the correct choice
         if(num_args > arity) {
           fprintf(stderr, "Illegal partial application (num args: %i, arity: %i)\n", num_args, arity);
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
 
         int pap_arity = arity - num_args;
@@ -950,10 +999,13 @@ restart:
         int result_reg = get_arg_r0(instr);
         check_reg(result_reg);
 
-        if(get_tag(l) != vm_tag_number || get_tag(r) != vm_tag_number) {
-          fprintf(stderr, "Expected a number\n");
-          is_running = false;
-          break;
+        if(get_tag(l) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s\n", tag_to_string(get_tag(l)));
+          panic_stop_vm();
+        }
+        else if(get_tag(r) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s\n", tag_to_string(get_tag(r)));
+          panic_stop_vm();
         }
 
         if( l < r) {
@@ -973,10 +1025,13 @@ restart:
         int result_reg = get_arg_r0(instr);
         check_reg(result_reg);
 
-        if(get_tag(l) != vm_tag_number || get_tag(r) != vm_tag_number) {
-          fprintf(stderr, "Expected a number\n");
-          is_running = false;
-          break;
+        if(get_tag(l) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s\n", tag_to_string(get_tag(l)));
+          panic_stop_vm();
+        }
+        else if(get_tag(r) != vm_tag_number) {
+          fprintf(stderr, "Expected a number, but got: %s\n", tag_to_string(get_tag(r)));
+          panic_stop_vm();
         }
 
         if( l > r) {
@@ -995,9 +1050,8 @@ restart:
         vm_value const_symbol = get_reg(get_arg_r1(instr));
 
         if ( get_tag(const_symbol) != vm_tag_compound_symbol ) {
-          fprintf(stderr, "Expected a const symbol, got tag: %d\n", get_tag(const_symbol));
-          is_running = false;
-          break;
+          fprintf(stderr, "Expected a const symbol, but got %s \n", tag_to_string(get_tag(const_symbol)));
+          panic_stop_vm();
         }
 
         int c_addr = get_val(const_symbol);
@@ -1021,9 +1075,8 @@ restart:
         vm_value heap_symbol = get_reg(get_arg_r0(instr));
 
         if ( get_tag(heap_symbol) != vm_tag_dynamic_compound_symbol ) {
-          fprintf(stderr, "Expected a dynamic symbol, got tag: %d\n", get_tag(heap_symbol));
-          is_running = false;
-          break;
+          fprintf(stderr, "Expected a dynamic symbol, but got %s \n", tag_to_string(get_tag(heap_symbol)));
+          panic_stop_vm();
         }
 
         int h_addr = get_val(heap_symbol);
@@ -1035,8 +1088,7 @@ restart:
         int index = get_arg_r2(instr);
         if(index < 0 || index >= count) {
           fprintf(stderr, "Illegal index while setting symbol field: %d\n", index);
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
 
         p[compound_symbol_header_size + index] = get_reg(get_arg_r1(instr));
@@ -1051,9 +1103,8 @@ restart:
         vm_value str = get_reg(get_arg_r1(instr));
         int tag = get_tag(str);
         if (tag != vm_tag_string && tag != vm_tag_dynamic_string ) {
-          fprintf(stderr, "Expected a string, got tag: %d\n", tag);
-          is_running = false;
-          break;
+          fprintf(stderr, "Expected a string, but got %s \n", tag_to_string(tag));
+          panic_stop_vm();
         }
 
         int str_addr = get_val(str);
@@ -1081,22 +1132,20 @@ restart:
 
         vm_value length_value = get_reg(get_arg_r1(instr));
         if(get_tag(length_value) != vm_tag_number) {
-          fprintf(stderr, "Expected a number, got tag: %d\n", get_tag(length_value));
-          is_running = false;
-          break;
+          fprintf(stderr, "Expected a number, but got: %s\n", tag_to_string(get_tag(length_value)));
+          panic_stop_vm();
         }
 
         int length = length_value - number_bias;
         if(length < 0) {
           fprintf(stderr, "Negative length for new string, got: %d\n", length);
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
 
         int adjusted_length = length + 1; // allow space for trailing '\0'
-        int num_chunks = adjusted_length / charPerStringChunk;
-        if( (adjusted_length % charPerStringChunk) != 0 ) {
-          num_chunks += charPerStringChunk - (adjusted_length % charPerStringChunk);
+        int num_chunks = adjusted_length / char_per_string_chunk;
+        if( (adjusted_length % char_per_string_chunk) != 0 ) {
+          num_chunks += char_per_string_chunk - (adjusted_length % char_per_string_chunk);
         }
 
         size_t total_size = string_header_size + num_chunks;
@@ -1121,9 +1170,8 @@ restart:
         vm_value str = get_reg(get_arg_r1(instr));
         vm_value str_tag = get_tag(str);
         if(str_tag != vm_tag_string && str_tag != vm_tag_dynamic_string) {
-          fprintf(stderr, "Expected a string, got tag: %d\n", str_tag);
-          is_running = false;
-          break;
+          fprintf(stderr, "Expected a string, but got: %s\n", tag_to_string(str_tag));
+          panic_stop_vm();
         }
 
         int str_addr = get_val(str);
@@ -1142,8 +1190,7 @@ restart:
         int str_length = string_length(str_header);
         if(index < 0 || index > str_length) {
           fprintf(stderr, "Illegal string index: %d\n", index);
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
 
         char *char_pointer = (char *) (str_pointer + string_header_size);
@@ -1163,16 +1210,14 @@ restart:
         vm_value str = get_reg(get_arg_r1(instr));
         vm_value str_tag = get_tag(str);
         if(str_tag != vm_tag_dynamic_string) {
-          fprintf(stderr, "Expected a dynamic string, got tag: %d\n", str_tag);
-          is_running = false;
-          break;
+          fprintf(stderr, "Expected a dynamic string, but got: %s\n", tag_to_string(str_tag));
+          panic_stop_vm();
         }
 
         int character = get_reg(get_arg_r0(instr));
         if(get_tag(character) != vm_tag_number) {
-          fprintf(stderr, "Expected a number, got tag: %d\n", str_tag);
-          is_running = false;
-          break;
+          fprintf(stderr, "Expected a number, but got: %s\n", tag_to_string(get_tag(character)));
+          panic_stop_vm();
         }
 
         int str_addr = get_val(str);
@@ -1184,8 +1229,7 @@ restart:
         int str_length = string_length(str_header);
         if(index < 0 || index > str_length) {
           fprintf(stderr, "Illegal string index: %d\n", index);
-          is_running = false;
-          break;
+          panic_stop_vm();
         }
 
         char *char_pointer = (char *) (str_pointer + string_header_size);
@@ -1254,15 +1298,12 @@ restart:
 
       default:
         fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);
-        is_running = false;
-        break;
+        panic_stop_vm();
     }
 
 
-    //debug( print_registers(current_frame) );
   }
 
-  //fprintf(stderr, "End invocation: %i\n", invocation);
 
   vm_value result = stack[stack_pointer].reg[0];
 
@@ -1285,7 +1326,7 @@ restart:
 
     default:
       fprintf(stderr, "Unknown result of io action: %d\n", action_result);
-      exit(-1);
+      panic_exit();
   }
 
 
@@ -1304,9 +1345,9 @@ const int action_id_return = 0;
 vm_value new_string(size_t length) {
 
   size_t adjusted_length = length + 1; // allow space for trailing '\0'
-  int num_chunks = adjusted_length / charPerStringChunk;
-  if( (adjusted_length % charPerStringChunk) != 0 ) {
-    num_chunks += charPerStringChunk - (adjusted_length % charPerStringChunk);
+  int num_chunks = adjusted_length / char_per_string_chunk;
+  if( (adjusted_length % char_per_string_chunk) != 0 ) {
+    num_chunks += char_per_string_chunk - (adjusted_length % char_per_string_chunk);
   }
 
   size_t total_size = string_header_size + num_chunks;
@@ -1324,8 +1365,8 @@ char *read_string(vm_value string_value) {
 
   if(get_tag(string_value) != vm_tag_dynamic_string
       && get_tag(string_value) != vm_tag_string) {
-    fprintf(stderr, "Expected a string\n");
-    exit(-1);
+    fprintf(stderr, "Expected a string, but got: %s\n", tag_to_string(get_tag(string_value)));
+    panic_exit();
   }
 
   int str_addr = get_val(string_value);
@@ -1371,7 +1412,7 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
 
   if(get_tag(action_type) != vm_tag_number) {
     fprintf(stderr, "Malformed io action: %d\n", action_type);
-    exit(-1);
+    panic_exit();
   }
   int action_id = get_val(action_type);
 
@@ -1380,7 +1421,7 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
 
     case action_id_printline: {
         char *param = read_string(action_param);
-        printf("%s\n", param);
+        printf("%s", param);
         next_param = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
       }
       break;
@@ -1388,13 +1429,9 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
     case action_id_readline: {
         char *line = NULL;
         size_t buffer_size = 0;
-        char *prompt = read_string(action_param);
-        printf("%s", prompt); // TODO get rid of this prompt
         int length = getline(&line, &buffer_size, stdin);
         if(length == -1) {
-          //TODO return :eof instead?
-          fprintf(stderr, "Failure!\n");
-          exit(-1);
+          next_param = make_tagged_val(symbol_id_eof, vm_tag_plain_symbol);
         }
         else
         {
@@ -1418,7 +1455,7 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
 
     default:
       fprintf(stderr, "malformed io action: %d\n", action_id);
-      exit(-1);
+      panic_exit();
   }
 
   if(get_tag(next_action) == vm_tag_function || get_tag(next_action) == vm_tag_pap) {
@@ -1439,7 +1476,7 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
     else {
       // TODO is this malformed?
       fprintf(stderr, "malformed bound lambda in io action\n");
-      exit(-1);
+      panic_exit();
     }
   }
   else {
@@ -1452,6 +1489,8 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
   }
 
   fprintf(stderr, "Error in io action\n");
-  exit(-1);
+  panic_exit();
+
+  return no_io_action;
 }
 

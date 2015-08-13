@@ -1,6 +1,5 @@
 
 
-readln = io-read-line "> "
 
 
 maybe-bind v l =
@@ -84,13 +83,13 @@ a = rec (:sym 500 "XXX") 1
 a
 --/
 
-test a =
-  match a begin
-    :sym x y :nil -> 3
-    _ -> 0
-  end
 
+/--
+do io begin
+  io-print "What is your name? "
+  name <- io-read-ln
+  io-print-ln ("Hello, " ++ name ++ ". Nice to meet you!")
+end
+--/
 
-test (:sym 1 2 :nil)
-
-
+"hello" + 2
