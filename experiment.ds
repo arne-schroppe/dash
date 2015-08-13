@@ -68,6 +68,9 @@ a
 --/
 
 
+
+
+/--
 rec n sub =
   rec' n' acc =
     match n' begin
@@ -79,3 +82,15 @@ rec n sub =
 
 a = rec (:sym 500 "XXX") 1
 a
+--/
+
+test a =
+  match a begin
+    :sym x y :nil -> 3
+    _ -> 0
+  end
+
+
+test (:sym 1 2 :nil)
+
+

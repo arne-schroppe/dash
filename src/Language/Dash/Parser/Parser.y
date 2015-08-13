@@ -217,10 +217,10 @@ MatchLine:
     Pattern '->' opt(eol) Expr eol { ($1, $4) }
 
 Pattern:
-    SimplePattern { $1 }
+    NonSymbolSimplePattern { $1 }
   | SymbolPattern { $1 }
 
-SimplePattern:
+NonSymbolSimplePattern:
     int { PatNumber $1 }
   | PatId { $1 }
   | '(' Pattern star(TupleNextPattern) ')' { 
@@ -230,9 +230,16 @@ SimplePattern:
     }
   | PatList  { $1 }
 
+SimplePattern:
+    NonSymbolSimplePattern { $1 }
+  | PatPlainSymbol { $1 }
+
 PatId:
     id  { PatVar $1 }
   | '_' { PatWildcard }
+
+PatPlainSymbol:
+    symbol  { PatSymbol $1 [] }
 
 TupleNextPattern:
     ',' Pattern   { $2 }
