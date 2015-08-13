@@ -84,16 +84,11 @@ typedef enum {
 
 io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result);
 
-void set_error_result() {
-  stack[0].reg[0] = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
-}
 
-void panic_exit() {
-  set_error_result();
-  exit(-1);
-}
+const vm_value vm_failure_result = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
 
-#define panic_stop_vm() { set_error_result(); is_running = false; break; }
+#define panic_stop_vm() { return vm_failure_result; }
+#define panic_stop_io_processing() { *final_result = vm_failure_result; return final_io_action; }
 
 
 
@@ -133,7 +128,7 @@ char *tag_to_string(vm_value tag) {
     printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
     return false; }
 
-#define check_reg(i) { int r = (i); if(r >= num_regs) { fprintf(stderr, "Illegal register: %i", r); panic_exit(); }}
+#define check_reg(i) { int r = (i); if(r >= num_regs) { fprintf(stderr, "Illegal register: %i", r); panic_stop_vm(); }}
 #define get_reg(i) stack[stack_pointer].reg[(i)]
 #define current_frame (stack[stack_pointer])
 #define next_frame (stack[stack_pointer + 1])
@@ -404,18 +399,15 @@ bool is_equal(vm_value l, vm_value r) {
       l_pointer = const_table + l_addr;
     }
     else {
-      panic_exit(); // TODO
+      l_pointer = heap_get_pointer(l_addr);
     }
 
     if(r_tag == vm_tag_string) {
       r_pointer = const_table + r_addr;
     }
     else {
-      panic_exit(); // TODO
+      r_pointer = heap_get_pointer(r_addr);
     }
-
-    //vm_value l_header = *l_pointer;
-    //vm_value r_header = *r_pointer;
 
     char *l_str_start = (char *) (l_pointer + 1);
     char *r_str_start = (char *) (r_pointer + 1);
@@ -1326,7 +1318,7 @@ restart:
 
     default:
       fprintf(stderr, "Unknown result of io action: %d\n", action_result);
-      panic_exit();
+      panic_stop_vm();
   }
 
 
@@ -1366,7 +1358,7 @@ char *read_string(vm_value string_value) {
   if(get_tag(string_value) != vm_tag_dynamic_string
       && get_tag(string_value) != vm_tag_string) {
     fprintf(stderr, "Expected a string, but got: %s\n", tag_to_string(get_tag(string_value)));
-    panic_exit();
+    return NULL;
   }
 
   int str_addr = get_val(string_value);
@@ -1412,7 +1404,7 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
 
   if(get_tag(action_type) != vm_tag_number) {
     fprintf(stderr, "Malformed io action: %d\n", action_type);
-    panic_exit();
+    panic_stop_io_processing();
   }
   int action_id = get_val(action_type);
 
@@ -1421,6 +1413,10 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
 
     case action_id_printline: {
         char *param = read_string(action_param);
+        if(param == NULL) {
+          panic_stop_io_processing();
+
+        }
         printf("%s", param);
         next_param = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
       }
@@ -1455,7 +1451,7 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
 
     default:
       fprintf(stderr, "malformed io action: %d\n", action_id);
-      panic_exit();
+      panic_stop_io_processing();
   }
 
   if(get_tag(next_action) == vm_tag_function || get_tag(next_action) == vm_tag_pap) {
@@ -1476,7 +1472,7 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
     else {
       // TODO is this malformed?
       fprintf(stderr, "malformed bound lambda in io action\n");
-      panic_exit();
+      panic_stop_io_processing();
     }
   }
   else {
@@ -1489,8 +1485,6 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
   }
 
   fprintf(stderr, "Error in io action\n");
-  panic_exit();
-
-  return no_io_action;
+  panic_stop_io_processing();
 }
 

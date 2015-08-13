@@ -84,12 +84,9 @@ a
 --/
 
 
-/--
 do io begin
   io-print "What is your name? "
   name <- io-read-ln
   io-print-ln ("Hello, " ++ name ++ ". Nice to meet you!")
 end
---/
 
-"hello" + 2
