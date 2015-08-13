@@ -53,6 +53,7 @@ end
 --/
 
 
+/--
 rec n sub =
   rec' n' acc =
     match n' begin
@@ -63,4 +64,18 @@ rec n sub =
 
 
 a = rec 500 1
+a
+--/
+
+
+rec n sub =
+  rec' n' acc =
+    match n' begin
+      :sym 0 _ -> acc
+      :sym a _ -> rec' (:sym (a - sub) "XXXXXXXXXXXXXXXXXXXXXXXXXX") (acc + a)
+    end
+  rec' n 0
+
+
+a = rec (:sym 500 "XXX") 1
 a

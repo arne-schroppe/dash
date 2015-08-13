@@ -581,6 +581,12 @@ restart:
         check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
+        if(get_tag(arg1) != vm_tag_number || get_tag(arg2) != vm_tag_number) {
+          fprintf(stderr, "Expected a number\n");
+          is_running = false;
+          break;
+        }
+
         check_reg(reg0);
         int result = ((arg1 - number_bias) + (arg2 - number_bias)) + number_bias;
         if(result < 0 || result > max_integer) {
@@ -602,6 +608,12 @@ restart:
         check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
+        if(get_tag(arg1) != vm_tag_number || get_tag(arg2) != vm_tag_number) {
+          fprintf(stderr, "Expected a number\n");
+          is_running = false;
+          break;
+        }
+
         check_reg(reg0);
         int result = ((arg1 - number_bias) - (arg2 - number_bias)) + number_bias;
         if(result < 0 || result > max_integer) {
@@ -623,6 +635,12 @@ restart:
         check_reg(reg2);
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
+        if(get_tag(arg1) != vm_tag_number || get_tag(arg2) != vm_tag_number) {
+          fprintf(stderr, "Expected a number\n");
+          is_running = false;
+          break;
+        }
+
         check_reg(reg0);
         int result = ((arg1 - number_bias) * (arg2 - number_bias)) + number_bias;
         if(result < 0 || result > max_integer) {
@@ -645,6 +663,12 @@ restart:
         int arg2 = get_reg(reg2);
         if(arg2 == 0) {
           fprintf(stderr, "Division by 0\n");
+          is_running = false;
+          break;
+        }
+
+        if(get_tag(arg1) != vm_tag_number || get_tag(arg2) != vm_tag_number) {
+          fprintf(stderr, "Expected a number\n");
           is_running = false;
           break;
         }
@@ -892,6 +916,7 @@ restart:
         }
 
         int pap_arity = arity - num_args;
+
         build_pap(num_args, pap_arity, 0, num_args, func_address);
         check_reg(reg0);
         get_reg(reg0) = pap_value;
