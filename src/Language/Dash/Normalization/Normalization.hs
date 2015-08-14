@@ -194,7 +194,6 @@ isDynamicLiteral v =
 
 
 
--- This is only direct usage of a var (as a "return value")
 normalizeVar :: String -> Cont -> NormState NstExpr
 normalizeVar name k = do
   var <- lookupName name

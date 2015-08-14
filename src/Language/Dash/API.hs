@@ -3,6 +3,7 @@ module Language.Dash.API
 , runWithPreamble
 , toNorm
 , toAsm
+, toLex
 , toAtomicConstants
 ) where
 
@@ -61,6 +62,11 @@ run prog = do
 
 
 -- Debugging functions
+
+toLex :: String -> [Token]
+toLex prog =
+  prog |> lex
+
 
 toNorm :: String -> NstExpr
 toNorm prog =

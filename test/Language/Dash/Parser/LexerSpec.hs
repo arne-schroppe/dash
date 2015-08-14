@@ -28,6 +28,9 @@ spec = do
       it "combines several newlines into one token" $ do
         L.lex "\n\r\r\n\n\n\r\n" `shouldBe` [TEOL]
 
+      it "lexes a newline sequence" $ do
+        L.lex "\"dash\\n\"" `shouldBe` [TString "dash\n", TEOL]
+
     context "lexing comments" $ do
 
       it "lexes an end-of-line comment" $ do
@@ -48,6 +51,9 @@ spec = do
 
       it "doesn't insert EOL if a delimited comment spans several lines but isn't surrounded by EOL" $ do
         L.lex ":a /-- \n --/ :b" `shouldBe` [TSymbol "a", TSymbol "b", TEOL]
+
+      it "doesn't eat content in between delimited comments" $ do
+        L.lex "/--\n--/\n :hello\n /--\n--/\n :goodbye" `shouldBe` [TEOL, TSymbol "hello", TEOL, TSymbol "goodbye", TEOL]
 
 
     it "lexes a symbol" $ do

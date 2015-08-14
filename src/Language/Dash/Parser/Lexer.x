@@ -26,17 +26,19 @@ $opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \| \^]
 
 @hashBang   = "#!" .* \n
 
-
--- TODO parse \n etc properly
 @stringchars = [^ \"]*
 
 
 
 tokens :-
   <0> $space+       ;
-      "/--" (. | \n)* "--/" ;
-      "--" .*       ;
-      ($space* $endline $newl* $space*)+
+  -- <0> "/--" (. | \n)* "--/" ;
+  <0> "/--"         { begin mcom }
+  <mcom> (. | \n)   ;
+  <mcom> "--/"      { begin 0 }
+
+  <0> "--" .*       ;
+  <0> ($space* $endline $newl* $space*)+
                     { mkTok TEOL }
   <0> "("           { mkTok TOpen_Par }
   <0> ")"           { mkTok TClose_Par }
@@ -71,7 +73,6 @@ tokens :-
 
 
 {
-
 
 
 mkTok :: Token -> AlexInput -> Int -> Alex Token

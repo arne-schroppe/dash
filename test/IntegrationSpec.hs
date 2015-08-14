@@ -719,6 +719,30 @@ spec = do
       let result = run code
       result `shouldReturn` VMString "cdefg"
 
+
+    context "regression tests" $ do
+
+      it "compiles variable assignment" $ do
+        let code = " a = 4 \n\
+                   \ b = a \n\
+                   \ b"
+        let result = run code
+        result `shouldReturn` VMNumber 4
+
+
+      it "runs code that starts with a delimited comment" $ do
+        let code = " /-- \n\
+                   \ --/ \n\
+                   \ test a = a \n\
+                   \ /-- \n\
+                   \ --/ \n\
+                   \ test 3 \n\
+                   \ "
+        let result = run code
+        result `shouldReturn` VMNumber 3
+
+
+
 {-
 What's missing:
 

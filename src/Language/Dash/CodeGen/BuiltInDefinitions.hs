@@ -119,7 +119,7 @@ preamble :: String
 preamble = "\n\
 \  io-bind action next =                                 \n\
 \    match action begin                                  \n\
-\      :_internal_io type param (:false) -> :_internal_io type param next  \n\
+\      :_internal_io type param _ -> :_internal_io type param next  \n\
 \      _ -> :error \"Malformed io action\"               \n\
 \    end                                                 \n\
 \                                                        \n\
@@ -154,10 +154,10 @@ preamble = "\n\
 \      [a|rest] -> [f a|map f rest]                      \n\
 \    end                                                 \n\
 \                                                        \n\
-\  foldr f i ls =                                        \n\
+\  foldr f z ls =                                        \n\
 \    match ls begin                                      \n\
-\      [] -> i                                           \n\
-\      [a|rest] -> f a (foldr f i rest)                  \n\
+\      [] -> z                                           \n\
+\      [a|rest] -> f a (foldr f z rest)                  \n\
 \    end                                                 \n\
 \                                                        \n\
 \  concatenate a b =                                     \n\
