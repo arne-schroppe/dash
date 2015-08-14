@@ -3,8 +3,8 @@ module Language.Dash.API
 , runWithPreamble
 , toNorm
 , toAsm
-, toLex
 , toAtomicConstants
+, toParsed
 ) where
 
 import qualified Data.Map                                  as Map
@@ -14,6 +14,7 @@ import           Language.Dash.CodeGen.BuiltInDefinitions (preamble)
 import           Language.Dash.CodeGen.CodeGen
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
+import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Opcode
 import           Language.Dash.Normalization.Normalization
 import           Language.Dash.Parser.Lexer
@@ -63,10 +64,9 @@ run prog = do
 
 -- Debugging functions
 
-toLex :: String -> [Token]
-toLex prog =
-  prog |> lex
 
+toParsed :: String -> Expr
+toParsed prog = prog |> lex |> parse
 
 toNorm :: String -> NstExpr
 toNorm prog =

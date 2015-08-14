@@ -585,7 +585,7 @@ spec = do
       result `shouldReturn` VMSymbol "false" []
 
     it "boolean 'not'" $ do
-      let code = "not :false"
+      let code = "! :false"
       let result = run code
       result `shouldReturn` VMSymbol "true" []
 
@@ -726,6 +726,7 @@ spec = do
         let code = " a = 4 \n\
                    \ b = a \n\
                    \ b"
+        putStrLn $ show $ toParsed code
         let result = run code
         result `shouldReturn` VMNumber 4
 

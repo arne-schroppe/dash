@@ -4,6 +4,7 @@ module Language.Dash.Normalization.NormalizationState (
 , enterContext
 , leaveContext
 , addBinding
+, addAlias
 , hasBinding
 , addDynamicVar
 , lookupName
@@ -180,6 +181,17 @@ addBinding name bnd = do
   -- TODO warn when shadowing bindings
   let bindings' = Map.insert name bnd (bindings con)
   putContext $ con { bindings = bindings' }
+
+addAlias :: String -> String -> NormState ()
+addAlias newName oldName = do
+  con <- context
+  -- TODO handle this more gracefully
+  let maybeVar = Map.lookup oldName (bindings con)
+  let bindings' = case maybeVar of
+          Nothing -> error $ "Error: Can't alias unknown variable '" ++ oldName ++ "'"
+          Just v -> Map.insert newName v (bindings con)
+  putContext $ con { bindings = bindings' }
+
 
 
 hasBinding :: String -> NormState Bool

@@ -120,21 +120,20 @@ preamble = "\n\
 \  io-bind action next =                                 \n\
 \    match action begin                                  \n\
 \      :_internal_io type param _ -> :_internal_io type param next  \n\
-\      _ -> :error \"Malformed io action\"               \n\
+\      _ -> :error \"io-bind: Expected an io action as first argument\" \n\
 \    end                                                 \n\
 \                                                        \n\
 \  io-return a =                                         \n\
-\    :_internal_io " ++ (show returnActionId) ++ " a :false       \n\
-\                                                        \n\
+\    :_internal_io " ++ (show returnActionId) ++ " a :nil       \n\
 \                                                        \n\
 \  io-read-ln =                                          \n\
-\    :_internal_io " ++ (show readLineActionId) ++ " :nil :false     \n\
+\    :_internal_io " ++ (show readLineActionId) ++ " :nil :nil     \n\
 \                                                        \n\
 \  io-print a =                                     \n\
-\    :_internal_io " ++ (show printLineActionId) ++ " a :false    \n\
+\    :_internal_io " ++ (show printLineActionId) ++ " a :nil    \n\
 \                                                        \n\
 \  io-print-ln a =                                       \n\
-\    :_internal_io " ++ (show printLineActionId) ++ " (a ++ \"\\n\") :false    \n\
+\    :_internal_io " ++ (show printLineActionId) ++ " (a ++ \"\\n\") :nil    \n\
 \                                                        \n\
 \  head ls =                                             \n\
 \    match ls begin                                      \n\

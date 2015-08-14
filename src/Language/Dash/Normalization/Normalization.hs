@@ -93,6 +93,9 @@ addBIFPlaceholder name ar = do
 
 normalizeExpr :: Expr -> NormState NstExpr
 normalizeExpr expr = case expr of
+  LocalBinding (Binding name (Var v)) restExpr -> do
+      addAlias name v
+      normalizeExpr restExpr
   LocalBinding (Binding name boundExpr) restExpr ->
     nameExpr boundExpr name $ \ _ -> normalizeExpr restExpr
   _ ->
@@ -239,7 +242,7 @@ normalizeFunAp funExpr args k =
     (Var ">", [a, b])  -> normalizeBinaryPrimOp NPrimOpGreaterThan a b
     (Var "||", [a, b]) -> normalizeBinaryPrimOp NPrimOpOr a b
     (Var "&&", [a, b]) -> normalizeBinaryPrimOp NPrimOpAnd a b
-    (Var "not", [a])   -> normalizeUnaryPrimOp NPrimOpNot a
+    (Var "!", [a])   -> normalizeUnaryPrimOp NPrimOpNot a
     (Var "==", [a, b]) -> normalizeBinaryPrimOp NPrimOpEq a b
     -- TODO create a bif that calls the primap internally
 

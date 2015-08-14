@@ -38,7 +38,7 @@ instance Show VMValue where
       VMSymbol "empty-list" [] -> "[]"
       VMSymbol s [] -> ":" ++ s
       VMSymbol "list" fields -> showNestedList fields
-      VMSymbol s fields ->  ":" ++ s ++ " " ++ (foldr (++) "" $ intersperse " " $ map showField fields)
+      VMSymbol s fields ->  ":" ++ s ++ " " ++ (foldl (++) "" $ intersperse " " $ map showField fields)
 
 
 

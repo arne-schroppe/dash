@@ -47,21 +47,22 @@ import Language.Dash.CodeGen.BuiltInDefinitions
   '++'      { TOperator "++" }
   '||'      { TOperator "||" }
   '&&'      { TOperator "&&" }
+  '!'       { TOperator "!" }
   operator  { TOperator $$ }
   '_'       { TUnderscore }
   ','       { TComma }
   '|'       { TVBar }
 
 
-%left '||' '&&'
+%left '||' 
+%left '&&'
 %left '==' '<' '>' '<=' '>='
 %left '+' '-' '++'
 %left '*' '/'
-%left NEG
+%left NEG '!'
 
 %%
 
--- TODO for some reason we can't have a comment as our last element in a file
 
 -- TODO distinguish between eol and sep (separator)
 -- TODO also, this parser will not be able to handle a mix of eol and sep
@@ -153,6 +154,7 @@ InfixOperation:
   | Operand '&&' Operand        { FunAp (Var "&&") [$1, $3] }
   | Operand '<=' Operand        { FunAp (Var "<=") [$1, $3] }
   | Operand '>=' Operand        { FunAp (Var ">=") [$1, $3] }
+  | '!' Operand                 { FunAp (Var "!") [$2] }
   | '-' Operand %prec NEG       { FunAp (Var "-") [LitNumber 0, $2] }
   -- | Operand operator Operand    { FunAp (Var $2) [$1, $3] }
 

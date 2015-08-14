@@ -1387,6 +1387,7 @@ vm_value *vm_get_heap_pointer(vm_value addr) {
 
 io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result) {
 
+  // check if this is a valid io action
   if(get_tag(result) != vm_tag_dynamic_compound_symbol) {
     return no_io_action;
   }
@@ -1406,16 +1407,19 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
     fprintf(stderr, "Malformed io action: %d\n", action_type);
     panic_stop_io_processing();
   }
-  int action_id = get_val(action_type);
 
+
+  // find out which io action
+  int action_id = get_val(action_type);
   vm_value next_param = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+
   switch (action_id) {
 
     case action_id_printline: {
         char *param = read_string(action_param);
         if(param == NULL) {
+          fprintf(stderr, "io-print-ln: Expected a string, got %s\n", tag_to_string(get_tag(action_param)));
           panic_stop_io_processing();
-
         }
         printf("%s", param);
         next_param = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
@@ -1478,6 +1482,7 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
   else {
     // There is no binding following this io action. The action's result
     // is the final result.
+
     if(final_result) {
       *final_result = next_param;
     }
