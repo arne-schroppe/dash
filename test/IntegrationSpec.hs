@@ -493,6 +493,16 @@ spec = do
               let result = run code
               result `shouldReturn` VMNumber 23
 
+    context "when using modules" $ do
+
+      it "calls a function in a module" $ do
+        let code = " mod = module                  \n\
+                   \   func a = a + 12             \n\
+                   \ end                           \n\
+                   \ mod.func 7"
+        let result = run code
+        result `shouldReturn` VMNumber 19
+
 
 
     it "resolves closed over vars in match-branches" $ do

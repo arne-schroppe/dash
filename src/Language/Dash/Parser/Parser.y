@@ -24,6 +24,7 @@ import Language.Dash.CodeGen.BuiltInDefinitions
   '='       { TDefine }
   symbol    { TSymbol $$ }
   id        { TId $$ }
+  ns        { TNamespace $$ }
   -- TODO qid       { TQId $$ }
   string    { TString $$ }
   int       { TInt $$ }
@@ -184,6 +185,7 @@ Binding:
 
 Ident:
     id    { Var $1 }
+  | ns Ident  { Qualified $1 $2 } -- TODO use namespace
 
 Lambda:
     lam plus(id) '=' opt(eol) Expr  { Lambda $2 $5 }

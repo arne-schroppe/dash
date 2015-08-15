@@ -18,7 +18,7 @@ $opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \| \^]
 
 
 @ident      = $alpha (\- $alphanum+)? ( ($alphanum+ \-)* $alphanum+ )?
-@namespaces = (@ident \/)*
+@namespace  = @ident \.
 
 @integer    = "-"? $digit $digit*
 
@@ -67,6 +67,7 @@ tokens :-
                     { mkTokS (\s -> TString $ convertEscapeSequences s) }
   <str> \"          { begin 0 }
   <0> @integer      { mkTokS (\s -> TInt (read s)) }
+  <0> @namespace    { mkTokS (\s -> TNamespace (init s)) }
   <0> @ident        { mkTokS (\s -> TId s) }
   <0> @operator     { mkTokS (\s -> TOperator s) }
   <0> @hashBang     { skip }
@@ -160,6 +161,7 @@ data Token  = TEOL
             | TUnderscore
             | TComma
             | TVBar
+            | TNamespace String
   deriving (Show, Eq)
 
 
