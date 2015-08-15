@@ -61,11 +61,11 @@ tokens :-
   <0> "_"           { mkTok TUnderscore }
   <0> ","           { mkTok TComma }
   <0> "|"           { mkTok TVBar }
-  <0> \"\"          { mkTok $ TString "" }
-  <0> \"            { begin str }
+  <0> \"\"          { mkTok $ TString "" } -- "
+  <0> \"            { begin str } -- "
   <str> @stringchars
                     { mkTokS (\s -> TString $ convertEscapeSequences s) }
-  <str> \"          { begin 0 }
+  <str> \"          { begin 0 } -- "
   <0> @integer      { mkTokS (\s -> TInt (read s)) }
   <0> @namespace    { mkTokS (\s -> TNamespace (init s)) }
   <0> @ident        { mkTokS (\s -> TId s) }
