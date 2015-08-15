@@ -29,7 +29,7 @@ decode w ctable symNames =
   let tag = getTag w in
   let value = getValue w in
   decode' tag value
-  where decode' t v | t==tagNumber                = return $ VMNumber ((fromIntegral v) - numberBias)
+  where decode' t v | t==tagNumber                = return $ VMNumber ((fromIntegral v) - intBias)
                     | t==tagPlainSymbol           = return $ VMSymbol (symNames !! fromIntegral v) []
                     | t==tagCompoundSymbol        = decodeCompoundSymbol v ctable symNames
                     | t==tagDynamicCompoundSymbol = decodeDynamicCompoundSymbol v ctable symNames
@@ -46,7 +46,7 @@ encodeNumber :: Int -> VMWord
 encodeNumber = makeVMValue tagNumber . ensureNumberRange . bias . fromIntegral
 
 bias :: Int -> VMWord
-bias n = fromIntegral $ n + numberBias
+bias n = fromIntegral $ n + intBias
 
 
 
@@ -208,7 +208,7 @@ ensureRange :: (Ord a, Num a, Show a) => a -> a
 ensureRange v = if v < (fromIntegral 0) || v > (fromIntegral 0xFFFFF) then error ("Value outside of range: " ++ (show v)) else v
 
 ensureNumberRange :: (Ord a, Num a, Show a) => a -> a
-ensureNumberRange v = if v > (fromIntegral $ maxInteger + numberBias) then error ("Value outside of range: " ++ (show v)) else v
+ensureNumberRange v = if v > (fromIntegral $ maxInteger + intBias) then error ("Value outside of range: " ++ (show v)) else v
 
 
 

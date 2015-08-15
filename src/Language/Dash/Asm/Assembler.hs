@@ -77,7 +77,7 @@ assembleTac funcAddrs addrConv opc =
   let faddr a = fromIntegral $ funcAddrs `Seq.index` funcAddrToInt a in
   case opc of
     OpcRet r0              -> instructionRI   0 (r r0) 0
-    OpcLoadI r0 n          -> instructionRI   1 (r r0) (biasNumber n)
+    OpcLoadI r0 n          -> instructionRI   1 (r r0) (bias n)
     OpcLoadAddr r0 a       -> instructionRI   1 (r r0) (caddr a)
     OpcLoadPS r0 s         -> instructionRI   2 (r r0) (sym s)
     OpcLoadCS r0 a         -> instructionRI   3 (r r0) (caddr a)
@@ -93,7 +93,7 @@ assembleTac funcAddrs addrConv opc =
     OpcTailCall fr n       -> instructionRRR 13 (i 0) (r fr) (i n)
     OpcTailGenAp r0 fr n   -> instructionRRR 14 (r r0) (r fr) (i n)
     OpcPartAp r0 fr n      -> instructionRRR 15 (r r0) (r fr) (i n)
-    OpcJmp n               -> instructionRI  16 0 (biasNumber n)
+    OpcJmp n               -> instructionRI  16 0 (bias n)
     OpcMatch r0 r1 r2      -> instructionRRR 17 (r r0) (r r1) (r r2)
     OpcSetArg arg r1 n     -> instructionRRR 18 (i arg) (r r1) (i n)
     OpcSetClVal clr r1 n   -> instructionRRR 19 (r clr) (r r1) (i n)
@@ -107,7 +107,7 @@ assembleTac funcAddrs addrConv opc =
     OpcPutChar r0 r1 r2    -> instructionRRR 27 (r r0) (r r1) (r r2)
     OpcLT r0 r1 r2         -> instructionRRR 28 (r r0) (r r1) (r r2)
     OpcGT r0 r1 r2         -> instructionRRR 29 (r r0) (r r1) (r r2)
-    OpcJmpTrue r0 n        -> instructionRI  30 (r r0) (biasNumber n)
+    OpcJmpTrue r0 n        -> instructionRI  30 (r r0) (bias n)
     OpcOr r0 r1 r2         -> instructionRRR 31 (r r0) (r r1) (r r2)
     OpcAnd r0 r1 r2        -> instructionRRR 32 (r r0) (r r1) (r r2)
     OpcNot r0 r1           -> instructionRRR 33 (r r0) (r r1) (r 0)
@@ -119,8 +119,8 @@ instBits = 32
 opcBits = 6
 regBits = 5
 
-biasNumber :: Int -> Int
-biasNumber n = n + numberBias
+bias :: Int -> Int
+bias n = n + intBias
 
 -- an instruction containing a register and a number
 instructionRI :: Int -> Int -> Int -> VMWord

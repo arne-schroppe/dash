@@ -7,7 +7,7 @@
 
 #define array_length(x) (sizeof(x) / sizeof(x[0]))
 
-#define bias(n) (n + number_bias)
+#define bias(n) (n + int_bias)
 
 const int heap_start = 1;
 

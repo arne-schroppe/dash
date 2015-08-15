@@ -9,7 +9,7 @@
 #define num_regs 32
 
 extern const int max_integer;
-extern const int number_bias;
+extern const int int_bias;
 
 struct _stack_frame {
   vm_value reg[num_regs];

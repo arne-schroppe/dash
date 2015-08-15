@@ -36,7 +36,7 @@ TODO use computed Goto
 static int invocation = 0;
 
 const int max_integer = 0x1FFFFF;
-const int number_bias = 0xFFFFF;
+const int int_bias = 0xFFFFF;
 
 const int char_per_string_chunk = sizeof(vm_value) / sizeof(char);
 
@@ -62,7 +62,8 @@ const vm_value vm_tag_string = 0x9;
 const vm_value vm_tag_dynamic_string = 0xA;
 const vm_value vm_tag_match_data = 0xF;
 
-// match data will never appear on the heap, so we can reuse the tag
+// match data will never appear on the heap, so we can reuse the tag.
+// (Used by the garbace collector to mark the moved position of data.)
 const vm_value vm_tag_forward_pointer = vm_tag_match_data;
 
 
@@ -632,7 +633,7 @@ restart:
         }
 
         check_reg(reg0);
-        int result = ((arg1 - number_bias) + (arg2 - number_bias)) + number_bias;
+        int result = ((arg1 - int_bias) + (arg2 - int_bias)) + int_bias;
         if(result < 0 || result > max_integer) {
           fprintf(stderr, "Int overflow\n");
           panic_stop_vm();
@@ -662,7 +663,7 @@ restart:
         }
 
         check_reg(reg0);
-        int result = ((arg1 - number_bias) - (arg2 - number_bias)) + number_bias;
+        int result = ((arg1 - int_bias) - (arg2 - int_bias)) + int_bias;
         if(result < 0 || result > max_integer) {
           fprintf(stderr, "Int overflow\n");
           panic_stop_vm();
@@ -692,7 +693,7 @@ restart:
         }
 
         check_reg(reg0);
-        int result = ((arg1 - number_bias) * (arg2 - number_bias)) + number_bias;
+        int result = ((arg1 - int_bias) * (arg2 - int_bias)) + int_bias;
         if(result < 0 || result > max_integer) {
           fprintf(stderr, "Int overflow\n");
           panic_stop_vm();
@@ -728,7 +729,7 @@ restart:
 
         int reg0 = get_arg_r0(instr);
         check_reg(reg0);
-        int result = ((arg1 - number_bias) / (arg2 - number_bias)) + number_bias;
+        int result = ((arg1 - int_bias) / (arg2 - int_bias)) + int_bias;
         if(result < 0 || result > max_integer) {
           fprintf(stderr, "Int overflow\n");
           panic_stop_vm();
@@ -829,7 +830,7 @@ restart:
 
 
       case OP_JMP: {
-        int offset = get_arg_i(instr) - number_bias;
+        int offset = get_arg_i(instr) - int_bias;
         program_pointer += offset;
         if(program_pointer < 0 || program_pointer > program_length) {
           fprintf(stderr, "Illegal address!\n");
@@ -844,7 +845,7 @@ restart:
         vm_value bool_value = get_reg(get_arg_r0(instr));
 
         if( is_equal(bool_value, make_tagged_val(symbol_id_true, vm_tag_plain_symbol) )) {
-          int offset = get_arg_i(instr) - number_bias;
+          int offset = get_arg_i(instr) - int_bias;
           program_pointer += offset;
           if(program_pointer < 0 || program_pointer > program_length) {
             fprintf(stderr, "Illegal address: %i\n", program_pointer);
@@ -1113,7 +1114,7 @@ restart:
         vm_value str_header = *str_pointer;
 
         int count = string_length(str_header);
-        get_reg(get_arg_r0(instr)) = make_tagged_val(count + number_bias, vm_tag_number);
+        get_reg(get_arg_r0(instr)) = make_tagged_val(count + int_bias, vm_tag_number);
       }
       break;
 
@@ -1129,7 +1130,7 @@ restart:
           panic_stop_vm();
         }
 
-        int length = length_value - number_bias;
+        int length = length_value - int_bias;
         if(length < 0) {
           fprintf(stderr, "Negative length for new string, got: %d\n", length);
           panic_stop_vm();
@@ -1179,7 +1180,7 @@ restart:
 
         vm_value str_header = *str_pointer;
 
-        int index = get_reg(get_arg_r2(instr)) - number_bias;
+        int index = get_reg(get_arg_r2(instr)) - int_bias;
         int str_length = string_length(str_header);
         if(index < 0 || index > str_length) {
           fprintf(stderr, "Illegal string index: %d\n", index);
@@ -1218,7 +1219,7 @@ restart:
 
         vm_value str_header = *str_pointer;
 
-        int index = get_reg(get_arg_r2(instr)) - number_bias;
+        int index = get_reg(get_arg_r2(instr)) - int_bias;
         int str_length = string_length(str_header);
         if(index < 0 || index > str_length) {
           fprintf(stderr, "Illegal string index: %d\n", index);
@@ -1412,7 +1413,7 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
   vm_value addr = get_val(result);
   vm_value *p = heap_get_pointer(addr);
 
-  vm_value action_type = p[1] - number_bias;
+  vm_value action_type = p[1] - int_bias;
   vm_value action_param = p[2];
   vm_value next_action = p[3];
 

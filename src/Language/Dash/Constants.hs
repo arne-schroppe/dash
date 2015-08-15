@@ -3,16 +3,16 @@ module Language.Dash.Constants (
 , minInteger
 , maxInteger
 , maxSymbols
-, numberBias
+, intBias
 ) where
 
-maxRegisters, minInteger, maxInteger, maxSymbols, numberBias :: Int
+maxRegisters, minInteger, maxInteger, maxSymbols, intBias :: Int
 maxRegisters = 32
 maxSymbols = maxInteger
 
 maxInteger = 0xFFFFF
 minInteger = (-0xFFFFF)
-numberBias = maxInteger
+intBias = maxInteger
 
 
 
