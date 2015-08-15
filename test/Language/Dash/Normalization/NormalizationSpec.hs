@@ -12,6 +12,9 @@ pureNorm ast =
   let (norm, _, _) = normalize ast in
   norm
 
+minUserSym :: Int
+minUserSym = length builtInSymbols
+
 -- local var name
 lvn n = "$local" ++ (show n)
 
@@ -239,8 +242,8 @@ spec = do
                   ]
         let (norm, ctable, _) = normalize ast
         let expectedCTable = [ CMatchData [
-                               CCompoundSymbol (mkSymId 4) [CMatchVar 0, CMatchVar 1, CMatchVar 2],
-                               CCompoundSymbol (mkSymId 5) [CMatchVar 0, CMatchVar 1]
+                               CCompoundSymbol (mkSymId minUserSym) [CMatchVar 0, CMatchVar 1, CMatchVar 2],
+                               CCompoundSymbol (mkSymId (minUserSym + 1)) [CMatchVar 0, CMatchVar 1]
                              ]]
         let expected = NLet (NVar (lvn 0) NLocalVar) (NNumber 2) $
                        NLet (NVar (lvn 1) NLocalVar) (NMatchBranch [] ["n", "o", "p"] $ NAtom $ NVarExpr $ NVar "n" NFunParam) $
@@ -399,9 +402,30 @@ spec = do
                   LocalBinding (Binding "f" $ LitSymbol falseSymbolName []) $
                   LitNumber 0
         let norm = pureNorm ast
-        let expected = NLet (NVar "x" NLocalVar) (NPlainSymbol $ mkSymId 4) $
-                       NLet (NVar "y" NLocalVar) (NPlainSymbol $ mkSymId 5) $
+        let expected = NLet (NVar "x" NLocalVar) (NPlainSymbol $ mkSymId minUserSym) $
+                       NLet (NVar "y" NLocalVar) (NPlainSymbol $ mkSymId (minUserSym + 1)) $
                        NLet (NVar "t" NLocalVar) (NPlainSymbol $ mkSymId 1) $
                        NLet (NVar "f" NLocalVar) (NPlainSymbol $ mkSymId 0) $
                        NAtom $ NNumber 0
         norm `shouldBe` expected
+
+
+      it "normalizes a module call" $ do
+        let numBuiltInSymbols = length builtInSymbols
+        let ast = LocalBinding (Binding "mod" $
+                    Module [Binding "num" $ LitNumber 3]) $
+                  FunAp (Qualified "mod" (Var "num")) [LitNumber 10, LitNumber 11]
+        let norm = pureNorm ast
+        let expected = NLet (NVar "mod" NLocalVar) (NModule [("num", NNumber 3)]) $
+                       NLet (NVar (lvn 0) NLocalVar) (NPlainSymbol $ mkSymId minUserSym) $
+                       NLet (NVar (lvn 1) NLocalVar) (NModuleLookup (NVar "mod" NLocalVar) (NVar (lvn 0) NLocalVar)) $
+                       NLet (NVar (lvn 2) NLocalVar) (NNumber 10) $
+                       NLet (NVar (lvn 3) NLocalVar) (NNumber 11) $
+                       NAtom $ NFunAp (NVar (lvn 1) NLocalVar) [NVar (lvn 2) NLocalVar, NVar (lvn 3) NLocalVar]
+        let (norm, _, syms) = normalize ast
+        (length syms) `shouldBe` (numBuiltInSymbols + 1)
+        syms `shouldBe` ((map fst builtInSymbols) ++ ["num"])
+        norm `shouldBe` expected
+
+
+

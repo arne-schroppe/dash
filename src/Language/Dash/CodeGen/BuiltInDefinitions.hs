@@ -23,15 +23,15 @@ listConsSymbolName = "list"
 listEmptySymbolName = "empty-list"
 
 builtInSymbols :: [(String, SymId)]
-builtInSymbols = [ (falseSymbolName, mkSymId 0)
-                 , (trueSymbolName, mkSymId 1)
-
-                  -- IO symbols
-                  -- TODO prevent user from accessing these directly
-                 , ("_internal_io", mkSymId 2)
-                  -- end IO symbols
-                 , ("eof", mkSymId 3)
-                 ]
+builtInSymbols = map f d
+  where
+    f (s, i) = (s, mkSymId i)
+    d = zip syms [0..length syms]
+    syms = [ falseSymbolName
+           , trueSymbolName
+           , "_internal_io" -- TODO prevent user from accessing these directly
+           , "eof"
+           ]
 
 
 bifStringConcatName, bifStringLengthName, bifSubStringName :: String

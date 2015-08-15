@@ -29,6 +29,8 @@ data NstAtomicExpr =
   | NPrimOp NstPrimOp
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
   | NFunAp NstVar [NstVar]
+  | NModule [(String, NstAtomicExpr)]
+  | NModuleLookup NstVar NstVar  -- module, symbol
   | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures Subject
                                                            -- PatternAddr
                                                            -- [ MatchBranchFreeVars
@@ -41,7 +43,7 @@ data NstVarType =
     NLocalVar
   | NFunParam
   | NFreeVar
-  | NConstant -- Global constants, e.g. named functions without free vars or literals
+  | NConstant -- Global constants, e.g. literals or named functions without free vars
   | NRecursiveVar
   deriving (Eq, Ord)
 

@@ -120,17 +120,31 @@ atomizeExpr expr name k = case expr of
       normalizeLambda params bodyExpr name k
   MatchBranch matchedVars bodyExpr ->
       normalizeMatchBranch matchedVars bodyExpr k
+  Module bindings ->
+      let bs = map (\ (Binding n e) -> (n, e)) bindings in
+      normalizeModule bs k
   LocalBinding (Binding bname boundExpr) restExpr ->
-      -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
-      -- (So in that example "let b = ..." is the inner local binding)
-      atomizeExpr boundExpr bname $ \ aExpr -> do
-        let var = NVar bname NLocalVar
-        addBinding bname (var, False)
-        atomizeExpr restExpr "" $ \ normBoundExpr -> do
-          rest <- k normBoundExpr
-          return $ NLet var aExpr rest
+      normalizeInnerLocalBinding bname boundExpr restExpr k
   x -> error $ "Unable to normalize " ++ show x
 
+
+-- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
+-- (So in that example "let b = ..." is the inner local binding)
+normalizeInnerLocalBinding :: String -> Expr -> Expr -> Cont -> NormState NstExpr
+normalizeInnerLocalBinding bname boundExpr restExpr k = do
+    atomizeExpr boundExpr bname $ \ aExpr -> do
+      let var = NVar bname NLocalVar
+      addBinding bname (var, False)
+      atomizeExpr restExpr "" $ \ normBoundExpr -> do
+        rest <- k normBoundExpr
+        return $ NLet var aExpr rest
+
+normalizeModule :: [(String, Expr)] -> cont -> NormState NstExpr
+normalizeModule bindings k = error  "not implemented"
+{-
+  let nmodule = NModule 
+  k nmodule
+-}
 
 normalizeNumber :: Int -> Cont -> NormState NstExpr
 normalizeNumber n k = k (NNumber n)
