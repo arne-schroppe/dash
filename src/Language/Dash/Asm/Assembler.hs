@@ -18,13 +18,13 @@ import           Language.Dash.Constants
 Assembler
 ~~~~~~~~~
 
-The assembler takes lists of three address codes and generates the actual byte code for
+The assembler takes lists of Opcodes and generates the actual byte code for
 the virtual machine. It also encodes all static objects used at runtime (the const table).
 The latter is done by the DataAssembler.
 
-The code generator stores each function as a list, so the input type for the assembler
-is [[tac]]. Function addresses in the input code are indices of the outer list. They are
-turned into real addresses by the assembler.
+The code generator stores each function as a separate list, so the input type for the
+assembler is [[Opcode]]. Function addresses in the input code are indices of the outer
+list. They are turned into real addresses by the assembler.
 
 -}
 
@@ -57,7 +57,7 @@ assembleWithEncodedConstTable funcs encCTable constAddrConverter symnames =
 -- Converts the nested list of functions into a flat list, and additionally provides
 -- a map from indices in the nested list to the index in the flat list (that map is
 -- just a sequence with the same length as the nested list). The map helps us to find
--- function references in the Tac code in our generated binary code.
+-- function references in the Opcode in our generated binary code.
 combineFunctions :: [[Opcode]] -> ([Opcode], Seq.Seq VMWord)
 combineFunctions =
   foldl calcFuncAddr ([], Seq.empty)

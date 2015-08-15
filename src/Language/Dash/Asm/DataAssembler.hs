@@ -36,7 +36,7 @@ type ConstAtomizationState a = State ConstAtomizationEnv a
 
 
 -- The ConstAddressMap is a conversion function from the virtual constant
--- addresses used in the Tac ir to the real binary offsets for the vm
+-- addresses used in the Opcode ir to the real binary offsets for the vm
 encodeConstTable :: ConstTable -> ([VMWord], ConstAddressMap)
 encodeConstTable ctable =
   let (atoms, mapping) = atomizeConstTable ctable in

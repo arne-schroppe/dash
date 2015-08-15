@@ -35,8 +35,8 @@ data CompScope = CompScope
   , selfReferenceSlot    :: Maybe Int
 
   -- these are all the registers that hold function values which
-  -- can be called directly with Tac_call. Everything else is
-  -- called with Tac_call_cl
+  -- can be called directly with Op_call. Everything else is
+  -- called with Op_call_cl
   , directCallRegs       :: [Reg]
   , compileTimeConstants :: Map.Map String CompileTimeConstant
   , nextFreeRegIndex     :: Int
