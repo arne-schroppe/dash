@@ -172,5 +172,28 @@ preamble = "\n\
 \        []      -> acc                                  \n\
 \        [hd|tl] -> rev-list' tl [hd | acc]              \n\
 \      end                                               \n\
-\    rev-list' l []                                      \n"
-
+\    rev-list' l []                                      \n\
+\                                                        \n\
+\                                                        \n\
+\  length list =                                         \n\
+\    len' l acc =                                        \n\
+\      match l begin                                     \n\
+\        []     -> acc                                   \n\
+\        [_|as] -> len' as (acc + 1)                     \n\
+\        x      -> :error \"Not a list\"                 \n\
+\      end                                               \n\
+\    len' list 0                                         \n\
+\                                                        \n\
+\                                                        \n\
+\  sequence ms =                                         \n\
+\    k a b =                                             \n\
+\      do io begin                                       \n\
+\        l  <- a                                         \n\
+\        ls <- b                                         \n\
+\        return [l|ls]                                   \n\
+\      end                                               \n\
+\    foldr k (io-return []) ms                           \n\
+\                                                        \n\
+\  m-map action ls =                                     \n\
+\    sequence (map action ls)                            \n\
+\                                                        "
