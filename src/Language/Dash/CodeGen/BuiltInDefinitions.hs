@@ -119,7 +119,8 @@ preamble :: String
 preamble = "\n\
 \  io-bind action next =                                 \n\
 \    match action begin                                  \n\
-\      :_internal_io type param _ -> :_internal_io type param next  \n\
+\      :_internal_io type param :nil -> :_internal_io type param next  \n\
+\      :_internal_io type param n0 -> :_internal_io type param (.\\ x = io-bind (n0 x) next)  \n\
 \      _ -> :error \"io-bind: Expected an io action as first argument\" \n\
 \    end                                                 \n\
 \                                                        \n\

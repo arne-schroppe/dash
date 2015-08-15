@@ -83,7 +83,7 @@ typedef enum {
 } io_action_result;
 
 io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result);
-
+bool is_io_action(vm_value value);
 
 const vm_value vm_failure_result = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
 
@@ -1383,21 +1383,34 @@ vm_value *vm_get_heap_pointer(vm_value addr) {
 
 
 
-// Put vm state into a struct and move this to another file
+// TODO Put vm state into a struct and move this to another file
+
+bool is_io_action(vm_value value) {
+
+  if(get_tag(value) != vm_tag_dynamic_compound_symbol) {
+    return false;
+  }
+
+  vm_value addr = get_val(value);
+  vm_value *p = heap_get_pointer(addr);
+  vm_value header = p[0];
+  if(compound_symbol_id(header) != symbol_id_io) {
+    return false;
+  }
+
+  return true;
+}
 
 io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result) {
 
   // check if this is a valid io action
-  if(get_tag(result) != vm_tag_dynamic_compound_symbol) {
+  if(!is_io_action(result)) {
     return no_io_action;
   }
 
   vm_value addr = get_val(result);
   vm_value *p = heap_get_pointer(addr);
   vm_value header = p[0];
-  if(compound_symbol_id(header) != symbol_id_io) {
-    return no_io_action;
-  }
 
   vm_value action_type = p[1] - number_bias;
   vm_value action_param = p[2];

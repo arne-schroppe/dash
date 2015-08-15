@@ -279,6 +279,7 @@ DoLineExpr:
   | MatchExpr          { $1 }
   | IfElse             { $1 }
   | FunAp              { $1 }
+  | DoExpr             { $1 }
 
 
 FunAp:

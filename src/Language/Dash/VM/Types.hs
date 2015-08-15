@@ -25,7 +25,8 @@ showNestedList vs =
   "[" ++ (intercalate ", " $ flatValues (VMSymbol "list" vs)) ++ "]"
   where
     flatValues (VMSymbol "list" [a, (VMSymbol "empty-list" [])]) = [show a]
-    flatValues (VMSymbol "list" [a, as]) = (show a) : (flatValues as)
+    flatValues (VMSymbol "list" [a, as@(VMSymbol "list" _)]) = (show a) : (flatValues as)
+    flatValues (VMSymbol "list" [a, xs]) = ((show a)) : (["!<"] ++ (flatValues xs) ++ [">!"])
     flatValues x = [show x]
 
 instance Show VMValue where

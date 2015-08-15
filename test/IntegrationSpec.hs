@@ -730,6 +730,15 @@ spec = do
         let result = run code
         result `shouldReturn` VMNumber 4
 
+      it "compiles variable assignment in inner binding" $ do
+        let code = " a = 4 \n\
+                   \ b = \n\
+                   \   c = a \n\
+                   \   c   \n\
+                   \ b"
+        putStrLn $ show $ toParsed code
+        let result = run code
+        result `shouldReturn` VMNumber 4
 
       it "runs code that starts with a delimited comment" $ do
         let code = " /-- \n\
