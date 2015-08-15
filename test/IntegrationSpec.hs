@@ -736,7 +736,6 @@ spec = do
         let code = " a = 4 \n\
                    \ b = a \n\
                    \ b"
-        putStrLn $ show $ toParsed code
         let result = run code
         result `shouldReturn` VMNumber 4
 
@@ -746,7 +745,6 @@ spec = do
                    \   c = a \n\
                    \   c   \n\
                    \ b"
-        putStrLn $ show $ toParsed code
         let result = run code
         result `shouldReturn` VMNumber 4
 

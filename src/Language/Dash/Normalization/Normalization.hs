@@ -123,9 +123,10 @@ atomizeExpr expr name k = case expr of
   Module bindings ->
       let bs = map (\ (Binding n e) -> (n, e)) bindings in
       normalizeModule bs k
+  Qualified ident e ->
+      normalizeModuleLookup ident e k
   LocalBinding (Binding bname boundExpr) restExpr ->
       normalizeInnerLocalBinding bname boundExpr restExpr k
-  x -> error $ "Unable to normalize " ++ show x
 
 
 -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
@@ -139,12 +140,36 @@ normalizeInnerLocalBinding bname boundExpr restExpr k = do
         rest <- k normBoundExpr
         return $ NLet var aExpr rest
 
-normalizeModule :: [(String, Expr)] -> cont -> NormState NstExpr
-normalizeModule bindings k = error  "not implemented"
-{-
-  let nmodule = NModule 
+normalizeModule :: [(String, Expr)] -> Cont -> NormState NstExpr
+normalizeModule bindings k = do
+  nExprs <- atomizeList (map snd bindings)
+  let nBindings = zip (map fst bindings) nExprs
+  let nmodule = NModule nBindings
   k nmodule
+
+normalizeModuleLookup :: String -> Expr -> Cont -> NormState NstExpr
+normalizeModuleLookup modName (Var v) k = do
+  modVar <- lookupName modName
+  nameExpr (LitSymbol v []) "" $ \ symVar ->
+    k $ NModuleLookup modVar symVar
+normalizeModuleLookup _ qExpr _ = error $ "Unable to do name lookup with " ++ (show qExpr)
+
+{-
+normalizeQualifiedExpr :: Expr -> Cont -> NormState NstExpr
+normalizeQualifiedExpr expr k =
+  case expr of
+    Qualified n e -> normalizeModuleLookup n e k
+    Var v -> normalizeSymbol v [] k
+    _ -> error "Unexpected expr in qualified expr"
 -}
+
+atomizeList :: [Expr] -> NormState [NstAtomicExpr]
+atomizeList [] =
+  return []
+atomizeList exps = do
+  (NAtom nAtomExpr) <- atomizeExpr (head exps) "" (\ atom -> return $ NAtom atom)
+  rest <- atomizeList (tail exps)
+  return $ nAtomExpr : rest
 
 normalizeNumber :: Int -> Cont -> NormState NstExpr
 normalizeNumber n k = k (NNumber n)
