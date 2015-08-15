@@ -19,7 +19,7 @@ syn region dashComment start='/--' end='--/'
 syn match dashComment '--.*$'
 
 
-hi def link dashKeyword Keyword
+hi def link dashKeyword Statement
 hi def link dashArrow Operator
 hi def link dashBoolean Boolean
 hi def link dashNumber Number

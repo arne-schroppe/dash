@@ -53,21 +53,21 @@ builtInFunctions = [  (bifStringConcatName, 2, [
                         OpcLoadI 7 1,
                         -- loop1:
                         OpcLT 8 2 6, -- is index >= length?
-                        OpcJmpTrue 8 4, -- jmp next
+                        OpcJmpTrue 8 4, -- jmp to next
                         OpcGetChar 9 0 6,
                         OpcPutChar 9 5 6,
                         OpcAdd 6 6 7,
-                        OpcJmp (-6), -- jmp loop1
+                        OpcJmp (-6), -- jmp to loop1
                         -- next:
                         OpcLoadI 6 0,
                         -- loop2:
                         OpcLT 8 3 6,
-                        OpcJmpTrue 8 5, -- jmp done
+                        OpcJmpTrue 8 5, -- jmp to done
                         OpcGetChar 9 1 6,
                         OpcAdd 10 2 6,
                         OpcPutChar 9 5 10,
                         OpcAdd 6 6 7,
-                        OpcJmp (-7), -- jmp loop2
+                        OpcJmp (-7), -- jmp to loop2
                         -- done:
                         OpcMove 0 5,
                         OpcRet 0
@@ -83,12 +83,12 @@ builtInFunctions = [  (bifStringConcatName, 2, [
                         -- loop1:
                         OpcAdd 9 7 6,  -- TODO this is ugly. Fix our off-by-one error properly
                         OpcLT 4 1 9, -- is index >= length?
-                        OpcJmpTrue 4 5, -- jmp next
+                        OpcJmpTrue 4 5, -- jmp to next
                         OpcAdd 8 7 0,
                         OpcGetChar 5 2 8,
                         OpcPutChar 5 3 7,
                         OpcAdd 7 7 6,
-                        OpcJmp (-8), -- jmp loop1
+                        OpcJmp (-8), -- jmp to loop1
                         -- next:
                         OpcMove 0 3,
                         OpcRet 0

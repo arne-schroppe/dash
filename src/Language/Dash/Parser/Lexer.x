@@ -17,7 +17,7 @@ $endline    = [\; $newl]
 $opsymbol   = [\+ \- \* \/ \$ \# \! \< \> \? \~ \& \| \^]
 
 
-@ident      = $alpha( ($alphanum+ \-)* $alphanum+ )?
+@ident      = $alpha (\- $alphanum+)? ( ($alphanum+ \-)* $alphanum+ )?
 @namespaces = (@ident \/)*
 
 @integer    = "-"? $digit $digit*
