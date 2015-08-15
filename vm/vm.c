@@ -175,7 +175,8 @@ vm_value *pap_pointer; \
   /* store remaining args */ \
   heap_address addr = heap_alloc(num_args + 1); \
   vm_value *arg_pointer = heap_get_pointer(addr); \
-  *arg_pointer = num_remaining_args; \
+  /* fake symbol to hold our spilled args */ \
+  *arg_pointer = compound_symbol_header(0, num_remaining_args); \
   memcpy(arg_pointer + 1, &(next_frame.reg[arity]), num_remaining_args * sizeof(vm_value)); \
   current_frame.spilled_arguments = addr; \
   /* Return back to this instruction */ \
@@ -215,7 +216,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
   // Check whether we are currently applying an oversaturated call
   if(current_frame.spilled_arguments != 0) {
     vm_value *addr = heap_get_pointer(current_frame.spilled_arguments);
-    num_args = *addr;
+    num_args = compound_symbol_count(*addr);
     memcpy(next_frame.reg, addr + 1, num_args * sizeof(vm_value));
 
     lambda_reg = get_arg_r0(instr);
@@ -1410,7 +1411,6 @@ io_action_result check_io_action(vm_value result, vm_instruction *program, vm_va
 
   vm_value addr = get_val(result);
   vm_value *p = heap_get_pointer(addr);
-  vm_value header = p[0];
 
   vm_value action_type = p[1] - number_bias;
   vm_value action_param = p[2];
