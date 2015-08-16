@@ -140,15 +140,16 @@ normalizeInnerLocalBinding bname boundExpr restExpr k = do
         rest <- k normBoundExpr
         return $ NLet var aExpr rest
 
-normalizeModule :: [(String, Expr)] -> Cont -> NormState NstExpr
+normalizeModule :: [(Name, Expr)] -> Cont -> NormState NstExpr
 normalizeModule bindings k = do
-  nExprs <- atomizeList (map snd bindings)
-  nSyms <- mapM addSymbolName (map fst bindings)
-  let fields = (zip nSyms nExprs)
+  let names = map fst bindings
+  nExprs <- atomizeList bindings
+  nSyms <- mapM addSymbolName names
+  let fields = (zip3 nSyms names nExprs)
   let nmodule = NModule fields
   k nmodule
 
-normalizeModuleLookup :: String -> Expr -> Cont -> NormState NstExpr
+normalizeModuleLookup :: Name -> Expr -> Cont -> NormState NstExpr
 normalizeModuleLookup modName (Var v) k = do
   modVar <- lookupName modName
   nameExpr (LitSymbol v []) "" $ \ symVar ->
@@ -156,12 +157,13 @@ normalizeModuleLookup modName (Var v) k = do
 normalizeModuleLookup _ qExpr _ = error $ "Unable to do name lookup with " ++ (show qExpr)
 
 
-atomizeList :: [Expr] -> NormState [NstAtomicExpr]
+atomizeList :: [(Name, Expr)] -> NormState [NstAtomicExpr]
 atomizeList [] =
   return []
-atomizeList exps = do
-  (NAtom nAtomExpr) <- atomizeExpr (head exps) "" (\ atom -> return $ NAtom atom)
-  rest <- atomizeList (tail exps)
+atomizeList exprs = do
+  let (name, expr) = head exprs
+  (NAtom nAtomExpr) <- atomizeExpr expr name (\ atom -> return $ NAtom atom)
+  rest <- atomizeList (tail exprs)
   return $ nAtomExpr : rest
 
 normalizeNumber :: Int -> Cont -> NormState NstExpr

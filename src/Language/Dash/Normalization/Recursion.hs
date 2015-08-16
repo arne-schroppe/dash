@@ -5,7 +5,7 @@ module Language.Dash.Normalization.Recursion (
 import           Control.Monad.State   hiding (state)
 import           Data.List
 import qualified Data.Map              as Map
-import           Language.Dash.IR.Data (ConstAddr)
+import           Language.Dash.IR.Data (ConstAddr, Name, SymId)
 import           Language.Dash.IR.Nst
 
 -- State
@@ -81,7 +81,7 @@ localVarName _ = error "Internal compiler error: Something other than a local va
 type LambdaCtor = [String] -> [String] -> NstExpr -> NstAtomicExpr
 
 
-resolveRecAtom :: NstAtomicExpr -> String -> RecursionState (NstAtomicExpr, [String])
+resolveRecAtom :: NstAtomicExpr -> Name -> RecursionState (NstAtomicExpr, [String])
 resolveRecAtom atom name = case atom of
   -- Invariant: Recursive vars are always let-bound  (TODO loosen this restriction later)
   NLambda freeVars params expr ->
@@ -93,8 +93,21 @@ resolveRecAtom atom name = case atom of
   NVarExpr (NVar vname NRecursiveVar) -> do
       var <- resolveRecVar vname
       return (NVarExpr var, [])
+  NModule fields ->
+      resolveRecModule fields
   a ->
       return (a, [])
+
+
+resolveRecModule :: [(SymId, Name, NstAtomicExpr)] -> RecursionState (NstAtomicExpr, [String])
+resolveRecModule fields = do
+  let namesAndExprs = map (\(_, n, e) -> (n, e)) fields
+  resolved <- mapM (\(n, e) -> resolveRecAtom e n) namesAndExprs
+  let freeVars = nub $ concat $ map snd resolved
+  let newFields = zipWith (\(sid, n, _) (e, _) -> (sid, n, e)) fields resolved
+  return $ (NModule newFields, freeVars)
+
+
 
 
 resolveRecMatch :: Int

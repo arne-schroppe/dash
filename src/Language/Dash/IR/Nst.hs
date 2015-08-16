@@ -7,7 +7,7 @@ module Language.Dash.IR.Nst (
 ) where
 
 
-import           Language.Dash.IR.Data (ConstAddr, Name, SymId)
+import           Language.Dash.IR.Data (ConstAddr, Name, SymId, symIdToInt)
 
 -- NST, the Normalized Syntax Tree
 
@@ -29,7 +29,7 @@ data NstAtomicExpr =
   | NPrimOp NstPrimOp
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
   | NFunAp NstVar [NstVar]
-  | NModule [(SymId, NstAtomicExpr)]
+  | NModule [(SymId, Name, NstAtomicExpr)]
   | NModuleLookup NstVar NstVar  -- module, symbol
   | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures Subject
                                                            -- PatternAddr
@@ -106,6 +106,7 @@ instance Show NstAtomicExpr where
                             "match (max " ++ show maxv ++ ") [" ++ show subj ++ "] @"
                             ++ show pat ++ " " ++ show body
 
-    NModule fields       -> "module {\n" ++ concat (map (\(sym, field) -> show sym ++ ": " ++ show field) fields) ++ "}"
+    NModule fields       -> "module {\n" ++ concat (map (\(sym, name, field) -> name ++ 
+                              "(" ++ (show $ symIdToInt sym) ++  "): " ++ show field) fields) ++ "}"
     NModuleLookup m f    -> (show m) ++ "." ++ (show f)
 

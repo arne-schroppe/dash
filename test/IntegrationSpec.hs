@@ -503,6 +503,16 @@ spec = do
         let result = run code
         result `shouldReturn` VMNumber 19
 
+      it "calls a function in a module self-recursively" $ do
+        let code = " mod = module                  \n\
+                   \   func a =                    \n\
+                   \       if a == 0               \n\
+                   \           then 10             \n\
+                   \           else func (a - 1)   \n\
+                   \ end                           \n\
+                   \ mod.func 3"
+        let result = run code
+        result `shouldReturn` VMNumber 10
 
 
     it "resolves closed over vars in match-branches" $ do
@@ -781,11 +791,13 @@ K negative numbers (with bias)
 K inequality operators
 K strings (string concatenation, substring, string length)
 K boolean operators
-- runtime errors? at least a `fail` method
-- garbage collection
+- runtime errors and fail function
+- type "checking" and conversion
 - modules
-- multiple source files
+- code cleanup! no duplication, second state for data encoding, etc
 K IO
+- garbage collection
+- multiple source files
 
 - `type` method ... represents types as symbols. Should it also give
   data, e.g. :symbol name args (where name is a string and args a list)? 

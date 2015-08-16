@@ -77,18 +77,21 @@ atomizeConstant c = case c of
   CString str                -> atomizeString str
   COpaqueSymbol sid own args -> atomizeOpaqueSymbol sid own args
   CFunction addr             -> atomizeFunction addr
-  CCompoundSymbolRef caddr   -> addAtomized [ACCompoundSymbolRef caddr] -- TODO this addres is most likely wrong
+  CCompoundSymbolRef caddr   -> atomizeCompoundSymbolRef caddr
   x -> error $ "Unable to encode top-level constant " ++ show x
+
+atomizeCompoundSymbolRef :: ConstAddr -> ConstAtomizationState ()
+atomizeCompoundSymbolRef caddr = do
+  addr <- actualConstAddr caddr
+  addAtomized [ACCompoundSymbolRef addr]
+
+
 
 atomizeFunction :: FuncAddr -> ConstAtomizationState ()
 atomizeFunction addr = do
   faddr <- actualFuncAddr addr
   addAtomized [ACFunction faddr]
 
-actualFuncAddr :: FuncAddr -> ConstAtomizationState Int
-actualFuncAddr addr = do
-  funcMap <- gets functionMap
-  return $ fromIntegral $ funcMap `Seq.index` funcAddrToInt addr
 
 atomizeCompoundSymbol :: SymId -> [Constant] -> ConstAtomizationState ()
 atomizeCompoundSymbol sid args = do
@@ -148,7 +151,10 @@ atomizeConstArg c = case c of
                 addr <- nextFreeAddress
                 pushWorkItem ds
                 return $ ACCompoundSymbolRef addr
-  CFunction addr    -> actualFuncAddr addr >>= return . ACFunction
+  CFunction addr   -> actualFuncAddr addr >>= return . ACFunction
+  CCompoundSymbolRef caddr -> do
+                   addr <- actualConstAddr caddr
+                   return $ ACCompoundSymbolRef addr
   x -> error $ "Unable to encode constant as argument: " ++ show x
 
 
@@ -248,6 +254,18 @@ setReservedSpace n = do
   state <- get
   put $ state { reservedSpace = n }
 
+
+actualFuncAddr :: FuncAddr -> ConstAtomizationState Int
+actualFuncAddr addr = do
+  funcMap <- gets functionMap
+  return $ fromIntegral $ funcMap `Seq.index` funcAddrToInt addr
+
+actualConstAddr :: ConstAddr -> ConstAtomizationState ConstAddr
+actualConstAddr caddr = do
+  state <- get
+  case Map.lookup caddr (addrMap state) of
+    Nothing -> error "Internal compiler error, can't resolve compound symbol ref"
+    Just addr -> return $ mkConstAddr $ fromIntegral addr
 
 
 -- Byte encoding for data

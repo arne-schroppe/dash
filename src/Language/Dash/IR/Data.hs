@@ -84,6 +84,7 @@ funcAddrToInt :: FuncAddr -> Int
 funcAddrToInt (MkFuncAddr i) = i
 
 
+-- TODO is ConstAddr before or after encoding the data? not clear. We should have separate types!
 newtype ConstAddr = MkConstAddr Int
   deriving (Eq, Show, Ord)
 

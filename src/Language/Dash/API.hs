@@ -7,12 +7,9 @@ module Language.Dash.API
 , toParsed
 ) where
 
-import qualified Data.Map                                  as Map
 import           Language.Dash.Asm.Assembler
-import           Language.Dash.Asm.DataAssembler
 import           Language.Dash.CodeGen.BuiltInDefinitions (preamble)
 import           Language.Dash.CodeGen.CodeGen
-import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Opcode
@@ -20,7 +17,6 @@ import           Language.Dash.Normalization.Normalization
 import           Language.Dash.Parser.Lexer
 import           Language.Dash.Parser.Parser
 import           Language.Dash.VM.DataEncoding
-import           Language.Dash.VM.Types
 import           Language.Dash.VM.VM
 import           Prelude                                   hiding (lex)
 

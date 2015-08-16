@@ -417,7 +417,7 @@ spec = do
                   FunAp (Qualified "my-mod" (Var "num")) [LitNumber 10, LitNumber 11]
         let norm = pureNorm ast
         let numFieldSym = mkSymId minUserSym
-        let expected = NLet (NVar "my-mod" NLocalVar) (NModule [(numFieldSym, NNumber 3)]) $
+        let expected = NLet (NVar "my-mod" NLocalVar) (NModule [(numFieldSym, "num", NNumber 3)]) $
                        NLet (NVar (lvn 0) NLocalVar) (NPlainSymbol numFieldSym) $
                        NLet (NVar (lvn 1) NLocalVar) (NModuleLookup (NVar "my-mod" NLocalVar) (NVar (lvn 0) NLocalVar)) $
                        NLet (NVar (lvn 2) NLocalVar) (NNumber 10) $
@@ -429,4 +429,26 @@ spec = do
         norm `shouldBe` expected
 
 
+      it "normalizes a recursive module call" $ do
+        let numBuiltInSymbols = length builtInSymbols
+        let ast = LocalBinding (Binding "my-mod" $
+                    Module [Binding "func" $ Lambda ["a"] $ FunAp (Var "func") [LitNumber 2] ]) $
+                  FunAp (Qualified "my-mod" (Var "func")) [LitNumber 10]
+        let norm = pureNorm ast
+        let numFieldSym = mkSymId minUserSym
+        let expected = NLet (NVar "my-mod" NLocalVar) (NModule [(numFieldSym, "func", 
+                               NLambda [] ["a"] $ 
+                                NLet (NVar (lvn 0) NLocalVar) (NVarExpr $ NVar "func" NConstant) $
+                                NLet (NVar (lvn 1) NLocalVar) (NNumber 2) $
+                                NAtom $ NFunAp (NVar (lvn 0) NLocalVar) [NVar (lvn 1) NLocalVar])]) $
+                       NLet (NVar (lvn 2) NLocalVar) (NPlainSymbol numFieldSym) $
+                       NLet (NVar (lvn 3) NLocalVar) (NModuleLookup (NVar "my-mod" NLocalVar) (NVar (lvn 2) NLocalVar)) $
+                       NLet (NVar (lvn 4) NLocalVar) (NNumber 10) $
+                       NAtom $ NFunAp (NVar (lvn 3) NLocalVar) [NVar (lvn 4) NLocalVar]
+        let (norm, _, syms) = normalize ast
+        (length syms) `shouldBe` (numBuiltInSymbols + 1)
+        syms `shouldBe` ((map fst builtInSymbols) ++ ["func"])
+        norm `shouldBe` expected
+
+      -- TODO mutual recursion in module
 

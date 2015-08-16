@@ -400,24 +400,30 @@ compileMatchBranchLoadArg captureStartReg freeVars capturedVars = do
 
 
 
-compileModule :: Reg -> [(SymId, NstAtomicExpr)] -> CodeGenState [Opcode]
+compileModule :: Reg -> [(SymId, String, NstAtomicExpr)] -> CodeGenState [Opcode]
 compileModule resultReg fields = do
-  let fieldAccessors = map CPlainSymbol $ map fst fields
-  fieldConsts <- mapM encodeConstantLiteral $ map snd fields
+  -- TODO scan through fields for functions. create placeholders for them
+  -- then scan for literals and add them as CTConsts.
+  -- then add a new scope with bindings for all that. then compile
+  -- TODO and obviousl we can only do that in normalization, so that's where we
+  -- should create this
+  let (accessSymbols, names, exprs) = unzip3 fields
+  let fieldAccessors = map CPlainSymbol accessSymbols
+  fieldConsts <- mapM (uncurry encodeConstantLiteral) $ zip exprs names
   let cFields = Prelude.concat $ transpose [fieldAccessors, fieldConsts]
   modId <- newModuleIdentifier
   modAddr <- encodeOpaqueSymbol modId moduleOwner cFields
   return [OpcLoadOS resultReg modAddr]
 
-encodeConstantLiteral :: NstAtomicExpr -> CodeGenState Constant
-encodeConstantLiteral field =
+encodeConstantLiteral :: NstAtomicExpr -> Name -> CodeGenState Constant
+encodeConstantLiteral field name =
   case field of
     NNumber n      -> return $ CNumber n
     NPlainSymbol s -> return $ CPlainSymbol s
     NCompoundSymbol _ addr ->
                       return $ CCompoundSymbolRef addr
     NLambda [] params body -> do
-                      fAddr <- compileFunc [] params body ""
+                      fAddr <- compileFunc [] params body name
                       return $ CFunction fAddr
     NLambda _ _ _ -> error "Sorry, can't compile modules with closures yet"
     _ -> error $ "Unexpected module field: " ++ show field
