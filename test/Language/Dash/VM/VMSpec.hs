@@ -164,13 +164,6 @@ spec = do
                     OpcRet 0]]
       (runProg prog) `shouldReturn` (encodePlainSymbol sym)
 
-    it "loads a constant" $ do
-      let ctable = [ encodeNumber 33 ]
-      let prog = [[ OpcLoadC 0 (mkConstAddr 0),
-                    OpcRet 0 ]]
-      result <- runProgTbl ctable prog
-      decodedResult <- decode result ctable []
-      decodedResult `shouldBe` (VMNumber 33)
 
     it "loads a compound symbol" $ do
       let ctable = [ encodeNumber 1,
@@ -385,5 +378,20 @@ spec = do
       result <- runProgTbl ctable prog
       decodedResult <- decode result ctable []
       decodedResult `shouldBe` (VMString "dash!")
+
+
+    it "looks up a value in a module" $ do
+      let ctable = [ encodeOpaqueSymbolHeader (mkSymId 10) 2
+                   , encodePlainSymbol (mkSymId 0)
+                   , encodePlainSymbol (mkSymId 5)
+                   , encodeNumber 33
+                   ]
+      let prog = [[ OpcLoadOS 1 (mkConstAddr 0)
+                  , OpcLoadPS 2 (mkSymId 5)
+                  , OpcGetModField 0 1 2
+                  , OpcRet 0 ]]
+      result <- runProgTbl ctable prog
+      decodedResult <- decode result ctable []
+      decodedResult `shouldBe` (VMNumber 33)
 
 

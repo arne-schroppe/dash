@@ -44,8 +44,12 @@ const int char_per_string_chunk = sizeof(vm_value) / sizeof(char);
 // KEEP THESE IN SYNC WITH COMPILER
 static const vm_value symbol_id_false = 0;
 static const vm_value symbol_id_true = 1;
+static const vm_value symbol_id_io = 2;
 static const vm_value symbol_id_eof = 3;
 
+static const int action_id_return = 0;
+static const int action_id_readline = 1;
+static const int action_id_printline = 2;
 
 static const int fun_header_size = 1;
 static const int pap_header_size = 2;
@@ -55,11 +59,12 @@ static const int string_header_size = 1;
 const vm_value vm_tag_number = 0x0;
 const vm_value vm_tag_plain_symbol = 0x4;
 const vm_value vm_tag_compound_symbol = 0x5;
+const vm_value vm_tag_dynamic_compound_symbol = 0x8;
 const vm_value vm_tag_pap = 0x6;
 const vm_value vm_tag_function = 0x7;
-const vm_value vm_tag_dynamic_compound_symbol = 0x8;
 const vm_value vm_tag_string = 0x9;
 const vm_value vm_tag_dynamic_string = 0xA;
+const vm_value vm_tag_opaque_symbol = 0xB;
 const vm_value vm_tag_match_data = 0xF;
 
 // match data will never appear on the heap, so we can reuse the tag.
@@ -581,18 +586,14 @@ restart:
       }
       break;
 
-
-      case OP_LOAD_c: {
-        int reg1 = get_arg_r0(instr);
-        int table_index = get_arg_i(instr);
-
-        check_ctable_index(table_index)
-        check_reg(reg1);
-        get_reg(reg1) = const_table[table_index];
-        debug( printf("LOADc  r%02i #%i value: %i\n", reg1, table_index, const_table[table_index]) );
+      case OP_LOAD_os: {
+        int reg0 = get_arg_r0(instr);
+        int value = get_arg_i(instr);
+        check_reg(reg0);
+        get_reg(reg0) = make_tagged_val(value, vm_tag_opaque_symbol);
+        debug( printf("LOADos r%02i #%i\n", reg0, value) );
       }
       break;
-
 
       case OP_LOAD_f: {
         int reg0 = get_arg_r0(instr);
@@ -1290,6 +1291,61 @@ restart:
       break;
 
 
+      case OP_GET_MOD_FIELD: {
+        int result_reg = get_arg_r0(instr);
+        int mod_reg = get_arg_r1(instr);
+        int sym_reg = get_arg_r2(instr);
+        check_reg(result_reg);
+        check_reg(mod_reg);
+        check_reg(sym_reg);
+
+        vm_value mod_ref = get_reg(mod_reg);
+        vm_value requested_name = get_reg(sym_reg);
+
+        if(get_tag(mod_ref) != vm_tag_opaque_symbol) {
+          fprintf(stderr, "Expected a module, got %s\n", tag_to_string(get_tag(mod_ref)));
+          panic_stop_vm();
+        }
+
+        if(get_tag(requested_name) != vm_tag_plain_symbol) {
+          fprintf(stderr, "Malformed module!\n");
+          panic_stop_vm();
+        }
+
+        int mod_addr = get_val(mod_ref);
+        vm_value *mod_pointer = const_table + mod_addr;
+
+        vm_value mod_header = mod_pointer[0];
+        vm_value mod_owner = mod_pointer[1];
+
+        if(mod_owner != make_tagged_val(0, vm_tag_plain_symbol)) {
+          fprintf(stderr, "Malformed module!\n");
+          panic_stop_vm();
+        }
+
+        int num_symbol_fields = compound_symbol_count(mod_header);
+
+        vm_value *mod_fields = mod_pointer + 2;
+        bool found = false;
+        for(int i=0; i < num_symbol_fields; i += 2) {
+          vm_value name = mod_fields[i];
+
+          if(name == requested_name) {
+            get_reg(result_reg) = mod_fields[i+1];
+            found = true;
+            break;
+          }
+        }
+
+        if(found == false) {
+          //TODO change this to built-in nil type
+          get_reg(result_reg) = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+        }
+
+      }
+      break;
+
+
       default:
         fprintf(stderr, "UNKNOWN OPCODE: %04x\n", opcode);
         panic_stop_vm();
@@ -1329,11 +1385,6 @@ restart:
 }
 
 
-// TODO put into separate file and keep in sync with compiler
-const int symbol_id_io = 2;
-const int action_id_printline = 2;
-const int action_id_readline = 1;
-const int action_id_return = 0;
 
 // TODO turn into macro, also use it for new_str opcode
 vm_value new_string(size_t length) {

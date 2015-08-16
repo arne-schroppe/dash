@@ -13,7 +13,7 @@ typedef enum {
   OP_LOAD_i = 1,
   OP_LOAD_ps = 2,
   OP_LOAD_cs = 3,
-  OP_LOAD_c = 4,
+  OP_LOAD_os = 4,
   OP_LOAD_f = 5,
   OP_ADD = 6,
   OP_SUB = 7,
@@ -43,6 +43,7 @@ typedef enum {
   OP_OR = 31,
   OP_AND = 32,
   OP_NOT = 33,
+  OP_GET_MOD_FIELD = 34,
 
   FUN_HEADER = 63
 } vm_opcode;
@@ -75,7 +76,7 @@ typedef enum {
 #define op_load_i(r0, i) (instr_ri(OP_LOAD_i, r0, i))
 #define op_load_ps(r0, i) (instr_ri(OP_LOAD_ps, r0, i))
 #define op_load_cs(r0, i) (instr_ri(OP_LOAD_cs, r0, i))
-#define op_load_c(r0, i) (instr_ri(OP_LOAD_c, r0, i))
+#define op_load_os(r0, i) (instr_ri(OP_LOAD_os, r0, i))
 #define op_load_f(r0, i) (instr_ri(OP_LOAD_f, r0, i))
 #define op_add(r0, r1, r2) (instr_rrr(OP_ADD, r0, r1, r2))
 #define op_sub(r0, r1, r2) (instr_rrr(OP_SUB, r0, r1, r2))
@@ -105,6 +106,7 @@ typedef enum {
 #define op_or(r0, r1, r2) (instr_rrr(OP_OR, r0, r1, r2))
 #define op_and(r0, r1, r2) (instr_rrr(OP_AND, r0, r1, r2))
 #define op_not(r0, r1) (instr_rrr(OP_NOT, r0, r1))
+#define op_get_mod_field(r0, mod_r, sym_r) (instr_rrr(OP_GET_MOD_FIELD, r0, mod_r, sym_r))
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
 
 #endif

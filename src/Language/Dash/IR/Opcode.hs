@@ -13,7 +13,7 @@ data Opcode =
   | OpcLoadAddr Reg ConstAddr
   | OpcLoadPS Reg SymId      -- load plain symbol
   | OpcLoadCS Reg ConstAddr  -- load compound symbol
-  | OpcLoadC Reg ConstAddr   -- load constant
+  | OpcLoadOS Reg ConstAddr  -- load opaque symbol
   | OpcLoadF Reg FuncAddr    -- load function address (code)
   | OpcAdd Reg Reg Reg
   | OpcSub Reg Reg Reg
@@ -45,5 +45,6 @@ data Opcode =
   | OpcOr Reg Reg Reg
   | OpcAnd Reg Reg Reg
   | OpcNot Reg Reg
+  | OpcGetModField Reg Reg Reg
   deriving Show
 

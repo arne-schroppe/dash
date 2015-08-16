@@ -6,6 +6,7 @@ module Language.Dash.VM.DataEncoding (
 , encodeCompoundSymbolRef
 , encodeDynamicCompoundSymbolRef
 , encodeCompoundSymbolHeader
+, encodeOpaqueSymbolHeader
 , encodeMatchHeader
 , decodeMatchHeader
 , encodeMatchVar
@@ -71,6 +72,9 @@ encodeCompoundSymbolHeader :: SymId -> Int -> VMWord
 encodeCompoundSymbolHeader symId n =
   makeVMValue tagCompoundSymbol $ fromIntegral $ (symIdToInt symId `shiftL` 14) .|. n
 
+encodeOpaqueSymbolHeader :: SymId -> Int -> VMWord
+encodeOpaqueSymbolHeader symId n =
+  makeVMValue tagOpaqueSymbol $ fromIntegral $ (symIdToInt symId `shiftL` 14) .|. n
 
 decodeCompoundSymbolHeader :: VMWord -> (SymId, Int)
 decodeCompoundSymbolHeader v =
@@ -222,7 +226,7 @@ low27Bits = 0x07FFFFFF
 low14Bits = 0x3FFF
 high14Bits = 0xFFFC000
 
-tagNumber, tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagDynamicCompoundSymbol, tagClosure, tagString, tagDynamicString :: VMWord
+tagNumber, tagPlainSymbol, tagCompoundSymbol, tagMatchData, tagFunction, tagDynamicCompoundSymbol, tagClosure, tagString, tagDynamicString, tagOpaqueSymbol :: VMWord
 tagNumber = 0x0
 tagPlainSymbol = 0x4
 tagCompoundSymbol = 0x5
@@ -231,6 +235,7 @@ tagFunction = 0x7
 tagDynamicCompoundSymbol = 0x8
 tagString = 0x9
 tagDynamicString = 0xA
+tagOpaqueSymbol = 0xA
 tagMatchData = 0xF
 
 compoundSymbolHeaderLength, stringHeaderLength :: VMWord

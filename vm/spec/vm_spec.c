@@ -238,19 +238,6 @@ it( loads_a_symbol_into_a_register ) {
 }
 
 
-it( loads_a_constant ) {
-  vm_value const_table[] = {
-    make_tagged_val(33, vm_tag_plain_symbol)
-  };
-
-  vm_instruction program[] = {
-    op_load_c(0, 0),
-    op_ret(0)
-  };
-  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, make_tagged_val(33, vm_tag_plain_symbol));
-}
-
 
 it( loads_a_compound_symbol ) {
   vm_value const_table[] = {
@@ -755,6 +742,25 @@ it( creates_a_new_string ) {
 }
 
 
+it( looks_up_a_value_in_a_module ) {
+
+  vm_value const_table[] = {
+    opaque_symbol_header(10, 2),
+    make_tagged_val(0, vm_tag_plain_symbol),
+    make_tagged_val(5, vm_tag_plain_symbol),
+    make_tagged_val(bias(33), vm_tag_number),
+  };
+  vm_instruction program[] = {
+    op_load_os(1, 0),
+    op_load_ps(2, 5),
+    op_get_mod_field(0, 1, 2),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+  is_equal(result, make_tagged_val(bias(33), vm_tag_number));
+}
+
+
 
 start_spec(vm_spec)
 	example(loads_a_number_into_a_register)
@@ -770,7 +776,6 @@ start_spec(vm_spec)
   example(applies_a_number_tag_to_a_value)
   example(applies_a_symbol_tag_to_a_value)
   example(loads_a_symbol_into_a_register)
-  example(loads_a_constant)
   example(loads_a_compound_symbol)
   example(jumps_forward)
   example(jumps_if_condition_is_true)
@@ -793,5 +798,6 @@ start_spec(vm_spec)
   example(has_a_less_than_opcode)
   example(has_a_greater_than_opcode)
   example(creates_a_new_string)
+  example(looks_up_a_value_in_a_module)
 end_spec
 
