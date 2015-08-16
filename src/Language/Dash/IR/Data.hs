@@ -30,20 +30,20 @@ import           Language.Dash.Constants
 data Constant =
     CPlainSymbol SymId
   | CCompoundSymbol SymId [Constant]
+  | COpaqueSymbol SymId SymId [Constant] -- own sym id, owner, fields
   | CString String
   | CNumber Int
   | CMatchData [Constant]
   | CMatchVar Int -- Can only be used inside CMatchData
+  | CFunction FuncAddr
+  | CCompoundSymbolRef ConstAddr
   deriving (Show, Eq)
 
 
 type ConstTable = [Constant] -- TODO move these out of here
 type SymbolNameList = [String]
 
--- TODO make VMWord and Reg more typesafe and check range when constructing it
--- TODO don't use VMWord before actually getting to the VM specific parts of compilation?
 
--- TODO ensure that name is never empty
 type Name = String
 
 

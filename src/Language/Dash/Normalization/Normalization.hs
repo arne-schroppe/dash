@@ -143,8 +143,9 @@ normalizeInnerLocalBinding bname boundExpr restExpr k = do
 normalizeModule :: [(String, Expr)] -> Cont -> NormState NstExpr
 normalizeModule bindings k = do
   nExprs <- atomizeList (map snd bindings)
-  let nBindings = zip (map fst bindings) nExprs
-  let nmodule = NModule nBindings
+  nSyms <- mapM addSymbolName (map fst bindings)
+  let fields = (zip nSyms nExprs)
+  let nmodule = NModule fields
   k nmodule
 
 normalizeModuleLookup :: String -> Expr -> Cont -> NormState NstExpr
@@ -154,14 +155,6 @@ normalizeModuleLookup modName (Var v) k = do
     k $ NModuleLookup modVar symVar
 normalizeModuleLookup _ qExpr _ = error $ "Unable to do name lookup with " ++ (show qExpr)
 
-{-
-normalizeQualifiedExpr :: Expr -> Cont -> NormState NstExpr
-normalizeQualifiedExpr expr k =
-  case expr of
-    Qualified n e -> normalizeModuleLookup n e k
-    Var v -> normalizeSymbol v [] k
-    _ -> error "Unexpected expr in qualified expr"
--}
 
 atomizeList :: [Expr] -> NormState [NstAtomicExpr]
 atomizeList [] =
@@ -447,9 +440,9 @@ encodeConstantLiteral v =
         return $ CPlainSymbol sid
     LitSymbol s args ->
         encodeConstantCompoundSymbol s args
+    -- TODO allow functions here?
     _ ->
         error "Expected a literal"
-
 
 encodeMatchPattern :: Int -> Pattern -> NormState ([String], Constant)
 encodeMatchPattern nextMatchVar pat =
@@ -469,6 +462,7 @@ encodeMatchPattern nextMatchVar pat =
         return (["_"], CMatchVar nextMatchVar) -- TODO be a bit more sophisticated here
                                                -- and don't encode this as a var that is
                                                -- passed to the match branch
+
 
 -- TODO use inner state ?
 encodePatternCompoundSymbolArgs :: Int -> [Pattern] -> NormState ([String], [Constant])

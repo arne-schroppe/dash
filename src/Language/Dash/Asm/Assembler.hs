@@ -35,9 +35,15 @@ assemble :: [[Opcode]]
          -> SymbolNameList
          -> ([VMWord], [VMWord], SymbolNameList)
 assemble funcs ctable symnames =
-  let (consts, addrConvert) = encodeConstTable ctable in
-  assembleWithEncodedConstTable funcs consts addrConvert symnames
-
+  (map assembleOpcode instructions, consts, symnames)
+  where
+    encodedConsts = encodeConstTable ctable funcAddrs
+    consts = fst encodedConsts
+    addrConvert = snd encodedConsts
+    assembleOpcode = assembleTac funcAddrs addrConvert
+    instructions = fst combined
+    funcAddrs = snd combined
+    combined = combineFunctions funcs
 
 assembleWithEncodedConstTable :: [[Opcode]]
                               -> [VMWord]

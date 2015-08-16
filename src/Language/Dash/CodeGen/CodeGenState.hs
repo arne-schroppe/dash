@@ -3,9 +3,11 @@ module Language.Dash.CodeGen.CodeGenState where
 -- TODO list exported functions explicitly
 
 
-import           Control.Monad.State          hiding (state)
-import qualified Data.Map                     as Map
-import qualified Data.Sequence                as Seq
+import           Control.Monad.State     hiding (state)
+import           Data.List
+import qualified Data.Map                as Map
+import           Data.Maybe              (fromJust)
+import qualified Data.Sequence           as Seq
 import           Language.Dash.Constants
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
@@ -18,14 +20,20 @@ import           Language.Dash.VM.Types
 type CodeGenState a = State CompEnv a
 
 data CompEnv = CompEnv
-  { instructions :: Seq.Seq [Opcode]
-  , scopes       :: [CompScope]
+  { instructions    :: Seq.Seq [Opcode]
+  , constTable      :: ConstTable
+  , symbolNames     :: SymbolNameList
+  , moduleIdCounter :: Int
+  , scopes          :: [CompScope]
   }
 
 
-emptyCompEnv :: CompEnv
-emptyCompEnv = CompEnv
+makeCompEnv :: ConstTable -> SymbolNameList -> CompEnv
+makeCompEnv ct sns = CompEnv
   { instructions = Seq.fromList []
+  , constTable = ct
+  , symbolNames = sns
+  , moduleIdCounter = 0
   , scopes = []
   }
 
@@ -234,3 +242,42 @@ zipWithIndex l = zip l [0..(length l)]
 
 zipWithReg :: [a] -> Int -> [(a, Reg)]
 zipWithReg l offset = zip l $ map mkReg [offset..offset + length l]
+
+
+-- TODO this is basically copied form normalization-state, unify it
+addConstant :: Constant -> CodeGenState ConstAddr
+addConstant c = do
+  state <- get
+  let cTable = constTable state
+  let nextAddr = mkConstAddr $ length cTable
+  let constTable' = cTable ++ [c] -- TODO can we cons + reverse?
+  put $ state { constTable = constTable' }
+  return nextAddr
+
+newModuleIdentifier :: CodeGenState SymId
+newModuleIdentifier = do
+  name <- newName
+  symId <- addSymbolName name
+  return symId
+  where
+    newName = do
+      index <- gets moduleIdCounter
+      modify $ \ env -> env { moduleIdCounter = index + 1 }
+      return $ "$mod_" ++ show index
+
+
+-- TODO also copied from normalization
+-- TODO add a second state just for data
+addSymbolName :: String -> CodeGenState SymId
+addSymbolName s = do
+  state <- get
+  let syms = symbolNames state
+  if s `elem` syms then  -- TODO optimize this with a map
+    return $ mkSymId $ fromJust $ elemIndex s syms
+  else do
+    let nextId = mkSymId $ length syms
+    let syms' = syms ++ [s]
+    put $ state { symbolNames = syms' }
+    return nextId
+
+

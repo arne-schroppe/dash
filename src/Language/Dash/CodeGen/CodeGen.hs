@@ -4,7 +4,8 @@ module Language.Dash.CodeGen.CodeGen (
 
 import           Control.Monad.State
 import           Data.Foldable
-import           Data.Maybe                             (catMaybes)
+import           Data.List                                (transpose)
+import           Data.Maybe                               (catMaybes)
 import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.CodeGen.CodeGenState
 import           Language.Dash.Constants
@@ -25,8 +26,8 @@ compile :: NstExpr
         -> SymbolNameList
         -> ([[Opcode]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
-  let result = execState (compileCompilationUnit expr) emptyCompEnv in
-  (toList (instructions result), cTable, symlist)
+  let result = execState (compileCompilationUnit expr) (makeCompEnv cTable symlist) in
+  (toList (instructions result), constTable result, symbolNames result)
 
 
 compileCompilationUnit :: NstExpr -> CodeGenState ()
@@ -58,7 +59,6 @@ addBuiltInFunction name bifArity code = do
 
 
 
--- TODO can we get rid of the shouldAddHeader parameter?
 compileFunc :: [Name] -> [Name] -> NstExpr -> Name -> CodeGenState FuncAddr
 compileFunc freeVars params expr name = do
   funAddr <- beginFunction freeVars params
@@ -129,6 +129,12 @@ compileAtom reg atom name isResultValue = case atom of
       let numArgs = length args
       let partApInst = [OpcPartAp reg rFun numArgs]
       return $ argInstrs ++ partApInst
+  NModule fields ->
+      compileModule reg fields
+  NModuleLookup modVar symVar -> do
+      modReg <- getReg modVar
+      symReg <- getReg symVar
+      return [OpcGetModField reg modReg symReg]
   where
     moveVarToReg :: NstVar -> Reg -> CodeGenState [Opcode]
     moveVarToReg var dest = do
@@ -391,4 +397,35 @@ compileMatchBranchLoadArg captureStartReg freeVars capturedVars = do
             then [OpcSetArg capturedArgsStart captureStartReg numCaptures]
             else []
   return $ freeArgInstrs ++ capturedArgInstrs
+
+
+
+compileModule :: Reg -> [(SymId, NstAtomicExpr)] -> CodeGenState [Opcode]
+compileModule resultReg fields = do
+  let fieldAccessors = map CPlainSymbol $ map fst fields
+  fieldConsts <- mapM encodeConstantLiteral $ map snd fields
+  let cFields = Prelude.concat $ transpose [fieldAccessors, fieldConsts]
+  modId <- newModuleIdentifier
+  modAddr <- encodeOpaqueSymbol modId moduleOwner cFields
+  return [OpcLoadOS resultReg modAddr]
+
+encodeConstantLiteral :: NstAtomicExpr -> CodeGenState Constant
+encodeConstantLiteral field =
+  case field of
+    NNumber n      -> return $ CNumber n
+    NPlainSymbol s -> return $ CPlainSymbol s
+    NCompoundSymbol _ addr ->
+                      return $ CCompoundSymbolRef addr
+    NLambda [] params body -> do
+                      fAddr <- compileFunc [] params body ""
+                      return $ CFunction fAddr
+    NLambda _ _ _ -> error "Sorry, can't compile modules with closures yet"
+    _ -> error $ "Unexpected module field: " ++ show field
+
+
+
+encodeOpaqueSymbol :: SymId -> SymId -> [Constant] -> CodeGenState ConstAddr
+encodeOpaqueSymbol symId owner fields =
+  let oSym = COpaqueSymbol symId owner fields in
+  addConstant oSym
 

@@ -13,6 +13,7 @@ module Language.Dash.VM.DataEncoding (
 , encodeStringRef
 , encodeStringHeader
 , encodeStringChunk
+, encodeFunctionRef
 ) where
 
 import           Data.Bits
@@ -50,6 +51,10 @@ bias :: Int -> VMWord
 bias n = fromIntegral $ n + intBias
 
 
+-- Function
+
+encodeFunctionRef :: Int -> VMWord
+encodeFunctionRef = makeVMValue tagFunction . fromIntegral
 
 -- Symbols
 

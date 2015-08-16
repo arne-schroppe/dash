@@ -8,6 +8,7 @@ module Language.Dash.CodeGen.BuiltInDefinitions (
 , trueSymbolName
 , falseSymbolName
 , preamble
+, moduleOwner
 ) where
 
 import           Language.Dash.IR.Data
@@ -32,6 +33,9 @@ builtInSymbols = map f d
            , "_internal_io" -- TODO prevent user from accessing these directly
            , "eof"
            ]
+
+moduleOwner :: SymId
+moduleOwner = mkSymId 0
 
 
 bifStringConcatName, bifStringLengthName, bifSubStringName :: String

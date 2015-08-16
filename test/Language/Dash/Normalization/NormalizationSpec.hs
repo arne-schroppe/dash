@@ -412,13 +412,14 @@ spec = do
 
       it "normalizes a module call" $ do
         let numBuiltInSymbols = length builtInSymbols
-        let ast = LocalBinding (Binding "mod" $
+        let ast = LocalBinding (Binding "my-mod" $
                     Module [Binding "num" $ LitNumber 3]) $
-                  FunAp (Qualified "mod" (Var "num")) [LitNumber 10, LitNumber 11]
+                  FunAp (Qualified "my-mod" (Var "num")) [LitNumber 10, LitNumber 11]
         let norm = pureNorm ast
-        let expected = NLet (NVar "mod" NLocalVar) (NModule [("num", NNumber 3)]) $
-                       NLet (NVar (lvn 0) NLocalVar) (NPlainSymbol $ mkSymId minUserSym) $
-                       NLet (NVar (lvn 1) NLocalVar) (NModuleLookup (NVar "mod" NLocalVar) (NVar (lvn 0) NLocalVar)) $
+        let numFieldSym = mkSymId minUserSym
+        let expected = NLet (NVar "my-mod" NLocalVar) (NModule [(numFieldSym, NNumber 3)]) $
+                       NLet (NVar (lvn 0) NLocalVar) (NPlainSymbol numFieldSym) $
+                       NLet (NVar (lvn 1) NLocalVar) (NModuleLookup (NVar "my-mod" NLocalVar) (NVar (lvn 0) NLocalVar)) $
                        NLet (NVar (lvn 2) NLocalVar) (NNumber 10) $
                        NLet (NVar (lvn 3) NLocalVar) (NNumber 11) $
                        NAtom $ NFunAp (NVar (lvn 1) NLocalVar) [NVar (lvn 2) NLocalVar, NVar (lvn 3) NLocalVar]

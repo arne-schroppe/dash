@@ -3,7 +3,7 @@ module Language.Dash.API
 , runWithPreamble
 , toNorm
 , toAsm
-, toAtomicConstants
+-- , toAtomicConstants
 , toParsed
 ) where
 
@@ -80,9 +80,11 @@ toAsm prog =
   asm
 
 
+{-
 toAtomicConstants :: String -> ([AtomicConstant], Map.Map ConstAddr VMWord)
 toAtomicConstants prog =
   let (_, ctable, _) = prog |> lex |> parse |> normalize ||> compile in
   atomizeConstTable ctable
+-}
 
 

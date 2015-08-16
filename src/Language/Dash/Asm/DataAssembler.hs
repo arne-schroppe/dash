@@ -7,11 +7,12 @@ module Language.Dash.Asm.DataAssembler (
 ) where
 
 import           Control.Monad.State           hiding (state)
+import           Data.List.Split
 import qualified Data.Map                      as Map
+import qualified Data.Sequence                 as Seq
 import           Language.Dash.IR.Data
 import qualified Language.Dash.VM.DataEncoding as Enc
 import           Language.Dash.VM.Types
-import Data.List.Split
 
 {-
 
@@ -37,9 +38,9 @@ type ConstAtomizationState a = State ConstAtomizationEnv a
 
 -- The ConstAddressMap is a conversion function from the virtual constant
 -- addresses used in the Opcode ir to the real binary offsets for the vm
-encodeConstTable :: ConstTable -> ([VMWord], ConstAddressMap)
-encodeConstTable ctable =
-  let (atoms, mapping) = atomizeConstTable ctable in
+encodeConstTable :: ConstTable -> Seq.Seq VMWord -> ([VMWord], ConstAddressMap)
+encodeConstTable ctable funcMap =
+  let (atoms, mapping) = atomizeConstTable ctable funcMap in
   (map encodeConstant atoms, (mapping Map.!) )
 
 
@@ -47,9 +48,9 @@ encodeConstTable ctable =
 -- to split this representation into their atomic parts. This is what this
 -- function does. The next step encodes those atomic parts into their
 -- byte representation for the vm.
-atomizeConstTable :: ConstTable -> ([AtomicConstant], Map.Map ConstAddr VMWord)
-atomizeConstTable ctable =
-  let state = execState encTable (emptyConstAtomizationEnv ctable) in
+atomizeConstTable :: ConstTable -> Seq.Seq VMWord -> ([AtomicConstant], Map.Map ConstAddr VMWord)
+atomizeConstTable ctable funcMap =
+  let state = execState encTable (emptyConstAtomizationEnv ctable funcMap) in
   (atomized state, addrMap state)
   where
     encTable = whileJust atomizeConstant popWorkItem
@@ -69,22 +70,41 @@ whileJust f source = do
 
 atomizeConstant :: Constant -> ConstAtomizationState ()
 atomizeConstant c = case c of
-  CNumber n                -> addAtomized [ACNumber n]
-  CPlainSymbol sid         -> addAtomized [ACPlainSymbol sid]
-  CCompoundSymbol sid args -> atomizeCompoundSymbol sid args
-  CMatchData args          -> atomizeMatchData args
-  CString str              -> atomizeString str
+  CNumber n                  -> addAtomized [ACNumber n]
+  CPlainSymbol sid           -> addAtomized [ACPlainSymbol sid]
+  CCompoundSymbol sid args   -> atomizeCompoundSymbol sid args
+  CMatchData args            -> atomizeMatchData args
+  CString str                -> atomizeString str
+  COpaqueSymbol sid own args -> atomizeOpaqueSymbol sid own args
+  CFunction addr             -> atomizeFunction addr
+  CCompoundSymbolRef caddr   -> addAtomized [ACCompoundSymbolRef caddr]
   x -> error $ "Unable to encode top-level constant " ++ show x
 
+atomizeFunction :: FuncAddr -> ConstAtomizationState ()
+atomizeFunction addr = do
+  faddr <- actualFuncAddr addr
+  addAtomized [ACFunction faddr]
+
+actualFuncAddr :: FuncAddr -> ConstAtomizationState Int
+actualFuncAddr addr = do
+  funcMap <- gets functionMap
+  return $ fromIntegral $ funcMap `Seq.index` funcAddrToInt addr
 
 atomizeCompoundSymbol :: SymId -> [Constant] -> ConstAtomizationState ()
 atomizeCompoundSymbol sid args = do
-  setReservedSpace (1 + length args)
+  setReservedSpace (1 + length args) -- TODO this is duplicated logic (see below)
   let symbolHeader = ACCompoundSymbolHeader sid (fromIntegral $ length args)
   atomizedArgs <- mapM atomizeConstArg args
   addAtomized $ symbolHeader : atomizedArgs
   setReservedSpace 0
 
+atomizeOpaqueSymbol :: SymId -> SymId -> [Constant] -> ConstAtomizationState ()
+atomizeOpaqueSymbol sid owner args = do
+  setReservedSpace (2 + length args)
+  let symbolHeader = ACOpaqueSymbolHeader sid (fromIntegral $ length args)
+  atomizedArgs <- mapM atomizeConstArg args
+  addAtomized $ symbolHeader : (ACPlainSymbol owner) : atomizedArgs
+  setReservedSpace 0
 
 atomizeMatchData :: [Constant] -> ConstAtomizationState ()
 atomizeMatchData args = do
@@ -128,6 +148,7 @@ atomizeConstArg c = case c of
                 addr <- nextFreeAddress
                 pushWorkItem ds
                 return $ ACCompoundSymbolRef addr
+  CFunction addr    -> actualFuncAddr addr >>= return . ACFunction
   x -> error $ "Unable to encode constant as argument: " ++ show x
 
 
@@ -140,17 +161,19 @@ data ConstAtomizationEnv = ConstAtomizationEnv {
 , atomized          :: [AtomicConstant] -- should be a Sequence
 , reservedSpace     :: Int
 , numAtomizedConsts :: Int
+, functionMap       :: Seq.Seq VMWord
 }
 
 
-emptyConstAtomizationEnv :: [Constant] -> ConstAtomizationEnv
-emptyConstAtomizationEnv ctable = ConstAtomizationEnv {
+emptyConstAtomizationEnv :: [Constant] -> Seq.Seq VMWord -> ConstAtomizationEnv
+emptyConstAtomizationEnv ctable funcMap = ConstAtomizationEnv {
   constants         = ctable
 , workQueue         = []
 , addrMap           = Map.empty
 , atomized          = []
 , reservedSpace     = 0
 , numAtomizedConsts = 0
+, functionMap       = funcMap
 }
 
 
@@ -207,8 +230,11 @@ spaceNeededByConstant c = case c of
   CPlainSymbol _         -> 1
   CMatchVar _            -> 1
   CCompoundSymbol _ args -> 1 + length args
+  COpaqueSymbol _ _ args -> 2 + length args
   CMatchData args        -> 1 + length args
   CString str            -> 1 + numStringChunksForString str
+  CFunction _            -> 1
+  CCompoundSymbolRef _   -> 1
 
 
 addAtomized :: [AtomicConstant] -> ConstAtomizationState ()
@@ -230,11 +256,13 @@ data AtomicConstant =
     ACPlainSymbol SymId
   | ACCompoundSymbolRef ConstAddr
   | ACCompoundSymbolHeader SymId Int
+  | ACOpaqueSymbolHeader SymId Int
   | ACNumber Int
   | ACMatchHeader Int
   | ACMatchVar Int
   | ACStringHeader Int Int     -- string length, num chunks
   | ACStringChunk Char Char Char Char -- with ascii chars and VMWord as Word32 this would be 4 chars per string chunk
+  | ACFunction Int
   deriving (Show, Eq)
 
 
@@ -248,4 +276,6 @@ encodeConstant c = case c of
   ACMatchVar n                 -> Enc.encodeMatchVar n
   ACStringHeader len numChunks -> Enc.encodeStringHeader len numChunks
   ACStringChunk b1 b2 b3 b4    -> Enc.encodeStringChunk b1 b2 b3 b4
+  ACOpaqueSymbolHeader sid n   -> Enc.encodeOpaqueSymbolHeader sid n
+  ACFunction addr              -> Enc.encodeFunctionRef addr
 

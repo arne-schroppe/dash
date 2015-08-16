@@ -29,7 +29,7 @@ data NstAtomicExpr =
   | NPrimOp NstPrimOp
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
   | NFunAp NstVar [NstVar]
-  | NModule [(String, NstAtomicExpr)]
+  | NModule [(SymId, NstAtomicExpr)]
   | NModuleLookup NstVar NstVar  -- module, symbol
   | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures Subject
                                                            -- PatternAddr
@@ -105,4 +105,7 @@ instance Show NstAtomicExpr where
     NMatch maxv subj pat body ->
                             "match (max " ++ show maxv ++ ") [" ++ show subj ++ "] @"
                             ++ show pat ++ " " ++ show body
+
+    NModule fields       -> "module {\n" ++ concat (map (\(sym, field) -> show sym ++ ": " ++ show field) fields) ++ "}"
+    NModuleLookup m f    -> (show m) ++ "." ++ (show f)
 
