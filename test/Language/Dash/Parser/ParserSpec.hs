@@ -49,16 +49,16 @@ spec = do
                    \   return b       \n\
                    \ end"
       let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Var "maybe-bind") [
+      parsed `shouldBe` (FunAp (Qualified "maybe" $ Var "bind") [
                             FunAp (Var "action1") [LitNumber 1, LitNumber 2],
                             (Lambda ["_"] $
-                                FunAp (Var "maybe-bind") [
+                                FunAp (Qualified "maybe" $ Var "bind") [
                                     FunAp (Var "action2") [LitNumber 0],
                                     (Lambda ["a"] $
-                                        FunAp (Var "maybe-bind") [
+                                        FunAp (Qualified "maybe" $ Var "bind") [
                                            FunAp (Var "action3") [Var "a"],
                                            (Lambda ["_"] $
-                                              FunAp (Var "maybe-return") [Var "b"])])])])
+                                              FunAp (Qualified "maybe" $ Var "return") [Var "b"])])])])
 
 
     it "parses an assigned return statement" $ do
@@ -69,16 +69,16 @@ spec = do
                    \   return b       \n\
                    \ end"
       let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Var "maybe-bind") [
+      parsed `shouldBe` (FunAp (Qualified "maybe" $ Var "bind") [
                             FunAp (Var "action1") [LitNumber 1, LitNumber 2],
                             (Lambda ["_"] $
-                                FunAp (Var "maybe-bind") [
-                                    FunAp (Var "maybe-return") [LitNumber 0],
+                                FunAp (Qualified "maybe" $ Var "bind") [
+                                    FunAp (Qualified "maybe" $ Var "return") [LitNumber 0],
                                     (Lambda ["a"] $
-                                        FunAp (Var "maybe-bind") [
+                                        FunAp (Qualified "maybe" $ Var "bind") [
                                            FunAp (Var "action3") [Var "a"],
                                            (Lambda ["_"] $
-                                              FunAp (Var "maybe-return") [Var "b"])])])])
+                                              FunAp (Qualified "maybe" $ Var "return") [Var "b"])])])])
 
 
     it "parses an assignment from a variable" $ do
@@ -88,13 +88,13 @@ spec = do
                    \   return b       \n\
                    \ end"
       let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Var "maybe-bind") [
+      parsed `shouldBe` (FunAp (Qualified "maybe" $ Var "bind") [
                             Var "action2",
                             (Lambda ["a"] $
-                                FunAp (Var "maybe-bind") [
+                                FunAp (Qualified "maybe" $ Var "bind") [
                                    FunAp (Var "action3") [Var "a"],
                                    (Lambda ["_"] $
-                                      FunAp (Var "maybe-return") [Var "b"])])])
+                                      FunAp (Qualified "maybe" $ Var "return") [Var "b"])])])
 
 
 
@@ -107,16 +107,16 @@ spec = do
                    \   return b       \n\
                    \ end"
       let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Var "maybe-bind") [
+      parsed `shouldBe` (FunAp (Qualified "maybe" $ Var "bind") [
                             FunAp (Var "action1") [LitNumber 1, LitNumber 2],
                             (Lambda ["_"] $
-                                FunAp (Var "maybe-bind") [
+                                FunAp (Qualified "maybe" $ Var "bind") [
                                     LocalBinding (Binding "x" $ LitNumber 3) (Var "action2"),
                                     (Lambda ["a"] $
-                                        FunAp (Var "maybe-bind") [
+                                        FunAp (Qualified "maybe" $ Var "bind") [
                                            FunAp (Var "action3") [Var "a"],
                                            (Lambda ["_"] $
-                                              FunAp (Var "maybe-return") [Var "b"])])])])
+                                              FunAp (Qualified "maybe" $ Var "return") [Var "b"])])])])
 
 
     it "parses a binding before a return" $ do
@@ -126,10 +126,10 @@ spec = do
                    \   return b       \n\
                    \ end"
       let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Var "maybe-bind") [
+      parsed `shouldBe` (FunAp (Qualified "maybe" $ Var "bind") [
                             FunAp (Var "action1") [LitNumber 1, LitNumber 2],
                             (Lambda ["_"] $
                                 LocalBinding (Binding "x" $ LitNumber 3) $
-                                FunAp (Var "maybe-return") [Var "b"])])
+                                FunAp (Qualified "maybe" $ Var "return") [Var "b"])])
 
 

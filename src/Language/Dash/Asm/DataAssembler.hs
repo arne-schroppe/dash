@@ -77,7 +77,7 @@ atomizeConstant c = case c of
   CString str                -> atomizeString str
   COpaqueSymbol sid own args -> atomizeOpaqueSymbol sid own args
   CFunction addr             -> atomizeFunction addr
-  CCompoundSymbolRef caddr   -> addAtomized [ACCompoundSymbolRef caddr]
+  CCompoundSymbolRef caddr   -> addAtomized [ACCompoundSymbolRef caddr] -- TODO this addres is most likely wrong
   x -> error $ "Unable to encode top-level constant " ++ show x
 
 atomizeFunction :: FuncAddr -> ConstAtomizationState ()

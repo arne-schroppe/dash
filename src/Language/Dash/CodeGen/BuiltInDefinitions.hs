@@ -121,24 +121,26 @@ printLineActionId = 2
 
 preamble :: String
 preamble = "\n\
-\  io-bind action next =                                 \n\
-\    match action begin                                  \n\
-\      :_internal_io type param :nil -> :_internal_io type param next  \n\
-\      :_internal_io type param n0 -> :_internal_io type param (.\\ x = io-bind (n0 x) next)  \n\
-\      _ -> :error \"io-bind: Expected an io action as first argument\" \n\
-\    end                                                 \n\
-\                                                        \n\
-\  io-return a =                                         \n\
-\    :_internal_io " ++ (show returnActionId) ++ " a :nil       \n\
-\                                                        \n\
-\  io-read-ln =                                          \n\
-\    :_internal_io " ++ (show readLineActionId) ++ " :nil :nil     \n\
-\                                                        \n\
-\  io-print a =                                     \n\
-\    :_internal_io " ++ (show printLineActionId) ++ " a :nil    \n\
-\                                                        \n\
-\  io-print-ln a =                                       \n\
-\    :_internal_io " ++ (show printLineActionId) ++ " (a ++ \"\\n\") :nil    \n\
+\  io = module                                             \n\
+\    bind action next =                                    \n\
+\      match action begin                                  \n\
+\        :_internal_io type param :nil -> :_internal_io type param next  \n\
+\        -- :_internal_io type param n0 -> :_internal_io type param (.\\ x = bind (n0 x) next)  \n\
+\        _ -> :error \"io-bind: Expected an io action as first argument\" \n\
+\      end                                                 \n\
+\                                                          \n\
+\    return a =                                            \n\
+\      :_internal_io " ++ (show returnActionId) ++ " a :nil       \n\
+\                                                          \n\
+\    read-ln =                                             \n\
+\      :_internal_io " ++ (show readLineActionId) ++ " :nil :nil     \n\
+\                                                          \n\
+\    print a =                                             \n\
+\      :_internal_io " ++ (show printLineActionId) ++ " a :nil    \n\
+\                                                          \n\
+\    print-ln a =                                       \n\
+\      :_internal_io " ++ (show printLineActionId) ++ " (a ++ \"\\n\") :nil    \n\
+\  end                                                   \n\
 \                                                        \n\
 \  head ls =                                             \n\
 \    match ls begin                                      \n\
@@ -189,15 +191,15 @@ preamble = "\n\
 \    len' list 0                                         \n\
 \                                                        \n\
 \                                                        \n\
-\  sequence ms =                                         \n\
+\  sequence m ms =                                       \n\
 \    k a b =                                             \n\
-\      do io begin                                       \n\
+\      do m begin                                        \n\
 \        l  <- a                                         \n\
 \        ls <- b                                         \n\
 \        return [l|ls]                                   \n\
 \      end                                               \n\
-\    foldr k (io-return []) ms                           \n\
+\    foldr k (m.return []) ms                            \n\
 \                                                        \n\
-\  m-map action ls =                                     \n\
-\    sequence (map action ls)                            \n\
+\  m-map action m ls =                                   \n\
+\    sequence m (map action ls)                          \n\
 \                                                        "

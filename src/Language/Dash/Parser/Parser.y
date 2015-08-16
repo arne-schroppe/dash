@@ -301,8 +301,7 @@ makeMonad monad lines =
     (_, call) : []     -> adjustNameForMonad call monad
     ("_", action) : rest ->
             foldl (\acc (varname, action') ->
-                -- TODO use namespace here instead of string concatenation
-                let qname = (Var $ monad ++ "-bind") in -- (Namespace monad (Var "bind")) in
+                let qname = (Qualified monad $ Var "bind") in
                 let args = [(adjustNameForMonad action' monad), Lambda [varname] acc] in
                 FunAp qname args) (adjustNameForMonad action monad) rest
     (_, _) : rest -> error "Last line in do-block can't be an assignment"
@@ -312,7 +311,7 @@ makeMonad monad lines =
 adjustNameForMonad :: Expr -> String -> Expr
 adjustNameForMonad e mon =
   case e of
-    FunAp (Var "return") a -> FunAp (Var (mon ++ "-return")) a
+    FunAp (Var "return") a -> FunAp (Qualified mon $ Var "return") a
     LocalBinding b e -> LocalBinding b (adjustNameForMonad e mon)
     _ -> e
 
