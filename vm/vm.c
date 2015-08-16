@@ -43,9 +43,9 @@ const int char_per_string_chunk = sizeof(vm_value) / sizeof(char);
 // KEEP THESE IN SYNC WITH COMPILER
 static const vm_value symbol_id_false = 0;
 static const vm_value symbol_id_true = 1;
-static const vm_value symbol_id_error = 2;
-static const vm_value symbol_id_io = 3;
-static const vm_value symbol_id_eof = 4;
+static const vm_value symbol_id_io = 2;
+static const vm_value symbol_id_eof = 3;
+static const vm_value symbol_id_error = 4;
 
 static const int action_id_return = 0;
 static const int action_id_readline = 1;
@@ -99,7 +99,7 @@ vm_value make_str_error(const char *format, ...);
 
 #define panic_stop_vm() { return vm_failure_result; }
 #define panic_stop_vm_m(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); return e; }
-#define fail(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); get_reg(get_arg_r0(instr)) = e; break; }
+#define fail(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); fprintf(stderr, format, ## __VA_ARGS__); get_reg(get_arg_r0(instr)) = e; break; }
 
 
 char *value_to_type_string(vm_value value) {
