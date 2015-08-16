@@ -30,6 +30,7 @@ builtInSymbols = map f d
     d = zip syms [0..length syms]
     syms = [ falseSymbolName
            , trueSymbolName
+           , "error"
            , "_internal_io" -- TODO prevent user from accessing these directly
            , "eof"
            ]

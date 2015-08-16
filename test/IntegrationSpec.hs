@@ -791,9 +791,10 @@ K negative numbers (with bias)
 K inequality operators
 K strings (string concatenation, substring, string length)
 K boolean operators
-- runtime errors and fail function
-- type "checking" and conversion
+K runtime errors
+- function to get type / type conversion
 - modules
+  - mutual recursion!
 - code cleanup! no duplication, second state for data encoding, etc
 K IO
 - garbage collection
