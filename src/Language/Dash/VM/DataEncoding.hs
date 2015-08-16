@@ -39,6 +39,7 @@ decode w ctable symNames =
                     | t==tagFunction              = return VMFunction
                     | t==tagString                = decodeConstantString v ctable
                     | t==tagDynamicString         = decodeDynamicString v
+                    | t==tagOpaqueSymbol          = decodeOpaqueSymbol v ctable symNames
                     | otherwise                   = error $ "Unknown tag " ++ show t
 
 
@@ -77,9 +78,6 @@ encodeCompoundSymbolHeader :: SymId -> Int -> VMWord
 encodeCompoundSymbolHeader symId n =
   makeVMValue tagCompoundSymbol $ fromIntegral $ (symIdToInt symId `shiftL` 14) .|. n
 
-encodeOpaqueSymbolHeader :: SymId -> Int -> VMWord
-encodeOpaqueSymbolHeader symId n =
-  makeVMValue tagOpaqueSymbol $ fromIntegral $ (symIdToInt symId `shiftL` 14) .|. n
 
 decodeCompoundSymbolHeader :: VMWord -> (SymId, Int)
 decodeCompoundSymbolHeader v =
@@ -111,6 +109,12 @@ decodeDynamicCompoundSymbol addr ctable symNames = do
   decoded <- mapM (\v -> decode v ctable symNames) values
   return $ VMSymbol symName decoded
 
+encodeOpaqueSymbolHeader :: SymId -> Int -> VMWord
+encodeOpaqueSymbolHeader symId n =
+  makeVMValue tagOpaqueSymbol $ fromIntegral $ (symIdToInt symId `shiftL` 14) .|. n
+
+decodeOpaqueSymbol :: VMWord -> [VMWord] -> SymbolNameList -> IO VMValue
+decodeOpaqueSymbol _ _ _ = return VMOpaqueSymbol
 
 
 -- Strings
@@ -240,7 +244,7 @@ tagFunction = 0x7
 tagDynamicCompoundSymbol = 0x8
 tagString = 0x9
 tagDynamicString = 0xA
-tagOpaqueSymbol = 0xA
+tagOpaqueSymbol = 0xB
 tagMatchData = 0xF
 
 compoundSymbolHeaderLength, stringHeaderLength :: VMWord

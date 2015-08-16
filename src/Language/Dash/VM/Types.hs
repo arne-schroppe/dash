@@ -11,6 +11,7 @@ data VMValue =
   | VMString String
   | VMClosure -- TODO add meaningful data 
   | VMFunction -- TODO add meaningful data (name, arguments, etc)
+  | VMOpaqueSymbol
   deriving (Eq)
 
 
@@ -36,6 +37,7 @@ instance Show VMValue where
       VMString s -> "\"" ++ s ++ "\""
       VMClosure -> "<closure>"
       VMFunction -> "<function>"
+      VMOpaqueSymbol -> "<opaque symbol>"  -- TODO special handling for modules
       VMSymbol "empty-list" [] -> "[]"
       VMSymbol s [] -> ":" ++ s
       VMSymbol "list" fields -> showNestedList fields

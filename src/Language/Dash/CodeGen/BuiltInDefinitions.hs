@@ -200,6 +200,6 @@ preamble = "\n\
 \      end                                               \n\
 \    foldr k (m.return []) ms                            \n\
 \                                                        \n\
-\  m-map action m ls =                                   \n\
+\  m-map m action ls =                                   \n\
 \    sequence m (map action ls)                          \n\
 \                                                        "
