@@ -793,7 +793,7 @@ K strings (string concatenation, substring, string length)
 K boolean operators
 K runtime errors
 - function to get type / type conversion
-- modules
+K modules
   - mutual recursion!
 - code cleanup! no duplication, second state for data encoding, etc
 K IO
@@ -830,7 +830,7 @@ K Strings
 K Creating symbols (symbol arity is known statically)
 K tuples
 K Lists
-- Static modules
+k Static modules
 K I/O
 
 - maps/dictionaries as built-in type (because that's fairly useful)
@@ -838,9 +838,6 @@ K I/O
     but then we're not very dynamic
   - map functions: hasKeys, merge (for entitas)
 
-- Change tags and runtime representation of values
-- Garbage collection
-- Reducing the amount of created garbage
 
 
 - Live editing would be really nice
@@ -878,17 +875,8 @@ After release ?
 
 - Matching the same var multiple times (e.g.  :test a 4 a -> :something ... only works if symbol is e.g. :test "a" 4 "a")
 - Faster, optimized match patterns (reduce number of comparisons)
-- Uniquely name vars in frontend, i.e. data-flow analysis
 K Prevent duplicate var names in function definition (unless it's for pattern matching? No, that would be useless)
 
-
-bugs:
-
-1.  a = 1
-    b = a
-    b
-
-    identifier 'b' not found
 
 -}
 

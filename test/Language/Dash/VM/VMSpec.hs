@@ -307,7 +307,7 @@ spec = do
                     OpcCopySym 0 1,
                     OpcRet 0 ]]
       result <- runProgTbl ctable prog
-      let symNames = ["", "A", "", "B"]
+      let symNames = ["X", "A", "Y", "B"]
       let decodeResult = decode result ctable symNames
       decodeResult `shouldReturn` (VMSymbol "B" [VMNumber 33, VMNumber 44])
 
@@ -325,7 +325,7 @@ spec = do
                     OpcSetSymField 0 5 1,
                     OpcRet 0 ]]
       result <- runProgTbl ctable prog
-      let symNames = ["", "A", "", "B", "", "", "success"]
+      let symNames = ["X", "A", "Y", "B", "Z", "W", "success"]
       let decodeResult = decode result ctable symNames
       decodeResult `shouldReturn` (VMSymbol "B" [VMNumber 33, VMSymbol "success" []])
 

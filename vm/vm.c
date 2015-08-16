@@ -217,37 +217,37 @@ vm_value make_str_error(const char *format, ...) {
 #define current_frame (stack[stack_pointer])
 #define next_frame (stack[stack_pointer + 1])
 
-#define do_call(frame, func_reg, instr)         \
+#define do_call(frame, fun_reg, instr)         \
   int return_pointer;                 \
   bool call_failed = false;              \
   {                                   \
-    check_reg(func_reg); \
-    int func = get_reg(func_reg);     \
-    if(get_tag(func) != vm_tag_function) { \
+    check_reg(fun_reg); \
+    int fun = get_reg(fun_reg);     \
+    if(get_tag(fun) != vm_tag_function) { \
       fprintf(stderr, "expected a function (do call)\n"); \
       call_failed = true;                \
     } \
     else {                            \
-      int func_address = get_val(func); \
+      int fun_address = get_val(fun); \
       if(frame != &next_frame) { \
         int num_args = get_arg_r2(instr); \
         memcpy(frame->reg, next_frame.reg, num_args * sizeof(vm_value)); \
       } \
       return_pointer = program_pointer; \
-      program_pointer = func_address + fun_header_size; \
+      program_pointer = fun_address + fun_header_size; \
     } \
   }
 
 
-// TODO it could be that func_address is not valid anymore after doing heap_alloc
-#define build_pap(num_pap_args, pap_arity, offset, num_args, func_address) \
+// TODO it could be that fun_address is not valid anymore after doing heap_alloc
+#define build_pap(num_pap_args, pap_arity, offset, num_args, fun_address) \
 vm_value pap_value; \
 vm_value *pap_pointer; \
 { \
   heap_address pap_address = heap_alloc(num_pap_args + pap_header_size ); \
   pap_pointer = heap_get_pointer(pap_address);  \
   *pap_pointer = pap_header(pap_arity, num_pap_args); /* write header */ \
-  *(pap_pointer + 1) = func_address; \
+  *(pap_pointer + 1) = fun_address; \
   memcpy(pap_pointer + pap_header_size + offset, next_frame.reg, num_args * sizeof(vm_value)); \
   pap_value = make_tagged_val( (vm_value) pap_address, vm_tag_pap ); \
 }
@@ -326,23 +326,23 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       memcpy(&(frame->reg[0]), cl_pointer + pap_header_size, num_cl_vars * sizeof(vm_value));
 
       // do the call
-      vm_value func_address = *(cl_pointer + 1);
+      vm_value fun_address = *(cl_pointer + 1);
       int return_pointer = program_pointer;
-      program_pointer = func_address + fun_header_size;
+      program_pointer = fun_address + fun_header_size;
       return return_pointer;
     }
     // Undersaturated closure application
     else if (num_args < arity) {
       // create a new PAP by copying the old one and adding the new arguments
 
-      vm_value func_address = *(cl_pointer + 1);
+      vm_value fun_address = *(cl_pointer + 1);
       vm_value reg0 = get_arg_r0(instr);
 
       int num_pap_args = num_cl_vars + num_args;
       int pap_arity = arity - num_args;
       int offset = num_cl_vars;
 
-      build_pap(num_pap_args, pap_arity, offset, num_args, func_address)
+      build_pap(num_pap_args, pap_arity, offset, num_args, fun_address)
       memcpy(pap_pointer + pap_header_size, cl_pointer + pap_header_size, num_cl_vars * sizeof(vm_value));
 
       check_reg(reg0);
@@ -359,8 +359,8 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
       memcpy(&(next_frame.reg[0]), cl_pointer + pap_header_size, num_cl_vars * sizeof(vm_value));
 
       // do the call
-      vm_value func_address = *(cl_pointer + 1);
-      program_pointer = func_address + fun_header_size;
+      vm_value fun_address = *(cl_pointer + 1);
+      program_pointer = fun_address + fun_header_size;
 
       ++stack_pointer;
 
@@ -370,8 +370,8 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
   else if (tag == vm_tag_function) {
 
-    int func_address = get_val(lambda);
-    vm_instruction fun_header = program[func_address];
+    int fun_address = get_val(lambda);
+    vm_instruction fun_header = program[fun_address];
     //TODO check fun header "opcode"
     int arity = get_arg_i(fun_header);
 
@@ -387,13 +387,13 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
     }
     // Unsersaturated function application
     else if (num_args < arity) {
-      //vm_value function_header = program[func_address];
+      //vm_value fun_header = program[fun_address];
       //TODO check that it's actually a function
 
       vm_value reg0 = get_arg_r0(instr);
       int pap_arity = arity - num_args;
 
-      build_pap(num_args, pap_arity, 0, num_args, func_address)
+      build_pap(num_args, pap_arity, 0, num_args, fun_address)
 
       check_reg(reg0);
       get_reg(reg0) = pap_value;
@@ -970,20 +970,20 @@ restart:
 
       case OP_PART_AP: {
         int reg0 = get_arg_r0(instr);
-        int func_reg = get_arg_r1(instr);
-        check_reg(func_reg);
-        int func = get_reg(func_reg);
+        int fun_reg = get_arg_r1(instr);
+        check_reg(fun_reg);
+        int func = get_reg(fun_reg);
 
         if( get_tag(func) != vm_tag_function ) {
           fail("Expected a function, but got: %s", value_to_type_string(func));
         }
 
-        int func_address = get_val(func);
+        int fun_address = get_val(func);
         int num_args = get_arg_r2(instr);
 
-        vm_value function_header = program[func_address];
+        vm_value fun_header = program[fun_address];
         //TODO check that it's actually a function
-        int arity = get_arg_i(function_header);
+        int arity = get_arg_i(fun_header);
 
         // TODO this was >= earlier, which apparently gave false positives. Find out why, and find out if > is the correct choice
         if(num_args > arity) {
@@ -992,7 +992,7 @@ restart:
 
         int pap_arity = arity - num_args;
 
-        build_pap(num_args, pap_arity, 0, num_args, func_address);
+        build_pap(num_args, pap_arity, 0, num_args, fun_address);
         check_reg(reg0);
         get_reg(reg0) = pap_value;
       }
