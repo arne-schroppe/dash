@@ -1,6 +1,7 @@
 #ifndef _INCLUDE_ENCODING_H
 #define _INCLUDE_ENCODING_H
 
+#include "vm.h"
 
 #define __tag_bits 4
 

@@ -657,7 +657,8 @@ it( loads_a_symbol_on_the_heap ) {
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
 
-  is_equal(result, make_tagged_val(heap_start, vm_tag_dynamic_compound_symbol));
+  is_equal(get_tag(result), vm_tag_dynamic_compound_symbol);
+  is_equal(get_val(result), heap_start);
 
   vm_value *heap_p = heap_get_pointer(heap_start);
   vm_value sym_header = *heap_p;
@@ -686,7 +687,9 @@ it( modifies_a_heap_symbol ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
-  is_equal(result, make_tagged_val(heap_start, vm_tag_dynamic_compound_symbol));
+
+  is_equal(get_tag(result), vm_tag_dynamic_compound_symbol);
+  is_equal(get_val(result), heap_start);
 
   vm_value *heap_p = heap_get_pointer(heap_start);
   vm_value sym_header = *heap_p;
@@ -703,7 +706,8 @@ it( loads_a_constant_string_into_a_register ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, make_tagged_val(55, vm_tag_string));
+  is_equal(get_tag(result), vm_tag_string);
+  is_equal(get_val(result), 55);
 }
 
 
@@ -741,7 +745,8 @@ it( creates_a_new_string ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), 0, 0);
-  is_equal(result, make_tagged_val(heap_start, vm_tag_dynamic_string));
+  is_equal(get_tag(result), vm_tag_dynamic_string);
+  is_equal(get_val(result), heap_start);
 }
 
 
