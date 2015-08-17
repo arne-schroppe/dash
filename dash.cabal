@@ -46,6 +46,8 @@ library
   c-sources:          vm/vm.c
                     , vm/heap.c
                     , vm/gc.c
+                    , vm/io.c
+                    , vm/defs.c
 
 executable dash
   main-is:            Main.hs

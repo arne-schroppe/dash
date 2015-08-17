@@ -7,96 +7,31 @@
 #include "opcodes.h"
 #include "heap.h"
 #include "gc.h"
-#include "vm_tags.h"
+#include "io.h"
+#include "defs.h"
+#include "encoding.h"
 
 /*
-
-TODO add optimized instructions for functions with few arguments ? (measure if this is effective)
 
 TODO use computed Goto
 
 */
 
 
+//TODO do this once instead of all the time
+#define check_ctable_index(x) if( (x) >= state->const_table_length || (x) < 0) { \
+    printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
+    return false; }
 
-// TODO this code needs some cleaning up
-
-// TODO unify func vs fun
-// TODO unify addr vs address
-//
-// TODO use low bits for tag, use pointers directly?
-
-#ifdef VM_DEBUG
-#  define debug(x) do { x; } while (0)
-#else
-#  define debug(x) do {} while (0)
-#endif
+#define check_reg(i) { int r = (i); if(r >= num_regs) { fprintf(stderr, "Illegal register: %i", r); panic_stop_vm(); }}
+#define get_reg(i) state->stack[state->stack_pointer].reg[(i)]
 
 static int invocation = 0;
 
-const int max_integer = 0x1FFFFF;
-const int int_bias = 0xFFFFF;
-
 const int char_per_string_chunk = sizeof(vm_value) / sizeof(char);
 
-// Constants
-// KEEP THESE IN SYNC WITH COMPILER
-static const vm_value symbol_id_false = 0;
-static const vm_value symbol_id_true = 1;
-static const vm_value symbol_id_io = 2;
-static const vm_value symbol_id_eof = 3;
-static const vm_value symbol_id_error = 4;
-
-static const int action_id_return = 0;
-static const int action_id_readline = 1;
-static const int action_id_printline = 2;
-
-static const int fun_header_size = 1;
-static const int pap_header_size = 2;
-static const int compound_symbol_header_size = 1;
-static const int string_header_size = 1;
-
-const vm_value vm_tag_number = 0x0;
-const vm_value vm_tag_plain_symbol = 0x4;
-const vm_value vm_tag_compound_symbol = 0x5;
-const vm_value vm_tag_dynamic_compound_symbol = 0x8;
-const vm_value vm_tag_pap = 0x6;
-const vm_value vm_tag_function = 0x7;
-const vm_value vm_tag_string = 0x9;
-const vm_value vm_tag_dynamic_string = 0xA;
-const vm_value vm_tag_opaque_symbol = 0xB;
-const vm_value vm_tag_match_data = 0xF;
-
-// match data will never appear on the heap, so we can reuse the tag.
-// (Used by the garbace collector to mark the moved position of data.)
-const vm_value vm_tag_forward_pointer = vm_tag_match_data;
-
-
-// vm State
-#define STACK_SIZE 255
-static stack_frame stack[STACK_SIZE];
-static int stack_pointer = 0;
-static int program_pointer = 0;
-static vm_value *const_table = 0;
-static int const_table_length = 0;
-
-
-
-typedef enum {
-  no_io_action = 0,
-  intermediary_io_action = 1,
-  final_io_action = 2
-} io_action_result;
-
-io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result);
-bool is_io_action(vm_value value);
-
 const vm_value vm_failure_result = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
-
 vm_value make_str_error(const char *format, ...);
-
-#define panic_stop_io_processing() { *final_result = vm_failure_result; return final_io_action; }
-
 #define panic_stop_vm() { return vm_failure_result; }
 #define panic_stop_vm_m(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); return e; }
 #define fail(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); fprintf(stderr, format, ## __VA_ARGS__); get_reg(get_arg_r0(instr)) = e; break; }
@@ -159,7 +94,7 @@ heap_address new_string(size_t length) {
 }
 
 
-char *read_string(vm_value string_value) {
+char *read_string(vm_state *state, vm_value string_value) {
 
   if(get_tag(string_value) != vm_tag_dynamic_string
       && get_tag(string_value) != vm_tag_string) {
@@ -174,7 +109,7 @@ char *read_string(vm_value string_value) {
     str_p = heap_get_pointer(str_addr);
   }
   else {
-    str_p = const_table + str_addr;
+    str_p = state->const_table + str_addr;
   }
 
   vm_value *string_start = str_p + 1;
@@ -207,15 +142,6 @@ vm_value make_str_error(const char *format, ...) {
 
 
 
-//TODO do this once instead of all the time
-#define check_ctable_index(x) if( (x) >= const_table_length || (x) < 0) { \
-    printf("Ctable index out of bounds: %i at %i\n", (x), __LINE__ ); \
-    return false; }
-
-#define check_reg(i) { int r = (i); if(r >= num_regs) { fprintf(stderr, "Illegal register: %i", r); panic_stop_vm(); }}
-#define get_reg(i) stack[stack_pointer].reg[(i)]
-#define current_frame (stack[stack_pointer])
-#define next_frame (stack[stack_pointer + 1])
 
 #define do_call(frame, fun_reg, instr)         \
   int return_pointer;                 \
@@ -233,8 +159,8 @@ vm_value make_str_error(const char *format, ...) {
         int num_args = get_arg_r2(instr); \
         memcpy(frame->reg, next_frame.reg, num_args * sizeof(vm_value)); \
       } \
-      return_pointer = program_pointer; \
-      program_pointer = fun_address + fun_header_size; \
+      return_pointer = state->program_pointer; \
+      state->program_pointer = fun_address + fun_header_size; \
     } \
   }
 
@@ -264,7 +190,7 @@ vm_value *pap_pointer; \
   memcpy(arg_pointer + 1, &(next_frame.reg[arity]), num_remaining_args * sizeof(vm_value)); \
   current_frame.spilled_arguments = addr; \
   /* Return back to this instruction */ \
-  int return_pointer = program_pointer - 1; \
+  int return_pointer = state->program_pointer - 1; \
   next_frame.return_address = return_pointer; \
   next_frame.result_register = get_arg_r0(instr); \
 }
@@ -288,7 +214,7 @@ vm_value *pap_pointer; \
 
   After this the call proceeds as usual, possibly leading to another oversaturated call.
 */
-int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
+int do_gen_ap(vm_state *state, stack_frame *frame, vm_value instr, vm_instruction *program) {
 
   // TODO remove code duplication (in here, stack push, etc)
 
@@ -327,8 +253,8 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
       // do the call
       vm_value fun_address = *(cl_pointer + 1);
-      int return_pointer = program_pointer;
-      program_pointer = fun_address + fun_header_size;
+      int return_pointer = state->program_pointer;
+      state->program_pointer = fun_address + fun_header_size;
       return return_pointer;
     }
     // Undersaturated closure application
@@ -360,9 +286,9 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
       // do the call
       vm_value fun_address = *(cl_pointer + 1);
-      program_pointer = fun_address + fun_header_size;
+      state->program_pointer = fun_address + fun_header_size;
 
-      ++stack_pointer;
+      ++state->stack_pointer;
 
       return -1;
     }
@@ -404,7 +330,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
       prep_oversaturated_call(arity, num_args)
       do_call((&next_frame), lambda_reg, instr);
-      ++stack_pointer;
+      ++state->stack_pointer;
 
       return -1;
     }
@@ -421,7 +347,7 @@ int do_gen_ap(stack_frame *frame, vm_value instr, vm_instruction *program) {
 
 
 // TODO try to do this without recursive function calls, then turn into a macro
-bool is_equal(vm_value l, vm_value r) {
+bool is_equal(vm_state *state, vm_value l, vm_value r) {
 
   vm_value l_tag = get_tag(l);
 
@@ -440,14 +366,14 @@ bool is_equal(vm_value l, vm_value r) {
     vm_value *r_pointer;
 
     if(l_tag == vm_tag_compound_symbol) {
-      l_pointer = const_table + l_addr;
+      l_pointer = state->const_table + l_addr;
     }
     else {
       l_pointer = heap_get_pointer(l_addr);
     }
 
     if(r_tag == vm_tag_compound_symbol) {
-      r_pointer = const_table + r_addr;
+      r_pointer = state->const_table + r_addr;
     }
     else {
       r_pointer = heap_get_pointer(r_addr);
@@ -464,7 +390,7 @@ bool is_equal(vm_value l, vm_value r) {
     }
 
     for(int i = compound_symbol_header_size; i < compound_symbol_header_size + count; ++i) {
-      if(! is_equal(l_pointer[i], r_pointer[i])) {
+      if(! is_equal(state, l_pointer[i], r_pointer[i])) {
         return false;
       }
     }
@@ -481,14 +407,14 @@ bool is_equal(vm_value l, vm_value r) {
     vm_value *r_pointer = NULL;
 
     if(l_tag == vm_tag_string) {
-      l_pointer = const_table + l_addr;
+      l_pointer = state->const_table + l_addr;
     }
     else {
       l_pointer = heap_get_pointer(l_addr);
     }
 
     if(r_tag == vm_tag_string) {
-      r_pointer = const_table + r_addr;
+      r_pointer = state->const_table + r_addr;
     }
     else {
       r_pointer = heap_get_pointer(r_addr);
@@ -517,7 +443,7 @@ bool is_equal(vm_value l, vm_value r) {
 
 // TODO can we inline this?
 // TODO document the algorithm
-bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
+bool does_value_match(vm_state *state, vm_value pattern, vm_value subject, int start_register) {
 
   vm_value pattern_tag = get_tag(pattern);
 
@@ -553,14 +479,14 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
       vm_value pattern_address = get_val(pattern);
       check_ctable_index(pattern_address)
 
-      vm_value pattern_header = const_table[pattern_address];
+      vm_value pattern_header = state->const_table[pattern_address];
       vm_value pattern_id = compound_symbol_id(pattern_header);
 
       vm_value subject_address = get_val(subject);
       vm_value *subject_pointer;
       if(subject_tag == vm_tag_compound_symbol) {
         check_ctable_index(subject_address)
-        subject_pointer = &const_table[subject_address];
+        subject_pointer = &state->const_table[subject_address];
       }
       else {
         subject_pointer = heap_get_pointer(subject_address);
@@ -587,7 +513,7 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
 
         check_ctable_index(rel_pattern_address);
         //check_ctable_index(rel_subject_address);
-        if( !does_value_match(const_table[rel_pattern_address], subject_pointer[rel_subject_address], start_register) ) {
+        if( !does_value_match(state, state->const_table[rel_pattern_address], subject_pointer[rel_subject_address], start_register) ) {
           return false;
         }
       }
@@ -600,36 +526,35 @@ bool does_value_match(vm_value pattern, vm_value subject, int start_register) {
   }
 }
 
-void reset() {
-  program_pointer = 0;
-  stack_pointer = 0;
-  const_table = 0;
-  const_table_length = 0;
-
+void reset(vm_state *state) {
   // Invariant: spilled_arguments field in all frames must be 0 from the beginning
-  memset(stack, 0x0, sizeof(stack_frame) * STACK_SIZE);
+  memset(state, 0x0, sizeof(vm_state));
+  gc_set_stack(state->stack, &state->stack_pointer);
   heap_init();
-  gc_set_stack(stack, &stack_pointer);
 }
 
 
 vm_value vm_execute(vm_instruction *program, int program_length, vm_value *ctable, int ctable_length) {
   ++invocation;
-  reset();
-  const_table = ctable;
-  const_table_length = ctable_length;
+
+  vm_state state0;
+  vm_state *state = &state0;
+  reset(state);
+
+  state->const_table = ctable;
+  state->const_table_length = ctable_length;
 
 
   bool is_running = true;
 
 
 restart:
-  while(is_running && program_pointer < program_length) {
+  while(is_running && state->program_pointer < program_length) {
 
     is_running = true;
-    vm_value instr = program[program_pointer];
+    vm_value instr = program[state->program_pointer];
     vm_opcode opcode = get_opcode(instr);
-    ++program_pointer;
+    ++state->program_pointer;
 
     switch (opcode) {
 
@@ -805,7 +730,7 @@ restart:
 
 
       case OP_CALL: {
-        if (stack_pointer + 1 == STACK_SIZE) {
+        if (state->stack_pointer + 1 == stack_size) {
           fail("(call)!");
         }
 
@@ -817,7 +742,7 @@ restart:
 
         next_frame.return_address = return_pointer;
         next_frame.result_register = get_arg_r0(instr);
-        ++stack_pointer;
+        ++state->stack_pointer;
 
       }
       break;
@@ -834,17 +759,17 @@ restart:
 
 
       case OP_GEN_AP: {
-        if (stack_pointer + 1 == STACK_SIZE) {
+        if (state->stack_pointer + 1 == stack_size) {
           printf("Stack overflow (call cl)!");
           panic_stop_vm();
         }
 
-        int return_pointer = do_gen_ap((&next_frame), instr, program);
+        int return_pointer = do_gen_ap(state, (&next_frame), instr, program);
 
         if (return_pointer != -1) {
           next_frame.return_address = return_pointer;
           next_frame.result_register = get_arg_r0(instr);
-          ++stack_pointer;
+          ++state->stack_pointer;
         }
 
       }
@@ -853,30 +778,30 @@ restart:
 
       // TODO It's not entirely clear yet what happens when this returns a new PAP
       case OP_TAIL_GEN_AP: {
-        do_gen_ap(&current_frame, instr, program);
+        do_gen_ap(state, &current_frame, instr, program);
       }
       break;
 
 
       case OP_RET: {
         int return_val_reg = get_arg_r0(instr);
-        if (stack_pointer == 0) {
+        if (state->stack_pointer == 0) {
           //We simply copy the result value to register 0, so that the runtime can find it
           current_frame.reg[0] = current_frame.reg[return_val_reg];
           is_running = false;
           break;
         }
-        --stack_pointer;
+        --state->stack_pointer;
         current_frame.reg[next_frame.result_register] = next_frame.reg[return_val_reg];
-        program_pointer = next_frame.return_address;
+        state->program_pointer = next_frame.return_address;
       }
       break;
 
 
       case OP_JMP: {
         int offset = get_arg_i(instr) - int_bias;
-        program_pointer += offset;
-        if(program_pointer < 0 || program_pointer > program_length) {
+        state->program_pointer += offset;
+        if(state->program_pointer < 0 || state->program_pointer > program_length) {
           panic_stop_vm_m("Illegal address!");
         }
       }
@@ -886,11 +811,11 @@ restart:
         check_reg(get_arg_r0(instr));
         vm_value bool_value = get_reg(get_arg_r0(instr));
 
-        if( is_equal(bool_value, make_tagged_val(symbol_id_true, vm_tag_plain_symbol) )) {
+        if( is_equal(state, bool_value, make_tagged_val(symbol_id_true, vm_tag_plain_symbol) )) {
           int offset = get_arg_i(instr) - int_bias;
-          program_pointer += offset;
-          if(program_pointer < 0 || program_pointer > program_length) {
-            panic_stop_vm_m("Illegal address: %i", program_pointer);
+          state->program_pointer += offset;
+          if(state->program_pointer < 0 || state->program_pointer > program_length) {
+            panic_stop_vm_m("Illegal address: %i", state->program_pointer);
           }
         }
         // else: do nothing
@@ -907,7 +832,7 @@ restart:
         check_reg(capture_reg);
 
         check_ctable_index(patterns_addr)
-        vm_value match_header = const_table[patterns_addr];
+        vm_value match_header = state->const_table[patterns_addr];
         int number_of_patterns = from_match_value(match_header);
         int i = 0;
 
@@ -915,8 +840,8 @@ restart:
           int rel_pat_addr = patterns_addr + 1 + i;
 
           check_ctable_index(rel_pat_addr)
-          vm_value pat = const_table[rel_pat_addr];
-          if(does_value_match(pat, subject, capture_reg)) {
+          vm_value pat = state->const_table[rel_pat_addr];
+          if(does_value_match(state, pat, subject, capture_reg)) {
             break;
           }
           else {
@@ -928,7 +853,7 @@ restart:
           fail("Pattern match failed!");
         }
 
-        program_pointer += i;
+        state->program_pointer += i;
       }
       break;
 
@@ -1007,7 +932,7 @@ restart:
         int result_reg = get_arg_r0(instr);
         check_reg(result_reg);
 
-        if( is_equal(l, r)) {
+        if( is_equal(state, l, r)) {
           get_reg(result_reg) = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
         }
         else {
@@ -1075,14 +1000,14 @@ restart:
         }
 
         int c_addr = get_val(const_symbol);
-        vm_value c_sym_header = const_table[c_addr];
+        vm_value c_sym_header = state->const_table[c_addr];
 
         int count = compound_symbol_count(c_sym_header);
 
         size_t total_size = compound_symbol_header_size + count;
         heap_address dyn_sym_address = heap_alloc(total_size);
         vm_value *sym_pointer = heap_get_pointer(dyn_sym_address);  \
-        memcpy(sym_pointer, &(const_table[c_addr]), total_size * sizeof(vm_value));
+        memcpy(sym_pointer, &(state->const_table[c_addr]), total_size * sizeof(vm_value));
 
         get_reg(get_arg_r0(instr)) = make_tagged_val(dyn_sym_address, vm_tag_dynamic_compound_symbol);
 
@@ -1128,7 +1053,7 @@ restart:
         vm_value *str_pointer;
 
         if(tag == vm_tag_string) {
-          str_pointer = const_table + str_addr;
+          str_pointer = state->const_table + str_addr;
         }
         else {
           str_pointer = heap_get_pointer(str_addr);
@@ -1192,7 +1117,7 @@ restart:
         vm_value *str_pointer;
 
         if(str_tag == vm_tag_string) {
-          str_pointer = const_table + str_addr;
+          str_pointer = state->const_table + str_addr;
         }
         else {
           str_pointer = heap_get_pointer(str_addr);
@@ -1326,7 +1251,7 @@ restart:
         }
 
         int mod_addr = get_val(mod_ref);
-        vm_value *mod_pointer = const_table + mod_addr;
+        vm_value *mod_pointer = state->const_table + mod_addr;
 
         vm_value mod_header = mod_pointer[0];
         vm_value mod_owner = mod_pointer[1];
@@ -1366,19 +1291,35 @@ restart:
   }
 
 
-  vm_value result = stack[stack_pointer].reg[0];
+  vm_value result = state->stack[state->stack_pointer].reg[0];
 
 
   vm_value io_result_value = 0;
-  io_action_result action_result = check_io_action(result, program, &io_result_value);
+  vm_value next_action;
+  io_action_result action_result = check_io_action(state, result, program, &io_result_value, &next_action);
 
   switch(action_result) {
     case no_io_action:
       // do nothing
       break;
 
-    case intermediary_io_action:
-      is_running = true;
+    case intermediary_io_action: {
+        state->stack_pointer = 0;
+
+        current_frame.reg[0] = next_action;
+        next_frame.reg[0] = io_result_value; // argument for next_action
+        vm_instruction instr = op_gen_ap(0, 0, 1);
+        int return_pointer = do_gen_ap(state, &current_frame, instr, program);
+        if (return_pointer != -1) {
+          current_frame.return_address = return_pointer;
+          current_frame.result_register = 0;
+        }
+        else {
+          // TODO is this malformed?
+          panic_stop_vm_m("malformed bound lambda in io action");
+        }
+        is_running = true;
+      }
       goto restart;
 
     case final_io_action:
@@ -1401,126 +1342,4 @@ vm_value *vm_get_heap_pointer(vm_value addr) {
 }
 
 
-
-// TODO Put vm state into a struct and move this to another file
-
-bool is_io_action(vm_value value) {
-
-  if(get_tag(value) != vm_tag_dynamic_compound_symbol) {
-    return false;
-  }
-
-  vm_value addr = get_val(value);
-  vm_value *p = heap_get_pointer(addr);
-  vm_value header = p[0];
-  if(compound_symbol_id(header) != symbol_id_io) {
-    return false;
-  }
-
-  return true;
-}
-
-io_action_result check_io_action(vm_value result, vm_instruction *program, vm_value *final_result) {
-
-  // check if this is a valid io action
-  if(!is_io_action(result)) {
-    return no_io_action;
-  }
-
-  vm_value addr = get_val(result);
-  vm_value *p = heap_get_pointer(addr);
-
-  vm_value action_type = p[1] - int_bias;
-  vm_value action_param = p[2];
-  vm_value next_action = p[3];
-
-  if(get_tag(action_type) != vm_tag_number) {
-    fprintf(stderr, "Malformed io action: %d\n", action_type);
-    panic_stop_io_processing();
-  }
-
-
-  // find out which io action
-  int action_id = get_val(action_type);
-  vm_value next_param = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
-
-  switch (action_id) {
-
-    case action_id_printline: {
-        char *param = read_string(action_param);
-        if(param == NULL) {
-          fprintf(stderr, "io-print-ln: Expected a string, got %s\n", value_to_type_string(action_param));
-          panic_stop_io_processing();
-        }
-        printf("%s", param);
-        next_param = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
-      }
-      break;
-
-    case action_id_readline: {
-        char *line = NULL;
-        size_t buffer_size = 0;
-        int length = getline(&line, &buffer_size, stdin);
-        if(length == -1) {
-          next_param = make_tagged_val(symbol_id_eof, vm_tag_plain_symbol);
-        }
-        else
-        {
-          //cut off trailing newline
-          length -= 1;
-          line[length] = '\0';
-
-          vm_value string_address = new_string(length);
-          vm_value *str_pointer = heap_get_pointer(string_address);
-          vm_value *str_start = str_pointer + 1;
-
-          strcpy((char *)str_start, line);
-          next_param = make_tagged_val(string_address, vm_tag_dynamic_string);
-        }
-      }
-      break;
-
-    case action_id_return:
-      next_param = action_param;
-      break;
-
-    default:
-      fprintf(stderr, "malformed io action: %d\n", action_id);
-      panic_stop_io_processing();
-  }
-
-  if(get_tag(next_action) == vm_tag_function || get_tag(next_action) == vm_tag_pap) {
-    // The io action includes a bound lambda. Set up the vm so that it is called
-    // with the result form our io action.
-    stack_pointer = 0;
-
-    current_frame.reg[0] = next_action;
-    next_frame.reg[0] = next_param;
-    vm_instruction instr = op_gen_ap(0, 0, 1);
-    int return_pointer = do_gen_ap(&current_frame, instr, program);
-    if (return_pointer != -1) {
-      current_frame.return_address = return_pointer;
-      current_frame.result_register = 0;
-
-      return intermediary_io_action;
-    }
-    else {
-      // TODO is this malformed?
-      fprintf(stderr, "malformed bound lambda in io action\n");
-      panic_stop_io_processing();
-    }
-  }
-  else {
-    // There is no binding following this io action. The action's result
-    // is the final result.
-
-    if(final_result) {
-      *final_result = next_param;
-    }
-    return final_io_action;
-  }
-
-  fprintf(stderr, "Error in io action\n");
-  panic_stop_io_processing();
-}
 

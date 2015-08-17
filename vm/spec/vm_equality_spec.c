@@ -4,6 +4,7 @@
 #include "../vm_internal.h"
 #include "../opcodes.h"
 #include "../heap.h"
+#include "../encoding.h"
 
 #define array_length(x) (sizeof(x) / sizeof(x[0]))
 

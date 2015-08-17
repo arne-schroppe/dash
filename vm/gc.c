@@ -19,3 +19,5 @@ int gc_collect(vm_value *old_heap, vm_value *new_heap, int heap_size) {
   exit(-1);
   return 0;
 }
+
+

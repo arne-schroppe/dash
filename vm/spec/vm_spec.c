@@ -4,6 +4,8 @@
 #include "../vm_internal.h"
 #include "../opcodes.h"
 #include "../heap.h"
+#include "../encoding.h"
+#include "../defs.h"
 
 #define array_length(x) (sizeof(x) / sizeof(x[0]))
 
@@ -654,6 +656,7 @@ it( loads_a_symbol_on_the_heap ) {
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+
   is_equal(result, make_tagged_val(heap_start, vm_tag_dynamic_compound_symbol));
 
   vm_value *heap_p = heap_get_pointer(heap_start);
