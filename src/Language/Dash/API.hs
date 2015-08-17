@@ -26,6 +26,7 @@ import           Prelude                                   hiding (lex)
 (||>) :: (t1, t2, t3) -> (t1 -> t2 -> t3 -> a) -> a
 (||>) (a, b, c) d = d a b c
 
+-- TODO Add license header everywhere!
 -- TODO have separate compile and run and add methods (add is for repl)
 -- TODO in cabal only export API module and reexport all relevant types and functions
 -- here (or rename this module)
