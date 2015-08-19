@@ -36,8 +36,8 @@ import           Language.Dash.IR.Nst
 
 
 
-type NormT m a = StateT NormState (ExceptT CompilationError m) a
-type Norm a = NormT Identity a
+type NormT a m = StateT NormState (ExceptT CompilationError m) a
+type Norm a = NormT a Identity
 
 data NormState = NormState
   { symbolNames    :: Map.Map String SymId

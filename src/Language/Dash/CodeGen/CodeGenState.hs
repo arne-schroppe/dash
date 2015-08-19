@@ -19,8 +19,8 @@ import           Language.Dash.VM.Types
 
 
 
-type CodeGenT m a = StateT CompState (ExceptT CompilationError m) a
-type CodeGen a = CodeGenT Identity a
+type CodeGenT a m = StateT CompState (ExceptT CompilationError m) a
+type CodeGen a = CodeGenT a Identity
 
 data CompState = CompState
   { instructions    :: Seq.Seq [Opcode]

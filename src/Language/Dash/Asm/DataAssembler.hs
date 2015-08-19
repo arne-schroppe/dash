@@ -6,10 +6,14 @@ module Language.Dash.Asm.DataAssembler (
 , AtomicConstant(..)
 ) where
 
+import           Control.Monad.Except          (ExceptT (..), runExceptT,
+                                                throwError)
+import           Control.Monad.Identity        (runIdentity, Identity)
 import           Control.Monad.State           hiding (state)
 import           Data.List.Split
 import qualified Data.Map                      as Map
 import qualified Data.Sequence                 as Seq
+import           Language.Dash.Internal.Error  (CompilationError (..))
 import           Language.Dash.IR.Data
 import qualified Language.Dash.VM.DataEncoding as Enc
 import           Language.Dash.VM.Types
@@ -33,7 +37,6 @@ TODO rename const table to constant pool?
 
 
 type ConstAddressMap = ConstAddr -> VMWord
-type ConstAtomizationState a = State ConstAtomizationEnv a
 
 
 -- The ConstAddressMap is a conversion function from the virtual constant
@@ -48,17 +51,23 @@ encodeConstTable ctable funcMap =
 -- to split this representation into their atomic parts. This is what this
 -- function does. The next step encodes those atomic parts into their
 -- byte representation for the vm.
-atomizeConstTable :: ConstTable -> Seq.Seq VMWord -> ([AtomicConstant], Map.Map ConstAddr VMWord)
+atomizeConstTable :: ConstTable
+                  -> Seq.Seq VMWord
+                  -> ([AtomicConstant], Map.Map ConstAddr VMWord)
 atomizeConstTable ctable funcMap =
-  let state = execState encTable (emptyConstAtomizationEnv ctable funcMap) in
-  (atomized state, addrMap state)
+  let stateOrError = runIdentity $ runExceptT $ execStateT
+                             encTable (emptyConstAtomizationState ctable funcMap)
+  in
+  case stateOrError of
+    Left err -> error "Fail"
+    Right state -> (atomized state, addrMap state)
   where
     encTable = whileJust atomizeConstant popWorkItem
 
 
-whileJust :: (b -> ConstAtomizationState a)
-          -> ConstAtomizationState (Maybe b)
-          -> ConstAtomizationState ()
+whileJust :: (b -> ConstAtomization a)
+          -> ConstAtomization (Maybe b)
+          -> ConstAtomization ()
 whileJust f source = do
   next <- source
   case next of
@@ -68,7 +77,7 @@ whileJust f source = do
       whileJust f source
 
 
-atomizeConstant :: Constant -> ConstAtomizationState ()
+atomizeConstant :: Constant -> ConstAtomization ()
 atomizeConstant c = case c of
   CNumber n                  -> addAtomized [ACNumber n]
   CPlainSymbol sid           -> addAtomized [ACPlainSymbol sid]
@@ -80,20 +89,20 @@ atomizeConstant c = case c of
   CCompoundSymbolRef caddr   -> atomizeCompoundSymbolRef caddr
   x -> error $ "Unable to encode top-level constant " ++ show x
 
-atomizeCompoundSymbolRef :: ConstAddr -> ConstAtomizationState ()
+
+atomizeCompoundSymbolRef :: ConstAddr -> ConstAtomization ()
 atomizeCompoundSymbolRef caddr = do
   addr <- actualConstAddr caddr
   addAtomized [ACCompoundSymbolRef addr]
 
 
-
-atomizeFunction :: FuncAddr -> ConstAtomizationState ()
+atomizeFunction :: FuncAddr -> ConstAtomization ()
 atomizeFunction addr = do
   faddr <- actualFuncAddr addr
   addAtomized [ACFunction faddr]
 
 
-atomizeCompoundSymbol :: SymId -> [Constant] -> ConstAtomizationState ()
+atomizeCompoundSymbol :: SymId -> [Constant] -> ConstAtomization ()
 atomizeCompoundSymbol sid args = do
   setReservedSpace (1 + length args) -- TODO this is duplicated logic (see below)
   let symbolHeader = ACCompoundSymbolHeader sid (fromIntegral $ length args)
@@ -101,7 +110,7 @@ atomizeCompoundSymbol sid args = do
   addAtomized $ symbolHeader : atomizedArgs
   setReservedSpace 0
 
-atomizeOpaqueSymbol :: SymId -> SymId -> [Constant] -> ConstAtomizationState ()
+atomizeOpaqueSymbol :: SymId -> SymId -> [Constant] -> ConstAtomization ()
 atomizeOpaqueSymbol sid owner args = do
   setReservedSpace (2 + length args)
   let symbolHeader = ACOpaqueSymbolHeader sid (fromIntegral $ length args)
@@ -109,7 +118,7 @@ atomizeOpaqueSymbol sid owner args = do
   addAtomized $ symbolHeader : (ACPlainSymbol owner) : atomizedArgs
   setReservedSpace 0
 
-atomizeMatchData :: [Constant] -> ConstAtomizationState ()
+atomizeMatchData :: [Constant] -> ConstAtomization ()
 atomizeMatchData args = do
   setReservedSpace (1 + length args)
   let matchHeader = ACMatchHeader (fromIntegral $ length args)
@@ -118,7 +127,7 @@ atomizeMatchData args = do
   setReservedSpace 0
 
 
-atomizeString :: String -> ConstAtomizationState ()
+atomizeString :: String -> ConstAtomization ()
 atomizeString str = do
   let numChunks = numStringChunksForString str
   let nullString = str ++ "\0"
@@ -142,7 +151,7 @@ numStringChunksForString str =
   numChunks + adjust
 
 
-atomizeConstArg :: Constant -> ConstAtomizationState AtomicConstant
+atomizeConstArg :: Constant -> ConstAtomization AtomicConstant
 atomizeConstArg c = case c of
   CNumber n        -> return $ ACNumber n
   CPlainSymbol sid -> return $ ACPlainSymbol sid
@@ -155,12 +164,17 @@ atomizeConstArg c = case c of
   CCompoundSymbolRef caddr -> do
                    addr <- actualConstAddr caddr
                    return $ ACCompoundSymbolRef addr
-  x -> error $ "Unable to encode constant as argument: " ++ show x
+  x -> throwError $ InternalCompilerError $ "Unable to encode constant as argument: "
+                                            ++ show x
 
 
 -- State
 
-data ConstAtomizationEnv = ConstAtomizationEnv {
+
+type ConstAtomizationT m a = StateT ConstAtomizationState (ExceptT CompilationError m) a
+type ConstAtomization a = ConstAtomizationT Identity a
+
+data ConstAtomizationState = ConstAtomizationState {
   constants         :: [Constant]
 , workQueue         :: [Constant]
 , addrMap           :: Map.Map ConstAddr VMWord
@@ -171,8 +185,8 @@ data ConstAtomizationEnv = ConstAtomizationEnv {
 }
 
 
-emptyConstAtomizationEnv :: [Constant] -> Seq.Seq VMWord -> ConstAtomizationEnv
-emptyConstAtomizationEnv ctable funcMap = ConstAtomizationEnv {
+emptyConstAtomizationState :: [Constant] -> Seq.Seq VMWord -> ConstAtomizationState
+emptyConstAtomizationState ctable funcMap = ConstAtomizationState {
   constants         = ctable
 , workQueue         = []
 , addrMap           = Map.empty
@@ -188,7 +202,7 @@ emptyConstAtomizationEnv ctable funcMap = ConstAtomizationEnv {
 -- we continue with the next constant from our original input. When we're
 -- done we return Nothing.
 -- TODO I'm quite sure that this can be written much more elegantly
-popWorkItem :: ConstAtomizationState (Maybe Constant)
+popWorkItem :: ConstAtomization (Maybe Constant)
 popWorkItem = do
   state <- get
   case (workQueue state, constants state) of
@@ -206,21 +220,21 @@ popWorkItem = do
         return $ Just $ head ws
 
 
-addAddrMapping :: ConstAddr -> VMWord -> ConstAtomizationState ()
+addAddrMapping :: ConstAddr -> VMWord -> ConstAtomization ()
 addAddrMapping src dest = do
   state <- get
   let newMap = Map.insert src dest (addrMap state)
   put $ state { addrMap = newMap }
 
 
-pushWorkItem :: Constant -> ConstAtomizationState ()
+pushWorkItem :: Constant -> ConstAtomization ()
 pushWorkItem c = do
   state <- get
   let workQ = workQueue state
   put $ state { workQueue = workQ ++ [c] }
 
 
-nextFreeAddress :: ConstAtomizationState ConstAddr
+nextFreeAddress :: ConstAtomization ConstAddr
 nextFreeAddress = do
   state <- get
   let used = length $ atomized state
@@ -243,28 +257,28 @@ spaceNeededByConstant c = case c of
   CCompoundSymbolRef _   -> 1
 
 
-addAtomized :: [AtomicConstant] -> ConstAtomizationState ()
+addAtomized :: [AtomicConstant] -> ConstAtomization ()
 addAtomized atoms = do
   state <- get
   put $ state { atomized = atomized state ++ atoms }
 
 
-setReservedSpace :: Int -> ConstAtomizationState ()
+setReservedSpace :: Int -> ConstAtomization ()
 setReservedSpace n = do
   state <- get
   put $ state { reservedSpace = n }
 
 
-actualFuncAddr :: FuncAddr -> ConstAtomizationState Int
+actualFuncAddr :: FuncAddr -> ConstAtomization Int
 actualFuncAddr addr = do
   funcMap <- gets functionMap
   return $ fromIntegral $ funcMap `Seq.index` funcAddrToInt addr
 
-actualConstAddr :: ConstAddr -> ConstAtomizationState ConstAddr
+actualConstAddr :: ConstAddr -> ConstAtomization ConstAddr
 actualConstAddr caddr = do
   state <- get
   case Map.lookup caddr (addrMap state) of
-    Nothing -> error "Internal compiler error, can't resolve compound symbol ref"
+    Nothing -> throwError $ InternalCompilerError $ "Can't resolve compound symbol ref"
     Just addr -> return $ mkConstAddr $ fromIntegral addr
 
 
