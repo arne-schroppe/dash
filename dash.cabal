@@ -36,10 +36,12 @@ library
                     , Language.Dash.VM.Types
                     , Language.Dash.API
                     , Language.Dash.Constants
+                    , Language.Dash.Internal.Error
   build-depends:      base
                     , array
                     , containers
-                    , mtl
+                    , transformers
+                    , mtl >=2.2
                     , split
                     , bytestring
   include-dirs:       vm

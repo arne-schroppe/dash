@@ -2,6 +2,9 @@ module Language.Dash.CodeGen.CodeGen (
   compile
 ) where
 
+import           Control.Monad.Except                     (runExceptT,
+                                                           throwError)
+import           Control.Monad.Identity                   (runIdentity)
 import           Control.Monad.State
 import           Data.Foldable
 import           Data.List                                (transpose)
@@ -9,6 +12,7 @@ import           Data.Maybe                               (catMaybes)
 import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.CodeGen.CodeGenState
 import           Language.Dash.Constants
+import           Language.Dash.Internal.Error             (CompilationError (..))
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Opcode
@@ -18,7 +22,6 @@ import           Language.Dash.IR.Opcode
 
 -- TODO when there is more time, do dataflow analysis to reuse registers
 
--- TODO 'atom' could be misleading. Rename to 'atomExpr' or something like that
 
 
 compile :: NstExpr
@@ -26,11 +29,15 @@ compile :: NstExpr
         -> SymbolNameList
         -> ([[Opcode]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
-  let result = execState (compileCompilationUnit expr) (makeCompEnv cTable symlist) in
-  (toList (instructions result), constTable result, symbolNames result)
+  let resultOrError = runIdentity $ runExceptT $ execStateT (compileCompilationUnit expr)
+                                                            (makeCompState cTable symlist)
+  in
+  case resultOrError of
+    Left err -> error "Fail"
+    Right result -> (toList (instructions result), constTable result, symbolNames result)
 
 
-compileCompilationUnit :: NstExpr -> CodeGenState ()
+compileCompilationUnit :: NstExpr -> CodeGen ()
 compileCompilationUnit expr = do
   funAddr <- beginFunction [] []
   addBuiltInFunctions
@@ -39,13 +46,13 @@ compileCompilationUnit expr = do
   endFunction funAddr funcCode
 
 
-addBuiltInFunctions :: CodeGenState ()
+addBuiltInFunctions :: CodeGen ()
 addBuiltInFunctions =
   void $ forM builtInFunctions $ \ (name, arity, code) ->
           addBuiltInFunction name arity code
 
 
-addBuiltInFunction :: Name -> Int -> [Opcode] -> CodeGenState ()
+addBuiltInFunction :: Name -> Int -> [Opcode] -> CodeGen ()
 addBuiltInFunction name bifArity code = do
   -- we're using some fake param names here because that's what beginFunction expects
   let params = map (\ (s, i) -> s ++ (show i)) $
@@ -59,7 +66,7 @@ addBuiltInFunction name bifArity code = do
 
 
 
-compileFunc :: [Name] -> [Name] -> NstExpr -> Name -> CodeGenState FuncAddr
+compileFunc :: [Name] -> [Name] -> NstExpr -> Name -> CodeGen FuncAddr
 compileFunc freeVars params expr name = do
   funAddr <- beginFunction freeVars params
   -- we add the name already here for recursion
@@ -74,7 +81,7 @@ compileFunc freeVars params expr name = do
   return funAddr
 
 
-compileExpr :: NstExpr -> CodeGenState [Opcode]
+compileExpr :: NstExpr -> CodeGen [Opcode]
 compileExpr expr =
   case expr of
     NLet var atom body ->
@@ -84,10 +91,11 @@ compileExpr expr =
       return $ code ++ [OpcRet 0]
 
 
-compileAtom :: Reg -> NstAtomicExpr -> Name -> Bool -> CodeGenState [Opcode]
+compileAtom :: Reg -> NstAtomicExpr -> Name -> Bool -> CodeGen [Opcode]
 compileAtom reg atom name isResultValue = case atom of
   NNumber n -> do
-      when (n < minInteger || n > maxInteger) $ error "Integer literal out of bounds"
+      when (n < minInteger || n > maxInteger) $
+              throwError $ InternalCompilerError "Integer literal out of bounds"
       addCompileTimeConst name $ CTConstNumber $ fromIntegral n
       return [OpcLoadI reg n]
   NPlainSymbol sid -> do
@@ -120,7 +128,7 @@ compileAtom reg atom name isResultValue = case atom of
         NVar _ NFunParam     -> moveVarToReg var reg
         NVar _ NFreeVar      -> moveVarToReg var reg
         NVar vname NConstant -> compileConstantFreeVar reg vname
-        x -> error $ "Internal compiler error: Unexpected variable type: " ++ show x
+        x -> throwError $ InternalCompilerError $ "Unexpected variable type: " ++ show x
   NMatch maxCaptures subject patternAddr branches ->
       compileMatch reg subject maxCaptures patternAddr branches isResultValue
   NPartAp funVar args -> do
@@ -136,20 +144,20 @@ compileAtom reg atom name isResultValue = case atom of
       symReg <- getReg symVar
       return [OpcGetModField reg modReg symReg]
   where
-    moveVarToReg :: NstVar -> Reg -> CodeGenState [Opcode]
+    moveVarToReg :: NstVar -> Reg -> CodeGen [Opcode]
     moveVarToReg var dest = do
       r <- getReg var
       return [OpcMove dest r]
 
 
-compileFunAp :: Reg -> NstVar -> [NstVar] -> Bool -> CodeGenState [Opcode]
+compileFunAp :: Reg -> NstVar -> [NstVar] -> Bool -> CodeGen [Opcode]
 compileFunAp reg funVar args isResultValue = do
   argInstrs <- mapM (uncurry compileSetArg) $ zipWithIndex args
   callInstr <- compileCallInstr reg funVar (length args) isResultValue
   return $ argInstrs ++ callInstr
 
 
-compileCallInstr :: Reg -> NstVar -> Int -> Bool -> CodeGenState [Opcode]
+compileCallInstr :: Reg -> NstVar -> Int -> Bool -> CodeGen [Opcode]
 compileCallInstr reg funVar numArgs isResultValue = do
   rFun <- getReg funVar
   direct <- isDirectCallReg rFun
@@ -163,7 +171,7 @@ compileCallInstr reg funVar numArgs isResultValue = do
   return instr
 
 
-compileDynamicSymbol :: Reg -> [(Int, NstVar)] -> ConstAddr -> CodeGenState [Opcode]
+compileDynamicSymbol :: Reg -> [(Int, NstVar)] -> ConstAddr -> CodeGen [Opcode]
 compileDynamicSymbol reg dynamicFields cAddr = do
   -- We're writing to a temp reg first because otherwise we might overwrite arguments
   -- in register 0 before we can apply them.
@@ -178,7 +186,7 @@ compileDynamicSymbol reg dynamicFields cAddr = do
   return $ loadConstCode ++ modifyCode ++ moveCode
 
 
-compilePrimOp :: NstPrimOp -> Reg -> CodeGenState [Opcode]
+compilePrimOp :: NstPrimOp -> Reg -> CodeGen [Opcode]
 compilePrimOp primop reg = case primop of
   NPrimOpAdd a b -> compileBinaryPrimOp OpcAdd a b
   NPrimOpSub a b -> compileBinaryPrimOp OpcSub a b
@@ -201,7 +209,7 @@ compilePrimOp primop reg = case primop of
       return [op reg ra rb]
 
 
-compileConstantFreeVar :: Reg -> Name -> CodeGenState [Opcode]
+compileConstantFreeVar :: Reg -> Name -> CodeGen [Opcode]
 compileConstantFreeVar reg name = do
   compConst <- getCompileTimeConstInSurroundingScopes name
   case compConst of
@@ -210,21 +218,21 @@ compileConstantFreeVar reg name = do
     CTConstPlainSymbol symId -> return [OpcLoadPS reg symId]
     -- CConstCompoundSymbol ConstAddr
     CTConstLambda funAddr    -> compileLoadLambda reg funAddr
-    _ -> error "compileConstantFreeVar"
+    _ -> throwError $ InternalCompilerError "Unexpected compile time constant"
 
 
-compileLoadLambda :: Reg -> FuncAddr -> CodeGenState [Opcode]
+compileLoadLambda :: Reg -> FuncAddr -> CodeGen [Opcode]
 compileLoadLambda reg funAddr =
   return [OpcLoadF reg funAddr]
 
 
-compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGenState [Opcode]
+compileLet :: NstVar -> NstAtomicExpr -> NstExpr -> CodeGen [Opcode]
 compileLet tmpVar atom body =
   case tmpVar of
     NVar name NLocalVar -> compileLet' name
     _                   -> compileLet' ""    -- TODO we need names for this
   where
-    compileLet' :: String -> CodeGenState [Opcode]
+    compileLet' :: String -> CodeGen [Opcode]
     compileLet' name = do
       rTmp <- newReg
       bindVar name rTmp
@@ -251,7 +259,7 @@ canBeCalledDirectly atom =
     _ -> False
 
 
-compileClosure :: Reg -> [Name] -> [Name] -> NstExpr -> Name -> CodeGenState [Opcode]
+compileClosure :: Reg -> [Name] -> [Name] -> NstExpr -> Name -> CodeGen [Opcode]
 compileClosure reg freeVars params expr name = do
   funAddr <- compileFunc freeVars params expr name
   -- TODO optimize argInstrs by using last parameter in set_arg (i.e. if we have arguments
@@ -267,25 +275,25 @@ compileClosure reg freeVars params expr name = do
   return $ argInstrs ++ makeClosureInstr ++ selfRefInstrs
 
 
-compileClosureArgs :: Name -> [Name] -> CodeGenState [Opcode]
+compileClosureArgs :: Name -> [Name] -> CodeGen [Opcode]
 compileClosureArgs name freeVars = do
   argInstrsMaybes <- mapM (uncurry $ compileClosureArg name) $ zipWithIndex freeVars
   return $ catMaybes argInstrsMaybes
   where
-    compileClosureArg :: String -> String -> Int -> CodeGenState (Maybe Opcode)
+    compileClosureArg :: String -> String -> Int -> CodeGen (Maybe Opcode)
     compileClosureArg clName argName argIndex =
       if argName == clName
         then setSelfReferenceSlot argIndex >> return Nothing
         else liftM Just $ compileSetArgN argName argIndex
 
 
-compileSetArg :: NstVar -> Int -> CodeGenState Opcode
+compileSetArg :: NstVar -> Int -> CodeGen Opcode
 compileSetArg var arg = do
   rVar <- getReg var
   return $ OpcSetArg arg rVar 0
 
 
-compileSetArgN :: Name -> Int -> CodeGenState Opcode
+compileSetArgN :: Name -> Int -> CodeGen Opcode
 compileSetArgN name arg = do
   rVar <- getRegByName name
   return $ OpcSetArg arg rVar 0
@@ -294,7 +302,7 @@ compileSetArgN name arg = do
 -- If a closure has a reference to itself, it needs itself as a free variable.
 -- This function checks if that is the case and emits instructions to set
 -- a refernce to the closure inside the closure.
-createSelfRefInstrsIfNeeded :: Reg -> CodeGenState [Opcode]
+createSelfRefInstrsIfNeeded :: Reg -> CodeGen [Opcode]
 createSelfRefInstrsIfNeeded clReg = do
   selfRef <- getSelfReference
   case selfRef of
@@ -309,7 +317,7 @@ compileMatch :: Reg
              -> ConstAddr
              -> [([Name], [Name], NstVar)]
              -> Bool
-             -> CodeGenState [Opcode]
+             -> CodeGen [Opcode]
 compileMatch resultReg subject _{- maxCaptures -} patternAddr branches isResultValue = do
   -- the variables containing matchbranches to call
   let matchBranchVars = map (\ (_, _, a) -> a) branches
@@ -385,7 +393,7 @@ compileMatch resultReg subject _{- maxCaptures -} patternAddr branches isResultV
 -- in the registers, starting at captureStartReg, so we just need a single set_arg
 -- instruction.
 -- Note that we might end up with zero arguments.
-compileMatchBranchLoadArg :: Reg -> [Name] -> [a] -> CodeGenState [Opcode]
+compileMatchBranchLoadArg :: Reg -> [Name] -> [a] -> CodeGen [Opcode]
 compileMatchBranchLoadArg captureStartReg freeVars capturedVars = do
   freeArgInstrs <- compileClosureArgs "" freeVars
   let numCaptures = max 0 $ length capturedVars - 1
@@ -400,7 +408,7 @@ compileMatchBranchLoadArg captureStartReg freeVars capturedVars = do
 
 
 
-compileModule :: Reg -> [(SymId, String, NstAtomicExpr)] -> CodeGenState [Opcode]
+compileModule :: Reg -> [(SymId, String, NstAtomicExpr)] -> CodeGen [Opcode]
 compileModule resultReg fields = do
   -- TODO scan through fields for functions. create placeholders for them
   -- then scan for literals and add them as CTConsts.
@@ -415,7 +423,7 @@ compileModule resultReg fields = do
   modAddr <- encodeOpaqueSymbol modId moduleOwner cFields
   return [OpcLoadOS resultReg modAddr]
 
-encodeConstantLiteral :: NstAtomicExpr -> Name -> CodeGenState Constant
+encodeConstantLiteral :: NstAtomicExpr -> Name -> CodeGen Constant
 encodeConstantLiteral field name =
   case field of
     NNumber n      -> return $ CNumber n
@@ -425,12 +433,12 @@ encodeConstantLiteral field name =
     NLambda [] params body -> do
                       fAddr <- compileFunc [] params body name
                       return $ CFunction fAddr
-    NLambda _ _ _ -> error "Sorry, can't compile modules with closures yet"
-    _ -> error $ "Unexpected module field: " ++ show field
+    NLambda _ _ _ -> throwError $ InternalCompilerError $ "Sorry, can't compile modules with closures yet"
+    _ -> throwError $ CodeError $ "Unexpected module field: " ++ show field
 
 
 
-encodeOpaqueSymbol :: SymId -> SymId -> [Constant] -> CodeGenState ConstAddr
+encodeOpaqueSymbol :: SymId -> SymId -> [Constant] -> CodeGen ConstAddr
 encodeOpaqueSymbol symId owner fields =
   let oSym = COpaqueSymbol symId owner fields in
   addConstant oSym

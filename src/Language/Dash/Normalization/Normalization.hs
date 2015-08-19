@@ -2,8 +2,13 @@ module Language.Dash.Normalization.Normalization (
   normalize
 ) where
 
-import           Control.Monad.State                            hiding (state)
+import           Control.Monad
+import           Control.Monad.Except                           (runExceptT,
+                                                                 throwError)
+import           Control.Monad.Identity                         (runIdentity)
+import           Control.Monad.State.Strict
 import           Language.Dash.CodeGen.BuiltInDefinitions       (builtInFunctions)
+import           Language.Dash.Internal.Error                   (CompilationError (..))
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
@@ -61,18 +66,21 @@ the second pass resolves recursion. The resulting normalized code will not conta
 -}
 
 
-type Cont = NstAtomicExpr -> NormState NstExpr
-type VCont = NstVar -> NormState NstExpr
+type Cont = NstAtomicExpr -> Norm NstExpr
+type VCont = NstVar -> Norm NstExpr
 
 
 normalize :: Expr -> (NstExpr, ConstTable, SymbolNameList)
 normalize expr =
-  let (result, finalState) = runState (normalizeInContext expr) emptyNormEnv in
-  let result' = resolveRecursion result in
-  (result', constTable finalState, getSymbolNames finalState)
+  let resultOrError = runIdentity $ runExceptT $ (runStateT (normalizeInContext expr) emptyNormState) in
+  case resultOrError of
+    Left msg -> error "failed" -- TODO return error
+    Right (result, finalState) ->
+            let result' = resolveRecursion result in
+            (result', constTable finalState, getSymbolNames finalState)
 
 
-normalizeInContext :: Expr -> NormState NstExpr
+normalizeInContext :: Expr -> Norm NstExpr
 normalizeInContext expr = do
   enterContext []
   addBIFPlaceholders
@@ -80,18 +88,18 @@ normalizeInContext expr = do
   leaveContext
   return nExpr
 
-addBIFPlaceholders :: NormState ()
+addBIFPlaceholders :: Norm ()
 addBIFPlaceholders =
   void $ forM builtInFunctions $ \ (name, bifArity, _) ->
                  addBIFPlaceholder name bifArity
 
-addBIFPlaceholder :: String -> Int -> NormState ()
+addBIFPlaceholder :: String -> Int -> Norm ()
 addBIFPlaceholder name ar = do
   let var = NVar name NConstant
   addBinding name (var, False)
   addArity name 0 ar
 
-normalizeExpr :: Expr -> NormState NstExpr
+normalizeExpr :: Expr -> Norm NstExpr
 normalizeExpr expr = case expr of
   LocalBinding (Binding name (Var v)) restExpr -> do
       addAlias name v
@@ -102,7 +110,7 @@ normalizeExpr expr = case expr of
     atomizeExpr expr "" $ return . NAtom
 
 
-atomizeExpr :: Expr -> String -> Cont -> NormState NstExpr
+atomizeExpr :: Expr -> String -> Cont -> Norm NstExpr
 atomizeExpr expr name k = case expr of
   FunAp funExpr args ->
       normalizeFunAp funExpr args k
@@ -131,7 +139,7 @@ atomizeExpr expr name k = case expr of
 
 -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
 -- (So in that example "let b = ..." is the inner local binding)
-normalizeInnerLocalBinding :: String -> Expr -> Expr -> Cont -> NormState NstExpr
+normalizeInnerLocalBinding :: String -> Expr -> Expr -> Cont -> Norm NstExpr
 normalizeInnerLocalBinding bname boundExpr restExpr k = do
     atomizeExpr boundExpr bname $ \ aExpr -> do
       let var = NVar bname NLocalVar
@@ -140,7 +148,7 @@ normalizeInnerLocalBinding bname boundExpr restExpr k = do
         rest <- k normBoundExpr
         return $ NLet var aExpr rest
 
-normalizeModule :: [(Name, Expr)] -> Cont -> NormState NstExpr
+normalizeModule :: [(Name, Expr)] -> Cont -> Norm NstExpr
 normalizeModule bindings k = do
   let names = map fst bindings
   nExprs <- atomizeList bindings
@@ -149,15 +157,15 @@ normalizeModule bindings k = do
   let nmodule = NModule fields
   k nmodule
 
-normalizeModuleLookup :: Name -> Expr -> Cont -> NormState NstExpr
+normalizeModuleLookup :: Name -> Expr -> Cont -> Norm NstExpr
 normalizeModuleLookup modName (Var v) k = do
   modVar <- lookupName modName
   nameExpr (LitSymbol v []) "" $ \ symVar ->
     k $ NModuleLookup modVar symVar
-normalizeModuleLookup _ qExpr _ = error $ "Unable to do name lookup with " ++ (show qExpr)
+normalizeModuleLookup _ qExpr _ = throwError $ InternalCompilerError $ "Unable to do name lookup with " ++ (show qExpr)
 
 
-atomizeList :: [(Name, Expr)] -> NormState [NstAtomicExpr]
+atomizeList :: [(Name, Expr)] -> Norm [NstAtomicExpr]
 atomizeList [] =
   return []
 atomizeList exprs = do
@@ -166,16 +174,16 @@ atomizeList exprs = do
   rest <- atomizeList (tail exprs)
   return $ nAtomExpr : rest
 
-normalizeNumber :: Int -> Cont -> NormState NstExpr
+normalizeNumber :: Int -> Cont -> Norm NstExpr
 normalizeNumber n k = k (NNumber n)
 
-normalizeString :: String -> Cont -> NormState NstExpr
+normalizeString :: String -> Cont -> Norm NstExpr
 normalizeString s k = do
   encString <- encodeConstantString s
   strAddr <- addConstant encString
   k (NString strAddr)
 
-normalizeSymbol :: String -> [Expr] -> Cont -> NormState NstExpr
+normalizeSymbol :: String -> [Expr] -> Cont -> Norm NstExpr
 normalizeSymbol sname [] k = do
   symId <- addSymbolName sname
   k (NPlainSymbol symId)
@@ -231,13 +239,13 @@ isDynamicLiteral v =
 
 
 
-normalizeVar :: String -> Cont -> NormState NstExpr
+normalizeVar :: String -> Cont -> Norm NstExpr
 normalizeVar name k = do
   var <- lookupName name
   k $ NVarExpr var
 
 
-normalizeLambda :: [String] -> Expr -> String -> Cont -> NormState NstExpr
+normalizeLambda :: [String] -> Expr -> String -> Cont -> Norm NstExpr
 normalizeLambda params bodyExpr name k = do
   enterContext params
   -- TODO we don't know whether this var is dynamic or not!
@@ -251,7 +259,7 @@ normalizeLambda params bodyExpr name k = do
   k $ NLambda freeVars params normalizedBody
 
 
-normalizeMatchBranch :: [String] -> Expr -> Cont -> NormState NstExpr
+normalizeMatchBranch :: [String] -> Expr -> Cont -> Norm NstExpr
 normalizeMatchBranch matchedVars bodyExpr k = do
   enterContext matchedVars
   -- TODO add arity for recursive var?
@@ -265,7 +273,7 @@ normalizeMatchBranch matchedVars bodyExpr k = do
 -- TODO throw an error if the thing being called is obviously not callable
 -- TODO it gets a bit confusing in which cases we expect a closure and where we expect
 -- a simple function
-normalizeFunAp :: Expr -> [Expr] -> Cont -> NormState NstExpr
+normalizeFunAp :: Expr -> [Expr] -> Cont -> Norm NstExpr
 normalizeFunAp funExpr args k =
   case (funExpr, args) of
     (Var "+", [a, b])  -> normalizeBinaryPrimOp NPrimOpAdd a b
@@ -289,7 +297,7 @@ normalizeFunAp funExpr args k =
   where
     normalizeUnaryPrimOp :: (NstVar -> NstPrimOp)
                           -> Expr
-                          -> NormState NstExpr
+                          -> Norm NstExpr
     normalizeUnaryPrimOp primOp a =
       nameExprList [a] $ \ [aVar] ->
           k $ NPrimOp $ primOp aVar
@@ -297,18 +305,18 @@ normalizeFunAp funExpr args k =
     normalizeBinaryPrimOp :: (NstVar -> NstVar -> NstPrimOp)
                           -> Expr
                           -> Expr
-                          -> NormState NstExpr
+                          -> Norm NstExpr
     normalizeBinaryPrimOp primOp a b =
       nameExprList [a, b] $ \ [aVar, bVar] ->
           k $ NPrimOp $ primOp aVar bVar
 
 
-    applyUnknownFunction :: NstVar -> NormState NstExpr
+    applyUnknownFunction :: NstVar -> Norm NstExpr
     applyUnknownFunction funVar =
       nameExprList args $ \ normArgs ->
           k $ NFunAp funVar normArgs
 
-    applyKnownFunction :: NstVar -> Int -> Int -> NormState NstExpr
+    applyKnownFunction :: NstVar -> Int -> Int -> Norm NstExpr
     applyKnownFunction funVar numFreeVars funArity =
       let numArgs = length args in
       -- saturated call
@@ -319,8 +327,8 @@ normalizeFunAp funExpr args k =
       else if numArgs < funArity then
         -- We already know at this point, that this *must* be a non-closure
         if numFreeVars > 0
-          then error "Internal compiler error, trying to do static partial\
-                     \ application of closure"
+          then throwError $ InternalCompilerError $
+                  "Trying to do static partial application of closure"
         else nameExprList args $ \ normArgs ->
                k $ NPartAp funVar normArgs
       -- over-saturated call
@@ -336,7 +344,7 @@ normalizeFunAp funExpr args k =
             return $ NLet knownFunResult apKnownFun rest
 
 
-normalizeMatch :: Expr -> [(Pattern, Expr)] -> Cont -> NormState NstExpr
+normalizeMatch :: Expr -> [(Pattern, Expr)] -> Cont -> Norm NstExpr
 normalizeMatch matchedExpr patternsAndExpressions k = do
   matchedVarsAndEncodedPatterns <- forM (map fst patternsAndExpressions) $
                                         encodeMatchPattern 0
@@ -363,7 +371,7 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
 
 -- Free variables in a closure used by us which can't be resolved in our context need to
 -- become free variables in our context
-pullUpFreeVars :: [String] -> NormState ()
+pullUpFreeVars :: [String] -> Norm ()
 pullUpFreeVars freeVars = do
   _ <- forM (reverse freeVars) $ \ name -> do
           hasB <- hasBinding name
@@ -371,7 +379,7 @@ pullUpFreeVars freeVars = do
   return ()
 
 
-nameExprList :: [Expr] -> ([NstVar] -> NormState NstExpr) -> NormState NstExpr
+nameExprList :: [Expr] -> ([NstVar] -> Norm NstExpr) -> Norm NstExpr
 nameExprList exprList =
   nameExprList' exprList []
   where
@@ -382,7 +390,7 @@ nameExprList exprList =
         nameExprList' (tail expLs) (var : acc) k'
 
 
-nameExpr :: Expr -> String -> VCont -> NormState NstExpr
+nameExpr :: Expr -> String -> VCont -> Norm NstExpr
 nameExpr expr originalName k = case expr of
   -- Some variable can be used directly and don't need to be let-bound
   -- TODO what if we use a var several times, will it be bound several times? answer: yes it will. fix that!
@@ -398,7 +406,7 @@ nameExpr expr originalName k = case expr of
   -- Everything that is not a Var needs to be let-bound
   _ -> letBind expr originalName k
   where
-    letBind :: Expr -> String -> (NstVar -> NormState NstExpr) -> NormState NstExpr
+    letBind :: Expr -> String -> (NstVar -> Norm NstExpr) -> Norm NstExpr
     letBind expr' name k' =
       atomizeExpr expr' name $ \ aExpr -> do
         var <- if null name then newTempVar else return $ NVar name NLocalVar
@@ -422,17 +430,17 @@ zipWithIndex values = zip [0..(length values)] values
 
 -- Encoding
 
-encodeConstantCompoundSymbol :: Name -> [Expr] -> NormState Constant
+encodeConstantCompoundSymbol :: Name -> [Expr] -> Norm Constant
 encodeConstantCompoundSymbol symName symArgs = do
   symId <- addSymbolName symName
   encodedArgs <- mapM encodeConstantLiteral symArgs
   return $ CCompoundSymbol symId encodedArgs
 
-encodeConstantString :: String -> NormState Constant
+encodeConstantString :: String -> Norm Constant
 encodeConstantString str = do
   return $ CString str
 
-encodeConstantLiteral :: Expr -> NormState Constant
+encodeConstantLiteral :: Expr -> Norm Constant
 encodeConstantLiteral v =
   case v of
     LitNumber n ->
@@ -444,9 +452,9 @@ encodeConstantLiteral v =
         encodeConstantCompoundSymbol s args
     -- TODO allow functions here?
     _ ->
-        error "Expected a literal"
+        throwError $ CodeError "Expected a literal"
 
-encodeMatchPattern :: Int -> Pattern -> NormState ([String], Constant)
+encodeMatchPattern :: Int -> Pattern -> Norm ([String], Constant)
 encodeMatchPattern nextMatchVar pat =
   case pat of
     PatNumber n ->
@@ -467,7 +475,7 @@ encodeMatchPattern nextMatchVar pat =
 
 
 -- TODO use inner state ?
-encodePatternCompoundSymbolArgs :: Int -> [Pattern] -> NormState ([String], [Constant])
+encodePatternCompoundSymbolArgs :: Int -> [Pattern] -> Norm ([String], [Constant])
 encodePatternCompoundSymbolArgs nextMatchVar args = do
   (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
     (vars, encoded) <- encodeMatchPattern nextMV p

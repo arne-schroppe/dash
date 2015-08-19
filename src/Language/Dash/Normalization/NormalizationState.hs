@@ -1,6 +1,6 @@
 module Language.Dash.Normalization.NormalizationState (
-  NormState
-, emptyNormEnv
+  Norm
+, emptyNormState
 , enterContext
 , leaveContext
 , addBinding
@@ -19,21 +19,27 @@ module Language.Dash.Normalization.NormalizationState (
 ) where
 
 
-import           Control.Monad.State                      hiding (state)
+import           Control.Monad
+import           Control.Monad.Except
+import           Control.Monad.Identity
+import           Control.Monad.State.Strict               hiding (state)
 import           Data.Function                            (on)
 import           Data.List
 import qualified Data.Map                                 as Map
 import           Language.Dash.CodeGen.BuiltInDefinitions (builtInSymbols)
+import           Language.Dash.Internal.Error             (CompilationError (..))
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 
 -- TODO this module's interface is way too fat !
--- TODO give all values unique names
-
-type NormState a = State NormEnv a
 
 
-data NormEnv = NormEnv
+
+
+type NormT m a = StateT NormState (ExceptT CompilationError m) a
+type Norm a = NormT Identity a
+
+data NormState = NormState
   { symbolNames    :: Map.Map String SymId
   , constTable     :: ConstTable -- TODO rename ConstTable to DataTable (or ConstPool)
   , contexts       :: [Context] -- head is current context
@@ -45,8 +51,8 @@ data NormEnv = NormEnv
 
 
 
-emptyNormEnv :: NormEnv
-emptyNormEnv = NormEnv
+emptyNormState :: NormState
+emptyNormState = NormState
   { symbolNames = Map.fromList builtInSymbols
   , constTable = []
   , contexts = []
@@ -72,7 +78,7 @@ emptyContext = Context
   }
 
 
-newTempVar :: NormState NstVar
+newTempVar :: Norm NstVar
 newTempVar = do
   name <- newName
   return $ NVar name NLocalVar
@@ -97,7 +103,7 @@ A name lookup can have these outcomes:
    resolved.
 4. The name is unknown, which results in an error.
 -}
-lookupName :: String -> NormState NstVar
+lookupName :: String -> Norm NstVar
 lookupName name = do
   state <- get
   let ctxs = contexts state
@@ -116,8 +122,8 @@ lookupName name = do
             _ -> return $ NVar name NConstant
 
 
-lookupNameInContext :: String -> [Context] -> NormState (NstVar, Bool)
-lookupNameInContext name [] = error $ "Unknown variable \"" ++ name ++ "\""
+lookupNameInContext :: String -> [Context] -> Norm (NstVar, Bool)
+lookupNameInContext name [] = throwError $ InternalCompilerError $ "Unknown variable \"" ++ name ++ "\""
 lookupNameInContext name conts = do
   let binds = bindings $ head conts
   case Map.lookup name binds of
@@ -125,7 +131,7 @@ lookupNameInContext name conts = do
     Nothing  -> lookupNameInContext name (tail conts)
 
 
-enterContext :: [String] -> NormState ()
+enterContext :: [String] -> Norm ()
 enterContext funParams = do
   pushContext emptyContext
   void $ forM funParams $ \ paramName ->
@@ -134,34 +140,34 @@ enterContext funParams = do
   return ()
 
 
-leaveContext :: NormState ()
+leaveContext :: Norm ()
 leaveContext = popContext
 
 
-context :: NormState Context
+context :: Norm Context
 context = gets $ head.contexts
 
 
-pushContext :: Context -> NormState ()
+pushContext :: Context -> Norm ()
 pushContext c = do
   state <- get
   put $ state { contexts = c : contexts state }
 
 
-popContext :: NormState ()
+popContext :: Norm ()
 popContext = do
   state <- get
   put $ state { contexts = tail.contexts $ state }
 
 
-putContext :: Context -> NormState ()
+putContext :: Context -> Norm ()
 putContext c = do
   state <- get
   put $ state { contexts = c : (tail.contexts $ state) }
 
 
 -- TODO more like addDynamicVarUsage ??
-addDynamicVar :: String -> NormState ()
+addDynamicVar :: String -> Norm ()
 addDynamicVar name = do
   con <- context
   let free = freeVars con
@@ -171,42 +177,42 @@ addDynamicVar name = do
              putContext con'
 
 
-addBinding :: String -> (NstVar, Bool) -> NormState ()
+addBinding :: String -> (NstVar, Bool) -> Norm ()
 addBinding "" _ = return ()
 addBinding name bnd = do
   con <- context
   -- TODO handle this more gracefully
   when (name /= "_" && Map.member name (bindings con)) $
-          error $ "Error: Redefinition of '" ++ name ++ "'"
+          throwError $ CodeError $ "Redefinition of '" ++ name ++ "'"
   -- TODO warn when shadowing bindings
   let bindings' = Map.insert name bnd (bindings con)
   putContext $ con { bindings = bindings' }
 
-addAlias :: String -> String -> NormState ()
+addAlias :: String -> String -> Norm ()
 addAlias newName oldName = do
   con <- context
   -- TODO handle this more gracefully
   let maybeVar = Map.lookup oldName (bindings con)
-  let bindings' = case maybeVar of
-          Nothing -> error $ "Error: Can't alias unknown variable '" ++ oldName ++ "'"
-          Just v -> Map.insert newName v (bindings con)
+  bindings' <- case maybeVar of
+          Nothing -> throwError $ InternalCompilerError $ "Can't alias unknown variable '" ++ oldName ++ "'"
+          Just v -> return $ Map.insert newName v (bindings con)
   putContext $ con { bindings = bindings' }
 
 
 
-hasBinding :: String -> NormState Bool
+hasBinding :: String -> Norm Bool
 hasBinding name = do
   con <- context
   return $ Map.member name (bindings con)
 
 
-freeVariables :: NormState [String]
+freeVariables :: Norm [String]
 freeVariables = do
   con <- context
   return $ freeVars con
 
 
-addArity :: String -> Int -> Int -> NormState ()
+addArity :: String -> Int -> Int -> Norm ()
 addArity "" _ _ = return ()
 addArity funName numFreeVars ar = do
   env <- get
@@ -215,7 +221,7 @@ addArity funName numFreeVars ar = do
 
 
 -- If we don't know the arity, we return Nothing here
-arity :: NstVar -> NormState (Maybe (Int, Int))
+arity :: NstVar -> Norm (Maybe (Int, Int))
 arity var = do
   let vname = varName var
   env <- get
@@ -228,7 +234,7 @@ varName (NVar name _) = name
 
 ----- Symbols
 
-addSymbolName :: String -> NormState SymId
+addSymbolName :: String -> Norm SymId
 addSymbolName s = do
   state <- get
   let syms = symbolNames state
@@ -241,14 +247,14 @@ addSymbolName s = do
     return nextId
 
 
-getSymbolNames :: NormEnv -> SymbolNameList
+getSymbolNames :: NormState -> SymbolNameList
 getSymbolNames = map fst . sortBy (compare `on` snd) . Map.toList . symbolNames
 
 
 --- Constants
 -- TODO Split this into separate module? Together with constTable type ?
 
-addConstant :: Constant -> NormState ConstAddr
+addConstant :: Constant -> Norm ConstAddr
 addConstant c = do
   state <- get
   let cTable = constTable state

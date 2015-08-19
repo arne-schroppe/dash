@@ -3,23 +3,26 @@ module Language.Dash.CodeGen.CodeGenState where
 -- TODO list exported functions explicitly
 
 
-import           Control.Monad.State     hiding (state)
+import           Control.Monad.Except
+import           Control.Monad.Identity
+import           Control.Monad.State          hiding (state)
 import           Data.List
-import qualified Data.Map                as Map
-import           Data.Maybe              (fromJust)
-import qualified Data.Sequence           as Seq
+import qualified Data.Map                     as Map
+import           Data.Maybe                   (fromJust)
+import qualified Data.Sequence                as Seq
 import           Language.Dash.Constants
+import           Language.Dash.Internal.Error (CompilationError (..))
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Opcode
 import           Language.Dash.VM.Types
 
 
------ State -----
 
-type CodeGenState a = State CompEnv a
+type CodeGenT m a = StateT CompState (ExceptT CompilationError m) a
+type CodeGen a = CodeGenT Identity a
 
-data CompEnv = CompEnv
+data CompState = CompState
   { instructions    :: Seq.Seq [Opcode]
   , constTable      :: ConstTable
   , symbolNames     :: SymbolNameList
@@ -28,8 +31,8 @@ data CompEnv = CompEnv
   }
 
 
-makeCompEnv :: ConstTable -> SymbolNameList -> CompEnv
-makeCompEnv ct sns = CompEnv
+makeCompState :: ConstTable -> SymbolNameList -> CompState
+makeCompState ct sns = CompState
   { instructions = Seq.fromList []
   , constTable = ct
   , symbolNames = sns
@@ -77,7 +80,7 @@ data CompileTimeConstant =
   deriving (Show)
 
 
-beginFunction :: [Name] -> [Name] -> CodeGenState FuncAddr
+beginFunction :: [Name] -> [Name] -> CodeGen FuncAddr
 beginFunction freeVars params = do
   state <- get
   let freeVarBindings = Map.fromList (zipWithReg freeVars 0)
@@ -91,14 +94,14 @@ beginFunction freeVars params = do
   return addr
 
 
-endFunction :: FuncAddr -> [Opcode] -> CodeGenState ()
+endFunction :: FuncAddr -> [Opcode] -> CodeGen ()
 endFunction funAddr code = do
   replacePlaceholderWithActualCode funAddr code
   modify $ \ state -> state { scopes = tail $ scopes state }
 
 
-bindVar :: String -> Reg -> CodeGenState ()
-bindVar "" _ = error "Binding anonymous var"
+bindVar :: String -> Reg -> CodeGen ()
+bindVar "" _ = throwError $ InternalCompilerError "Binding anonymous var"
 bindVar name reg = do
   scope <- getScope
   let bindings' = Map.insert name reg (bindings scope)
@@ -106,7 +109,7 @@ bindVar name reg = do
   checkRegisterLimits
 
 
-numBindings :: CodeGenState Int
+numBindings :: CodeGen Int
 numBindings = do
   bs <- gets $ bindings.head.scopes
   return $ Map.size bs
@@ -117,7 +120,7 @@ numBindings = do
 -- with it, because in some situations we already need its address while encoding it. So
 -- the placeholder helps us to give the function a fixed address, no matter when it is
 -- actually added to the list of functions.
-addFunctionPlaceholder :: CodeGenState FuncAddr
+addFunctionPlaceholder :: CodeGen FuncAddr
 addFunctionPlaceholder = do
   state <- get
   let instrs = instructions state
@@ -127,7 +130,7 @@ addFunctionPlaceholder = do
   return $ mkFuncAddr nextFunAddr
 
 
-replacePlaceholderWithActualCode :: FuncAddr -> [Opcode] -> CodeGenState ()
+replacePlaceholderWithActualCode :: FuncAddr -> [Opcode] -> CodeGen ()
 replacePlaceholderWithActualCode funcPlaceholderAddr code = do
   state <- get
   let instrs = instructions state
@@ -137,22 +140,22 @@ replacePlaceholderWithActualCode funcPlaceholderAddr code = do
   put $ state { instructions = instrs' }
 
 
-getReg :: NstVar -> CodeGenState Reg
+getReg :: NstVar -> CodeGen Reg
 getReg (NVar name _) = getRegByName name
 
 
-getRegByName :: String -> CodeGenState Reg
+getRegByName :: String -> CodeGen Reg
 getRegByName name = do
   maybeReg <- getRegN
   case maybeReg of
     Just r -> return r
-    Nothing -> error $ "Unknown identifier " ++ name
+    Nothing -> throwError $ CodeError $ "Unknown identifier " ++ name
   where getRegN = do
           binds <- gets $ bindings.head.scopes
           return $ Map.lookup name binds
 
 
-newReg :: CodeGenState Reg
+newReg :: CodeGen Reg
 newReg = do
   scope <- getScope
   let nextFree = nextFreeRegIndex scope
@@ -163,7 +166,7 @@ newReg = do
 
 
 -- TODO rename to isRegWithRefToKnownFunction
-isDirectCallReg :: Reg -> CodeGenState Bool
+isDirectCallReg :: Reg -> CodeGen Bool
 isDirectCallReg reg = do
   scope <- getScope
   let dCallRegs = directCallRegs scope
@@ -171,7 +174,7 @@ isDirectCallReg reg = do
 
 
 -- TODO same here (rename)
-addDirectCallReg :: Reg -> CodeGenState ()
+addDirectCallReg :: Reg -> CodeGen ()
 addDirectCallReg reg = do
   scope <- getScope
   let dCallRegs = directCallRegs scope
@@ -179,33 +182,33 @@ addDirectCallReg reg = do
   putScope $ scope { directCallRegs = dCallRegs' }
 
 
-getSelfReference :: CodeGenState (Maybe Int)
+getSelfReference :: CodeGen (Maybe Int)
 getSelfReference = liftM selfReferenceSlot getScope
 
 
-setSelfReferenceSlot :: Int -> CodeGenState ()
+setSelfReferenceSlot :: Int -> CodeGen ()
 setSelfReferenceSlot index = do
   scope <- getScope
   putScope $ scope { selfReferenceSlot = Just index }
 
 
-resetSelfReferenceSlot :: CodeGenState ()
+resetSelfReferenceSlot :: CodeGen ()
 resetSelfReferenceSlot = do
   scope <- getScope
   putScope $ scope { selfReferenceSlot = Nothing }
 
 
-getScope :: CodeGenState CompScope
+getScope :: CodeGen CompScope
 getScope =
   gets $ head.scopes
 
 
-putScope :: CompScope -> CodeGenState ()
+putScope :: CompScope -> CodeGen ()
 putScope s =
   modify $ \ state -> state { scopes = s : tail (scopes state) }
 
 
-addCompileTimeConst :: Name -> CompileTimeConstant -> CodeGenState ()
+addCompileTimeConst :: Name -> CompileTimeConstant -> CodeGen ()
 addCompileTimeConst "" _ = return ()
 addCompileTimeConst name c = do
   scope <- getScope
@@ -215,13 +218,13 @@ addCompileTimeConst name c = do
 
 
 -- This retrieves values for NConstant. Those are never inside the current scope
-getCompileTimeConstInSurroundingScopes :: Name -> CodeGenState CompileTimeConstant
+getCompileTimeConstInSurroundingScopes :: Name -> CodeGen CompileTimeConstant
 getCompileTimeConstInSurroundingScopes name = do
   scps <- gets scopes
   getCompConst name scps
   where
-    getCompConst _ [] = error $ "Compiler error: no compile time constant named '"
-                                ++ name ++ "'"
+    getCompConst _ [] = throwError $ InternalCompilerError $ 
+                                "No compile time constant named '" ++ name ++ "'"
     getCompConst constName scps = do
       let consts = compileTimeConstants $ head scps
       case Map.lookup constName consts of
@@ -230,11 +233,12 @@ getCompileTimeConstInSurroundingScopes name = do
 
 
 -- TODO implement argument spilling to avoid this hard limit
-checkRegisterLimits :: CodeGenState ()
+checkRegisterLimits :: CodeGen ()
 checkRegisterLimits = do
   bs <- gets $ bindings.head.scopes
   let usedRegs = Map.size bs
-  when (usedRegs >= maxRegisters) $ error "Out of free registers"
+  when (usedRegs >= maxRegisters) $
+          throwError $ InternalCompilerError "Out of free registers"
 
 
 zipWithIndex :: [a] -> [(a, Int)]
@@ -245,7 +249,7 @@ zipWithReg l offset = zip l $ map mkReg [offset..offset + length l]
 
 
 -- TODO this is basically copied form normalization-state, unify it
-addConstant :: Constant -> CodeGenState ConstAddr
+addConstant :: Constant -> CodeGen ConstAddr
 addConstant c = do
   state <- get
   let cTable = constTable state
@@ -254,7 +258,7 @@ addConstant c = do
   put $ state { constTable = constTable' }
   return nextAddr
 
-newModuleIdentifier :: CodeGenState SymId
+newModuleIdentifier :: CodeGen SymId
 newModuleIdentifier = do
   name <- newName
   symId <- addSymbolName name
@@ -268,7 +272,7 @@ newModuleIdentifier = do
 
 -- TODO also copied from normalization
 -- TODO add a second state just for data
-addSymbolName :: String -> CodeGenState SymId
+addSymbolName :: String -> CodeGen SymId
 addSymbolName s = do
   state <- get
   let syms = symbolNames state
