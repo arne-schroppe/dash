@@ -355,29 +355,29 @@ spec = do
                                                             , NVar (lvn 6) NLocalVar]
         norm `shouldBeRight` expected
 
-{-
-      -- TODO fix this (by giving all temp vars a name)
+
+{- TODO fix this
       it "does not oversaturate a call to a known anonymous function" $ do
         let ast = FunAp (Lambda ["a", "b"] $ Lambda ["c"] $ Lambda ["d", "e", "f"] $ LitNumber 42) $
                       [ LitNumber 1, LitNumber 2,
                         LitNumber 33,
                         LitNumber 444, LitNumber 555, LitNumber 666]
         let norm = pureNorm ast
-        let expected = NLet (NVar "" NLocalVar) (NLambda [] ["a", "b"] $
+        let expected = NLet (NVar (lvn 0) NLocalVar) (NLambda [] ["a", "b"] $
                          NAtom $ (NLambda [] ["c"] $ NAtom $ (NLambda [] ["d", "e", "f"] $
                             NAtom $ (NNumber 42)))) $
-                       NLet (NVar "" NLocalVar) (NNumber 1) $
-                       NLet (NVar "" NLocalVar) (NNumber 2) $
+                       NLet (NVar (lvn 1) NLocalVar) (NNumber 1) $
+                       NLet (NVar (lvn 2) NLocalVar) (NNumber 2) $
 
-                       NLet (NVar "" NLocalVar) (NNumber 33) $
-                       NLet (NVar "" NLocalVar) (NNumber 444) $
-                       NLet (NVar "" NLocalVar) (NNumber 555) $
-                       NLet (NVar "" NLocalVar) (NNumber 666) $
-                       NLet (NVar "" NLocalVar) (NFunAp (NVar "" NLocalVar) [NVar "" NLocalVar, NVar "" NLocalVar]) $
+                       NLet (NVar (lvn 3) NLocalVar) (NNumber 33) $
+                       NLet (NVar (lvn 4) NLocalVar) (NNumber 444) $
+                       NLet (NVar (lvn 5) NLocalVar) (NNumber 555) $
+                       NLet (NVar (lvn 6) NLocalVar) (NNumber 666) $
+                       NLet (NVar (lvn 7) NLocalVar) (NFunAp (NVar (lvn 0) NLocalVar) [NVar (lvn 1) NLocalVar, NVar (lvn 2) NLocalVar]) $
 
                        -- The two returned functions are no known functions anymore, so generic apply needs to
                        -- deal with them at runtime
-                       NAtom $ NFunAp (NVar "" NLocalVar) [NVar "" NLocalVar, NVar "" NLocalVar, NVar "" NLocalVar, NVar "" NLocalVar]
+                       NAtom $ NFunAp (NVar (lvn 7) NLocalVar) [NVar (lvn 4) NLocalVar, NVar (lvn 5) NLocalVar, NVar (lvn 6) NLocalVar, NVar (lvn 7) NLocalVar]
         norm `shouldBeRight` expected
 -}
 

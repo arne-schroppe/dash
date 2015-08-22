@@ -1,10 +1,6 @@
 module Language.Dash.API
 ( run
 , runWithPreamble
--- , toNorm
---, toAsm
--- , toAtomicConstants
---, toParsed
 ) where
 
 import           Language.Dash.Asm.Assembler
@@ -48,32 +44,4 @@ compileProgram prog = do
   (opcodes, constTable', symNames') <- compile normExpr constTable symNames
   (encodedProgram, encodedConstTable) <- assemble opcodes constTable'
   return (encodedProgram, encodedConstTable, symNames')
-
--- Debugging functions
-
-{-
-
-toParsed :: (ExceptT m) => String -> m Expr
-toParsed prog = prog |> lex |> parse
-
-toNorm :: => String -> (ExceptT CompilationError m) NstExpr
-toNorm prog =
-  let (nExpr, _, _) = prog |> lex |> parse |> normalize in
-  nExpr
-
-
-toAsm :: (ExceptT m) => String -> m [[Opcode]]
-toAsm prog =
-  let (asm, _, _) = prog |> lex |> parse |> normalize ||> compile in
-  asm
-
--}
-
-{-
-toAtomicConstants :: String -> ([AtomicConstant], Map.Map ConstAddr VMWord)
-toAtomicConstants prog =
-  let (_, ctable, _) = prog |> lex |> parse |> normalize ||> compile in
-  atomizeConstTable ctable
--}
-
 
