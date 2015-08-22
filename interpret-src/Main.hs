@@ -10,4 +10,6 @@ main = do
   let scriptPath = args !! 0
   fileContent <- readFile scriptPath
   result <- runWithPreamble fileContent
-  print result
+  case result of
+    Left err -> print err
+    Right value -> print value
