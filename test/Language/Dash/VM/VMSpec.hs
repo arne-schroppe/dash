@@ -19,7 +19,10 @@ runProgTbl tbl prog = do
   return value
   where
     (asm, tbl', _) =
-      assembleWithEncodedConstTable prog tbl (fromIntegral.constAddrToInt) []
+      let resultOrError = assembleWithEncodedConstTable prog tbl (fromIntegral.constAddrToInt) [] in
+      case resultOrError of
+        Left err -> error $ show err   -- TODO do this without an error
+        Right result -> result
 
 
 spec :: Spec

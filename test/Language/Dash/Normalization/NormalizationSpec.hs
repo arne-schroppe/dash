@@ -1,19 +1,32 @@
 module Language.Dash.Normalization.NormalizationSpec where
 
+import           Control.Applicative
 import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.CodeGen.BuiltInDefinitions  (builtInSymbols)
+import           Language.Dash.Internal.Error
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.Normalization.Normalization
 import           Test.Hspec
 
+pureNorm :: Expr -> Either CompilationError NstExpr
 pureNorm ast =
-  let (norm, _, _) = normalize ast in
-  norm
+  let resultOrError = normalize ast in
+  (\ (norm, _, _) -> norm) <$> resultOrError
+
+normAll :: Expr -> (Either CompilationError NstExpr, Either CompilationError ConstTable, Either CompilationError SymbolNameList)
+normAll ast =
+  let resultOrError = normalize ast in
+  case resultOrError of
+    Left err -> (Left err, Left err, Left err)
+    Right (norm, ctable, syms) -> (Right norm, Right ctable, Right syms)
 
 minUserSym :: Int
 minUserSym = length builtInSymbols
+
+shouldBeRight :: (Show a, Eq a) => Either CompilationError a -> a -> Expectation
+shouldBeRight a b = a `shouldBe` Right b
 
 -- local var name
 lvn n = "$local" ++ (show n)
@@ -25,15 +38,15 @@ spec = do
       it "normalizes a number directly" $ do
         let ast = LitNumber 3
         let norm = pureNorm ast
-        norm `shouldBe` (NAtom $ NNumber 3)
+        norm `shouldBeRight` (NAtom $ NNumber 3)
 
       it "normalizes a simple symbol directly" $ do
         let numBuiltInSymbols = length builtInSymbols
         let ast = LitSymbol "Test" []
-        let (norm, _, syms) = normalize ast
-        (length syms) `shouldBe` (numBuiltInSymbols + 1)
-        syms `shouldBe` ((map fst builtInSymbols) ++ ["Test"])
-        norm `shouldBe` (NAtom $ NPlainSymbol $ mkSymId (numBuiltInSymbols + 0))
+        let (norm, _, syms) = normAll ast
+        (length <$> syms) `shouldBeRight` (numBuiltInSymbols + 1)
+        syms `shouldBeRight` ((map fst builtInSymbols) ++ ["Test"])
+        norm `shouldBeRight` (NAtom $ NPlainSymbol $ mkSymId (numBuiltInSymbols + 0))
 
       it "splits a complex addition operation" $ do
         let ast = FunAp (Var "+")
@@ -47,7 +60,7 @@ spec = do
                 NLet (NVar (lvn 2) NLocalVar) (NPrimOp $ NPrimOpSub (NVar (lvn 0) NLocalVar)  (NVar (lvn 1) NLocalVar)) $
                 NLet (NVar (lvn 3) NLocalVar) (NNumber 4) $
                 NAtom $ NPrimOp $ NPrimOpAdd (NVar (lvn 2) NLocalVar) (NVar (lvn 3) NLocalVar)
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
       it "normalizes general function calls" $ do
         let ast = LocalBinding (Binding "fun1" $ Lambda ["a", "b", "c", "d"] $ LitNumber 0) $
@@ -76,7 +89,7 @@ spec = do
                                   NVar (lvn 3) NLocalVar,
                                   NVar (lvn 6) NLocalVar,
                                   NVar (lvn 7) NLocalVar]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
       it "normalizes a lambda call" $ do
         let ast = FunAp
@@ -89,7 +102,7 @@ spec = do
                 NLet (NVar (lvn 1) NLocalVar) (NNumber 1) $
                 NLet (NVar (lvn 2) NLocalVar) (NNumber 2) $
                 NAtom $ NFunAp (NVar (lvn 0) NLocalVar) [NVar (lvn 1) NLocalVar, NVar (lvn 2) NLocalVar]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
       it "reuses named variables" $ do
         let ast = LocalBinding (Binding "x" $ LitNumber 3) $
@@ -98,7 +111,7 @@ spec = do
         let expected =
                 NLet (NVar "x" NLocalVar) (NNumber 3) $
                 NAtom $ NPrimOp $ NPrimOpAdd (NVar "x" NLocalVar) (NVar "x" NLocalVar)
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
 
       it "normalizes a returned lambda call" $ do
@@ -114,7 +127,7 @@ spec = do
                 NLet (NVar "l" NLocalVar) (NFunAp (NVar "make-l" NLocalVar) [NVar (lvn 0) NLocalVar]) $
                 NLet (NVar (lvn 1) NLocalVar) (NNumber 55) $
                 NAtom $ NFunAp (NVar "l" NLocalVar) [NVar (lvn 1) NLocalVar]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
       it "normalizes nested bindings" $ do
         let ast = LocalBinding (Binding "a" $
@@ -128,7 +141,7 @@ spec = do
                 NLet (NVar "a" NLocalVar) (NPrimOp $ NPrimOpAdd (NVar "b" NLocalVar) (NVar (lvn 0) NLocalVar)) $
                 NLet (NVar (lvn 1) NLocalVar) (NNumber 55) $
                 NAtom $ NPrimOp $ NPrimOpSub (NVar "a" NLocalVar) (NVar (lvn 1) NLocalVar)
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
       it "vars in tail position are referenced by number" $ do
         let ast = LocalBinding (Binding "a" $ LitNumber 55) $
@@ -137,7 +150,7 @@ spec = do
         let expected =
                 NLet (NVar "a" NLocalVar) (NNumber 55) $
                 NAtom $ NVarExpr $ NVar "a" NLocalVar
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
 
       it "identifies constant free variables" $ do
@@ -148,7 +161,7 @@ spec = do
                        NAtom $ NLambda [] ["a"] $
                          NLet (NVar (lvn 0) NLocalVar) (NVarExpr $ NVar "b" NConstant) $
                          NAtom $ NPrimOp $ NPrimOpAdd (NVar "a" NFunParam) (NVar (lvn 0) NLocalVar)
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
       it "identifies dynamic free variables" $ do
         let ast = Lambda ["b"] $
@@ -157,7 +170,7 @@ spec = do
         let expected = NAtom $ NLambda [] ["b"] $
                        NAtom $ NLambda ["b"] ["a"] $
                          NAtom $ NPrimOp $ NPrimOpAdd (NVar "a" NFunParam) (NVar "b" NFreeVar)
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
       it "identifies nested closures" $ do
         let ast = Lambda ["a"] $
@@ -170,7 +183,7 @@ spec = do
                        NAtom $ NLambda ["b", "a"] ["c"] $
                        NAtom $ NLambda ["b", "a"] ["d"] $
                         NAtom $ NPrimOp $ NPrimOpAdd (NVar "a" NFreeVar) (NVar "b" NFreeVar)
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
 
       it "normalizes match-bodies to match-branches" $ do
@@ -185,7 +198,7 @@ spec = do
                        NAtom $ NMatch 0 (NVar (lvn 0) NLocalVar) (mkConstAddr 0)
                               [ ([], [], NVar (lvn 1) NLocalVar)
                               , ([], [], NVar (lvn 2) NLocalVar)]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
 
       it "captures constant free variables in match bodies" $ do
@@ -202,7 +215,7 @@ spec = do
                        NAtom $ NMatch 0 (NVar (lvn 0) NLocalVar) (mkConstAddr 0)
                                [ ([], [], NVar (lvn 1) NLocalVar)
                                , ([], [], NVar (lvn 2) NLocalVar)]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
       it "captures dynamic free variables in match bodies" $ do
         let ast = Lambda ["a"] $
@@ -218,7 +231,7 @@ spec = do
                        NAtom $ NMatch 0 (NVar (lvn 0) NLocalVar) (mkConstAddr 0)
                                [ (["a"], [], NVar (lvn 1) NLocalVar)
                                , ([], [], NVar (lvn 2) NLocalVar)]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
       it "handles vars in patterns as lambda parameters" $ do
         let ast = Match (LitNumber 2) [
@@ -232,7 +245,7 @@ spec = do
                        NAtom $ NMatch 1 (NVar (lvn 0) NLocalVar) (mkConstAddr 0)
                                [ ([], ["n"], NVar (lvn 1) NLocalVar)
                                , ([], ["m"], NVar (lvn 2) NLocalVar)]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
 
       it "identifies the maximum number of captures" $ do
@@ -240,7 +253,7 @@ spec = do
                     (PatSymbol "y" [PatVar "n", PatVar "o", PatVar "p"], Var "n"),
                     (PatSymbol "x" [PatVar "m", PatVar "l"], Var "m")
                   ]
-        let (norm, ctable, _) = normalize ast
+        let (norm, ctable, _) = normAll ast
         let expectedCTable = [ CMatchData [
                                CCompoundSymbol (mkSymId minUserSym) [CMatchVar 0, CMatchVar 1, CMatchVar 2],
                                CCompoundSymbol (mkSymId (minUserSym + 1)) [CMatchVar 0, CMatchVar 1]
@@ -251,8 +264,8 @@ spec = do
                        NAtom $ NMatch 3 (NVar (lvn 0) NLocalVar) (mkConstAddr 0)
                                [ ([], ["n", "o", "p"], NVar (lvn 1) NLocalVar)
                                , ([], ["m", "l"], NVar (lvn 2) NLocalVar)]
-        ctable `shouldBe` expectedCTable
-        norm `shouldBe` expected
+        ctable `shouldBeRight` expectedCTable
+        norm `shouldBeRight` expected
 
 
       it "resolves recursive use of an identifier" $ do
@@ -267,7 +280,7 @@ spec = do
                          NAtom $ NFunAp (NVar (lvn 0) NLocalVar) [NVar (lvn 2) NLocalVar]) $
                        NLet (NVar (lvn 3) NLocalVar) (NNumber 10) $
                        NAtom $ NFunAp (NVar "fun" NLocalVar) [NVar (lvn 3) NLocalVar]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
 
       -- TODO forget about this for now
@@ -288,7 +301,7 @@ spec = do
                          NAtom $ NFunAp (NVar "fun" NLocalVar) [NVar (lvn 2) NLocalVar]) $
                        NLet (NVar (lvn 3) NLocalVar) (NNumber 2) $
                        NAtom $ NFunAp (NVar "outer" NLocalVar) [NVar (lvn 3) NLocalVar]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
       it "pulls up new free variables into outer scopes" $ do
         let ast = LocalBinding (Binding "outer" $ Lambda ["b"] $
@@ -311,7 +324,7 @@ spec = do
                          NAtom $ NFunAp (NVar "fun" NLocalVar) [NVar (lvn 3) NLocalVar]) $
                        NLet (NVar (lvn 4) NLocalVar) (NNumber 2) $
                        NAtom $ NFunAp (NVar "outer" NLocalVar) [NVar (lvn 4) NLocalVar]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
 
 
@@ -340,7 +353,7 @@ spec = do
                                                             , NVar (lvn 4) NLocalVar
                                                             , NVar (lvn 5) NLocalVar
                                                             , NVar (lvn 6) NLocalVar]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
 {-
       -- TODO fix this (by giving all temp vars a name)
@@ -365,7 +378,7 @@ spec = do
                        -- The two returned functions are no known functions anymore, so generic apply needs to
                        -- deal with them at runtime
                        NAtom $ NFunAp (NVar "" NLocalVar) [NVar "" NLocalVar, NVar "" NLocalVar, NVar "" NLocalVar, NVar "" NLocalVar]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 -}
 
       it "identifies an under-saturated call to a known function" $ do
@@ -378,7 +391,7 @@ spec = do
                        NLet (NVar (lvn 0) NLocalVar) (NNumber 1) $
                        NLet (NVar (lvn 1) NLocalVar) (NNumber 2) $
                        NAtom $ NPartAp (NVar "fun" NLocalVar) [NVar (lvn 0) NLocalVar, NVar (lvn 1) NLocalVar]
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
 
 {-
@@ -407,7 +420,7 @@ spec = do
                        NLet (NVar "t" NLocalVar) (NPlainSymbol $ mkSymId 1) $
                        NLet (NVar "f" NLocalVar) (NPlainSymbol $ mkSymId 0) $
                        NAtom $ NNumber 0
-        norm `shouldBe` expected
+        norm `shouldBeRight` expected
 
 
       it "normalizes a module call" $ do
@@ -423,10 +436,10 @@ spec = do
                        NLet (NVar (lvn 2) NLocalVar) (NNumber 10) $
                        NLet (NVar (lvn 3) NLocalVar) (NNumber 11) $
                        NAtom $ NFunAp (NVar (lvn 1) NLocalVar) [NVar (lvn 2) NLocalVar, NVar (lvn 3) NLocalVar]
-        let (norm, _, syms) = normalize ast
-        (length syms) `shouldBe` (numBuiltInSymbols + 1)
-        syms `shouldBe` ((map fst builtInSymbols) ++ ["num"])
-        norm `shouldBe` expected
+        let (norm, _, syms) = normAll ast
+        (length <$> syms) `shouldBeRight` (numBuiltInSymbols + 1)
+        syms `shouldBeRight` ((map fst builtInSymbols) ++ ["num"])
+        norm `shouldBeRight` expected
 
 
       it "normalizes a recursive module call" $ do
@@ -436,8 +449,8 @@ spec = do
                   FunAp (Qualified "my-mod" (Var "func")) [LitNumber 10]
         let norm = pureNorm ast
         let numFieldSym = mkSymId minUserSym
-        let expected = NLet (NVar "my-mod" NLocalVar) (NModule [(numFieldSym, "func", 
-                               NLambda [] ["a"] $ 
+        let expected = NLet (NVar "my-mod" NLocalVar) (NModule [(numFieldSym, "func",
+                               NLambda [] ["a"] $
                                 NLet (NVar (lvn 0) NLocalVar) (NVarExpr $ NVar "func" NConstant) $
                                 NLet (NVar (lvn 1) NLocalVar) (NNumber 2) $
                                 NAtom $ NFunAp (NVar (lvn 0) NLocalVar) [NVar (lvn 1) NLocalVar])]) $
@@ -445,10 +458,10 @@ spec = do
                        NLet (NVar (lvn 3) NLocalVar) (NModuleLookup (NVar "my-mod" NLocalVar) (NVar (lvn 2) NLocalVar)) $
                        NLet (NVar (lvn 4) NLocalVar) (NNumber 10) $
                        NAtom $ NFunAp (NVar (lvn 3) NLocalVar) [NVar (lvn 4) NLocalVar]
-        let (norm, _, syms) = normalize ast
-        (length syms) `shouldBe` (numBuiltInSymbols + 1)
-        syms `shouldBe` ((map fst builtInSymbols) ++ ["func"])
-        norm `shouldBe` expected
+        let (norm, _, syms) = normAll ast
+        (length <$> syms) `shouldBeRight` (numBuiltInSymbols + 1)
+        syms `shouldBeRight` ((map fst builtInSymbols) ++ ["func"])
+        norm `shouldBeRight` expected
 
       -- TODO mutual recursion in module
 

@@ -5,10 +5,13 @@ import           Language.Dash.API
 import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.VM.DataEncoding
 import           Numeric
+import Language.Dash.Internal.Error
 
 -- This is mainly a test of the code generator. But it is an integration test because
 -- we don't care about the instructions it churns out, as long as everything behaves as expected.
 
+shouldReturnRight :: (Show a, Eq a) => IO (Either CompilationError a) -> a -> Expectation
+shouldReturnRight action val = action `shouldReturn` Right val
 
 spec :: Spec
 spec = do
@@ -17,43 +20,43 @@ spec = do
 
     it "evaluates an integer" $ do
       let result = run "4815"
-      result `shouldReturn` VMNumber 4815
+      result `shouldReturnRight` VMNumber 4815
 
     it "evaluates a symbol" $ do
       let result = run ":dash"
-      result `shouldReturn` VMSymbol "dash" []
+      result `shouldReturnRight` VMSymbol "dash" []
 
     it "evaluates a string" $ do
       let result = run "\"dash!\""
-      result `shouldReturn` VMString "dash!"
+      result `shouldReturnRight` VMString "dash!"
 
     it "applies built-in add function" $ do
       let result = run "2 + 3"
-      result `shouldReturn` VMNumber 5
+      result `shouldReturnRight` VMNumber 5
 
     it "applies built-in subtract function" $ do
       let result = run "7 - 3"
-      result `shouldReturn` VMNumber 4
+      result `shouldReturnRight` VMNumber 4
 
     it "applies built-in multiply function" $ do
       let result = run "7 * 3"
-      result `shouldReturn` VMNumber 21
+      result `shouldReturnRight` VMNumber 21
 
     it "applies built-in divide function" $ do
       let result = run "11 / 3"
-      result `shouldReturn` VMNumber 3
+      result `shouldReturnRight` VMNumber 3
 
     it "stores a value in a variable" $ do
       let result = run " a = 4\n\
                        \ a"
-      result `shouldReturn` VMNumber 4
+      result `shouldReturnRight` VMNumber 4
 
     it "uses local bindings in function call" $ do
       let code = " a = 4 \n\
                  \ b = 7 \n\
                  \ a + b"
       let result = run code
-      result `shouldReturn` VMNumber 11
+      result `shouldReturnRight` VMNumber 11
 
     it "applies a custom function" $ do
       let code = " add-two a = \n\
@@ -61,7 +64,7 @@ spec = do
                  \ \n\
                  \ add-two 5"
       let result = run code
-      result `shouldReturn` VMNumber 7
+      result `shouldReturnRight` VMNumber 7
 
     it "applies a local variable to a custom function" $ do
       let code = " add-two a = \n\
@@ -71,7 +74,7 @@ spec = do
                  \ y = 5 \n\
                  \ add-two y"
       let result = run code
-      result `shouldReturn` VMNumber 7
+      result `shouldReturnRight` VMNumber 7
 
     it "does a generic application of a function" $ do
       let code = "\
@@ -80,7 +83,7 @@ spec = do
       \   f 123 3 \n\
       \ apply my-sub"
       let result = run code
-      result `shouldReturn` VMNumber 120
+      result `shouldReturnRight` VMNumber 120
 
     it "returns a simple lambda" $ do
       let code =  " make-adder x = \n\
@@ -89,7 +92,7 @@ spec = do
                   \ adder = make-adder :nil \n\
                   \ adder 55"
       let result = run code
-      result `shouldReturn` VMNumber 77
+      result `shouldReturnRight` VMNumber 77
 
 
 
@@ -104,7 +107,7 @@ spec = do
       \ y = counter 1 \n\
       \ y "
       let result = run code
-      result `shouldReturn` VMNumber 43
+      result `shouldReturnRight` VMNumber 43
 
 
 
@@ -121,7 +124,7 @@ spec = do
               \   end \n\
               \ counter 5"
               let result = run code
-              result `shouldReturn` VMNumber 43
+              result `shouldReturnRight` VMNumber 43
 
 
             it "handles nested self-recursion of closure" $ do
@@ -141,7 +144,7 @@ spec = do
               \   counter 9 \n\
               \ outer 3 995"
               let result = run code
-              result `shouldReturn` VMNumber 995
+              result `shouldReturnRight` VMNumber 995
 
 {- Note: Mutual recursion will only be possible in the top level of a module (and thus without closures)
             it "handles mutual recursion of lambdas" $ do
@@ -156,7 +159,7 @@ spec = do
               \   check x \n\
               \ check 0"
               let result = run code
-              result `shouldReturn` VMNumber 43
+              result `shouldReturnRight` VMNumber 43
 
             it "handles mutual recursion of closures" $ do
               let code = "\
@@ -173,7 +176,7 @@ spec = do
               \ val checker = make-checker 2 999 \n\
               \ checker 0"
               let result = run code
-              result `shouldReturn` VMNumber 999
+              result `shouldReturnRight` VMNumber 999
 
 -}
 
@@ -186,7 +189,7 @@ spec = do
                           \ subtractor = make-sub 55 \n\
                           \ subtractor 4"
               let result = run code
-              result `shouldReturn` VMNumber 51
+              result `shouldReturnRight` VMNumber 51
 
             it "captures a constant number" $ do
               let code =  " c = 30 \n\
@@ -196,7 +199,7 @@ spec = do
                           \ subtractor = make-sub 10 \n\
                           \ subtractor 4"
               let result = run code
-              result `shouldReturn` VMNumber 26
+              result `shouldReturnRight` VMNumber 26
 
             it "captures a constant plain symbol" $ do
               let code =  " ps = :my-symbol \n\
@@ -206,7 +209,7 @@ spec = do
                           \ symbolicator = make-sym 44 \n\
                           \ symbolicator 55"
               let result = run code
-              result `shouldReturn` VMSymbol "my-symbol" []
+              result `shouldReturnRight` VMSymbol "my-symbol" []
 
             it "captures a constant function" $ do
               let code =  " subsub a b = a - b \n\
@@ -216,7 +219,7 @@ spec = do
                           \ subtractor = make-sub 10 \n\
                           \ subtractor 4"
               let result = run code
-              result `shouldReturn` VMNumber 6
+              result `shouldReturnRight` VMNumber 6
 
             it "captures several dynamic values" $ do
               let code =  " make-sub x y z w = \n\
@@ -225,7 +228,7 @@ spec = do
                           \ test = make-sub 33 55 99 160 \n\
                           \ test 24"
               let result = run code
-              result `shouldReturn` VMNumber ( (99 - 55) - (33 - 24) ) -- result: 35
+              result `shouldReturnRight` VMNumber ( (99 - 55) - (33 - 24) ) -- result: 35
 
             it "supports nested closures" $ do
               let code = "\
@@ -237,7 +240,7 @@ spec = do
               \ \n\
               \ ((make-adder-maker 9) 80) 150"
               let result = run code
-              result `shouldReturn` VMNumber 1862
+              result `shouldReturnRight` VMNumber 1862
 
 
 
@@ -249,7 +252,7 @@ spec = do
               \ curry = my-sub 123  \n\
               \ curry 3"
               let result = run code
-              result `shouldReturn` VMNumber 120
+              result `shouldReturnRight` VMNumber 120
 
             it "applies an unknown curried closure" $ do
               let code = "\
@@ -261,7 +264,7 @@ spec = do
               \ cl = get-cl 0 \n\
               \ apply cl"
               let result = run code
-              result `shouldReturn` VMNumber 120
+              result `shouldReturnRight` VMNumber 120
 
             it "applies an unknown curried function" $ do
               let code = "\
@@ -271,14 +274,14 @@ spec = do
               \   curry 3 \n\
               \ apply my-sub"
               let result = run code
-              result `shouldReturn` VMNumber 120
+              result `shouldReturnRight` VMNumber 120
 
             it "applies an over-saturated call to a known function" $ do
               let code = "\
               \ f a = .\\ b c = (a + b) - c \n\
               \ f 54 67 13"
               let result = run code
-              result `shouldReturn` VMNumber 108
+              result `shouldReturnRight` VMNumber 108
 
             it "applies an oversaturated call to an unknown closure" $ do
               let code = "\
@@ -287,7 +290,7 @@ spec = do
               \ res = fun 1 2 3 4 5 6 \n\
               \ res"
               let result = run code
-              result `shouldReturn` VMNumber 7
+              result `shouldReturnRight` VMNumber 7
 
             it "applies an oversaturated tail-call to an unknown closure" $ do
               let code = "\
@@ -295,7 +298,7 @@ spec = do
               \   .\\ b c = .\\ d e = .\\ f = ((f + e) - (c + d)) + (a + b) \n\
               \ fun 1 2 3 4 5 6"
               let result = run code
-              result `shouldReturn` VMNumber 7
+              result `shouldReturnRight` VMNumber 7
 
             it "applies an oversaturated call to an unknown function" $ do
               let code = "\
@@ -304,7 +307,7 @@ spec = do
               \ res = fun 1 2 3 4 5 6 \n\
               \ res"
               let result = run code
-              result `shouldReturn` VMSymbol "success" []
+              result `shouldReturnRight` VMSymbol "success" []
 
             it "applies an oversaturated tail-call to an unknown function" $ do
               let code = "\
@@ -312,7 +315,7 @@ spec = do
               \   .\\ b c = .\\ d e = .\\ f = :success \n\
               \ fun 1 2 3 4 5 6"
               let result = run code
-              result `shouldReturn` VMSymbol "success" []
+              result `shouldReturnRight` VMSymbol "success" []
 
             it "applies result of a function application" $ do
               let code = "\
@@ -320,7 +323,7 @@ spec = do
               \   .\\ b c = .\\ d e = .\\ f = 77 \n\
               \ (((fun 1) 2 3) 4 5) 6"
               let result = run code
-              result `shouldReturn` VMNumber 77
+              result `shouldReturnRight` VMNumber 77
 
             it "applies result of a closure application" $ do
               let code = "\
@@ -328,7 +331,7 @@ spec = do
               \   .\\ b c = .\\ d e = .\\ f = ((f + e) - (c + d)) + (a + b) \n\
               \ (((fun 1) 2 3) 4 5) 6"
               let result = run code
-              result `shouldReturn` VMNumber 7
+              result `shouldReturnRight` VMNumber 7
 
             it "applies a partial application of a closure application" $ do
               let code = "\
@@ -337,7 +340,7 @@ spec = do
               \ fpart = fun 1 2 3 4 5 \n\
               \ fpart 6"
               let result = run code
-              result `shouldReturn` VMNumber 7
+              result `shouldReturnRight` VMNumber 7
 
 
             it "applies a partial application of a function application" $ do
@@ -347,14 +350,14 @@ spec = do
               \ fpart = fun 1 2 3 4 5 \n\
               \ fpart 6"
               let result = run code
-              result `shouldReturn` VMSymbol "success" []
+              result `shouldReturnRight` VMSymbol "success" []
 
 
     context "when using compound symbols" $ do
 
             it "interprets a compound symbol" $ do
               let result = run ":sym 2 3"
-              result `shouldReturn` VMSymbol "sym" [VMNumber 2, VMNumber 3]
+              result `shouldReturnRight` VMSymbol "sym" [VMNumber 2, VMNumber 3]
 
             it "creates a symbol at runtime" $ do
               let code = "\
@@ -362,7 +365,7 @@ spec = do
               \   :sym a \n\
               \ fun 7"
               let result = run code
-              result `shouldReturn` VMSymbol "sym" [VMNumber 7]
+              result `shouldReturnRight` VMSymbol "sym" [VMNumber 7]
 
             it "creates a nested symbol at runtime" $ do
               let code = "\
@@ -370,7 +373,7 @@ spec = do
               \   :sym 1 (:sym2 a) 3 \n\
               \ fun 2"
               let result = run code
-              result `shouldReturn` VMSymbol "sym" [VMNumber 1, VMSymbol "sym2" [VMNumber 2], VMNumber 3]
+              result `shouldReturnRight` VMSymbol "sym" [VMNumber 1, VMSymbol "sym2" [VMNumber 2], VMNumber 3]
 
 
     context "when matching" $ do
@@ -380,7 +383,7 @@ spec = do
                          \   1 -> :one \n\
                          \ end"
               let result = run code
-              result `shouldReturn` VMSymbol "one" []
+              result `shouldReturnRight` VMSymbol "one" []
 
             it "matches a value against a negative number" $ do
               let code = " a = 3 \n\
@@ -388,7 +391,7 @@ spec = do
                          \   -3 -> :three \n\
                          \ end"
               let result = run code
-              result `shouldReturn` VMSymbol "three" []
+              result `shouldReturnRight` VMSymbol "three" []
 
             it "matches a value against numbers" $ do
               let code = " match 7 begin\n\
@@ -402,7 +405,7 @@ spec = do
                          \   8 -> :eight \n\
                          \ end"
               let result = run code
-              result `shouldReturn` VMSymbol "seven" []
+              result `shouldReturnRight` VMSymbol "seven" []
 
             it "matches a value against symbols" $ do
               let code = " match :two begin\n\
@@ -410,7 +413,7 @@ spec = do
                          \   :two -> 2 \n\
                          \ end"
               let result = run code
-              result `shouldReturn` VMNumber 2
+              result `shouldReturnRight` VMNumber 2
 
             it "matches a value against numbers inside a function" $ do
               let code = " check n = \n\
@@ -421,7 +424,7 @@ spec = do
                          \ \n\
                          \ check 2"
               let result = run code
-              result `shouldReturn` VMSymbol "two" []
+              result `shouldReturnRight` VMSymbol "two" []
 
 
             it "binds an identifier in a match pattern" $ do
@@ -430,7 +433,7 @@ spec = do
                          \   n -> 5 + n \n\
                          \ end"
               let result = run code
-              result `shouldReturn` VMNumber 7
+              result `shouldReturnRight` VMNumber 7
 
 
             it "matches a compound symbol" $ do
@@ -440,7 +443,7 @@ spec = do
                           \ :test 99 100 101 -> 3 \n\
                           \ end"
               let result = run code
-              result `shouldReturn` VMNumber 2
+              result `shouldReturnRight` VMNumber 2
 
 
             it "binds a value inside a symbol" $ do
@@ -450,7 +453,7 @@ spec = do
                           \ :test 99 100 101 -> 3 \n\
                           \ end"
               let result = run code
-              result `shouldReturn` VMNumber 23
+              result `shouldReturnRight` VMNumber 23
 
 
             it "binds a value inside a nested symbol" $ do
@@ -460,7 +463,7 @@ spec = do
                           \ :test 4 (:wrong n) m -> 1 \n\
                           \ end"
               let result = run code
-              result `shouldReturn` VMNumber 23
+              result `shouldReturnRight` VMNumber 23
 
 
             it "uses wildcards in a match" $ do
@@ -470,7 +473,7 @@ spec = do
                           \ :test _ 4   -> 44 \n\
                           \ end"
               let result = run code
-              result `shouldReturn` VMNumber 44
+              result `shouldReturnRight` VMNumber 44
 
             it "correctly applies free variables" $ do
               let code =  " run a b c d = \n\
@@ -481,7 +484,7 @@ spec = do
                           \   end \n\
                           \ run 4 12 34 55"
               let result = run code
-              result `shouldReturn` VMNumber 105
+              result `shouldReturnRight` VMNumber 105
 
 
             it "binds a value inside a tuple" $ do
@@ -491,7 +494,7 @@ spec = do
                           \ (99, 100, 101) -> 3 \n\
                           \ end"
               let result = run code
-              result `shouldReturn` VMNumber 23
+              result `shouldReturnRight` VMNumber 23
 
     context "when using modules" $ do
 
@@ -501,7 +504,7 @@ spec = do
                    \ end                           \n\
                    \ mod.func 7"
         let result = run code
-        result `shouldReturn` VMNumber 19
+        result `shouldReturnRight` VMNumber 19
 
       it "calls a function in a module self-recursively" $ do
         let code = " mod = module                  \n\
@@ -512,7 +515,7 @@ spec = do
                    \ end                           \n\
                    \ mod.func 3"
         let result = run code
-        result `shouldReturn` VMNumber 10
+        result `shouldReturnRight` VMNumber 10
 
 
     it "resolves closed over vars in match-branches" $ do
@@ -526,7 +529,7 @@ spec = do
                  \   end                         \n\
                  \   fib 13"
       let result = run code
-      result `shouldReturn` VMNumber 233
+      result `shouldReturnRight` VMNumber 233
 
 
     it "has an equality operator" $ do
@@ -536,99 +539,99 @@ spec = do
                  \   :true  -> 55        \n\
                  \ end"
       let result = run code
-      result `shouldReturn` VMNumber 55
+      result `shouldReturnRight` VMNumber 55
 
     it "determines equality between numbers" $ do
       let code = "2 == 2"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "has less-than operator" $ do
       let code = "1 < 2"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "has greater-than operator" $ do
       let code = "3 > 2"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "less-than-equal operator with true result" $ do
       let code = "1 <= 2"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "less-than-equal operator with true result 2" $ do
       let code = "2 <= 2"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "less-than-equal operator with false result" $ do
       let code = "3 <= 2"
       let result = run code
-      result `shouldReturn` VMSymbol "false" []
+      result `shouldReturnRight` VMSymbol "false" []
 
     it "greater-than-equal operator with true result" $ do
       let code = "3 >= 2"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "greater-than-equal operator with true result 2" $ do
       let code = "2 >= 2"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "greater-than-equal operator with false result" $ do
       let code = "1 >= 2"
       let result = run code
-      result `shouldReturn` VMSymbol "false" []
+      result `shouldReturnRight` VMSymbol "false" []
 
 
     it "boolean 'or' with true result" $ do
       let code = ":false || :true"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "boolean 'or' with false result" $ do
       let code = ":false || :false"
       let result = run code
-      result `shouldReturn` VMSymbol "false" []
+      result `shouldReturnRight` VMSymbol "false" []
 
     it "boolean 'and' with true result" $ do
       let code = ":true && :true"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "boolean 'and' with false result" $ do
       let code = ":true && :false"
       let result = run code
-      result `shouldReturn` VMSymbol "false" []
+      result `shouldReturnRight` VMSymbol "false" []
 
     it "boolean 'not'" $ do
       let code = "! :false"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     -- TODO should this work without parentheses?
     it "determines equality between compound symbols" $ do
       let code = "(:test 1 2 :three) == (:test 1 2 :three)"
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "determines equality between strings" $ do
       let code = "\"test\" == \"test\""
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "determines equality between empty strings" $ do
       let code = "\"\" == \"\""
       let result = run code
-      result `shouldReturn` VMSymbol "true" []
+      result `shouldReturnRight` VMSymbol "true" []
 
     it "has correct precedence for math operators" $ do
       let code = "12 + 6 / 2 - 3 * 2"
       let result = run code
-      result `shouldReturn` VMNumber 9
+      result `shouldReturnRight` VMNumber 9
 
 
     it "has if-then-else" $ do
@@ -637,19 +640,19 @@ spec = do
                  \ else                  \n\
                  \   99"
       let result = run code
-      result `shouldReturn` VMNumber 99
+      result `shouldReturnRight` VMNumber 99
 
 
     it "has tuples" $ do
       let code = "(1, 2, :sym)"
       let result = run code
-      result `shouldReturn` VMSymbol tupleSymbolName [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
+      result `shouldReturnRight` VMSymbol tupleSymbolName [VMNumber 1, VMNumber 2, VMSymbol "sym" []]
 
 
     it "has lists" $ do
       let code = "[1, 2, :sym]"
       let result = run code
-      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 1,
+      result `shouldReturnRight` VMSymbol listConsSymbolName [VMNumber 1,
                               VMSymbol listConsSymbolName [ VMNumber 2,
                               VMSymbol listConsSymbolName [ VMSymbol "sym" [], 
                               VMSymbol listEmptySymbolName []]]]
@@ -663,7 +666,7 @@ spec = do
                  \   [] -> :c        \n\
                  \ end"
       let result = run code
-      result `shouldReturn` VMSymbol "c" []
+      result `shouldReturnRight` VMSymbol "c" []
 
 
     it "matches an exact list" $ do
@@ -673,7 +676,7 @@ spec = do
                  \   [1, 2, 3] -> :b        \n\
                  \ end"
       let result = run code
-      result `shouldReturn` VMSymbol "b" []
+      result `shouldReturnRight` VMSymbol "b" []
 
 
     it "matches a list's tail" $ do
@@ -683,7 +686,7 @@ spec = do
                  \   [1, 2 | tl] -> tl   \n\
                  \ end"
       let result = run code
-      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 3,
+      result `shouldReturnRight` VMSymbol listConsSymbolName [VMNumber 3,
                                 VMSymbol listConsSymbolName [VMNumber 4,
                                 VMSymbol listEmptySymbolName []]]
 
@@ -695,7 +698,7 @@ spec = do
                  \   [1 | [2 | [ 3 | tl]]] -> tl        \n\
                  \ end"
       let result = run code
-      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 4,
+      result `shouldReturnRight` VMSymbol listConsSymbolName [VMNumber 4,
                                 VMSymbol listConsSymbolName [VMNumber 5,
                                 VMSymbol listEmptySymbolName []]]
 
@@ -703,7 +706,7 @@ spec = do
       let code = " tail = [3, 4] \n\
                  \ [1, 2 | tail]"
       let result = run code
-      result `shouldReturn` VMSymbol listConsSymbolName [VMNumber 1,
+      result `shouldReturnRight` VMSymbol listConsSymbolName [VMNumber 1,
                                 VMSymbol listConsSymbolName [VMNumber 2,
                                 VMSymbol listConsSymbolName [VMNumber 3,
                                 VMSymbol listConsSymbolName [VMNumber 4,
@@ -712,32 +715,32 @@ spec = do
     it "has negative numbers" $ do
       let code = " 0 - 7 + 3"
       let result = run code
-      result `shouldReturn` VMNumber (-4)
+      result `shouldReturnRight` VMNumber (-4)
 
     it "has a prefix minus operator" $ do
       let code = " a = 7 \n\
                  \ b = 13 \n\
                  \ -a - -b"
       let result = run code
-      result `shouldReturn` VMNumber 6
+      result `shouldReturnRight` VMNumber 6
 
     it "knows the length of a string" $ do
       let code = "string-length \"1234567\""
       let result = run code
-      result `shouldReturn` VMNumber 7
+      result `shouldReturnRight` VMNumber 7
 
     it "concatenates strings" $ do
       let code =  " s1 = \"ab\" \n\
                   \ s3 = \"ef\" \n\
                   \ s1 ++ \"cd\" ++ s3"
       let result = run code
-      result `shouldReturn` VMString "abcdef"
+      result `shouldReturnRight` VMString "abcdef"
 
     it "creates a sub-strings" $ do
       let code =  " s1 = \"abcdefghijklmn\" \n\
                   \ sub-string 2 5 s1"
       let result = run code
-      result `shouldReturn` VMString "cdefg"
+      result `shouldReturnRight` VMString "cdefg"
 
 
     context "regression tests" $ do
@@ -747,7 +750,7 @@ spec = do
                    \ b = a \n\
                    \ b"
         let result = run code
-        result `shouldReturn` VMNumber 4
+        result `shouldReturnRight` VMNumber 4
 
       it "compiles variable assignment in inner binding" $ do
         let code = " a = 4 \n\
@@ -756,7 +759,7 @@ spec = do
                    \   c   \n\
                    \ b"
         let result = run code
-        result `shouldReturn` VMNumber 4
+        result `shouldReturnRight` VMNumber 4
 
       it "runs code that starts with a delimited comment" $ do
         let code = " /-- \n\
@@ -767,7 +770,7 @@ spec = do
                    \ test 3 \n\
                    \ "
         let result = run code
-        result `shouldReturn` VMNumber 3
+        result `shouldReturnRight` VMNumber 3
 
 
 

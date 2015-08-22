@@ -15,15 +15,11 @@ import           Language.Dash.IR.Nst
 
 
 
-resolveRecursion :: NstExpr -> NstExpr
+resolveRecursion :: NstExpr -> Either CompilationError NstExpr
 resolveRecursion normExpr =
-  let exprOrError = runIdentity $ runExceptT $ evalStateT
-                            (resolveRecExprInContext normExpr)
-                            emptyRecursionState
-  in
-  case exprOrError of
-    Left err -> error "Fail"
-    Right expr -> expr
+  runIdentity $ runExceptT $ evalStateT
+                               (resolveRecExprInContext normExpr)
+                               emptyRecursionState
 
 
 resolveRecExprInContext :: NstExpr -> Recursion NstExpr

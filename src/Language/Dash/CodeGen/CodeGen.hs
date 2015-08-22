@@ -2,6 +2,7 @@ module Language.Dash.CodeGen.CodeGen (
   compile
 ) where
 
+import           Control.Applicative                      ((<$>))
 import           Control.Monad.Except                     (runExceptT,
                                                            throwError)
 import           Control.Monad.Identity                   (runIdentity)
@@ -27,14 +28,15 @@ import           Language.Dash.IR.Opcode
 compile :: NstExpr
         -> ConstTable
         -> SymbolNameList
-        -> ([[Opcode]], ConstTable, SymbolNameList)
+        -> Either CompilationError ([[Opcode]], ConstTable, SymbolNameList)
 compile expr cTable symlist =
   let resultOrError = runIdentity $ runExceptT $ execStateT (compileCompilationUnit expr)
                                                             (makeCompState cTable symlist)
   in
-  case resultOrError of
-    Left err -> error "Fail"
-    Right result -> (toList (instructions result), constTable result, symbolNames result)
+  extractResults <$> resultOrError
+  where
+    extractResults result =
+        (toList (instructions result), constTable result, symbolNames result)
 
 
 compileCompilationUnit :: NstExpr -> CodeGen ()

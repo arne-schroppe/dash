@@ -6,6 +6,7 @@ module Language.Dash.Asm.DataAssembler (
 , AtomicConstant(..)
 ) where
 
+import           Control.Applicative          ((<$>))
 import           Control.Monad.Except          (ExceptT (..), runExceptT,
                                                 throwError)
 import           Control.Monad.Identity        (runIdentity, Identity)
@@ -41,11 +42,12 @@ type ConstAddressMap = ConstAddr -> VMWord
 
 -- The ConstAddressMap is a conversion function from the virtual constant
 -- addresses used in the Opcode ir to the real binary offsets for the vm
-encodeConstTable :: ConstTable -> Seq.Seq VMWord -> ([VMWord], ConstAddressMap)
+encodeConstTable :: ConstTable
+                 -> Seq.Seq VMWord
+                 -> Either CompilationError ([VMWord], ConstAddressMap)
 encodeConstTable ctable funcMap =
-  let (atoms, mapping) = atomizeConstTable ctable funcMap in
-  (map encodeConstant atoms, (mapping Map.!) )
-
+  (\ (atoms, mapping) -> (map encodeConstant atoms, (mapping Map.!) )) <$>
+  atomizeConstTable ctable funcMap
 
 -- We receive data as an array of Data.Constant objects. The first step is
 -- to split this representation into their atomic parts. This is what this
@@ -53,15 +55,13 @@ encodeConstTable ctable funcMap =
 -- byte representation for the vm.
 atomizeConstTable :: ConstTable
                   -> Seq.Seq VMWord
-                  -> ([AtomicConstant], Map.Map ConstAddr VMWord)
+                  -> Either CompilationError ( [AtomicConstant]
+                                               , Map.Map ConstAddr VMWord)
 atomizeConstTable ctable funcMap =
-  let stateOrError = runIdentity $ runExceptT $ execStateT
-                             encTable (emptyConstAtomizationState ctable funcMap)
-  in
-  case stateOrError of
-    Left err -> error "Fail"
-    Right state -> (atomized state, addrMap state)
+  let stateOrError = runIdentity $ runExceptT $ execStateT encTable initialState in
+  (\ state -> (atomized state, addrMap state)) <$> stateOrError
   where
+    initialState = emptyConstAtomizationState ctable funcMap
     encTable = whileJust atomizeConstant popWorkItem
 
 

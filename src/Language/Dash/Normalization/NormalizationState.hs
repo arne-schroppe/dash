@@ -31,9 +31,6 @@ import           Language.Dash.Internal.Error             (CompilationError (..)
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 
--- TODO this module's interface is way too fat !
-
-
 
 
 type NormT a m = StateT NormState (ExceptT CompilationError m) a

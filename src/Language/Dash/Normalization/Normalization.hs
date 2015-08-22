@@ -70,14 +70,11 @@ type Cont = NstAtomicExpr -> Norm NstExpr
 type VCont = NstVar -> Norm NstExpr
 
 
-normalize :: Expr -> (NstExpr, ConstTable, SymbolNameList)
-normalize expr =
-  let resultOrError = runIdentity $ runExceptT $ (runStateT (normalizeInContext expr) emptyNormState) in
-  case resultOrError of
-    Left msg -> error "failed" -- TODO return error
-    Right (result, finalState) ->
-            let result' = resolveRecursion result in
-            (result', constTable finalState, getSymbolNames finalState)
+normalize :: Expr -> Either CompilationError (NstExpr, ConstTable, SymbolNameList)
+normalize expr = do
+  (result, finalState) <- runIdentity $ runExceptT $ runStateT (normalizeInContext expr) emptyNormState
+  result' <- resolveRecursion result
+  return (result', constTable finalState, getSymbolNames finalState)
 
 
 normalizeInContext :: Expr -> Norm NstExpr

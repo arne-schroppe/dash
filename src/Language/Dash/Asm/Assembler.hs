@@ -7,10 +7,11 @@ module Language.Dash.Asm.Assembler (
 import           Data.Bits
 import qualified Data.Sequence                   as Seq
 import           Language.Dash.Asm.DataAssembler
+import           Language.Dash.Constants
+import           Language.Dash.Internal.Error
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Opcode
 import           Language.Dash.VM.Types
-import           Language.Dash.Constants
 
 
 {-
@@ -32,27 +33,28 @@ list. They are turned into real addresses by the assembler.
 
 assemble :: [[Opcode]]
          -> ConstTable
-         -> SymbolNameList
-         -> ([VMWord], [VMWord], SymbolNameList)
-assemble funcs ctable symnames =
-  (map assembleOpcode instructions, consts, symnames)
+         -> Either CompilationError ([VMWord], [VMWord])
+assemble funcs ctable = do
+  let combined = combineFunctions funcs
+  let instructions = fst combined
+  let funcAddrs = snd combined
+
+  encodedConsts <- encodeConstTable ctable funcAddrs
+  let consts = fst encodedConsts
+  let addrConvert = snd encodedConsts
+
+  let assembleOpcode = assembleTac funcAddrs addrConvert
+  return (map assembleOpcode instructions, consts)
   where
-    encodedConsts = encodeConstTable ctable funcAddrs
-    consts = fst encodedConsts
-    addrConvert = snd encodedConsts
-    assembleOpcode = assembleTac funcAddrs addrConvert
-    instructions = fst combined
-    funcAddrs = snd combined
-    combined = combineFunctions funcs
 
 assembleWithEncodedConstTable :: [[Opcode]]
                               -> [VMWord]
                               -> (ConstAddr
                               -> VMWord)
                               -> SymbolNameList
-                              -> ([VMWord], [VMWord], SymbolNameList)
+                              -> Either CompilationError ([VMWord], [VMWord], SymbolNameList)
 assembleWithEncodedConstTable funcs encCTable constAddrConverter symnames =
-  (map assembleOpcode instructions, encCTable, symnames)
+  return (map assembleOpcode instructions, encCTable, symnames)
   where
     assembleOpcode = assembleTac funcAddrs constAddrConverter
     instructions = fst combined
