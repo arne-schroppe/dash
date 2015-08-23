@@ -6,14 +6,14 @@ module Language.Dash.API
 import           Language.Dash.Asm.Assembler
 import           Language.Dash.CodeGen.BuiltInDefinitions  (preamble)
 import           Language.Dash.CodeGen.CodeGen
-import           Language.Dash.Internal.Error              (CompilationError (..))
+import           Language.Dash.Error.Error                 (CompilationError (..))
 import           Language.Dash.IR.Data
 import           Language.Dash.Normalization.Normalization
 import           Language.Dash.Parser.Lexer
 import           Language.Dash.Parser.Parser
 import           Language.Dash.VM.DataEncoding
-import           Language.Dash.VM.VM
 import           Language.Dash.VM.Types
+import           Language.Dash.VM.VM
 import           Prelude                                   hiding (lex)
 
 

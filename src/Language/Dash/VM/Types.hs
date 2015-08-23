@@ -15,20 +15,6 @@ data VMValue =
   deriving (Eq)
 
 
-showField :: VMValue -> String
-showField v =
-  case v of
-    s@(VMSymbol _ (_:_)) -> "(" ++ show s ++ ")"
-    _ -> show v
-
-showNestedList :: [VMValue] -> String
-showNestedList vs =
-  "[" ++ (intercalate ", " $ flatValues (VMSymbol "list" vs)) ++ "]"
-  where
-    flatValues (VMSymbol "list" [a, (VMSymbol "empty-list" [])]) = [show a]
-    flatValues (VMSymbol "list" [a, as@(VMSymbol "list" _)]) = (show a) : (flatValues as)
-    flatValues (VMSymbol "list" [a, xs]) = ((show a)) : (["!<"] ++ (flatValues xs) ++ [">!"])
-    flatValues x = [show x]
 
 instance Show VMValue where
   show v =
@@ -44,5 +30,20 @@ instance Show VMValue where
       VMSymbol "tuple" fields -> "(" ++ (intercalate ", " $ map show fields) ++ ")"
       VMSymbol s fields ->  ":" ++ s ++ " " ++ (foldl (++) "" $ intersperse " " $ map showField fields)
 
+
+showField :: VMValue -> String
+showField v =
+  case v of
+    s@(VMSymbol _ (_:_)) -> "(" ++ show s ++ ")"
+    _ -> show v
+
+showNestedList :: [VMValue] -> String
+showNestedList vs =
+  "[" ++ (intercalate ", " $ flatValues (VMSymbol "list" vs)) ++ "]"
+  where
+    flatValues (VMSymbol "list" [a, (VMSymbol "empty-list" [])]) = [show a]
+    flatValues (VMSymbol "list" [a, as@(VMSymbol "list" _)]) = (show a) : (flatValues as)
+    flatValues (VMSymbol "list" [a, xs]) = ((show a)) : (["!<"] ++ (flatValues xs) ++ [">!"])
+    flatValues x = [show x]
 
 

@@ -8,7 +8,7 @@ import           Data.Bits
 import qualified Data.Sequence                   as Seq
 import           Language.Dash.Asm.DataAssembler
 import           Language.Dash.Constants
-import           Language.Dash.Internal.Error
+import           Language.Dash.Error.Error
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Opcode
 import           Language.Dash.VM.Types

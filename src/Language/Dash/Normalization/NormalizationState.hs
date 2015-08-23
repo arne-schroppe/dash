@@ -27,7 +27,7 @@ import           Data.Function                            (on)
 import           Data.List
 import qualified Data.Map                                 as Map
 import           Language.Dash.CodeGen.BuiltInDefinitions (builtInSymbols)
-import           Language.Dash.Internal.Error             (CompilationError (..))
+import           Language.Dash.Error.Error                (CompilationError (..))
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 

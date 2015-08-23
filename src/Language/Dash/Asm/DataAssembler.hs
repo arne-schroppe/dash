@@ -6,15 +6,15 @@ module Language.Dash.Asm.DataAssembler (
 , AtomicConstant(..)
 ) where
 
-import           Control.Applicative          ((<$>))
+import           Control.Applicative           ((<$>))
 import           Control.Monad.Except          (ExceptT (..), runExceptT,
                                                 throwError)
-import           Control.Monad.Identity        (runIdentity, Identity)
-import           Control.Monad.State           hiding (state)
+import           Control.Monad.Identity        (Identity, runIdentity)
+import           Control.Monad.State.Strict    hiding (state)
 import           Data.List.Split
 import qualified Data.Map                      as Map
 import qualified Data.Sequence                 as Seq
-import           Language.Dash.Internal.Error  (CompilationError (..))
+import           Language.Dash.Error.Error     (CompilationError (..))
 import           Language.Dash.IR.Data
 import qualified Language.Dash.VM.DataEncoding as Enc
 import           Language.Dash.VM.Types
@@ -87,7 +87,7 @@ atomizeConstant c = case c of
   COpaqueSymbol sid own args -> atomizeOpaqueSymbol sid own args
   CFunction addr             -> atomizeFunction addr
   CCompoundSymbolRef caddr   -> atomizeCompoundSymbolRef caddr
-  x -> error $ "Unable to encode top-level constant " ++ show x
+  x -> throwError $ InternalCompilerError $ "Unable to encode top-level constant " ++ show x
 
 
 atomizeCompoundSymbolRef :: ConstAddr -> ConstAtomization ()

@@ -1,11 +1,11 @@
 module IntegrationSpec where
 
-import           Test.Hspec
 import           Language.Dash.API
 import           Language.Dash.CodeGen.BuiltInDefinitions
+import           Language.Dash.Error.Error
 import           Language.Dash.VM.DataEncoding
 import           Numeric
-import Language.Dash.Internal.Error
+import           Test.Hspec
 
 -- This is mainly a test of the code generator. But it is an integration test because
 -- we don't care about the instructions it churns out, as long as everything behaves as expected.
@@ -654,7 +654,7 @@ spec = do
       let result = run code
       result `shouldReturnRight` VMSymbol listConsSymbolName [VMNumber 1,
                               VMSymbol listConsSymbolName [ VMNumber 2,
-                              VMSymbol listConsSymbolName [ VMSymbol "sym" [], 
+                              VMSymbol listConsSymbolName [ VMSymbol "sym" [],
                               VMSymbol listEmptySymbolName []]]]
 
 

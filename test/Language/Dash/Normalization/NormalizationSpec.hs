@@ -3,7 +3,7 @@ module Language.Dash.Normalization.NormalizationSpec where
 import           Control.Applicative
 import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.CodeGen.BuiltInDefinitions  (builtInSymbols)
-import           Language.Dash.Internal.Error
+import           Language.Dash.Error.Error
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst

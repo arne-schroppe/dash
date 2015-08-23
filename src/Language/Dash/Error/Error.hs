@@ -1,4 +1,4 @@
-module Language.Dash.Internal.Error (
+module Language.Dash.Error.Error (
   CompilationError(..)
 ) where
 

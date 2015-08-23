@@ -3,17 +3,18 @@ module Language.Dash.CodeGen.CodeGen (
 ) where
 
 import           Control.Applicative                      ((<$>))
+import           Control.Monad
 import           Control.Monad.Except                     (runExceptT,
                                                            throwError)
 import           Control.Monad.Identity                   (runIdentity)
-import           Control.Monad.State
+import           Control.Monad.State.Strict
 import           Data.Foldable
 import           Data.List                                (transpose)
 import           Data.Maybe                               (catMaybes)
 import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.CodeGen.CodeGenState
 import           Language.Dash.Constants
-import           Language.Dash.Internal.Error             (CompilationError (..))
+import           Language.Dash.Error.Error                (CompilationError (..))
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Opcode

@@ -5,13 +5,13 @@ module Language.Dash.CodeGen.CodeGenState where
 
 import           Control.Monad.Except
 import           Control.Monad.Identity
-import           Control.Monad.State          hiding (state)
+import           Control.Monad.State.Strict hiding (state)
 import           Data.List
-import qualified Data.Map                     as Map
-import           Data.Maybe                   (fromJust)
-import qualified Data.Sequence                as Seq
+import qualified Data.Map                   as Map
+import           Data.Maybe                 (fromJust)
+import qualified Data.Sequence              as Seq
 import           Language.Dash.Constants
-import           Language.Dash.Internal.Error (CompilationError (..))
+import           Language.Dash.Error.Error  (CompilationError (..))
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst
 import           Language.Dash.IR.Opcode
@@ -82,13 +82,12 @@ data CompileTimeConstant =
 
 beginFunction :: [Name] -> [Name] -> CodeGen FuncAddr
 beginFunction freeVars params = do
-  state <- get
   let freeVarBindings = Map.fromList (zipWithReg freeVars 0)
   let paramStart = length freeVars
   let paramBindings = Map.fromList (zipWithReg params paramStart)
   -- The order of arguments for union is important. We prefer params over free vars
   let newScope = makeScope $ Map.union paramBindings freeVarBindings
-  put $ state { scopes = newScope : scopes state }
+  modify $ \ state -> state { scopes = newScope : scopes state }
   checkRegisterLimits
   addr <- addFunctionPlaceholder
   return addr
@@ -122,22 +121,20 @@ numBindings = do
 -- actually added to the list of functions.
 addFunctionPlaceholder :: CodeGen FuncAddr
 addFunctionPlaceholder = do
-  state <- get
-  let instrs = instructions state
+  instrs <- gets instructions
   let nextFunAddr = Seq.length instrs
   let instrs' = instrs Seq.|> []
-  put $ state { instructions = instrs' }
+  modify $ \ state -> state { instructions = instrs' }
   return $ mkFuncAddr nextFunAddr
 
 
 replacePlaceholderWithActualCode :: FuncAddr -> [Opcode] -> CodeGen ()
 replacePlaceholderWithActualCode funcPlaceholderAddr code = do
-  state <- get
-  let instrs = instructions state
+  instrs <- gets instructions
   let index = funcAddrToInt funcPlaceholderAddr
   -- replace the original function placeholder with the actual code
   let instrs' = Seq.update index code instrs
-  put $ state { instructions = instrs' }
+  modify $ \ state -> state { instructions = instrs' }
 
 
 getReg :: NstVar -> CodeGen Reg
@@ -198,15 +195,6 @@ resetSelfReferenceSlot = do
   putScope $ scope { selfReferenceSlot = Nothing }
 
 
-getScope :: CodeGen CompScope
-getScope =
-  gets $ head.scopes
-
-
-putScope :: CompScope -> CodeGen ()
-putScope s =
-  modify $ \ state -> state { scopes = s : tail (scopes state) }
-
 
 addCompileTimeConst :: Name -> CompileTimeConstant -> CodeGen ()
 addCompileTimeConst "" _ = return ()
@@ -223,7 +211,7 @@ getCompileTimeConstInSurroundingScopes name = do
   scps <- gets scopes
   getCompConst name scps
   where
-    getCompConst _ [] = throwError $ InternalCompilerError $ 
+    getCompConst _ [] = throwError $ InternalCompilerError $
                                 "No compile time constant named '" ++ name ++ "'"
     getCompConst constName scps = do
       let consts = compileTimeConstants $ head scps
@@ -284,4 +272,13 @@ addSymbolName s = do
     put $ state { symbolNames = syms' }
     return nextId
 
+
+getScope :: CodeGen CompScope
+getScope =
+  gets $ head.scopes
+
+
+putScope :: CompScope -> CodeGen ()
+putScope s =
+  modify $ \ state -> state { scopes = s : tail (scopes state) }
 

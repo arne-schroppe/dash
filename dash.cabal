@@ -36,7 +36,7 @@ library
                     , Language.Dash.VM.Types
                     , Language.Dash.API
                     , Language.Dash.Constants
-                    , Language.Dash.Internal.Error
+                    , Language.Dash.Error.Error
   build-depends:      base
                     , array
                     , containers

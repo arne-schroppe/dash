@@ -5,10 +5,10 @@ module Language.Dash.Normalization.Recursion (
 import           Control.Monad.Except         (ExceptT (..), runExceptT,
                                                throwError)
 import           Control.Monad.Identity       (Identity (..), runIdentity)
-import           Control.Monad.State          hiding (state)
+import           Control.Monad.State.Strict   hiding (state)
 import           Data.List
 import qualified Data.Map                     as Map
-import           Language.Dash.Internal.Error
+import           Language.Dash.Error.Error
 import           Language.Dash.IR.Data        (ConstAddr, Name, SymId)
 import           Language.Dash.IR.Nst
 
