@@ -1,9 +1,0 @@
-
-
-do io begin
-  prompt <- return "What is your name? "
-  name <- io-read-line prompt
-  io-print-line ("Hello, " ++ name ++ "!")
-end
-
-
