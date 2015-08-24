@@ -144,7 +144,7 @@ preamble :: String
 preamble = "\n\
 \  io = module                                             \n\
 \    bind action next =                                    \n\
-\      match action begin                                  \n\
+\      match action with                                   \n\
 \        :_internal_io type param :nil -> :_internal_io type param next  \n\
 \        :_internal_io type param n0 -> :_internal_io type param (.\\ x = bind (n0 x) next)  \n\
 \        _ -> :error \"io-bind: Expected an io action as first argument\" \n\
@@ -164,38 +164,38 @@ preamble = "\n\
 \  end                                                   \n\
 \                                                        \n\
 \  head ls =                                             \n\
-\    match ls begin                                      \n\
+\    match ls with                                       \n\
 \      [a | _] -> a                                      \n\
 \      _ -> :error \"Empty list!\"                       \n\
 \    end                                                 \n\
 \                                                        \n\
 \  tail ls =                                             \n\
-\    match ls begin                                      \n\
+\    match ls with                                       \n\
 \      [_ | as] -> as                                    \n\
 \      _ -> []                                           \n\
 \    end                                                 \n\
 \                                                        \n\
 \  map f ls =                                            \n\
-\    match ls begin                                      \n\
+\    match ls with                                       \n\
 \      [] -> []                                          \n\
 \      [a|rest] -> [f a|map f rest]                      \n\
 \    end                                                 \n\
 \                                                        \n\
 \  foldr f z ls =                                        \n\
-\    match ls begin                                      \n\
+\    match ls with                                       \n\
 \      [] -> z                                           \n\
 \      [a|rest] -> f a (foldr f z rest)                  \n\
 \    end                                                 \n\
 \                                                        \n\
 \  concatenate a b =                                     \n\
-\    match a begin                                       \n\
+\    match a with                                        \n\
 \      []      -> b                                      \n\
 \      [hd|tl] -> [hd | concatenate tl b]                \n\
 \    end                                                 \n\
 \                                                        \n\
 \  reverse l =                                           \n\
 \    rev-list' l acc =                                   \n\
-\      match l begin                                     \n\
+\      match l with                                      \n\
 \        []      -> acc                                  \n\
 \        [hd|tl] -> rev-list' tl [hd | acc]              \n\
 \      end                                               \n\
@@ -204,7 +204,7 @@ preamble = "\n\
 \                                                        \n\
 \  length list =                                         \n\
 \    len' l acc =                                        \n\
-\      match l begin                                     \n\
+\      match l with                                      \n\
 \        []     -> acc                                   \n\
 \        [_|as] -> len' as (acc + 1)                     \n\
 \        x      -> :error \"Not a list\"                 \n\
@@ -214,7 +214,7 @@ preamble = "\n\
 \                                                        \n\
 \  sequence m ms =                                       \n\
 \    k a b =                                             \n\
-\      do m begin                                        \n\
+\      do m with                                         \n\
 \        l  <- a                                         \n\
 \        ls <- b                                         \n\
 \        return [l|ls]                                   \n\

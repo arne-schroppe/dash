@@ -42,7 +42,7 @@ spec = do
 
     -- TODO it should be possible to "call" action2 without a parameter
     it "parses a do-expression" $ do
-      let source = " do maybe begin   \n\
+      let source = " do maybe with   \n\
                    \   action1 1 2    \n\
                    \   a <- action2 0   \n\
                    \   action3 a      \n\
@@ -62,7 +62,7 @@ spec = do
 
 
     it "parses an assigned return statement" $ do
-      let source = " do maybe begin   \n\
+      let source = " do maybe with   \n\
                    \   action1 1 2    \n\
                    \   a <- return 0  \n\
                    \   action3 a      \n\
@@ -82,7 +82,7 @@ spec = do
 
 
     it "parses an assignment from a variable" $ do
-      let source = " do maybe begin   \n\
+      let source = " do maybe with    \n\
                    \   a <- action2   \n\
                    \   action3 a      \n\
                    \   return b       \n\
@@ -99,7 +99,7 @@ spec = do
 
 
     it "parses a binding before an assignment" $ do
-      let source = " do maybe begin   \n\
+      let source = " do maybe with    \n\
                    \   action1 1 2    \n\
                    \   x = 3          \n\
                    \   a <- action2   \n\
@@ -120,7 +120,7 @@ spec = do
 
 
     it "parses a binding before a return" $ do
-      let source = " do maybe begin   \n\
+      let source = " do maybe with    \n\
                    \   action1 1 2    \n\
                    \   x = 3          \n\
                    \   return b       \n\

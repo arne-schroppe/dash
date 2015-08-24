@@ -32,8 +32,8 @@ import Language.Dash.CodeGen.BuiltInDefinitions
   do        { TDo }
   '->'      { TArrow_R }
   '<-'      { TArrow_L }
-  -- with      { TWith }
-  begin     { TBegin }
+  with      { TWith }
+  -- begin     { TBegin }
   end       { TEnd }
   lam       { TLambda }
   '+'       { TOperator "+" }
@@ -215,7 +215,7 @@ IfElse:
 
 MatchExpr:
     -- TODO also allow indentation syntax
-    match Expr begin opt(eol) plus(MatchLine) end { Match $2 $5 }
+    match Expr with opt(eol) plus(MatchLine) end { Match $2 $5 }
 
 MatchLine:
     Pattern '->' opt(eol) Expr eol { ($1, $4) }
@@ -266,7 +266,7 @@ DoExpr:
     do id DoBody  { makeMonad $2 $3 }
 
 DoBody:
-    begin opt(eol) plus(DoLine) end { $3 }
+    with opt(eol) plus(DoLine) end { $3 }
 
 DoLine:
     id '<-' DoLineExpr eol  { ($1, $3) }

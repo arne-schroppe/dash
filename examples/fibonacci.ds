@@ -1,18 +1,22 @@
 
 fibonacci n =
-  match n begin
+  match n with
     0 -> 0
     1 -> 1
     2 -> 1
     _ -> (fibonacci (n - 1)) + (fibonacci (n - 2))
   end
 
-do io begin
+do io with
   io.print "Enter a number: "
   input <- io.read-ln
   fib-index = to-number input
-  fib = fibonacci fib-index
-  io.print-ln ("Fibonacci number " ++ (to-string fib-index) ++ " is " ++ (to-string fib))
+  if fib-index < 0 || fib-index > 30
+    then io.print-ln "The number should be between 0 and 30"
+    else do io with
+      fib = fibonacci fib-index
+      io.print-ln ("Fibonacci number " ++ (to-string fib-index) ++ " is " ++ (to-string fib))
+    end
 end
 
 

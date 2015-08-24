@@ -100,7 +100,7 @@ spec = do
       let code = "\
       \ counter acc = \n\
       \   next = acc + 1 \n\
-      \   match next begin\n\
+      \   match next with\n\
       \     1000 -> 43   \n\
       \     x -> counter x \n\
       \   end \n\
@@ -118,7 +118,7 @@ spec = do
               let code = "\
               \ counter acc = \n\
               \   next = acc - 1 \n\
-              \   match next begin\n\
+              \   match next with\n\
               \     0 -> 43   \n\
               \     x -> counter x \n\
               \   end \n\
@@ -137,7 +137,7 @@ spec = do
               \     res + y    \n\
               \   counter acc = \n\
               \     next = acc - m \n\
-              \     match next begin\n\
+              \     match next with\n\
               \       0 -> res   \n\
               \       x -> counter x \n\
               \     end \n\
@@ -345,7 +345,7 @@ spec = do
     context "when matching" $ do
 
             it "matches a value against a single number" $ do
-              let code = " match 1 begin\n\
+              let code = " match 1 with\n\
                          \   1 -> :one \n\
                          \ end"
               let result = run code
@@ -353,14 +353,14 @@ spec = do
 
             it "matches a value against a negative number" $ do
               let code = " a = 3 \n\
-                         \ match -a begin\n\
+                         \ match -a with\n\
                          \   -3 -> :three \n\
                          \ end"
               let result = run code
               result `shouldReturnRight` VMSymbol "three" []
 
             it "matches a value against numbers" $ do
-              let code = " match 7 begin\n\
+              let code = " match 7 with\n\
                          \   1 -> :one \n\
                          \   2 -> :two \n\
                          \   3 -> :three \n\
@@ -374,7 +374,7 @@ spec = do
               result `shouldReturnRight` VMSymbol "seven" []
 
             it "matches a value against symbols" $ do
-              let code = " match :two begin\n\
+              let code = " match :two with\n\
                          \   :one -> 1 \n\
                          \   :two -> 2 \n\
                          \ end"
@@ -383,7 +383,7 @@ spec = do
 
             it "matches a value against numbers inside a function" $ do
               let code = " check n = \n\
-                         \   match n begin \n\
+                         \   match n with \n\
                          \     1 -> :one \n\
                          \     2 -> :two \n\
                          \   end \n\
@@ -394,7 +394,7 @@ spec = do
 
 
             it "binds an identifier in a match pattern" $ do
-              let code = " match 2 begin \n\
+              let code = " match 2 with \n\
                          \   1 -> :one \n\
                          \   n -> 5 + n \n\
                          \ end"
@@ -403,7 +403,7 @@ spec = do
 
 
             it "matches a compound symbol" $ do
-              let code =  " match :test 4 8 15 begin \n\
+              let code =  " match :test 4 8 15 with \n\
                           \ :test 1 2 3 -> 1 \n\
                           \ :test 4 8 15 -> 2 \n\
                           \ :test 99 100 101 -> 3 \n\
@@ -413,7 +413,7 @@ spec = do
 
 
             it "binds a value inside a symbol" $ do
-              let code =  " match :test 4 8 15 begin \n\
+              let code =  " match :test 4 8 15 with \n\
                           \ :test 1 2 3 -> 1 \n\
                           \ :test 4 n m -> n + m \n\
                           \ :test 99 100 101 -> 3 \n\
@@ -423,7 +423,7 @@ spec = do
 
 
             it "binds a value inside a nested symbol" $ do
-              let code =  " match :test 4 (:inner 8) 15 begin \n\
+              let code =  " match :test 4 (:inner 8) 15 with \n\
                           \ :test 4 (:wrong n) m -> 1 \n\
                           \ :test 4 (:inner n) m -> n + m \n\
                           \ :test 4 (:wrong n) m -> 1 \n\
@@ -433,7 +433,7 @@ spec = do
 
 
             it "uses wildcards in a match" $ do
-              let code =  " match :test 3 4 begin \n\
+              let code =  " match :test 3 4 with \n\
                           \ :test _ 4 _ -> 22 \n\
                           \ :test 4     -> 33 \n\
                           \ :test _ 4   -> 44 \n\
@@ -443,7 +443,7 @@ spec = do
 
             it "correctly applies free variables" $ do
               let code =  " run a b c d = \n\
-                          \   match 2 begin \n\
+                          \   match 2 with \n\
                           \     1 -> 22 \n\
                           \     2 -> (a + b) + (c + d) \n\
                           \     3 -> 44 \n\
@@ -454,7 +454,7 @@ spec = do
 
 
             it "binds a value inside a tuple" $ do
-              let code =  " match (4, 8, 15) begin \n\
+              let code =  " match (4, 8, 15) with \n\
                           \ (1, 2, 3) -> 1 \n\
                           \ (4, n, m) -> n + m \n\
                           \ (99, 100, 101) -> 3 \n\
@@ -488,7 +488,7 @@ spec = do
       let code = " fib n =                       \n\
                  \   n' = n - 1                  \n\
                  \   n'' = n - 2                 \n\
-                 \   match n begin               \n\
+                 \   match n with               \n\
                  \     0 -> 0                    \n\
                  \     1 -> 1                    \n\
                  \     x -> (fib n') + (fib n'') \n\
@@ -500,7 +500,7 @@ spec = do
 
     it "has an equality operator" $ do
       let code = " eq = :sym == :sym     \n\
-                 \ match eq begin        \n\
+                 \ match eq with        \n\
                  \   :false -> 33        \n\
                  \   :true  -> 55        \n\
                  \ end"
@@ -626,7 +626,7 @@ spec = do
 
     it "matches an empty list" $ do
       let code = " ls = []      \n\
-                 \ match ls begin        \n\
+                 \ match ls with        \n\
                  \   [1, 2] -> :a \n\
                  \   [1, 2, 3] -> :b        \n\
                  \   [] -> :c        \n\
@@ -637,7 +637,7 @@ spec = do
 
     it "matches an exact list" $ do
       let code = " ls = [1, 2, 3]      \n\
-                 \ match ls begin        \n\
+                 \ match ls with        \n\
                  \   [1, 2] -> :a \n\
                  \   [1, 2, 3] -> :b        \n\
                  \ end"
@@ -647,7 +647,7 @@ spec = do
 
     it "matches a list's tail" $ do
       let code = " ls = [1, 2, 3, 4]      \n\
-                 \ match ls begin        \n\
+                 \ match ls with        \n\
                  \   [1, 2] -> :a \n\
                  \   [1, 2 | tl] -> tl   \n\
                  \ end"
@@ -659,7 +659,7 @@ spec = do
 
     it "matches a list's tail with a nested pattern" $ do
       let code = " ls = [1, 2, 3, 4, 5]      \n\
-                 \ match ls begin        \n\
+                 \ match ls with        \n\
                  \   [1, 2] -> :a \n\
                  \   [1 | [2 | [ 3 | tl]]] -> tl        \n\
                  \ end"

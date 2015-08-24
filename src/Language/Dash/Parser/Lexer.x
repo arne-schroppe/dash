@@ -50,8 +50,8 @@ tokens :-
   <0> "else"        { mkTok TElse }
   <0> "match"       { mkTok TMatch }
   <0> "do"          { mkTok TDo }
-  -- <0> "with"        { mkTok TWith }
-  <0> "begin"       { mkTok TBegin }
+  <0> "with"        { mkTok TWith }
+  -- <0> "begin"       { mkTok TBegin }
   <0> "end"         { mkTok TEnd }
   <0> ".\"          { mkTok TLambda } -- " -- fixes syntax highlighting
   <0> ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
