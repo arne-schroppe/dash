@@ -137,7 +137,7 @@ atomizeExpr expr name k = case expr of
 -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
 -- (So in that example "let b = ..." is the inner local binding)
 normalizeInnerLocalBinding :: String -> Expr -> Expr -> Cont -> Norm NstExpr
-normalizeInnerLocalBinding bname boundExpr restExpr k = do
+normalizeInnerLocalBinding bname boundExpr restExpr k =
     atomizeExpr boundExpr bname $ \ aExpr -> do
       let var = NVar bname NLocalVar
       addBinding bname (var, False)
@@ -150,7 +150,7 @@ normalizeModule bindings k = do
   let names = map fst bindings
   nExprs <- atomizeList bindings
   nSyms <- mapM addSymbolName names
-  let fields = (zip3 nSyms names nExprs)
+  let fields = zip3 nSyms names nExprs
   let nmodule = NModule fields
   k nmodule
 
@@ -159,7 +159,7 @@ normalizeModuleLookup modName (Var v) k = do
   modVar <- lookupName modName
   nameExpr (LitSymbol v []) "" $ \ symVar ->
     k $ NModuleLookup modVar symVar
-normalizeModuleLookup _ qExpr _ = throwError $ InternalCompilerError $ "Unable to do name lookup with " ++ (show qExpr)
+normalizeModuleLookup _ qExpr _ = throwError $ InternalCompilerError $ "Unable to do name lookup with " ++ show qExpr
 
 
 atomizeList :: [(Name, Expr)] -> Norm [NstAtomicExpr]
@@ -167,7 +167,7 @@ atomizeList [] =
   return []
 atomizeList exprs = do
   let (name, expr) = head exprs
-  (NAtom nAtomExpr) <- atomizeExpr expr name (\ atom -> return $ NAtom atom)
+  (NAtom nAtomExpr) <- atomizeExpr expr name $ return . NAtom
   rest <- atomizeList (tail exprs)
   return $ nAtomExpr : rest
 
@@ -185,7 +185,7 @@ normalizeSymbol sname [] k = do
   symId <- addSymbolName sname
   k (NPlainSymbol symId)
 normalizeSymbol sname args k =
-  if (isDynamicLiteral $ LitSymbol sname args) then
+  if isDynamicLiteral $ LitSymbol sname args then
     let indicesAndDynamicValues = indexedDynamicSymbolFields args in
     let indices = map fst indicesAndDynamicValues in
     let dynamicVars = map snd indicesAndDynamicValues in
@@ -324,7 +324,7 @@ normalizeFunAp funExpr args k =
       else if numArgs < funArity then
         -- We already know at this point, that this *must* be a non-closure
         if numFreeVars > 0
-          then throwError $ InternalCompilerError $
+          then throwError $ InternalCompilerError
                   "Trying to do static partial application of closure"
         else nameExprList args $ \ normArgs ->
                k $ NPartAp funVar normArgs
@@ -434,7 +434,7 @@ encodeConstantCompoundSymbol symName symArgs = do
   return $ CCompoundSymbol symId encodedArgs
 
 encodeConstantString :: String -> Norm Constant
-encodeConstantString str = do
+encodeConstantString str =
   return $ CString str
 
 encodeConstantLiteral :: Expr -> Norm Constant

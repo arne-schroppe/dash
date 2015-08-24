@@ -23,7 +23,6 @@ import           Language.Dash.Limits
 import           Language.Dash.IR.Data
 import           Language.Dash.VM.Types
 import           Language.Dash.VM.VM     (getVMHeapArray, getVMHeapValue)
-import Numeric
 
 
 decode :: VMWord -> [Word32] -> SymbolNameList -> IO VMValue
@@ -31,7 +30,7 @@ decode w ctable symNames =
   let tag = getTag w in
   let value = getValue w in
   decode' tag value
-  where decode' t v | t==tagNumber                = return $ VMNumber ((fromIntegral v) - intBias)
+  where decode' t v | t==tagNumber                = return $ VMNumber (fromIntegral v - intBias)
                     | t==tagPlainSymbol           = return $ VMSymbol (symNames !! fromIntegral v) []
                     | t==tagCompoundSymbol        = decodeCompoundSymbol v ctable symNames
                     | t==tagDynamicCompoundSymbol = decodeDynamicCompoundSymbol v ctable symNames
@@ -163,10 +162,10 @@ decodeStringHeader v =
 
 encodeStringChunk :: Char -> Char -> Char -> Char -> VMWord
 encodeStringChunk c1 c2 c3 c4 =
-  (fromIntegral $ castCharToCChar c4) `shiftL` (3 * 8)
-  .|. (fromIntegral $ castCharToCChar c3) `shiftL` (2 * 8)
-  .|. (fromIntegral $ castCharToCChar c2) `shiftL` (1 * 8)
-  .|. (fromIntegral $ castCharToCChar c1)
+  fromIntegral (castCharToCChar c4) `shiftL` (3 * 8)
+  .|. fromIntegral (castCharToCChar c3) `shiftL` (2 * 8)
+  .|. fromIntegral (castCharToCChar c2) `shiftL` (1 * 8)
+  .|. fromIntegral (castCharToCChar c1)
 
 
 decodeStringChunk :: VMWord -> String
@@ -174,7 +173,7 @@ decodeStringChunk encoded =
   let c4 = castCCharToChar $ fromIntegral $ (encoded .&. 0xFF000000) `rotateR` (3 * 8) in
   let c3 = castCCharToChar $ fromIntegral $ (encoded .&. 0x00FF0000) `rotateR` (2 * 8) in
   let c2 = castCCharToChar $ fromIntegral $ (encoded .&. 0x0000FF00) `rotateR` (1 * 8) in
-  let c1 = castCCharToChar $ fromIntegral $ (encoded .&. 0x000000FF) in
+  let c1 = castCCharToChar $ fromIntegral (encoded .&. 0x000000FF) in
   let str = [c1, c2, c3, c4] in
   filter (/= '\0') str
 
@@ -200,7 +199,7 @@ encodeMatchVar = matchData MatchVar
 matchData :: MatchDataType -> Int -> VMWord
 matchData mtype n =
   let mtag = matchDataSubTag mtype in
-  let cropped = fromIntegral $ (fromIntegral n) .&. low27Bits in
+  let cropped = fromIntegral $ fromIntegral n .&. low27Bits in
   let mtagVal = mtag `shiftL` (32 - 5) in
   makeVMValue tagMatchData (cropped .|. mtagVal)
 
@@ -218,10 +217,10 @@ getValue v = v .&. fromIntegral low28Bits
 
 -- TODO check max number
 ensureRange :: (Ord a, Num a, Show a) => a -> a
-ensureRange v = if v < (fromIntegral 0) || v > (fromIntegral 0xFFFFF) then error ("Value outside of range: " ++ (show v)) else v
+ensureRange v = if v < 0 || v > 0xFFFFF then error ("Value outside of range: " ++ show v) else v
 
 ensureNumberRange :: (Ord a, Num a, Show a) => a -> a
-ensureNumberRange v = if v > (fromIntegral $ maxInteger + intBias) then error ("Value outside of range: " ++ (show v)) else v
+ensureNumberRange v = if v > fromIntegral (maxInteger + intBias) then error ("Value outside of range: " ++ show v) else v
 
 
 

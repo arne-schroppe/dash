@@ -58,7 +58,7 @@ addBuiltInFunctions =
 addBuiltInFunction :: Name -> Int -> [Opcode] -> CodeGen ()
 addBuiltInFunction name bifArity code = do
   -- we're using some fake param names here because that's what beginFunction expects
-  let params = map (\ (s, i) -> s ++ (show i)) $
+  let params = map (\ (s, i) -> s ++ show i) $
                        zip (replicate bifArity "p") [0..bifArity]
   funAddr <- beginFunction [] params
   let arity = length params
@@ -123,7 +123,7 @@ compileAtom reg atom name isResultValue = case atom of
       -- without creating a closure on the heap
       funAddr <- compileFunc freeVars matchedVars expr ""
       compileLoadLambda reg funAddr
-  NFunAp funVar args -> do
+  NFunAp funVar args ->
       compileFunAp reg funVar args isResultValue
   NVarExpr var ->
       case var of
@@ -420,7 +420,7 @@ compileModule resultReg fields = do
   -- should create this
   let (accessSymbols, names, exprs) = unzip3 fields
   let fieldAccessors = map CPlainSymbol accessSymbols
-  fieldConsts <- mapM (uncurry encodeConstantLiteral) $ zip exprs names
+  fieldConsts <- zipWithM encodeConstantLiteral exprs names
   let cFields = Prelude.concat $ transpose [fieldAccessors, fieldConsts]
   modId <- newModuleIdentifier
   modAddr <- encodeOpaqueSymbol modId moduleOwner cFields
@@ -436,7 +436,7 @@ encodeConstantLiteral field name =
     NLambda [] params body -> do
                       fAddr <- compileFunc [] params body name
                       return $ CFunction fAddr
-    NLambda _ _ _ -> throwError $ InternalCompilerError $ "Sorry, can't compile modules with closures yet"
+    NLambda {}     -> throwError $ InternalCompilerError "Sorry, can't compile modules with closures yet"
     _ -> throwError $ CodeError $ "Unexpected module field: " ++ show field
 
 

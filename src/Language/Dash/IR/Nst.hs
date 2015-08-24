@@ -90,7 +90,7 @@ instance Show NstAtomicExpr where
   show atom = case atom of
     NNumber n            -> show n
     NPlainSymbol s       -> "sym #" ++ show s
-    NCompoundSymbol free sa -> "sym " ++ (show free) ++ " @" ++ show sa
+    NCompoundSymbol free sa -> "sym " ++ show free ++ " @" ++ show sa
     NString strAddr      -> "str @" ++ show strAddr
     NVarExpr v           -> "var " ++ show v
     NLambda free params body ->
@@ -106,7 +106,7 @@ instance Show NstAtomicExpr where
                             "match (max " ++ show maxv ++ ") [" ++ show subj ++ "] @"
                             ++ show pat ++ " " ++ show body
 
-    NModule fields       -> "module {\n" ++ concat (map (\(sym, name, field) -> name ++ 
-                              "(" ++ (show $ symIdToInt sym) ++  "): " ++ show field) fields) ++ "}"
-    NModuleLookup m f    -> (show m) ++ "." ++ (show f)
+    NModule fields       -> "module {\n" ++ concatMap (\(sym, name, field) -> name ++
+                              "(" ++ show (symIdToInt sym) ++  "): " ++ show field) fields ++ "}"
+    NModuleLookup m f    -> show m ++ "." ++ show f
 

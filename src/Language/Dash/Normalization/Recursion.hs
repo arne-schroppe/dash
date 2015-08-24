@@ -78,9 +78,9 @@ resolveRecModule :: [(SymId, Name, NstAtomicExpr)] -> Recursion (NstAtomicExpr, 
 resolveRecModule fields = do
   let namesAndExprs = map (\(_, n, e) -> (n, e)) fields
   resolved <- mapM (\(n, e) -> resolveRecAtom e n) namesAndExprs
-  let freeVars = nub $ concat $ map snd resolved
+  let freeVars = nub $ concatMap snd resolved
   let newFields = zipWith (\(sid, n, _) (e, _) -> (sid, n, e)) fields resolved
-  return $ (NModule newFields, freeVars)
+  return (NModule newFields, freeVars)
 
 
 

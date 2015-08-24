@@ -151,16 +151,16 @@ preamble = "\n\
 \      end                                                 \n\
 \                                                          \n\
 \    return a =                                            \n\
-\      :_internal_io " ++ (show returnActionId) ++ " a :nil       \n\
+\      :_internal_io " ++ show returnActionId ++ " a :nil       \n\
 \                                                          \n\
 \    read-ln =                                             \n\
-\      :_internal_io " ++ (show readLineActionId) ++ " :nil :nil     \n\
+\      :_internal_io " ++ show readLineActionId ++ " :nil :nil     \n\
 \                                                          \n\
 \    print a =                                             \n\
-\      :_internal_io " ++ (show printLineActionId) ++ " a :nil    \n\
+\      :_internal_io " ++ show printLineActionId ++ " a :nil    \n\
 \                                                          \n\
 \    print-ln a =                                       \n\
-\      :_internal_io " ++ (show printLineActionId) ++ " (a ++ \"\\n\") :nil    \n\
+\      :_internal_io " ++ show printLineActionId ++ " (a ++ \"\\n\") :nil    \n\
 \  end                                                   \n\
 \                                                        \n\
 \  head ls =                                             \n\

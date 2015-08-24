@@ -7,6 +7,7 @@ module Language.Dash.Asm.DataAssembler (
 ) where
 
 import           Control.Applicative           ((<$>))
+import           Control.Arrow                 ((&&&))
 import           Control.Monad.Except          (ExceptT (..), runExceptT,
                                                 throwError)
 import           Control.Monad.Identity        (Identity, runIdentity)
@@ -59,7 +60,7 @@ atomizeConstTable :: ConstTable
                                                , Map.Map ConstAddr VMWord)
 atomizeConstTable ctable funcMap =
   let stateOrError = runIdentity $ runExceptT $ execStateT encTable initialState in
-  (\ state -> (atomized state, addrMap state)) <$> stateOrError
+  (atomized &&& addrMap) <$> stateOrError
   where
     initialState = emptyConstAtomizationState ctable funcMap
     encTable = whileJust atomizeConstant popWorkItem
@@ -115,7 +116,7 @@ atomizeOpaqueSymbol sid owner args = do
   setReservedSpace (2 + length args)
   let symbolHeader = ACOpaqueSymbolHeader sid (fromIntegral $ length args)
   atomizedArgs <- mapM atomizeConstArg args
-  addAtomized $ symbolHeader : (ACPlainSymbol owner) : atomizedArgs
+  addAtomized $ symbolHeader : ACPlainSymbol owner : atomizedArgs
   setReservedSpace 0
 
 atomizeMatchData :: [Constant] -> ConstAtomization ()
@@ -160,7 +161,7 @@ atomizeConstArg c = case c of
                 addr <- nextFreeAddress
                 pushWorkItem ds
                 return $ ACCompoundSymbolRef addr
-  CFunction addr   -> actualFuncAddr addr >>= return . ACFunction
+  CFunction addr   -> liftM ACFunction $ actualFuncAddr addr
   CCompoundSymbolRef caddr -> do
                    addr <- actualConstAddr caddr
                    return $ ACCompoundSymbolRef addr
@@ -278,7 +279,7 @@ actualConstAddr :: ConstAddr -> ConstAtomization ConstAddr
 actualConstAddr caddr = do
   state <- get
   case Map.lookup caddr (addrMap state) of
-    Nothing -> throwError $ InternalCompilerError $ "Can't resolve compound symbol ref"
+    Nothing -> throwError $ InternalCompilerError "Can't resolve compound symbol ref"
     Just addr -> return $ mkConstAddr $ fromIntegral addr
 
 

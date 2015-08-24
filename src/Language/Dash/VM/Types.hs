@@ -1,7 +1,7 @@
 module Language.Dash.VM.Types where
 
 import Data.Word
-import Data.List (intercalate, intersperse)
+import Data.List (intercalate)
 
 type VMWord = Word32
 
@@ -27,8 +27,8 @@ instance Show VMValue where
       VMSymbol "empty-list" [] -> "[]"
       VMSymbol s [] -> ":" ++ s
       VMSymbol "list" fields -> showNestedList fields
-      VMSymbol "tuple" fields -> "(" ++ (intercalate ", " $ map show fields) ++ ")"
-      VMSymbol s fields ->  ":" ++ s ++ " " ++ (foldl (++) "" $ intersperse " " $ map showField fields)
+      VMSymbol "tuple" fields -> "(" ++ intercalate ", " (map show fields) ++ ")"
+      VMSymbol s fields ->  ":" ++ s ++ " " ++ unwords (map showField fields)
 
 
 showField :: VMValue -> String
@@ -39,11 +39,11 @@ showField v =
 
 showNestedList :: [VMValue] -> String
 showNestedList vs =
-  "[" ++ (intercalate ", " $ flatValues (VMSymbol "list" vs)) ++ "]"
+  "[" ++ intercalate ", " (flatValues (VMSymbol "list" vs)) ++ "]"
   where
-    flatValues (VMSymbol "list" [a, (VMSymbol "empty-list" [])]) = [show a]
-    flatValues (VMSymbol "list" [a, as@(VMSymbol "list" _)]) = (show a) : (flatValues as)
-    flatValues (VMSymbol "list" [a, xs]) = ((show a)) : (["!<"] ++ (flatValues xs) ++ [">!"])
+    flatValues (VMSymbol "list" [a, VMSymbol "empty-list" []]) = [show a]
+    flatValues (VMSymbol "list" [a, as@(VMSymbol "list" _)]) = show a : flatValues as
+    flatValues (VMSymbol "list" [a, xs]) = show a : (["!<"] ++ flatValues xs ++ [">!"])
     flatValues x = [show x]
 
 
