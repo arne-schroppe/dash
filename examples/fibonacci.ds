@@ -1,0 +1,18 @@
+
+fibonacci n =
+  match n begin
+    0 -> 0
+    1 -> 1
+    2 -> 1
+    _ -> (fibonacci (n - 1)) + (fibonacci (n - 2))
+  end
+
+do io begin
+  io.print "Enter a number: "
+  input <- io.read-ln
+  fib-index = to-number input
+  fib = fibonacci fib-index
+  io.print-ln ("Fibonacci number " ++ (to-string fib-index) ++ " is " ++ (to-string fib))
+end
+
+

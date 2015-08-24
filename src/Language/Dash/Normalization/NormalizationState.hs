@@ -120,7 +120,7 @@ lookupName name = do
 
 
 lookupNameInContext :: String -> [Context] -> Norm (NstVar, Bool)
-lookupNameInContext name [] = throwError $ InternalCompilerError $ "Unknown variable \"" ++ name ++ "\""
+lookupNameInContext name [] = throwError $ CodeError $ "Unknown variable \"" ++ name ++ "\""
 lookupNameInContext name conts = do
   let binds = bindings $ head conts
   case Map.lookup name binds of
