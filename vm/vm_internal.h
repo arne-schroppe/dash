@@ -30,7 +30,8 @@ typedef struct {
 #define current_frame (state->stack[state->stack_pointer])
 #define next_frame (state->stack[state->stack_pointer + 1])
 
-heap_address new_string(size_t length);
+vm_value new_heap_string(char *content);
+
 char *read_string(vm_state *state, vm_value string_value);
 char *value_to_type_string(vm_value value);
 

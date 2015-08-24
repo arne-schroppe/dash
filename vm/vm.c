@@ -75,7 +75,7 @@ char *value_to_type_string(vm_value value) {
 }
 
 // TODO turn into macro, also use it for new_str opcode
-heap_address new_string(size_t length) {
+static heap_address new_empty_string(size_t length) {
 
   size_t adjusted_length = length + 1; // allow space for trailing '\0'
   int num_chunks = adjusted_length / char_per_string_chunk;
@@ -93,6 +93,15 @@ heap_address new_string(size_t length) {
   return string_address;
 }
 
+vm_value new_heap_string(char *content) {
+
+  heap_address string_address = new_empty_string(strlen(content));
+  vm_value *str_pointer = heap_get_pointer(string_address);
+  char *str_start = (char *)(str_pointer + string_header_size);
+  strcpy(str_start, content);
+  return make_tagged_val(string_address, vm_tag_dynamic_string);
+
+}
 
 char *read_string(vm_state *state, vm_value string_value) {
 
@@ -126,20 +135,76 @@ vm_value make_str_error(const char *format, ...) {
   vsnprintf(message, buffer_size, format, argptr);
   va_end(argptr);
 
-  heap_address string_address = new_string(strlen(message));
-  vm_value *str_pointer = heap_get_pointer(string_address);
-  char *str_start = (char *)(str_pointer + string_header_size);
-  strcpy(str_start, message);
+  vm_value heap_str = new_heap_string(message);
 
   size_t total_size = compound_symbol_header_size + 1;
   heap_address dyn_sym_address = heap_alloc(total_size);
   vm_value *sym_pointer = heap_get_pointer(dyn_sym_address);
   sym_pointer[0] = compound_symbol_header(symbol_id_error, 1);
-  sym_pointer[1] = make_tagged_val(string_address, vm_tag_dynamic_string);
+  sym_pointer[1] = heap_str;
 
   return make_tagged_val(dyn_sym_address, vm_tag_dynamic_compound_symbol);
 }
 
+vm_value convert_to_number(vm_state *state, vm_value source) {
+
+  vm_value source_tag = get_tag(source);
+  vm_value result;
+  switch(source_tag) {
+
+    case vm_tag_string:
+    case vm_tag_dynamic_string: {
+      char *str = read_string(state, source);
+      int num = atoi(str) + int_bias;
+      if(num < min_biased_int) {
+        result = make_str_error("Integer underflow");
+      }
+      else if(num > max_biased_int) {
+        result = make_str_error("Integer overflow");
+      }
+      else {
+        result = make_tagged_val(num, vm_tag_number);
+      }
+    }
+    break;
+
+    default:
+      result = make_str_error("Unable to convert %s to number", value_to_type_string(source));
+  }
+
+  return result;
+}
+
+
+vm_value convert_to_string(vm_state *state, vm_value source) {
+
+  vm_value source_tag = get_tag(source);
+  vm_value result = 0;
+
+  static const int buffer_size = 30;
+  char buffer[buffer_size];
+  switch(source_tag) {
+
+    case vm_tag_number: {
+      int source_int = get_val(source) - int_bias;
+      int status = snprintf(buffer, buffer_size, "%d", source_int);
+      if(status < 0) {
+        result = make_str_error("Conversion error");
+      }
+      else {
+        result = new_heap_string(buffer);
+      }
+    }
+    break;
+
+
+    default:
+      result = make_str_error("Unable to convert %s to string", value_to_type_string(source));
+  }
+
+
+  return result;
+}
 
 
 
@@ -628,7 +693,7 @@ restart:
 
         check_reg(reg0);
         int result = ((arg1 - int_bias) + (arg2 - int_bias)) + int_bias;
-        if(result < 0 || result > max_integer) {
+        if(result < min_biased_int || result > max_biased_int) {
           fail("Int overflow");
         }
         get_reg(reg0) = result;
@@ -654,7 +719,7 @@ restart:
 
         check_reg(reg0);
         int result = ((arg1 - int_bias) - (arg2 - int_bias)) + int_bias;
-        if(result < 0 || result > max_integer) {
+        if(result < min_biased_int || result > max_biased_int) {
           fail("Int overflow");
         }
         get_reg(reg0) = result;
@@ -680,7 +745,7 @@ restart:
 
         check_reg(reg0);
         int result = ((arg1 - int_bias) * (arg2 - int_bias)) + int_bias;
-        if(result < 0 || result > max_integer) {
+        if(result < min_biased_int || result > max_biased_int) {
           panic_stop_vm_m("Int overflow");
         }
         get_reg(reg0) = result;
@@ -711,7 +776,7 @@ restart:
         int reg0 = get_arg_r0(instr);
         check_reg(reg0);
         int result = ((arg1 - int_bias) / (arg2 - int_bias)) + int_bias;
-        if(result < 0 || result > max_integer) {
+        if(result < min_biased_int || result > max_biased_int) {
           fail("Int overflow");
         }
         get_reg(reg0) = result;
@@ -1282,6 +1347,41 @@ restart:
       }
       break;
 
+
+      case OP_CONVERT: {
+        int result_reg = get_arg_r0(instr);
+        int source_reg = get_arg_r1(instr);
+        int type_reg = get_arg_r2(instr);
+        check_reg(result_reg);
+        check_reg(source_reg);
+        check_reg(type_reg);
+
+        vm_value source = get_reg(source_reg);
+        vm_value target_type = get_reg(type_reg);
+        if(get_tag(target_type) != vm_tag_plain_symbol) {
+          fail("Expected a symbol, got %s", value_to_type_string(target_type));
+        }
+        vm_value target_type_id = get_val(target_type);
+        vm_value result;
+
+        switch(target_type_id) {
+
+          case symbol_id_number:
+            result = convert_to_number(state, source);
+            break;
+
+          case symbol_id_string:
+            result = convert_to_string(state, source);
+            break;
+
+          default:
+            result = make_str_error("Unable to convert value");
+
+        }
+
+        get_reg(result_reg) = result;
+      }
+      break;
 
       default:
         panic_stop_vm_m("UNKNOWN OPCODE: %04x", opcode);

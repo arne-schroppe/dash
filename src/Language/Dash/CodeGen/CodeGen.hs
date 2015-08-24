@@ -13,7 +13,7 @@ import           Data.List                                (transpose)
 import           Data.Maybe                               (catMaybes)
 import           Language.Dash.CodeGen.BuiltInDefinitions
 import           Language.Dash.CodeGen.CodeGenState
-import           Language.Dash.Constants
+import           Language.Dash.Limits
 import           Language.Dash.Error.Error                (CompilationError (..))
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst

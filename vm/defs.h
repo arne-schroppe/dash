@@ -26,6 +26,12 @@
 #define symbol_id_eof 3
 #define symbol_id_error 4
 
+#define symbol_id_number 5
+#define symbol_id_string 6
+#define symbol_id_symbol 7
+#define symbol_id_function 8
+
+
 extern const int action_id_return;
 extern const int action_id_readline;
 extern const int action_id_printline;
@@ -35,7 +41,8 @@ extern const int pap_header_size;
 extern const int compound_symbol_header_size;
 extern const int string_header_size;
 
-extern const int max_integer;
+extern const int max_biased_int;
+extern const int min_biased_int;
 extern const int int_bias;
 
 #define stack_size 255

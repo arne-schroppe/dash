@@ -7,7 +7,7 @@ module Language.Dash.Asm.Assembler (
 import           Data.Bits
 import qualified Data.Sequence                   as Seq
 import           Language.Dash.Asm.DataAssembler
-import           Language.Dash.Constants
+import           Language.Dash.Limits
 import           Language.Dash.Error.Error
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Opcode
@@ -120,6 +120,7 @@ assembleTac funcAddrs addrConv opc =
     OpcAnd r0 r1 r2        -> instructionRRR 32 (r r0) (r r1) (r r2)
     OpcNot r0 r1           -> instructionRRR 33 (r r0) (r r1) (r 0)
     OpcGetModField r0 m s  -> instructionRRR 34 (r r0) (r m) (r s)
+    OpcConvert r0 r1 rt    -> instructionRRR 35 (r r0) (r r1) (r rt)
     OpcFunHeader arity     -> instructionRI  63 (r 0) (i arity)
 
 

@@ -46,5 +46,6 @@ data Opcode =
   | OpcAnd Reg Reg Reg
   | OpcNot Reg Reg
   | OpcGetModField Reg Reg Reg
+  | OpcConvert Reg Reg Reg   -- result, source, type (symbol)
   deriving Show
 

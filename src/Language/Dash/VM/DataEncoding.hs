@@ -19,7 +19,7 @@ module Language.Dash.VM.DataEncoding (
 import           Data.Bits
 import           Data.Word
 import           Foreign.C.String        (castCharToCChar, castCCharToChar)
-import           Language.Dash.Constants
+import           Language.Dash.Limits
 import           Language.Dash.IR.Data
 import           Language.Dash.VM.Types
 import           Language.Dash.VM.VM     (getVMHeapArray, getVMHeapValue)

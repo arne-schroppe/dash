@@ -78,12 +78,7 @@ io_action_result check_io_action(vm_state *state, vm_value value, vm_instruction
           length -= 1;
           line[length] = '\0';
 
-          vm_value string_address = new_string(length);
-          vm_value *str_pointer = heap_get_pointer(string_address);
-          vm_value *str_start = str_pointer + 1;
-
-          strcpy((char *)str_start, line);
-          next_param = make_tagged_val(string_address, vm_tag_dynamic_string);
+          next_param = new_heap_string(line);
         }
       }
       break;

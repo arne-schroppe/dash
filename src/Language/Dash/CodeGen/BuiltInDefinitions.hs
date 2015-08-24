@@ -11,17 +11,22 @@ module Language.Dash.CodeGen.BuiltInDefinitions (
 , moduleOwner
 ) where
 
+import           Data.Maybe              (fromJust)
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Opcode
 
 
-
-tupleSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName :: String
+tupleSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName, numberTypeSymbolName, stringTypeSymbolName, symbolTypeSymbolName, functionTypeSymbolName :: String
 trueSymbolName = "true"
 falseSymbolName = "false"
 tupleSymbolName = "tuple"
 listConsSymbolName = "list"
 listEmptySymbolName = "empty-list"
+
+numberTypeSymbolName = "number"
+stringTypeSymbolName = "string"
+symbolTypeSymbolName = "symbol"
+functionTypeSymbolName = "function"
 
 builtInSymbols :: [(String, SymId)]
 builtInSymbols = map f d
@@ -33,6 +38,11 @@ builtInSymbols = map f d
            , "_internal_io" -- TODO prevent user from accessing these directly
            , "eof"
            , "error"
+
+           , numberTypeSymbolName
+           , stringTypeSymbolName
+           , symbolTypeSymbolName
+           , functionTypeSymbolName
            ]
 
 moduleOwner :: SymId
@@ -110,6 +120,16 @@ builtInFunctions = [  (bifStringConcatName, 2, [
                         OpcJmpTrue 2 1,
                         OpcEq 2 0 1,
                         OpcMove 0 2,
+                        OpcRet 0
+                      ]),
+                      ("to-number", 1, [
+                        OpcLoadPS 1 (fromJust $ lookup numberTypeSymbolName builtInSymbols),
+                        OpcConvert 0 0 1,
+                        OpcRet 0
+                      ]),
+                      ("to-string", 1, [
+                        OpcLoadPS 1 (fromJust $ lookup stringTypeSymbolName builtInSymbols),
+                        OpcConvert 0 0 1,
                         OpcRet 0
                       ])
                    ]

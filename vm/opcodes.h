@@ -44,6 +44,7 @@ typedef enum {
   OP_AND = 32,
   OP_NOT = 33,
   OP_GET_MOD_FIELD = 34,
+  OP_CONVERT = 35,
 
   FUN_HEADER = 63
 } vm_opcode;
@@ -107,6 +108,7 @@ typedef enum {
 #define op_and(r0, r1, r2) (instr_rrr(OP_AND, r0, r1, r2))
 #define op_not(r0, r1) (instr_rrr(OP_NOT, r0, r1))
 #define op_get_mod_field(r0, mod_r, sym_r) (instr_rrr(OP_GET_MOD_FIELD, r0, mod_r, sym_r))
+#define op_convert(r0, r1, rt) (instr_rrr(OP_CONVERT, r0, r1, rt))
 #define fun_header(arity) (instr_ri(FUN_HEADER, 0, arity))
 
 #endif

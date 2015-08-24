@@ -1,4 +1,4 @@
-module Language.Dash.Constants (
+module Language.Dash.Limits (
   maxRegisters
 , minInteger
 , maxInteger
@@ -13,7 +13,5 @@ maxSymbols = maxInteger
 maxInteger = 0xFFFFF
 minInteger = (-0xFFFFF)
 intBias = maxInteger
-
-
 
 

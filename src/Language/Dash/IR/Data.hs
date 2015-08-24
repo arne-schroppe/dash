@@ -23,7 +23,7 @@ module Language.Dash.IR.Data (
 ) where
 
 import           Control.Exception
-import           Language.Dash.Constants
+import           Language.Dash.Limits
 
 -- Intermediate representation for data static runtime data
 

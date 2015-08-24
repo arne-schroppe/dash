@@ -10,7 +10,7 @@ import           Data.List
 import qualified Data.Map                   as Map
 import           Data.Maybe                 (fromJust)
 import qualified Data.Sequence              as Seq
-import           Language.Dash.Constants
+import           Language.Dash.Limits
 import           Language.Dash.Error.Error  (CompilationError (..))
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst

@@ -6,7 +6,7 @@ import           Language.Dash.IR.Opcode
 import           Language.Dash.IR.Data
 import           Language.Dash.VM.DataEncoding
 import           Language.Dash.VM.VM
-import           Language.Dash.Constants
+import           Language.Dash.Limits
 import           Test.Hspec
 import           Test.QuickCheck
 

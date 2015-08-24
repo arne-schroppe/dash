@@ -35,7 +35,7 @@ library
                     , Language.Dash.VM.DataEncoding
                     , Language.Dash.VM.Types
                     , Language.Dash.API
-                    , Language.Dash.Constants
+                    , Language.Dash.Limits
                     , Language.Dash.Error.Error
   build-depends:      base
                     , array

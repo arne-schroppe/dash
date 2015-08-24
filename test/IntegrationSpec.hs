@@ -146,40 +146,6 @@ spec = do
               let result = run code
               result `shouldReturnRight` VMNumber 995
 
-{- Note: Mutual recursion will only be possible in the top level of a module (and thus without closures)
-            it "handles mutual recursion of lambdas" $ do
-              let code = "\
-              \ val check (a) = \n\
-              \   match a begin\n\
-              \     10 -> 43   \n\
-              \     x -> add-one a \n\
-              \   end \n\
-              \ val add-one (v) = \n\
-              \   val x = v + 1 \n\
-              \   check x \n\
-              \ check 0"
-              let result = run code
-              result `shouldReturnRight` VMNumber 43
-
-            it "handles mutual recursion of closures" $ do
-              let code = "\
-              \ val make-checker (step res) = \n\
-              \   val check (a) = \n\
-              \     match a begin \n\
-              \       10 -> res   \n\
-              \       x -> add-n a \n\
-              \     end \n\
-              \   val add-n (v) = \n\
-              \     val x = add v step \n\
-              \     check x \n\
-              \   check \n\
-              \ val checker = make-checker 2 999 \n\
-              \ checker 0"
-              let result = run code
-              result `shouldReturnRight` VMNumber 999
-
--}
-
     context "when using closures" $ do
 
             it "returns a closure with a dynamic variable" $ do
@@ -742,6 +708,18 @@ spec = do
       let result = run code
       result `shouldReturnRight` VMString "cdefg"
 
+
+    it "converts a string to a number" $ do
+      let code =  " s = \"4815\" \n\
+                  \ to-number s"
+      let result = run code
+      result `shouldReturnRight` VMNumber 4815
+
+    it "converts a number to a string" $ do
+      let code =  " n = 4815 \n\
+                  \ to-string n"
+      let result = run code
+      result `shouldReturnRight` VMString "4815"
 
     context "regression tests" $ do
 
