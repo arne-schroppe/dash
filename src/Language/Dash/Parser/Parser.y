@@ -3,7 +3,7 @@ module Language.Dash.Parser.Parser where
 
 import Language.Dash.Parser.Lexer
 import Language.Dash.IR.Ast
-import Language.Dash.CodeGen.BuiltInDefinitions
+import Language.Dash.BuiltIn.BuiltInDefinitions
 
 }
 

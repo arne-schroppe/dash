@@ -1,8 +1,9 @@
 module Language.Dash.Normalization.NormalizationSpec where
 
 import           Control.Applicative
-import           Language.Dash.CodeGen.BuiltInDefinitions
-import           Language.Dash.CodeGen.BuiltInDefinitions  (builtInSymbols)
+import           Language.Dash.BuiltIn.BuiltInDefinitions  (builtInSymbols,
+                                                            falseSymbolName,
+                                                            trueSymbolName)
 import           Language.Dash.Error.Error
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data
@@ -15,7 +16,9 @@ pureNorm ast =
   let resultOrError = normalize ast in
   (\ (norm, _, _) -> norm) <$> resultOrError
 
-normAll :: Expr -> (Either CompilationError NstExpr, Either CompilationError ConstTable, Either CompilationError SymbolNameList)
+normAll :: Expr -> (Either CompilationError NstExpr,
+                    Either CompilationError ConstTable,
+                    Either CompilationError SymbolNameList)
 normAll ast =
   let resultOrError = normalize ast in
   case resultOrError of

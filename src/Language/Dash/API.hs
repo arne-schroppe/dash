@@ -4,7 +4,7 @@ module Language.Dash.API
 ) where
 
 import           Language.Dash.Asm.Assembler
-import           Language.Dash.CodeGen.BuiltInDefinitions  (preamble)
+import           Language.Dash.BuiltIn.BuiltInDefinitions  (preamble)
 import           Language.Dash.CodeGen.CodeGen
 import           Language.Dash.Error.Error                 (CompilationError (..))
 import           Language.Dash.IR.Data

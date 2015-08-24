@@ -1,7 +1,7 @@
 module IntegrationSpec where
 
 import           Language.Dash.API
-import           Language.Dash.CodeGen.BuiltInDefinitions
+import           Language.Dash.BuiltIn.BuiltInDefinitions
 import           Language.Dash.Error.Error
 import           Language.Dash.VM.DataEncoding
 import           Numeric

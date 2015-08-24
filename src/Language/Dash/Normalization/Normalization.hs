@@ -7,7 +7,7 @@ import           Control.Monad.Except                           (runExceptT,
                                                                  throwError)
 import           Control.Monad.Identity                         (runIdentity)
 import           Control.Monad.State.Strict
-import           Language.Dash.CodeGen.BuiltInDefinitions       (builtInFunctions)
+import           Language.Dash.BuiltIn.BuiltInDefinitions       (builtInFunctions)
 import           Language.Dash.Error.Error                      (CompilationError (..))
 import           Language.Dash.IR.Ast
 import           Language.Dash.IR.Data

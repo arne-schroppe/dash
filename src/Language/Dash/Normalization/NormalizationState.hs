@@ -26,7 +26,7 @@ import           Control.Monad.State.Strict               hiding (state)
 import           Data.Function                            (on)
 import           Data.List
 import qualified Data.Map                                 as Map
-import           Language.Dash.CodeGen.BuiltInDefinitions (builtInSymbols)
+import           Language.Dash.BuiltIn.BuiltInDefinitions (builtInSymbols)
 import           Language.Dash.Error.Error                (CompilationError (..))
 import           Language.Dash.IR.Data
 import           Language.Dash.IR.Nst

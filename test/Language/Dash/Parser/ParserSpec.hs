@@ -1,6 +1,6 @@
 module Language.Dash.Parser.ParserSpec where
 
-import           Language.Dash.CodeGen.BuiltInDefinitions
+import           Language.Dash.BuiltIn.BuiltInDefinitions
 import           Language.Dash.IR.Ast
 import           Language.Dash.Parser.Lexer               as L
 import           Language.Dash.Parser.Parser
