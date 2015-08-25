@@ -1,6 +1,8 @@
 module Language.Dash.API
 ( run
 , runWithPreamble
+, normalizeProgram
+, parseProgram
 ) where
 
 import           Language.Dash.Asm.Assembler
@@ -15,6 +17,8 @@ import           Language.Dash.VM.DataEncoding
 import           Language.Dash.VM.Types
 import           Language.Dash.VM.VM
 import           Prelude                                   hiding (lex)
+import Language.Dash.IR.Nst (NstExpr)
+import Language.Dash.IR.Ast (Expr)
 
 
 -- TODO Add license header everywhere!
@@ -45,3 +49,15 @@ compileProgram prog = do
   (encodedProgram, encodedConstTable) <- assemble opcodes constTable'
   return (encodedProgram, encodedConstTable, symNames')
 
+
+normalizeProgram :: String -> Either CompilationError (NstExpr, ConstTable, SymbolNameList)
+normalizeProgram prog = do
+  let lexed = lex prog
+  let ast = parse lexed
+  normalize ast
+
+
+parseProgram :: String -> Expr
+parseProgram prog =
+  let lexed = lex prog in
+  parse lexed

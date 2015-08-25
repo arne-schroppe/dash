@@ -34,7 +34,7 @@ const vm_value vm_failure_result = make_tagged_val(symbol_id_false, vm_tag_plain
 vm_value make_str_error(const char *format, ...);
 #define panic_stop_vm() { return vm_failure_result; }
 #define panic_stop_vm_m(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); return e; }
-#define fail(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); fprintf(stderr, format, ## __VA_ARGS__); get_reg(get_arg_r0(instr)) = e; break; }
+#define fail(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); fprintf(stderr, format "\n", ## __VA_ARGS__); get_reg(get_arg_r0(instr)) = e; break; }
 
 
 char *value_to_type_string(vm_value value) {
@@ -107,7 +107,7 @@ char *read_string(vm_state *state, vm_value string_value) {
 
   if(get_tag(string_value) != vm_tag_dynamic_string
       && get_tag(string_value) != vm_tag_string) {
-    fprintf(stderr, "Expected a string, but got: %s", value_to_type_string(string_value));
+    fprintf(stderr, "Expected a string, but got %s", value_to_type_string(string_value));
     return NULL;
   }
 
@@ -684,11 +684,11 @@ restart:
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
         if(get_tag(arg1) != vm_tag_number) {
-          fail("Expected a number, but got: %s", value_to_type_string(arg1));
+          fail("Expected a number, but got %s", value_to_type_string(arg1));
         }
 
         else if(get_tag(arg2) != vm_tag_number) {
-          fail("Expected a number, but got: %s", value_to_type_string(arg2));
+          fail("Expected a number, but got %s", value_to_type_string(arg2));
         }
 
         check_reg(reg0);
@@ -710,11 +710,11 @@ restart:
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
         if(get_tag(arg1) != vm_tag_number) {
-          fail("Expected a number, but got: %s", value_to_type_string(arg1));
+          fail("Expected a number, but got %s", value_to_type_string(arg1));
         }
 
         if(get_tag(arg2) != vm_tag_number) {
-          fail("Expected a number, but got: %s ", value_to_type_string(arg2));
+          fail("Expected a number, but got %s ", value_to_type_string(arg2));
         }
 
         check_reg(reg0);
@@ -736,11 +736,11 @@ restart:
         int arg2 = get_reg(reg2);
         int reg0 = get_arg_r0(instr);
         if(get_tag(arg1) != vm_tag_number) {
-          fail("Expected a number, but got: %s ", value_to_type_string(arg1) );
+          fail("Expected a number, but got %s ", value_to_type_string(arg1) );
         }
 
         if(get_tag(arg2) != vm_tag_number) {
-          fail("Expected a number, but got: %s ", value_to_type_string(arg2) );
+          fail("Expected a number, but got %s ", value_to_type_string(arg2) );
         }
 
         check_reg(reg0);
@@ -765,11 +765,11 @@ restart:
         }
 
         if(get_tag(arg1) != vm_tag_number) {
-          fail("Expected a number, but got: %s ", value_to_type_string(arg1) );
+          fail("Expected a number, but got %s ", value_to_type_string(arg1) );
         }
 
         if(get_tag(arg2) != vm_tag_number) {
-          fail("Expected a number, but got: %s", value_to_type_string(arg2) );
+          fail("Expected a number, but got %s", value_to_type_string(arg2) );
         }
 
 
@@ -938,7 +938,7 @@ restart:
         vm_value closure = get_reg(cl_reg);
 
         if( get_tag(closure) != vm_tag_pap ) {
-          fail("Expected a closure, but got: %s", value_to_type_string(closure));
+          fail("Expected a closure, but got %s", value_to_type_string(closure));
         }
 
         heap_address cl_address = get_val(closure);
@@ -965,7 +965,7 @@ restart:
         int func = get_reg(fun_reg);
 
         if( get_tag(func) != vm_tag_function ) {
-          fail("Expected a function, but got: %s", value_to_type_string(func));
+          fail("Expected a function, but got %s", value_to_type_string(func));
         }
 
         int fun_address = get_val(func);
@@ -1015,10 +1015,10 @@ restart:
         check_reg(result_reg);
 
         if(get_tag(l) != vm_tag_number) {
-          fail("Expected a number, but got: %s", value_to_type_string(l));
+          fail("Expected a number, but got %s", value_to_type_string(l));
         }
         else if(get_tag(r) != vm_tag_number) {
-          fail("Expected a number, but got: %s", value_to_type_string(r));
+          fail("Expected a number, but got %s", value_to_type_string(r));
         }
 
         if( l < r) {
@@ -1039,10 +1039,10 @@ restart:
         check_reg(result_reg);
 
         if(get_tag(l) != vm_tag_number) {
-          fail("Expected a number, but got: %s", value_to_type_string(l));
+          fail("Expected a number, but got %s", value_to_type_string(l));
         }
         else if(get_tag(r) != vm_tag_number) {
-          fail("Expected a number, but got: %s", value_to_type_string(r));
+          fail("Expected a number, but got %s", value_to_type_string(r));
         }
 
         if( l > r) {
@@ -1139,7 +1139,7 @@ restart:
 
         vm_value length_value = get_reg(get_arg_r1(instr));
         if(get_tag(length_value) != vm_tag_number) {
-          panic_stop_vm_m("Expected a number, but got: %s", value_to_type_string(length_value));
+          panic_stop_vm_m("Expected a number, but got %s", value_to_type_string(length_value));
         }
 
         int length = length_value - int_bias;
@@ -1175,7 +1175,7 @@ restart:
         vm_value str = get_reg(get_arg_r1(instr));
         vm_value str_tag = get_tag(str);
         if(str_tag != vm_tag_string && str_tag != vm_tag_dynamic_string) {
-          panic_stop_vm_m("Expected a string, but got: %s", value_to_type_string(str));
+          panic_stop_vm_m("Expected a string, but got %s", value_to_type_string(str));
         }
 
         int str_addr = get_val(str);
@@ -1213,12 +1213,12 @@ restart:
         vm_value str = get_reg(get_arg_r1(instr));
         vm_value str_tag = get_tag(str);
         if(str_tag != vm_tag_dynamic_string) {
-          panic_stop_vm_m("Expected a dynamic string, but got: %s", value_to_type_string(str));
+          panic_stop_vm_m("Expected a dynamic string, but got %s", value_to_type_string(str));
         }
 
         int character = get_reg(get_arg_r0(instr));
         if(get_tag(character) != vm_tag_number) {
-          panic_stop_vm_m("Expected a number, but got: %s", value_to_type_string(character));
+          panic_stop_vm_m("Expected a number, but got %s", value_to_type_string(character));
         }
 
         int str_addr = get_val(str);

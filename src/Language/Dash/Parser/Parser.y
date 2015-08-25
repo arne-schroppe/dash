@@ -277,7 +277,6 @@ DoLine:
 DoLineExpr:
     Ident              { $1 }
   | NonIdentSimpleExpr { $1 }
-  | LocalDoBinding     { $1 }
   | MatchExpr          { $1 }
   | IfElse             { $1 }
   | FunAp              { $1 }
@@ -287,13 +286,9 @@ DoLineExpr:
 FunAp:
     SimpleExpr plus(SimpleExpr) { FunAp $1 $2 }
 
-LocalDoBinding:
-    Binding DoLineExpr  { LocalBinding $1 $2 }
-
 
 {
 
--- TODO export these symbols so that tests can use them abstractly
 
 makeMonad :: String -> [(String, Expr)] -> Expr
 makeMonad monad lines =

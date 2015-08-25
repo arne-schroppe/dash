@@ -162,8 +162,8 @@ spec = do
         let norm = pureNorm ast
         let expected = NLet (NVar "b" NLocalVar) (NNumber 4) $
                        NAtom $ NLambda [] ["a"] $
-                         NLet (NVar (lvn 0) NLocalVar) (NVarExpr $ NVar "b" NConstant) $
-                         NAtom $ NPrimOp $ NPrimOpAdd (NVar "a" NFunParam) (NVar (lvn 0) NLocalVar)
+                         NLet (NVar "$locconst:b" NLocalVar) (NVarExpr $ NVar "b" NConstant) $
+                         NAtom $ NPrimOp $ NPrimOpAdd (NVar "a" NFunParam) (NVar "$locconst:b" NLocalVar)
         norm `shouldBeRight` expected
 
       it "identifies dynamic free variables" $ do

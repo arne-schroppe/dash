@@ -65,6 +65,8 @@ the second pass resolves recursion. The resulting normalized code will not conta
 
 -}
 
+-- TODO add writer with breadcrumbs for debugging
+-- TODO add another writer for warnings (globally)
 
 type Cont = NstAtomicExpr -> Norm NstExpr
 type VCont = NstVar -> Norm NstExpr
@@ -285,7 +287,6 @@ normalizeFunAp funExpr args k =
     (Var "==", [a, b]) -> normalizeBinaryPrimOp NPrimOpEq a b
     -- TODO create a bif that calls the primap internally
 
-    -- TODO name this anonymous function
     _ -> nameExpr funExpr "" $ \ funVar -> do
       maybeAr <- arity funVar
       case maybeAr of
@@ -386,16 +387,26 @@ nameExprList exprList =
       nameExpr (head expLs) "" $ \ var ->
         nameExprList' (tail expLs) (var : acc) k'
 
+-- Used for the local name of a constant we're let-binding in a scope
+-- (So that subsequent uses of that constant can reuse that local var
+-- and don't have to rebind that constant)
+localConstPrefix :: String
+localConstPrefix = "$locconst:"
 
 nameExpr :: Expr -> String -> VCont -> Norm NstExpr
 nameExpr expr originalName k = case expr of
   -- Some variable can be used directly and don't need to be let-bound
-  -- TODO what if we use a var several times, will it be bound several times? answer: yes it will. fix that!
   Var name -> do
     var <- lookupName name
     case var of
       -- Constant free vars are let-bound
-      NVar _ NConstant -> letBind expr "" k
+      NVar constName NConstant -> do
+        let localConstName = localConstPrefix ++ constName
+        -- do we already have a local binding for this constant?
+        hasLocalName <- hasBinding localConstName
+        if hasLocalName
+            then k (NVar localConstName NLocalVar)
+            else letBind expr localConstName k
       -- Recursive vars are also let-bound. Not strictly necessary, but easier later on  (TODO loosen this restriction)
       NVar _ NRecursiveVar -> letBind expr "" k
       -- All other vars are used directly (because they will be in a register later on)

@@ -3,19 +3,19 @@ fibonacci n =
   match n with
     0 -> 0
     1 -> 1
-    2 -> 1
     _ -> (fibonacci (n - 1)) + (fibonacci (n - 2))
   end
 
 do io with
-  io.print "Enter a number: "
+  min = 0; max = 30
+  io.print ("Enter a number (between " ++ (to-string min) ++ " and " ++ (to-string max) ++ "): ")
   input <- io.read-ln
-  fib-index = to-number input
-  if fib-index < 0 || fib-index > 30
-    then io.print-ln "The number should be between 0 and 30"
+  n = to-number input
+  if n < min || n > max
+    then io.print-ln ("The number should be between " ++ (to-string min) ++ " and " ++ (to-string max))
     else do io with
-      fib = fibonacci fib-index
-      io.print-ln ("Fibonacci number " ++ (to-string fib-index) ++ " is " ++ (to-string fib))
+      fib = fibonacci n
+      io.print-ln ("Fibonacci number " ++ (to-string n) ++ " is " ++ (to-string fib))
     end
 end
 

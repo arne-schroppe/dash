@@ -2,6 +2,7 @@ module IntegrationSpec where
 
 import           Language.Dash.API
 import           Language.Dash.BuiltIn.BuiltInDefinitions
+import           Language.Dash.BuiltIn.BuiltInDefinitions (preamble)
 import           Language.Dash.Error.Error
 import           Language.Dash.VM.DataEncoding
 import           Numeric
@@ -749,6 +750,23 @@ spec = do
                    \ "
         let result = run code
         result `shouldReturnRight` VMNumber 3
+
+
+      it "can use static definitions deep down in a do-expression" $ do
+        let code = " do io with                                       \n\
+                   \    min = 0; max = 30                             \n\
+                   \    return (\"Enter a number (between \" ++ (to-string min) ++ \" and \" ++ (to-string max) ++ \"): \") \n\
+                   \    input <- return 5                             \n\
+                   \    n = to-number input                           \n\
+                   \    if n < min || n > max                         \n\
+                   \      then :a                                     \n\
+                   \      else :b                                     \n\
+                   \  end"
+
+        putStrLn $ show $ parseProgram $ preamble ++ code
+        putStrLn $ show $ normalizeProgram $ preamble ++ code
+        let result = runWithPreamble code
+        result `shouldReturnRight` VMSymbol "b" []
 
 
 

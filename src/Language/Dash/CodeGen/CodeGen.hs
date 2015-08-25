@@ -287,7 +287,7 @@ compileClosureArgs name freeVars = do
     compileClosureArg clName argName argIndex =
       if argName == clName
         then setSelfReferenceSlot argIndex >> return Nothing
-        else liftM Just $ compileSetArgN argName argIndex
+        else liftM Just $ compileSetNamedArg argName argIndex
 
 
 compileSetArg :: NstVar -> Int -> CodeGen Opcode
@@ -296,8 +296,8 @@ compileSetArg var arg = do
   return $ OpcSetArg arg rVar 0
 
 
-compileSetArgN :: Name -> Int -> CodeGen Opcode
-compileSetArgN name arg = do
+compileSetNamedArg :: Name -> Int -> CodeGen Opcode
+compileSetNamedArg name arg = do
   rVar <- getRegByName name
   return $ OpcSetArg arg rVar 0
 
