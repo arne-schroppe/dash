@@ -192,25 +192,19 @@ normalizeSymbol sname args k =
     let indices = map fst indicesAndDynamicValues in
     let dynamicVars = map snd indicesAndDynamicValues in
     nameExprList dynamicVars $ \ freeVars -> do
+      -- Get a list of all dynamic values and their positions. Then
+      -- let-bind the dynamic values. At the dynamic positions inside the
+      -- symbol just set 0. Codegen will then take that const symbol, copy
+      -- it to the heap and set the let-bound values at their respective
+      -- positions.
       let zeroedFields = setZeroesAtIndices args indices
       encConst <- encodeConstantCompoundSymbol sname zeroedFields
       cAddr <- addConstant encConst
       let indicesAndVars = zip indices freeVars
       k $ NCompoundSymbol indicesAndVars cAddr
-    -- letbind all dynamic values
-    -- get indices of letbound values in symbol. Replace those with 0
-    -- load constant
-    -- setSymField of all these letbound vars (in codegen)
   else do
     encConst <- encodeConstantCompoundSymbol sname args
     cAddr <- addConstant encConst
-    -- TODO get a list of all dynamic values and their positions. Then
-    -- letbind the dynamic values. At the dynamic positions inside the
-    -- symbol just set 0. Codegen will then take that const symbol, copy
-    -- it to the heap, and set the letbound values at their respective
-    -- positions. So change isDynamic::Bool to freeVars::[LocalVar, Index]
-    -- New opcodes: LOAD_SYM heap_addr_reg sym_reg, SET_SYM_VAL heap_sym_reg val_reg
-    -- We also need a new tag for heap symbols
     k (NCompoundSymbol [] cAddr)
 
 -- Only dynamic values in the list and their index
@@ -387,9 +381,9 @@ nameExprList exprList =
       nameExpr (head expLs) "" $ \ var ->
         nameExprList' (tail expLs) (var : acc) k'
 
--- Used for the local name of a constant we're let-binding in a scope
--- (So that subsequent uses of that constant can reuse that local var
--- and don't have to rebind that constant)
+-- Used for the local name of a constant we're let-binding in the
+-- current scope (So that subsequent uses of that constant can reuse
+-- that local var and don't have to rebind that constant)
 localConstPrefix :: String
 localConstPrefix = "$locconst:"
 
