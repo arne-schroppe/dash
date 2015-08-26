@@ -279,7 +279,7 @@ normalizeFunAp funExpr args k =
     (Var "&&", [a, b]) -> normalizeBinaryPrimOp NPrimOpAnd a b
     (Var "!", [a])   -> normalizeUnaryPrimOp NPrimOpNot a
     (Var "==", [a, b]) -> normalizeBinaryPrimOp NPrimOpEq a b
-    -- TODO create a bif that calls the primap internally
+    -- TODO create a bif that calls the primop internally
 
     _ -> nameExpr funExpr "" $ \ funVar -> do
       maybeAr <- arity funVar
