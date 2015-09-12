@@ -202,6 +202,15 @@ preamble = "\n\
 \    rev-list' l []                                      \n\
 \                                                        \n\
 \                                                        \n\
+\  filter f ls =                                         \n\
+\    match ls with                                       \n\
+\      []     -> []                                      \n\
+\      [x|xs] ->                                         \n\
+\        if f x                                          \n\
+\          then [x|filter f xs]                          \n\
+\          else filter f xs                              \n\
+\    end                                                 \n\
+\                                                        \n\
 \  length list =                                         \n\
 \    len' l acc =                                        \n\
 \      match l with                                      \n\

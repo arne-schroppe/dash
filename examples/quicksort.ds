@@ -10,14 +10,6 @@ read-many x =
   read' []
 
 
-filter f ls =
-  match ls with
-    []     -> []
-    [x|xs] ->
-      if f x
-        then [x|filter f xs]
-        else filter f xs
-  end
 
 quick-sort list =
   match list with
