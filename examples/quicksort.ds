@@ -10,13 +10,13 @@ quick-sort list =
 
 
 read-many x =
-  read' acc = do io with
+  read acc = do io with
     in <- io.read-ln
     if in == :eof
       then io.return (reverse acc)
-      else read' [in|acc]
+      else read [in|acc]
   end
-  read' []
+  read []
 
 
 do io with
