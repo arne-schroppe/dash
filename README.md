@@ -68,7 +68,7 @@ job-title e =
   end
 ```
 
-You can simply write '_' for values you're not interested in:
+You can simply write `_` for values you're not interested in:
 ```
 age e =
   match e with
@@ -116,14 +116,13 @@ clamped-numbers = filter (between 0 10) numbers
 
 `filter` is a built-in function that checks each value in a list against
 the function it receives as it's first argument. The function we're using in
-this case is the partially applied function `between 0 10`. With currying and 
+this case is the partially applied function `between 0 10`. With currying and
 partial application we can avoid using the somewhat clunky lambda expressions in
 a lot of cases.
 
 
 A programming language wouldn't be of much use if it couldn't communicate with
-the user. In Dash, input/output is somewhat separated from "normal" code. To talk
-to the user, we use a do-expression:
+the user. In Dash a a do-expression is used to talk to the user:
 ```
 do io with
   io.print-ln "What is your name?"
@@ -154,14 +153,13 @@ means that if you'd use `io.print-ln` or any other i/o action somewhere deep dow
 a function, it will not start printing things on the screen. Why is that? It's because
 all those io things don't do anything directly. Instead they *describe* an action
 to be performed. So `io.print-ln "Hello"` doesn't write the text "Hello" on the screen, but
-returns a value that says "this is an action that, when executed, should print the
-text 'Hello'".
+returns a value that says "this is an action that, when executed, prints the text 'Hello'".
 
 So how are i/o actions executed then? They're executed by returning them to the environment!
-The last value in a file is the file's result. If that result is a number or a string or
-another simple value, that value is printed on the screen. But if the value is an i/o
-action, the action is executed. So any i/o action needs to be directly or indirectly 
-returned as the last value in a file.
+The last value in a file is the file's result. If the result is a number or a string or
+another simple value, the value is simply printed on the screen. But if the value is an i/o
+action, the action is executed. So any i/o action needs to be directly or indirectly
+returned as the last value in a file in order to have any effect.
 
 
 You might also have been wondering what that dot-syntax is, e.g. `io.read-ln`.
@@ -177,13 +175,12 @@ temp = module
     k - celsius-kelvin-diff
 end
 
-
 very-very-cold = temp.kelvin-to-celsius 34
 ```
 
-This also means that you can use do-expressions for lots of other things, not only i/o.
-You can create you own modules for do-expressions. They just need to provide two functions
-at the very least, `bind` and `return`:
+This also means that you can use do-expressions for lots of other things, not only 
+input/output. You can create you own modules for do-expressions. They just need to provide
+two functions at the very least, `bind` and `return`:
 ```
 maybe = module
   bind a next =
@@ -216,7 +213,7 @@ There is currently no standard library. Actually you can't even import or includ
 Dash-files, so your entire code needs to be in one file. There are, however, a couple
 of built-in functions:
 
-Operators (ordered by precedence):
+#### Operators (ordered by precedence)
 
     ||
     &&
@@ -226,7 +223,7 @@ Operators (ordered by precedence):
     - (unary), !
 
 
-Functions:
+#### Functions
 
   - `string-length ls`
   - `sub-string start len s`
@@ -244,7 +241,7 @@ Functions:
   - `m-map m action ls`
 
 
-The `io`-module:
+#### The `io`-module
 
   - `bind io-action next`
   - `return a`
