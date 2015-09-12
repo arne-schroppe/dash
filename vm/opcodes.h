@@ -66,7 +66,6 @@ typedef enum {
 /* Used by tests */
 #define instr_ri(op, reg, i) ((op << (instr_size - __opcb)) + (reg << (instr_size - (__opcb + __regb))) + i)
 
-// TODO we only use the 4 argument form for partial applications. Should we use a function header to each function instead?
 #define instr_rrr(op, reg0, reg1, reg2) ((op << (instr_size - __opcb)) + \
                                             (reg0 << (instr_size - (__opcb + __regb))) + \
                                             (reg1 << (instr_size - (__opcb + 2 * __regb))) + \

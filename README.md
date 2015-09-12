@@ -123,7 +123,7 @@ a lot of cases.
 
 
 A programming language wouldn't be of much use if it couldn't communicate with
-the user. In Dash a a do-expression is used to talk to the user:
+the user. In Dash a do-expression is used to talk to the user:
 ```
 do io with
   io.print-ln "What is your name?"
@@ -234,7 +234,7 @@ of built-in functions:
   - `tail ls`
   - `map f ls`
   - `foldr f z ls`
-  - `concatenate a b`
+  - `concatenate ls-a ls-b`
   - `reverse l`
   - `filter f ls`
   - `length ls`
@@ -253,7 +253,7 @@ of built-in functions:
 
 ## Examples
 
-See the `examples` folder for examples how to use Dash
+See the "examples" folder for examples of how to use Dash
 
 
 

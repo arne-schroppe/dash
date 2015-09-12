@@ -1,4 +1,13 @@
 
+quick-sort list =
+  match list with
+    []         -> []
+    [pivot|xs] ->
+      smaller = filter ( .\ a = a <= pivot ) xs
+      larger = filter ( .\ a = a > pivot ) xs
+      concatenate (quick-sort smaller) [pivot|quick-sort larger]
+  end
+
 
 read-many x =
   read' acc = do io with
@@ -8,16 +17,6 @@ read-many x =
       else read' [in|acc]
   end
   read' []
-
-
-quick-sort list =
-  match list with
-    []     -> []
-    [pivot|xs] ->
-      smaller = filter ( .\ a = a <= pivot ) xs
-      larger = filter ( .\ a = a > pivot ) xs
-      concatenate (quick-sort smaller) [pivot|quick-sort larger]
-  end
 
 
 do io with
