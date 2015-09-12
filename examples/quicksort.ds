@@ -1,3 +1,4 @@
+#!/usr/local/bin/dash
 
 quick-sort list =
   match list with
