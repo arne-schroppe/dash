@@ -139,8 +139,8 @@ spec = do
                   FunAp (Var "-") [Var "a", LitNumber 55]
         let norm = pureNorm ast
         let expected =
-                NLet (NVar (lvn 0) NLocalVar) (NNumber 4) $
                 NLet (NVar "b" NLocalVar) (NNumber 22) $
+                NLet (NVar (lvn 0) NLocalVar) (NNumber 4) $
                 NLet (NVar "a" NLocalVar) (NPrimOp $ NPrimOpAdd (NVar "b" NLocalVar) (NVar (lvn 0) NLocalVar)) $
                 NLet (NVar (lvn 1) NLocalVar) (NNumber 55) $
                 NAtom $ NPrimOp $ NPrimOpSub (NVar "a" NLocalVar) (NVar (lvn 1) NLocalVar)

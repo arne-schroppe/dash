@@ -139,13 +139,12 @@ atomizeExpr expr name k = case expr of
 -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
 -- (So in that example "let b = ..." is the inner local binding)
 normalizeInnerLocalBinding :: String -> Expr -> Expr -> Cont -> Norm NstExpr
-normalizeInnerLocalBinding bname boundExpr restExpr k =
+normalizeInnerLocalBinding bname boundExpr restExpr k = do
+    let var = NVar bname NLocalVar
+    addBinding bname (var, False)
     atomizeExpr boundExpr bname $ \ aExpr -> do
-      let var = NVar bname NLocalVar
-      addBinding bname (var, False)
-      atomizeExpr restExpr "" $ \ normBoundExpr -> do
-        rest <- k normBoundExpr
-        return $ NLet var aExpr rest
+      rest <- atomizeExpr restExpr "" k
+      return $ NLet var aExpr rest
 
 normalizeModule :: [(Name, Expr)] -> Cont -> Norm NstExpr
 normalizeModule bindings k = do
