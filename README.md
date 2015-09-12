@@ -27,15 +27,15 @@ some-number = 1234
 (Dash doesn't understand floating point numbers yet, only integers.)
 
 
-A fairly useful kind of value in Dash is the symbol. A symbol is simply a `:` followed by 
-any identifier:
+A fairly useful kind of value in Dash is the symbol. A symbol is simply a `:` followed by
+an identifier:
 ```
 job = :engineer
 ```
 
 A symbol can also carry data:
 ```
-employee-of-the-month = :employee "bob" :engineer 46
+employee-of-the-month = :employee "bob" 46 :engineer
 ```
 
 Dash has built-in syntax for lists and tuples:
@@ -54,7 +54,7 @@ This is actually just a more compact version of this:
 celsius-to-kelvin = .\ c = c + 273
 ```
 
-That `.\ ... = ...` construct is a lambda expression. If you squint
+That `.\ <params> = <expr>` construct is a lambda expression. If you squint
 your eyes, the `.\` looks a bit like the greek letter lambda.
 
 
@@ -63,7 +63,7 @@ data. Pattern matching is done with the `match-with-end` expression:
 ```
 job-title e =
   match e with
-    :employee name title age  -> title
+    :employee name age title -> title
     _ -> :error "This doesn't look like a proper employee"
   end
 ```
@@ -72,7 +72,7 @@ You can simply write `_` for values you're not interested in:
 ```
 age e =
   match e with
-    :employee _ _ age  -> age
+    :employee _ age _  -> age
     _ -> :error "This doesn't look like a proper employee"
   end
 ```
@@ -102,9 +102,10 @@ should-i-write-this-down num-data-items =
 
 
 
-Dash has native support for currying. That means that if you apply fewer
-arguments to a function than is required (this is called "partial application"),
-you get a new function which takes the remaining parameters. That's useful in many cases:
+But let's talk about functions again. Dash has native support for currying. That means
+that if you apply fewer arguments to a function than is required (this is called "partial
+application"), you get a new function which takes the remaining parameters. That's useful
+in many cases:
 ```
 between a b n =
   n >= a && n <= b
@@ -115,7 +116,7 @@ clamped-numbers = filter (between 0 10) numbers
 ```
 
 `filter` is a built-in function that checks each value in a list against
-the function it receives as it's first argument. The function we're using in
+the function it receives as its first argument. The function we're using in
 this case is the partially applied function `between 0 10`. With currying and
 partial application we can avoid using the somewhat clunky lambda expressions in
 a lot of cases.
@@ -178,7 +179,7 @@ end
 very-very-cold = temp.kelvin-to-celsius 34
 ```
 
-This also means that you can use do-expressions for lots of other things, not only 
+This also means that you can use do-expressions for lots of other things, not only
 input/output. You can create you own modules for do-expressions. They just need to provide
 two functions at the very least, `bind` and `return`:
 ```
