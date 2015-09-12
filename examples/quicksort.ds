@@ -10,7 +10,6 @@ read-many x =
   read' []
 
 
-
 quick-sort list =
   match list with
     []     -> []
@@ -19,6 +18,7 @@ quick-sort list =
       larger = filter ( .\ a = a > pivot ) xs
       concatenate (quick-sort smaller) [pivot|quick-sort larger]
   end
+
 
 do io with
   io.print-ln "Enter data, separated by newlines (numbers only, please; end with ctrl-d):"

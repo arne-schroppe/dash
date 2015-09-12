@@ -722,6 +722,14 @@ spec = do
       let result = run code
       result `shouldReturnRight` VMString "4815"
 
+{-
+    it "interpolates strings" $ do
+      let code =  " n = 4815 \n\
+                  \ \"result: \\(n + (25 - 2))\""
+      let result = run code
+      result `shouldReturnRight` VMString "result: 4838"
+-}
+
     context "regression tests" $ do
 
       it "compiles variable assignment" $ do
