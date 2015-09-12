@@ -89,7 +89,7 @@ convertEscapeSequences :: String -> String
 convertEscapeSequences s =
   conv' s ""
   where
-    conv' (c:rest@(c1:cs)) acc = 
+    conv' (c:rest@(c1:cs)) acc =
       case c of
         '\\' -> parseEscapeChar c1 cs acc
         _ -> conv' rest (acc ++ [c])
