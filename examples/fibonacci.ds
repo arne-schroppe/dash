@@ -6,8 +6,8 @@ fibonacci n =
     _ -> (fibonacci (n - 1)) + (fibonacci (n - 2))
   end
 
-min = 0; max = 30
 do io with
+  min = 0; max = 30
   io.print ("Enter a number (between " ++ (to-string min) ++ " and " ++ (to-string max) ++ "): ")
   input <- io.read-ln
   n = to-number input
