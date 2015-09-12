@@ -61,3 +61,4 @@ parseProgram :: String -> Expr
 parseProgram prog =
   let lexed = lex prog in
   parse lexed
+

@@ -756,7 +756,6 @@ spec = do
                    \   y = 1 \n\
                    \   2 + (3 + y) \n\
                    \ x"
-        putStrLn $ show $ normalizeProgram $ code
         let result = run code
         result `shouldReturnRight` VMNumber 6
 
