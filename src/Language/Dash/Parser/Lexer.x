@@ -3,6 +3,7 @@ module Language.Dash.Parser.Lexer where
 
 import Debug.Trace
 import Control.Monad
+import Language.Dash.BuiltIn.BuiltInDefinitions (bifStringConcatOperator, bifToStringName)
 
 }
 
@@ -238,18 +239,18 @@ expandRawStrings tokens =
         (InterpString s):rest ->
             if null rest
               then [TString s]
-              else [TString s, TOperator "++"] ++ expandRaw rest
+              else [TString s, TOperator bifStringConcatOperator] ++ expandRaw rest
         (InterpExpr s):rest ->
             let tokens = lexInterpString s in
             if null rest
               then wrapInterpExpr tokens
-              else wrapInterpExpr tokens ++ [TOperator "++"] ++ expandRaw rest
+              else wrapInterpExpr tokens ++ [TOperator bifStringConcatOperator] ++ expandRaw rest
 
     lexInterpString s =
       let tokens = Language.Dash.Parser.Lexer.lex s in
       init tokens -- remove final EOL
 
     wrapInterpExpr tokens = 
-      [TOpen_Par, TId "to-string", TOpen_Par] ++ tokens ++ [TClose_Par, TClose_Par]
+      [TOpen_Par, TId bifToStringName, TOpen_Par] ++ tokens ++ [TClose_Par, TClose_Par]
 }
 

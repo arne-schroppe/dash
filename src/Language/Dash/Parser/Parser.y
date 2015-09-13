@@ -45,6 +45,7 @@ import Language.Dash.BuiltIn.BuiltInDefinitions
   '>'       { TOperator ">" }
   '<='      { TOperator "<=" }
   '>='      { TOperator ">=" }
+  '^+'      { TOperator "^+" }
   '++'      { TOperator "++" }
   '||'      { TOperator "||" }
   '&&'      { TOperator "&&" }
@@ -58,7 +59,7 @@ import Language.Dash.BuiltIn.BuiltInDefinitions
 %left '||' 
 %left '&&'
 %left '==' '<' '>' '<=' '>='
-%left '+' '-' '++'
+%left '+' '-' '^+' '++'
 %left '*' '/'
 %left NEG '!'
 
@@ -150,7 +151,8 @@ InfixOperation:
   | Operand '==' Operand        { FunAp (Var "==") [$1, $3] }
   | Operand '<' Operand         { FunAp (Var "<") [$1, $3] }
   | Operand '>' Operand         { FunAp (Var ">") [$1, $3] }
-  | Operand '++' Operand        { FunAp (Var "$string-concat") [$1, $3] }
+  | Operand '^+' Operand        { FunAp (Var bifStringConcatName) [$1, $3] }
+  | Operand '++' Operand        { FunAp (Var bifListConcatName) [$1, $3] }
   | Operand '||' Operand        { FunAp (Var "||") [$1, $3] }
   | Operand '&&' Operand        { FunAp (Var "&&") [$1, $3] }
   | Operand '<=' Operand        { FunAp (Var "<=") [$1, $3] }

@@ -6,7 +6,7 @@ quick-sort list =
     [pivot|xs] ->
       smaller = filter ( .\ a = a <= pivot ) xs
       larger = filter ( .\ a = a > pivot ) xs
-      concatenate (quick-sort smaller) [pivot|quick-sort larger]
+      (quick-sort smaller) ++ [pivot] ++ (quick-sort larger)
   end
 
 

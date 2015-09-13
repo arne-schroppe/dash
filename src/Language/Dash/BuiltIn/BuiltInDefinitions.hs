@@ -2,6 +2,9 @@ module Language.Dash.BuiltIn.BuiltInDefinitions (
   builtInFunctions
 , builtInSymbols
 , bifStringConcatName
+, bifListConcatName
+, bifToStringName
+, bifStringConcatOperator
 , tupleSymbolName
 , listConsSymbolName
 , listEmptySymbolName
@@ -49,11 +52,13 @@ moduleOwner :: SymId
 moduleOwner = mkSymId 0
 
 
-bifStringConcatName, bifStringLengthName, bifSubStringName :: String
-bifStringConcatName = "$string-concat"
+bifStringConcatName, bifListConcatName, bifStringLengthName, bifSubStringName, bifToStringName, bifStringConcatOperator :: String
+bifStringConcatName = "concat-strings"
+bifListConcatName = "concat"
 bifStringLengthName = "string-length"
 bifSubStringName = "sub-string"
-
+bifToStringName = "to-string"
+bifStringConcatOperator = "^+"
 
 -- TODO instead of "special" handling for primops, we could
 -- also add a bif for every primop and then inline some functions
@@ -127,7 +132,7 @@ builtInFunctions = [  (bifStringConcatName, 2, [
                         OpcConvert 0 0 1,
                         OpcRet 0
                       ]),
-                      ("to-string", 1, [
+                      (bifToStringName, 1, [
                         OpcLoadPS 1 (fromJust $ lookup stringTypeSymbolName builtInSymbols),
                         OpcConvert 0 0 1,
                         OpcRet 0
@@ -160,7 +165,7 @@ preamble = "\n\
 \      :_internal_io " ++ show printLineActionId ++ " a :nil    \n\
 \                                                          \n\
 \    print-ln a =                                       \n\
-\      :_internal_io " ++ show printLineActionId ++ " (a ++ \"\\n\") :nil    \n\
+\      :_internal_io " ++ show printLineActionId ++ " (a " ++ bifStringConcatOperator ++ " \"\\n\") :nil    \n\
 \  end                                                   \n\
 \                                                        \n\
 \  head ls =                                             \n\
@@ -187,10 +192,10 @@ preamble = "\n\
 \      [a|rest] -> f a (foldr f z rest)                  \n\
 \    end                                                 \n\
 \                                                        \n\
-\  concatenate a b =                                     \n\
+\  " ++ bifListConcatName ++ " a b =                     \n\
 \    match a with                                        \n\
 \      []      -> b                                      \n\
-\      [hd|tl] -> [hd | concatenate tl b]                \n\
+\      [hd|tl] -> [hd | " ++ bifListConcatName ++ " tl b] \n\
 \    end                                                 \n\
 \                                                        \n\
 \  reverse l =                                           \n\
@@ -232,4 +237,4 @@ preamble = "\n\
 \                                                        \n\
 \  m-map m action ls =                                   \n\
 \    sequence m (map action ls)                          \n\
-\                                                        "
+\\n"

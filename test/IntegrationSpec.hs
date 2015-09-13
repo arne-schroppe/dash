@@ -679,6 +679,18 @@ spec = do
                                 VMSymbol listConsSymbolName [VMNumber 4,
                                 VMSymbol listEmptySymbolName []]]]]
 
+
+    it "concatenates lists using an operator" $ do
+      let code =  " l1 = [1, 2] \n\
+                  \ l2 = [3, 4] \n\
+                  \ l1 ++ l2"
+      let result = runWithPreamble code
+      result `shouldReturnRight` VMSymbol listConsSymbolName [VMNumber 1,
+                                VMSymbol listConsSymbolName [VMNumber 2,
+                                VMSymbol listConsSymbolName [VMNumber 3,
+                                VMSymbol listConsSymbolName [VMNumber 4,
+                                VMSymbol listEmptySymbolName []]]]]
+
     it "has negative numbers" $ do
       let code = " 0 - 7 + 3"
       let result = run code
@@ -699,7 +711,7 @@ spec = do
     it "concatenates strings" $ do
       let code =  " s1 = \"ab\" \n\
                   \ s3 = \"ef\" \n\
-                  \ s1 ++ \"cd\" ++ s3"
+                  \ s1 ^+ \"cd\" ^+ s3"
       let result = run code
       result `shouldReturnRight` VMString "abcdef"
 
