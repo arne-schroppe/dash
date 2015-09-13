@@ -97,7 +97,7 @@ add-first-three ls =
   end
 ```
 
-There is also an if-then-else expression with the usual semantics:
+There is also an `if-then-else` expression with the usual semantics:
 ```
 should-i-write-this-down num-data-items =
   if num-data-items < 7
@@ -203,7 +203,7 @@ Those two functions turn the module into a monad. There are many good tutorials
 elsewhere on the internet that explain what a monad is and what they're good for.
 
 
-What else? Oh yeah, this is how you define comments:
+What else? Oh yeah, this is how you write comments:
 ```
 -- this is a single-line comment
 
