@@ -86,7 +86,7 @@ And this is how you do pattern matching on lists:
 ```
 split-head ls =
   match ls with
-    [first|rest] -> (first, rest)
+    [head|tail] -> (head, tail)
     _ -> :error "Unexpected value"
   end
 
