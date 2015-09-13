@@ -61,7 +61,7 @@ your eyes, the `.\` looks a bit like the greek letter lambda.
 More complex functions typically need pattern matching to "break down"
 data. Pattern matching is done with the `match-with-end` expression:
 ```
-job-title e =
+employee-job-title e =
   match e with
     :employee name age title -> title
     _ -> :error "This doesn't look like a proper employee"
@@ -70,16 +70,16 @@ job-title e =
 
 You can simply write `_` for values you're not interested in:
 ```
-age e =
+employee-age e =
   match e with
     :employee _ age _  -> age
     _ -> :error "This doesn't look like a proper employee"
   end
 ```
 
-There is also special syntax for pattern-matching on lists:
+And this is how you do pattern matching on lists:
 ```
-split-list ls =
+split-head ls =
   match ls with
     [first|rest] -> (first, rest)
     _ -> :error "Unexpected value"
@@ -87,7 +87,7 @@ split-list ls =
 
 add-first-three ls =
   match ls with
-    [first, second, third | rest] -> (first + second + third, rest)
+    [first, second, third | _] -> first + second + third
     _ -> :error "Not the kind of list we were expecting"
   end
 ```
@@ -123,7 +123,7 @@ a lot of cases.
 
 
 A programming language wouldn't be of much use if it couldn't communicate with
-the user. In Dash a do-expression is used to talk to the user:
+the user. In Dash a `do`-expression is used to talk to the user:
 ```
 do io with
   io.print-ln "What is your name?"
@@ -146,13 +146,13 @@ do io with
   io.print-ln ("Hello, " ++ name)
 end
 ```
-(That is the same example as before, just split into several io actions)
+(That is the same example as before, just split into several i/o actions)
 
 
 One important detail is that i/o code is separate from "normal" code in Dash. That
 means that if you'd use `io.print-ln` or any other i/o action somewhere deep down in
 a function, it will not start printing things on the screen. Why is that? It's because
-all those io things don't do anything directly. Instead they *describe* an action
+all those `io` things don't do anything directly. Instead they *describe* an action
 to be performed. So `io.print-ln "Hello"` doesn't write the text "Hello" on the screen, but
 returns a value that says "this is an action that, when executed, prints the text 'Hello'".
 
@@ -179,15 +179,15 @@ end
 very-very-cold = temp.kelvin-to-celsius 34
 ```
 
-This also means that you can use do-expressions for lots of other things, not only
-input/output. You can create you own modules for do-expressions. They just need to provide
+This means that you can use `do`-expressions for lots of other things, not only
+input/output. You can create your own modules for `do`-expressions. They just need to provide
 two functions at the very least, `bind` and `return`:
 ```
 maybe = module
   bind a next =
     match a with
       :some x -> next x
-      :none   -> none
+      :none   -> :none
     end
 
   return x = :some x
@@ -218,10 +218,10 @@ of built-in functions:
 
     ||
     &&
-    ==, <, >, <=, >=
-    +, - (binary), ++
-    *, /
-    - (unary), !
+    == < > <= >=
+    + - (binary) ++
+    * /
+    - (unary) !
 
 
 #### Functions
