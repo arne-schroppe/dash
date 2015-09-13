@@ -51,7 +51,6 @@ tokens :-
   <0> "match"       { mkTok TMatch }
   <0> "do"          { mkTok TDo }
   <0> "with"        { mkTok TWith }
-  -- <0> "begin"       { mkTok TBegin }
   <0> "end"         { mkTok TEnd }
   <0> ".\"          { mkTok TLambda } -- " -- fixes syntax highlighting
   <0> ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
@@ -103,7 +102,25 @@ convertEscapeSequences s =
         'n' -> conv' cs (acc ++ "\n")
         '"' -> conv' cs (acc ++ "\"")
         't' -> conv' cs (acc ++ "\t")
+        '(' ->
+                let (interpExpr, rest) = consumeInterpolatedExpression cs in
+                let test = "**" ++ interpExpr ++ "**" in
+                conv' rest (acc ++ test)
         other -> conv' cs (acc ++ [other])
+
+    consumeInterpolatedExpression str =
+      let consume acc rest nparen =
+            case rest of
+              "" -> error ("Malformed string interpolation: " ++ str)  -- TODO add better error handling
+              ch:rest ->
+                    case ch of
+                      '(' -> consume (acc ++ "(") rest (nparen + 1)
+                      ')' -> if nparen == 1
+                               then (acc, rest)
+                               else consume (acc ++ ")") rest (nparen - 1)
+                      _   -> consume (acc ++ [ch]) rest nparen
+      in
+      consume "" str 1
 
 
 data AlexUserState = AlexUserState {
@@ -147,7 +164,6 @@ data Token  = TEOL
             | TId String
             -- | TQId ([String], String)
             | TString String
-            | TInterpString [Token]
             | TInt Int
             | TMatch
             | TDo
