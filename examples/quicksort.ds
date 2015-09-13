@@ -1,24 +1,24 @@
-
-
-read-many x =
-  read' acc = do io with
-    in <- io.read-ln
-    if in == :eof
-      then io.return (reverse acc)
-      else read' [in|acc]
-  end
-  read' []
-
-
+#!/usr/local/bin/dash
 
 quick-sort list =
   match list with
-    []     -> []
+    []         -> []
     [pivot|xs] ->
       smaller = filter ( .\ a = a <= pivot ) xs
       larger = filter ( .\ a = a > pivot ) xs
       concatenate (quick-sort smaller) [pivot|quick-sort larger]
   end
+
+
+read-many x =
+  read acc = do io with
+    in <- io.read-ln
+    if in == :eof
+      then io.return (reverse acc)
+      else read [in|acc]
+  end
+  read []
+
 
 do io with
   io.print-ln "Enter data, separated by newlines (numbers only, please; end with ctrl-d):"
