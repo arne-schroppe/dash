@@ -724,10 +724,9 @@ spec = do
 
     it "interpolates strings" $ do
       let code =  " n = 4815 \n\
-                  \ \"result: \\(n + (25 - 2))\""
+                  \ \"result: \\(n + (25 - 2)) result2: \\(n - 15)\""
       let result = run code
-      result `shouldReturnRight` VMString "result: 4838"
-
+      result `shouldReturnRight` VMString "result: 4838 result2: 4800"
 
 
 
@@ -749,7 +748,7 @@ spec = do
         let result = run code
         result `shouldReturnRight` VMNumber 4
 
-      it "runs code that starts with a delimited comment" $ do
+      it "doesn't swallow code between delimited comments" $ do
         let code = " /-- \n\
                    \ --/ \n\
                    \ test a = a \n\

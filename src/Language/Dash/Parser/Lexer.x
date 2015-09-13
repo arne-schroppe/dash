@@ -62,7 +62,7 @@ tokens :-
   <0> \"\"          { mkTok $ TString "" } -- "
   <0> \"            { begin str } -- "
   <str> @stringchars
-                    { mkTokS (\s -> TString $ convertEscapeSequences s) }
+                    { mkTokS (\s -> convertEscapeSequences s) }
   <str> \"          { begin 0 } -- "
   <0> @integer      { mkTokS (\s -> TInt (read s)) }
   <0> @namespace    { mkTokS (\s -> TNamespace (init s)) }
@@ -84,28 +84,33 @@ alexEOF :: Alex Token
 alexEOF = return TEOF
 
 
-convertEscapeSequences :: String -> String
+convertEscapeSequences :: String -> Token
 convertEscapeSequences s =
-  conv' s ""
+  let parts = conv' s "" [] in
+  case parts of
+    [InterpString s] -> TString s
+    _                -> TRawString parts
   where
-    conv' (c:rest@(c1:cs)) acc =
+    conv' (c:rest@(c1:cs)) acc parts =
       case c of
-        '\\' -> parseEscapeChar c1 cs acc
-        _ -> conv' rest (acc ++ [c])
-    conv' (c:[]) acc = acc ++ [c]
-    conv' [] acc = acc
+        '\\' -> parseEscapeChar c1 cs acc parts
+        _ -> conv' rest (acc ++ [c]) parts
+    conv' (c:[]) acc parts = let lastStringPart = acc ++ [c] in
+                             parts ++ [InterpString lastStringPart]
+    conv' [] acc parts = parts ++ [InterpString acc]
 
-    parseEscapeChar ec cs acc =
+    parseEscapeChar ec cs acc parts =
       case ec of
-        '\\' -> conv' cs (acc ++ "\\") -- "
-        'n' -> conv' cs (acc ++ "\n")
-        '"' -> conv' cs (acc ++ "\"")
-        't' -> conv' cs (acc ++ "\t")
+        '\\' -> conv' cs (acc ++ "\\") parts -- "
+        'n' -> conv' cs (acc ++ "\n") parts
+        '"' -> conv' cs (acc ++ "\"") parts
+        't' -> conv' cs (acc ++ "\t") parts
         '(' ->
                 let (interpExpr, rest) = consumeInterpolatedExpression cs in
-                let test = "**" ++ interpExpr ++ "**" in
-                conv' rest (acc ++ test)
-        other -> conv' cs (acc ++ [other])
+                if null rest
+                  then parts ++ [InterpString acc, InterpExpr interpExpr]
+                  else conv' rest "" $ parts ++ [InterpString acc, InterpExpr interpExpr]
+        other -> conv' cs (acc ++ [other]) parts
 
     consumeInterpolatedExpression str =
       let consume acc rest nparen =
@@ -148,6 +153,10 @@ alexInitUserState = AlexUserState {
   last_token = TEOF
 }
 
+data InterpStringPart = InterpString String
+                      | InterpExpr   String
+  deriving (Show, Eq)
+
 data Token  = TEOL
             | TEOF
             | TOpen_Par
@@ -163,6 +172,7 @@ data Token  = TEOL
             | TId String
             -- | TQId ([String], String)
             | TString String
+            | TRawString [InterpStringPart]  -- For internal use only!!!
             | TInt Int
             | TMatch
             | TDo
@@ -208,9 +218,38 @@ checkFinalEol = do
 
 lex :: String -> [Token]
 lex input = case (runAlex input loop) of
-              Right a -> a
+              Right a -> expandRawStrings a
               Left s -> error s
 
 
+expandRawStrings :: [Token] -> [Token]
+expandRawStrings tokens =
+  case tokens of
+    [] -> []
+    (TRawString parts):ts ->
+        let expanded = expandRaw parts in
+        expanded ++ (expandRawStrings ts)
+    t:ts -> t : (expandRawStrings ts)
+
+  where
+    expandRaw parts =
+      case parts of
+        [] -> []
+        (InterpString s):rest ->
+            if null rest
+              then [TString s]
+              else [TString s, TOperator "++"] ++ expandRaw rest
+        (InterpExpr s):rest ->
+            let tokens = lexInterpString s in
+            if null rest
+              then wrapInterpExpr tokens
+              else wrapInterpExpr tokens ++ [TOperator "++"] ++ expandRaw rest
+
+    lexInterpString s =
+      let tokens = Language.Dash.Parser.Lexer.lex s in
+      init tokens -- remove final EOL
+
+    wrapInterpExpr tokens = 
+      [TOpen_Par, TId "to-string", TOpen_Par] ++ tokens ++ [TClose_Par, TClose_Par]
 }
 
