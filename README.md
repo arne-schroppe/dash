@@ -26,6 +26,11 @@ some-number = 1234
 ```
 (Dash doesn't understand floating point numbers yet, only integers.)
 
+You can include expressions inside strings with string interpolation:
+```
+winner = 5432
+message = "The winning number is: \(winner)!"
+```
 
 A fairly useful kind of value in Dash is the symbol. A symbol is simply a `:` followed by
 an identifier:
@@ -219,10 +224,12 @@ of built-in functions:
     ||
     &&
     == < > <= >=
-    + - (binary) ++
+    + - (binary) ^+ ++
     * /
     - (unary) !
 
+Note that `^+` is the string concatenation operator and `++` is the list concatenation
+operator.
 
 #### Functions
 
@@ -234,7 +241,6 @@ of built-in functions:
   - `tail ls`
   - `map f ls`
   - `foldr f z ls`
-  - `concatenate ls-a ls-b`
   - `reverse l`
   - `filter f ls`
   - `length ls`

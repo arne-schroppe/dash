@@ -53,8 +53,8 @@ moduleOwner = mkSymId 0
 
 
 bifStringConcatName, bifListConcatName, bifStringLengthName, bifSubStringName, bifToStringName, bifStringConcatOperator :: String
-bifStringConcatName = "concat-strings"
-bifListConcatName = "concat"
+bifStringConcatName = "concatenate-strings"
+bifListConcatName = "concatenate"
 bifStringLengthName = "string-length"
 bifSubStringName = "sub-string"
 bifToStringName = "to-string"
