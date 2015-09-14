@@ -197,6 +197,30 @@ vm_value convert_to_string(vm_state *state, vm_value source) {
     }
     break;
 
+    case vm_tag_dynamic_string:
+    case vm_tag_string: {
+      result = source;
+    }
+    break;
+
+
+    // TODO this is just a placeholder. Add meaningful data for each type.
+    case vm_tag_plain_symbol:
+    case vm_tag_compound_symbol:
+    case vm_tag_dynamic_compound_symbol:
+    case vm_tag_pap:
+    case vm_tag_function: {
+      char *type = value_to_type_string(source);
+      int status = snprintf(buffer, buffer_size, "<%s>", type);
+      if(status < 0) {
+        result = make_str_error("Conversion error");
+      }
+      else {
+        result = new_heap_string(buffer);
+      }
+    }
+    break;
+
 
     default:
       result = make_str_error("Unable to convert %s to string", value_to_type_string(source));

@@ -779,6 +779,15 @@ spec = do
         let result = run code
         result `shouldReturnRight` VMNumber 6
 
+      it "converts a string to string" $ do
+        let code = "to-string \"dash\""
+        let result = run code
+        result `shouldReturnRight` VMString "dash"
+
+      it "converts a dynamic string to string" $ do
+        let code = "to-string (\"da\" ^+ \"sh\")"
+        let result = run code
+        result `shouldReturnRight` VMString "dash"
 
 
 
