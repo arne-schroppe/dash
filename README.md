@@ -40,10 +40,10 @@ job = :engineer
 
 A symbol can also contain data:
 ```
-employee-of-the-month = :employee "bob" 46 :engineer
+employee-of-the-month = :employee "bob" :engineer 46
 ```
-The identifier of this symbol is `:employee`. It contains three pieces of data:
-`"bob"`, `46` and the atomic symbol `:engineer`
+The identifier of this symbol is `employee`. It contains three pieces of data:
+The string `"bob"`, the atomic symbol `:engineer`, and the number `46`
 
 
 Dash has built-in syntax for lists and tuples:
@@ -71,7 +71,7 @@ data. Pattern matching is done with the `match-with-end` expression:
 ```
 employee-job-title e =
   match e with
-    :employee name age title -> title
+    :employee name title age -> title
     _ -> :error "This doesn't look like a proper employee"
   end
 ```
@@ -80,7 +80,7 @@ You can simply write `_` for values you're not interested in:
 ```
 employee-age e =
   match e with
-    :employee _ age _  -> age
+    :employee _ _ age -> age
     _ -> :error "This doesn't look like a proper employee"
   end
 ```
