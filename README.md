@@ -38,10 +38,13 @@ an identifier:
 job = :engineer
 ```
 
-A symbol can also carry data:
+A symbol can also contain data:
 ```
 employee-of-the-month = :employee "bob" 46 :engineer
 ```
+The identifier of this symbol is `:employee`. It contains three pieces of data:
+`"bob"`, `46` and the atomic symbol `:engineer`
+
 
 Dash has built-in syntax for lists and tuples:
 ```

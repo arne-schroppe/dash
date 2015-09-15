@@ -235,7 +235,6 @@ expandRawStrings tokens =
     expandRaw parts =
       case parts of
         [] -> []
-
         (InterpString s):[] ->
             [TString s]
         (InterpString s):rest ->
