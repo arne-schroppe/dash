@@ -141,7 +141,7 @@ end
 ```
 
 For smaller programs you'll typically have a single i/o action at the end
-of your file. But you can also create auxilliary i/o actions:
+of your file. But you can also create auxiliary i/o actions:
 ```
 ask-name =
   do io with
