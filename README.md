@@ -59,10 +59,10 @@ celsius-to-kelvin c = c + 273
 
 This is actually just a more compact version of this:
 ```
-celsius-to-kelvin = .\ c = c + 273
+celsius-to-kelvin = .\ c -> c + 273
 ```
 
-That `.\ <params> = <expr>` construct is a lambda expression. If you squint
+That `.\ <params> -> <expr>` construct is a lambda expression. If you squint
 your eyes, the `.\` looks a bit like the greek letter lambda.
 
 
