@@ -190,7 +190,7 @@ Ident:
   | ns Ident  { Qualified $1 $2 } -- TODO use namespace
 
 Lambda:
-    lam plus(id) '=' opt(eol) Expr  { Lambda $2 $5 }
+    lam plus(id) '->' opt(eol) Expr  { Lambda $2 $5 }
 
 
 CompoundOrSimpleSymbol:

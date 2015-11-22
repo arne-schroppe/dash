@@ -4,8 +4,8 @@ quick-sort list =
   match list with
     []         -> []
     [pivot|xs] ->
-      smaller = filter ( .\ a = a <= pivot ) xs
-      larger = filter ( .\ a = a > pivot ) xs
+      smaller = filter ( .\ a -> a <= pivot ) xs
+      larger = filter ( .\ a -> a > pivot ) xs
       (quick-sort smaller) ++ [pivot] ++ (quick-sort larger)
   end
 

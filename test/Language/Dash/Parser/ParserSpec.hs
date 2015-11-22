@@ -20,7 +20,7 @@ spec = do
 
 
     it "parses an anonymous function" $ do
-      parse_string ".\\ a = add a 1" `shouldBe`
+      parse_string ".\\ a -> add a 1" `shouldBe`
         (Lambda ["a"] $
           FunAp (Var "add") [Var "a", LitNumber 1])
 

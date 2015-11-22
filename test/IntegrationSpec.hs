@@ -2,7 +2,6 @@ module IntegrationSpec where
 
 import           Language.Dash.API
 import           Language.Dash.BuiltIn.BuiltInDefinitions
-import           Language.Dash.BuiltIn.BuiltInDefinitions (preamble)
 import           Language.Dash.Error.Error
 import           Language.Dash.VM.DataEncoding
 import           Numeric
@@ -15,9 +14,9 @@ shouldReturnRight :: (Show a, Eq a) => IO (Either CompilationError a) -> a -> Ex
 shouldReturnRight action val = action `shouldReturn` Right val
 
 spec :: Spec
-spec = do
-  describe "Dash" $ do
+spec =
 
+  describe "Dash" $ do
 
     it "evaluates an integer" $ do
       let result = run "4815"
@@ -88,7 +87,7 @@ spec = do
 
     it "returns a simple lambda" $ do
       let code =  " make-adder x = \n\
-                  \   .\\ y = 22 + y \n\
+                  \   .\\ y -> 22 + y \n\
                   \ \n\
                   \ adder = make-adder :nil \n\
                   \ adder 55"
@@ -151,7 +150,7 @@ spec = do
 
             it "returns a closure with a dynamic variable" $ do
               let code =  " make-sub x = \n\
-                          \   .\\ y = x - y \n\
+                          \   .\\ y -> x - y \n\
                           \ \n\
                           \ subtractor = make-sub 55 \n\
                           \ subtractor 4"
@@ -161,7 +160,7 @@ spec = do
             it "captures a constant number" $ do
               let code =  " c = 30 \n\
                           \ make-sub x = \n\
-                          \   .\\ y = c - y \n\
+                          \   .\\ y -> c - y \n\
                           \ \n\
                           \ subtractor = make-sub 10 \n\
                           \ subtractor 4"
@@ -171,7 +170,7 @@ spec = do
             it "captures a constant plain symbol" $ do
               let code =  " ps = :my-symbol \n\
                           \ make-sym x = \n\
-                          \   .\\ y = ps \n\
+                          \   .\\ y -> ps \n\
                           \ \n\
                           \ symbolicator = make-sym 44 \n\
                           \ symbolicator 55"
@@ -181,7 +180,7 @@ spec = do
             it "captures a constant function" $ do
               let code =  " subsub a b = a - b \n\
                           \ make-sub x = \n\
-                          \   .\\ y = subsub x y \n\
+                          \   .\\ y -> subsub x y \n\
                           \ \n\
                           \ subtractor = make-sub 10 \n\
                           \ subtractor 4"
@@ -190,7 +189,7 @@ spec = do
 
             it "captures several dynamic values" $ do
               let code =  " make-sub x y z w = \n\
-                          \   .\\ a = (z - y) - (x - a)\n\
+                          \   .\\ a -> (z - y) - (x - a)\n\
                           \ \n\
                           \ test = make-sub 33 55 99 160 \n\
                           \ test 24"
@@ -201,8 +200,8 @@ spec = do
               let code = "\
               \ outside = 1623 \n\
               \ make-adder-maker x = \n\
-              \   .\\ y = \n\
-              \     .\\ z = \n\
+              \   .\\ y -> \n\
+              \     .\\ z -> \n\
               \       (x + (z + y)) + outside \n\
               \ \n\
               \ ((make-adder-maker 9) 80) 150"
@@ -224,7 +223,7 @@ spec = do
             it "applies an unknown curried closure" $ do
               let code = "\
               \ get-cl x = \n\
-              \   .\\ a b = a - b \n\
+              \   .\\ a b -> a - b \n\
               \ apply f = \n\
               \   curry = f 123  \n\
               \   curry 3 \n\
@@ -245,7 +244,7 @@ spec = do
 
             it "applies an over-saturated call to a known function" $ do
               let code = "\
-              \ f a = .\\ b c = (a + b) - c \n\
+              \ f a = .\\ b c -> (a + b) - c \n\
               \ f 54 67 13"
               let result = run code
               result `shouldReturnRight` VMNumber 108
@@ -253,7 +252,7 @@ spec = do
             it "applies an oversaturated call to an unknown closure" $ do
               let code = "\
               \ fun a =   \n\
-              \   .\\ b c = .\\ d e = .\\ f = ((f + e) - (c + d)) + (a + b) \n\
+              \   .\\ b c -> .\\ d e -> .\\ f -> ((f + e) - (c + d)) + (a + b) \n\
               \ res = fun 1 2 3 4 5 6 \n\
               \ res"
               let result = run code
@@ -262,7 +261,7 @@ spec = do
             it "applies an oversaturated tail-call to an unknown closure" $ do
               let code = "\
               \ fun a =   \n\
-              \   .\\ b c = .\\ d e = .\\ f = ((f + e) - (c + d)) + (a + b) \n\
+              \   .\\ b c -> .\\ d e -> .\\ f -> ((f + e) - (c + d)) + (a + b) \n\
               \ fun 1 2 3 4 5 6"
               let result = run code
               result `shouldReturnRight` VMNumber 7
@@ -270,7 +269,7 @@ spec = do
             it "applies an oversaturated call to an unknown function" $ do
               let code = "\
               \ fun a =   \n\
-              \   .\\ b c = .\\ d e = .\\ f = :success \n\
+              \   .\\ b c -> .\\ d e -> .\\ f -> :success \n\
               \ res = fun 1 2 3 4 5 6 \n\
               \ res"
               let result = run code
@@ -279,7 +278,7 @@ spec = do
             it "applies an oversaturated tail-call to an unknown function" $ do
               let code = "\
               \ fun a =   \n\
-              \   .\\ b c = .\\ d e = .\\ f = :success \n\
+              \   .\\ b c -> .\\ d e -> .\\ f -> :success \n\
               \ fun 1 2 3 4 5 6"
               let result = run code
               result `shouldReturnRight` VMSymbol "success" []
@@ -287,7 +286,7 @@ spec = do
             it "applies result of a function application" $ do
               let code = "\
               \ fun a =   \n\
-              \   .\\ b c = .\\ d e = .\\ f = 77 \n\
+              \   .\\ b c -> .\\ d e -> .\\ f -> 77 \n\
               \ (((fun 1) 2 3) 4 5) 6"
               let result = run code
               result `shouldReturnRight` VMNumber 77
@@ -295,7 +294,7 @@ spec = do
             it "applies result of a closure application" $ do
               let code = "\
               \ fun a =   \n\
-              \   .\\ b c = .\\ d e = .\\ f = ((f + e) - (c + d)) + (a + b) \n\
+              \   .\\ b c -> .\\ d e -> .\\ f -> ((f + e) - (c + d)) + (a + b) \n\
               \ (((fun 1) 2 3) 4 5) 6"
               let result = run code
               result `shouldReturnRight` VMNumber 7
@@ -303,7 +302,7 @@ spec = do
             it "applies a partial application of a closure application" $ do
               let code = "\
               \ fun a =   \n\
-              \   .\\ b c = .\\ d = .\\ e f = ((f + e) - (c + d)) + (a + b) \n\
+              \   .\\ b c -> .\\ d -> .\\ e f -> ((f + e) - (c + d)) + (a + b) \n\
               \ fpart = fun 1 2 3 4 5 \n\
               \ fpart 6"
               let result = run code
@@ -313,7 +312,7 @@ spec = do
             it "applies a partial application of a function application" $ do
               let code = "\
               \ fun a =   \n\
-              \   .\\ b c = .\\ d = .\\ e f = :success \n\
+              \   .\\ b c -> .\\ d -> .\\ e f -> :success \n\
               \ fpart = fun 1 2 3 4 5 \n\
               \ fpart 6"
               let result = run code
