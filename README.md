@@ -147,6 +147,7 @@ ask-name =
   do io with
     io.print "What is your name?"
     name <- io.read-ln
+    return name
   end
 
 do io with
