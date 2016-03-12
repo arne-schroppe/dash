@@ -102,10 +102,10 @@ add-first-three ls =
 
 There is also an `if-then-else` expression with the usual semantics:
 ```
-should-i-write-this-down num-data-items =
-  if num-data-items < 7
-    then "I can keep this in my head"
-    else "Wait, I'll need to write that down"
+abs n =
+  if n < 0
+    then -n
+    else n
 ```
 
 
@@ -115,12 +115,12 @@ that if you apply fewer arguments to a function than is required (this is called
 application"), you get a new function which takes the remaining parameters. That's useful
 in many cases:
 ```
-between a b n =
+is-between a b n =
   n >= a && n <= b
 
 numbers = [4, 7, -12, 90, 0]
 
-clamped-numbers = filter (between 0 10) numbers
+clamped-numbers = filter (is-between 0 10) numbers
 ```
 
 `filter` is a built-in function that checks each value in a list against
@@ -131,12 +131,12 @@ a lot of cases.
 
 
 A programming language wouldn't be of much use if it couldn't communicate with
-the user. In Dash a `do`-expression is used to talk to the user:
+the user. In Dash a `do`-expression is used for that:
 ```
 do io with
-  io.print-ln "What is your name?"
+  io.print "What is your name? "
   name <- io.read-ln
-  io.print-ln ("Hello, " ++ name)
+  io.print-ln "Hello, \(name)!"
 end
 ```
 
@@ -145,14 +145,14 @@ of your file. But you can also create auxiliary i/o actions:
 ```
 ask-name =
   do io with
-    io.print "What is your name?"
+    io.print "What is your name? "
     name <- io.read-ln
     return name
   end
 
 do io with
   name <- ask-name
-  io.print-ln ("Hello, " ++ name)
+  io.print-ln "Hello, \(name)!"
 end
 ```
 (That is the same example as before, just split into several i/o actions)
@@ -165,7 +165,7 @@ all those `io` things don't do anything directly. Instead they *describe* an act
 to be performed. So `io.print-ln "Hello"` doesn't write the text "Hello" on the screen, but
 returns a value that says "this is an action that, when executed, prints the text 'Hello'".
 
-So how are i/o actions executed then? They're executed by returning them to the environment!
+So how are i/o actions executed then? They're executed by returning them to the environment.
 The last value in a file is the file's result. If the result is a number or a string or
 another simple value, the value is simply printed on the screen. But if the value is an i/o
 action, the action is executed. So any i/o action needs to be directly or indirectly
@@ -175,14 +175,16 @@ returned as the last value in a file in order to have any effect.
 You might also have been wondering what that dot-syntax is, e.g. `io.read-ln`.
 That is Dash's module lookup syntax:
 ```
+celsius-kelvin-diff = 273
+
 temp = module
-  celsius-kelvin-diff = 273
 
   celsius-to-kelvin c =
     c + celsius-kelvin-diff
 
   kelvin-to-celsius k =
     k - celsius-kelvin-diff
+
 end
 
 very-very-cold = temp.kelvin-to-celsius 34
