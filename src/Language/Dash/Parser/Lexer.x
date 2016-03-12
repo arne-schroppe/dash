@@ -227,7 +227,7 @@ expandRawStrings tokens =
   case tokens of
     [] -> []
     (TRawString parts):ts ->
-        let expanded = expandRaw parts in
+        let expanded = [TOpen_Par] ++ (expandRaw parts) ++ [TClose_Par] in
         expanded ++ (expandRawStrings ts)
     t:ts -> t : (expandRawStrings ts)
 

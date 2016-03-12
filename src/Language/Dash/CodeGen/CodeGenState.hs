@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleContexts #-}
+
+
 module Language.Dash.CodeGen.CodeGenState where
 
 -- TODO list exported functions explicitly

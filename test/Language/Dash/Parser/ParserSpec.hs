@@ -133,3 +133,12 @@ spec = do
                                 FunAp (Qualified "maybe" $ Var "return") [Var "b"])])
 
 
+    it "inserts parentheses around interpolated strings" $ do
+      let source = " print_line \"a \\(b) c\"\n"
+      let parsed = parse_string source
+      parsed `shouldBe` (FunAp (Var "print_line") [
+                            FunAp (Var bifStringConcatName) [
+                              FunAp (Var bifStringConcatName) [
+                                LitString "a ",
+                                FunAp (Var bifToStringName) [Var "b"]],
+                              LitString " c"]])
