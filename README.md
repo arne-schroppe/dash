@@ -40,7 +40,7 @@ job = :engineer
 
 A symbol can also contain data:
 ```
-employee_of_the_month = :employee "bob" :engineer 46
+employee_of_the_month = :employee<"bob", :engineer, 46>
 ```
 The identifier of this symbol is `employee`. It contains three pieces of data:
 The string `"bob"`, the atomic symbol `:engineer`, and the number `46`
@@ -72,7 +72,7 @@ data. Pattern matching is done with the `match-with-end` expression:
 employee_job_title e =
   match e with
     :employee name title age -> title
-    _ -> :error "This doesn't look like a proper employee"
+    _ -> :error<"This doesn't look like a proper employee">
   end
 ```
 
@@ -80,8 +80,8 @@ You can simply write `_` for values you're not interested in:
 ```
 employee_age e =
   match e with
-    :employee _ _ age -> age
-    _ -> :error "This doesn't look like a proper employee"
+    :employee<_, _, age> -> age
+    _ -> :error<"This doesn't look like a proper employee">
   end
 ```
 
@@ -90,13 +90,13 @@ And this is how you do pattern matching on lists:
 split_head ls =
   match ls with
     [head|tail] -> (head, tail)
-    _ -> :error "Unexpected value"
+    _ -> :error<"Unexpected value">
   end
 
 add_first_three ls =
   match ls with
     [first, second, third | _] -> first + second + third
-    _ -> :error "Not the kind of list we were expecting"
+    _ -> :error<"Not the kind of list we were expecting">
   end
 ```
 
@@ -197,11 +197,11 @@ two functions at the very least, `bind` and `return`:
 maybe = module
   bind a next =
     match a with
-      :some x -> next x
-      :none   -> :none
+      :some<x> -> next x
+      :none    -> :none
     end
 
-  return x = :some x
+  return x = :some<x>
 end
 ```
 
