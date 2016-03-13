@@ -194,8 +194,12 @@ Lambda:
 
 
 CompoundOrSimpleSymbol:
-    symbol star(SimpleExpr) { LitSymbol $1 $2 }
+    symbol '<' SymbolNext '>' { LitSymbol $1 $3 }
+  | symbol { LitSymbol $1 [] }
 
+SymbolNext:
+    SimpleExpr                { [$1] }
+  | SimpleExpr ',' SymbolNext { $1 : $3 }
 
 
 Module:
@@ -251,7 +255,12 @@ TupleNextPattern:
     ',' Pattern   { $2 }
 
 SymbolPattern:
-    symbol star(SimplePattern) { PatSymbol $1 $2 }
+    symbol                     { PatSymbol $1 [] }
+  | symbol '<' SymbolPatternNext '>' { PatSymbol $1 $3 }
+
+SymbolPatternNext:
+    SimplePattern                        { [$1] }
+  | SimplePattern ',' SymbolPatternNext  { $1 : $3 }
 
 PatList:
     '[' PatListNext ']'  { $2 }

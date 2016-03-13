@@ -28,7 +28,7 @@ instance Show VMValue where
       VMSymbol s [] -> ":" ++ s
       VMSymbol "list" fields -> showNestedList fields
       VMSymbol "tuple" fields -> "(" ++ intercalate ", " (map show fields) ++ ")"
-      VMSymbol s fields ->  ":" ++ s ++ " " ++ unwords (map showField fields)
+      VMSymbol s fields ->  ":" ++ s ++ "<" ++ intercalate ", " (map showField fields) ++ ">"
 
 
 showField :: VMValue -> String

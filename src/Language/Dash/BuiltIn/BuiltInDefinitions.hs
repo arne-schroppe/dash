@@ -150,28 +150,28 @@ preamble = "\n\
 \  io = module                                             \n\
 \    bind action next =                                    \n\
 \      match action with                                   \n\
-\        :_internal_io type param :nil -> :_internal_io type param next  \n\
-\        :_internal_io type param n0 -> :_internal_io type param (.\\ x -> bind (n0 x) next)  \n\
-\        _ -> :error \"io-bind: Expected an io action as first argument\" \n\
+\        :_internal_io<type, param, :nil> -> :_internal_io<type, param, next>  \n\
+\        :_internal_io<type, param, n0> -> :_internal_io<type, param, (.\\ x -> bind (n0 x) next)>  \n\
+\        _ -> :error<\"io-bind: Expected an io action as first argument\">\n\
 \      end                                                 \n\
 \                                                          \n\
 \    return a =                                            \n\
-\      :_internal_io " ++ show returnActionId ++ " a :nil       \n\
+\      :_internal_io<" ++ show returnActionId ++ ", a, :nil>       \n\
 \                                                          \n\
 \    read_ln =                                             \n\
-\      :_internal_io " ++ show readLineActionId ++ " :nil :nil     \n\
+\      :_internal_io<" ++ show readLineActionId ++ ", :nil, :nil>     \n\
 \                                                          \n\
 \    print a =                                             \n\
-\      :_internal_io " ++ show printLineActionId ++ " a :nil    \n\
+\      :_internal_io<" ++ show printLineActionId ++ ", a, :nil>    \n\
 \                                                          \n\
 \    print_ln a =                                       \n\
-\      :_internal_io " ++ show printLineActionId ++ " (a " ++ bifStringConcatOperator ++ " \"\\n\") :nil    \n\
+\      :_internal_io<" ++ show printLineActionId ++ ", (a " ++ bifStringConcatOperator ++ " \"\\n\"), :nil>    \n\
 \  end                                                   \n\
 \                                                        \n\
 \  head ls =                                             \n\
 \    match ls with                                       \n\
 \      [a | _] -> a                                      \n\
-\      _ -> :error \"Empty list!\"                       \n\
+\      _ -> :error<\"Empty list!\">                      \n\
 \    end                                                 \n\
 \                                                        \n\
 \  tail ls =                                             \n\
@@ -221,7 +221,7 @@ preamble = "\n\
 \      match l with                                      \n\
 \        []     -> acc                                   \n\
 \        [_|as] -> len' as (acc + 1)                     \n\
-\        x      -> :error \"Not a list\"                 \n\
+\        x      -> :error<\"Not a list\">                \n\
 \      end                                               \n\
 \    len' list 0                                         \n\
 \                                                        \n\

@@ -322,13 +322,13 @@ spec =
     context "when using compound symbols" $ do
 
             it "interprets a compound symbol" $ do
-              let result = run ":sym 2 3"
+              let result = run ":sym<2, 3>"
               result `shouldReturnRight` VMSymbol "sym" [VMNumber 2, VMNumber 3]
 
             it "creates a symbol at runtime" $ do
               let code = "\
               \ fun a =   \n\
-              \   :sym a \n\
+              \   :sym<a> \n\
               \ fun 7"
               let result = run code
               result `shouldReturnRight` VMSymbol "sym" [VMNumber 7]
@@ -336,7 +336,7 @@ spec =
             it "creates a nested symbol at runtime" $ do
               let code = "\
               \ fun a =   \n\
-              \   :sym 1 (:sym2 a) 3 \n\
+              \   :sym<1, (:sym2<a>), 3> \n\
               \ fun 2"
               let result = run code
               result `shouldReturnRight` VMSymbol "sym" [VMNumber 1, VMSymbol "sym2" [VMNumber 2], VMNumber 3]
@@ -403,40 +403,40 @@ spec =
 
 
             it "matches a compound symbol" $ do
-              let code =  " match :test 4 8 15 with \n\
-                          \ :test 1 2 3 -> 1 \n\
-                          \ :test 4 8 15 -> 2 \n\
-                          \ :test 99 100 101 -> 3 \n\
+              let code =  " match :test<4, 8, 15> with \n\
+                          \ :test<1, 2, 3> -> 1 \n\
+                          \ :test<4, 8, 15> -> 2 \n\
+                          \ :test<99, 100, 101> -> 3 \n\
                           \ end"
               let result = run code
               result `shouldReturnRight` VMNumber 2
 
 
             it "binds a value inside a symbol" $ do
-              let code =  " match :test 4 8 15 with \n\
-                          \ :test 1 2 3 -> 1 \n\
-                          \ :test 4 n m -> n + m \n\
-                          \ :test 99 100 101 -> 3 \n\
+              let code =  " match :test<4, 8, 15> with \n\
+                          \ :test<1, 2, 3> -> 1 \n\
+                          \ :test<4, n, m> -> n + m \n\
+                          \ :test<99, 100, 101> -> 3 \n\
                           \ end"
               let result = run code
               result `shouldReturnRight` VMNumber 23
 
 
             it "binds a value inside a nested symbol" $ do
-              let code =  " match :test 4 (:inner 8) 15 with \n\
-                          \ :test 4 (:wrong n) m -> 1 \n\
-                          \ :test 4 (:inner n) m -> n + m \n\
-                          \ :test 4 (:wrong n) m -> 1 \n\
+              let code =  " match :test<4, (:inner<8>), 15> with \n\
+                          \ :test<4, (:wrong<n>), m> -> 1 \n\
+                          \ :test<4, (:inner<n>), m> -> n + m \n\
+                          \ :test<4, (:wrong<n>), m> -> 1 \n\
                           \ end"
               let result = run code
               result `shouldReturnRight` VMNumber 23
 
 
             it "uses wildcards in a match" $ do
-              let code =  " match :test 3 4 with \n\
-                          \ :test _ 4 _ -> 22 \n\
-                          \ :test 4     -> 33 \n\
-                          \ :test _ 4   -> 44 \n\
+              let code =  " match :test<3, 4> with \n\
+                          \ :test<_, 4, _> -> 22 \n\
+                          \ :test<4>       -> 33 \n\
+                          \ :test<_, 4>    -> 44 \n\
                           \ end"
               let result = run code
               result `shouldReturnRight` VMNumber 44
@@ -580,7 +580,7 @@ spec =
 
     -- TODO should this work without parentheses?
     it "determines equality between compound symbols" $ do
-      let code = "(:test 1 2 :three) == (:test 1 2 :three)"
+      let code = "(:test<1, 2, :three>) == (:test<1, 2, :three>)"
       let result = run code
       result `shouldReturnRight` VMSymbol "true" []
 
