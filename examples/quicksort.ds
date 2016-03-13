@@ -1,18 +1,18 @@
 #!/usr/local/bin/dash
 
-quick-sort list =
+quick_sort list =
   match list with
     []         -> []
     [pivot|xs] ->
       smaller = filter ( .\ a -> a <= pivot ) xs
       larger = filter ( .\ a -> a > pivot ) xs
-      (quick-sort smaller) ++ [pivot] ++ (quick-sort larger)
+      (quick_sort smaller) ++ [pivot] ++ (quick_sort larger)
   end
 
 
-read-many x =
+read_many x =
   read acc = do io with
-    in <- io.read-ln
+    in <- io.read_ln
     if in == :eof
       then io.return (reverse acc)
       else read [in|acc]
@@ -21,10 +21,10 @@ read-many x =
 
 
 do io with
-  io.print-ln "Enter data, separated by newlines (numbers only, please; end with ctrl-d):"
-  data <- read-many :nil
-  num-data = map to-number data
-  quick-sort num-data
+  io.print_ln "Enter data, separated by newlines (numbers only, please; end with ctrl-d):"
+  data <- read_many :nil
+  num_data = map to_number data
+  quick_sort num_data
 end
 
 

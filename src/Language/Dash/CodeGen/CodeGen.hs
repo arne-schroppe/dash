@@ -2,7 +2,6 @@ module Language.Dash.CodeGen.CodeGen (
   compile
 ) where
 
-import           Control.Applicative                      ((<$>))
 import           Control.Monad
 import           Control.Monad.Except                     (runExceptT,
                                                            throwError)

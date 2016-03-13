@@ -57,7 +57,7 @@ io_action_result check_io_action(vm_state *state, vm_value value, vm_instruction
     case action_id_printline: {
         char *param = read_string(state, action_param);
         if(param == NULL) {
-          fprintf(stderr, "io-print-ln: Expected a string, got %s\n", value_to_type_string(action_param));
+          fprintf(stderr, "io.print_ln: Expected a string, got %s\n", value_to_type_string(action_param));
           panic_stop_io_processing();
         }
         printf("%s", param);

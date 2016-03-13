@@ -24,7 +24,7 @@ trueSymbolName = "true"
 falseSymbolName = "false"
 tupleSymbolName = "tuple"
 listConsSymbolName = "list"
-listEmptySymbolName = "empty-list"
+listEmptySymbolName = "empty_list"
 
 numberTypeSymbolName = "number"
 stringTypeSymbolName = "string"
@@ -53,11 +53,11 @@ moduleOwner = mkSymId 0
 
 
 bifStringConcatName, bifListConcatName, bifStringLengthName, bifSubStringName, bifToStringName, bifStringConcatOperator :: String
-bifStringConcatName = "concatenate-strings"
+bifStringConcatName = "concatenate_strings"
 bifListConcatName = "concatenate"
-bifStringLengthName = "string-length"
-bifSubStringName = "sub-string"
-bifToStringName = "to-string"
+bifStringLengthName = "string_length"
+bifSubStringName = "sub_string"
+bifToStringName = "to_string"
 bifStringConcatOperator = "^+"
 
 -- TODO instead of "special" handling for primops, we could
@@ -127,7 +127,7 @@ builtInFunctions = [  (bifStringConcatName, 2, [
                         OpcMove 0 2,
                         OpcRet 0
                       ]),
-                      ("to-number", 1, [
+                      ("to_number", 1, [
                         OpcLoadPS 1 (fromJust $ lookup numberTypeSymbolName builtInSymbols),
                         OpcConvert 0 0 1,
                         OpcRet 0
@@ -158,13 +158,13 @@ preamble = "\n\
 \    return a =                                            \n\
 \      :_internal_io " ++ show returnActionId ++ " a :nil       \n\
 \                                                          \n\
-\    read-ln =                                             \n\
+\    read_ln =                                             \n\
 \      :_internal_io " ++ show readLineActionId ++ " :nil :nil     \n\
 \                                                          \n\
 \    print a =                                             \n\
 \      :_internal_io " ++ show printLineActionId ++ " a :nil    \n\
 \                                                          \n\
-\    print-ln a =                                       \n\
+\    print_ln a =                                       \n\
 \      :_internal_io " ++ show printLineActionId ++ " (a " ++ bifStringConcatOperator ++ " \"\\n\") :nil    \n\
 \  end                                                   \n\
 \                                                        \n\
@@ -199,12 +199,12 @@ preamble = "\n\
 \    end                                                 \n\
 \                                                        \n\
 \  reverse l =                                           \n\
-\    rev-list' l acc =                                   \n\
+\    rev_list' l acc =                                   \n\
 \      match l with                                      \n\
 \        []      -> acc                                  \n\
-\        [hd|tl] -> rev-list' tl [hd | acc]              \n\
+\        [hd|tl] -> rev_list' tl [hd | acc]              \n\
 \      end                                               \n\
-\    rev-list' l []                                      \n\
+\    rev_list' l []                                      \n\
 \                                                        \n\
 \                                                        \n\
 \  filter f ls =                                         \n\
@@ -235,6 +235,6 @@ preamble = "\n\
 \      end                                               \n\
 \    foldr k (m.return []) ms                            \n\
 \                                                        \n\
-\  m-map m action ls =                                   \n\
+\  m_map m action ls =                                   \n\
 \    sequence m (map action ls)                          \n\
 \\n"

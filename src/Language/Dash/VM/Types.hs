@@ -24,7 +24,7 @@ instance Show VMValue where
       VMClosure -> "<closure>"
       VMFunction -> "<function>"
       VMOpaqueSymbol -> "<opaque symbol>"  -- TODO special handling for modules
-      VMSymbol "empty-list" [] -> "[]"
+      VMSymbol "empty_list" [] -> "[]"
       VMSymbol s [] -> ":" ++ s
       VMSymbol "list" fields -> showNestedList fields
       VMSymbol "tuple" fields -> "(" ++ intercalate ", " (map show fields) ++ ")"
@@ -37,11 +37,12 @@ showField v =
     s@(VMSymbol _ (_:_)) -> "(" ++ show s ++ ")"
     _ -> show v
 
+-- TODO Add better output for invalid lists
 showNestedList :: [VMValue] -> String
 showNestedList vs =
   "[" ++ intercalate ", " (flatValues (VMSymbol "list" vs)) ++ "]"
   where
-    flatValues (VMSymbol "list" [a, VMSymbol "empty-list" []]) = [show a]
+    flatValues (VMSymbol "list" [a, VMSymbol "empty_list" []]) = [show a]
     flatValues (VMSymbol "list" [a, as@(VMSymbol "list" _)]) = show a : flatValues as
     flatValues (VMSymbol "list" [a, xs]) = show a : (["!<"] ++ flatValues xs ++ [">!"])
     flatValues x = [show x]

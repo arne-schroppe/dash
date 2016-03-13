@@ -12,13 +12,13 @@ fibonacci n =
 do io with
   min = 0; max = 30
   io.print "Enter a number (between \(min) and \(max)): "
-  input <- io.read-ln
-  n = to-number input
+  input <- io.read_ln
+  n = to_number input
   if n < min || n > max
-    then io.print-ln "The number should be between \(min) and \(max)"
+    then io.print_ln "The number should be between \(min) and \(max)"
     else do io with
       fib = fibonacci n
-      io.print-ln "Fibonacci number \(n) is \(fib)"
+      io.print_ln "Fibonacci number \(n) is \(fib)"
     end
 end
 

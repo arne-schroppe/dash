@@ -59,37 +59,37 @@ spec =
       result `shouldReturnRight` VMNumber 11
 
     it "applies a custom function" $ do
-      let code = " add-two a = \n\
+      let code = " add_two a = \n\
                  \   2 + a \n\
                  \ \n\
-                 \ add-two 5"
+                 \ add_two 5"
       let result = run code
       result `shouldReturnRight` VMNumber 7
 
     it "applies a local variable to a custom function" $ do
-      let code = " add-two a = \n\
+      let code = " add_two a = \n\
                  \   2 + a \n\
                  \ \n\
                  \ x = 10 \n\
                  \ y = 5 \n\
-                 \ add-two y"
+                 \ add_two y"
       let result = run code
       result `shouldReturnRight` VMNumber 7
 
     it "does a generic application of a function" $ do
       let code = "\
-      \ my-sub a b = a - b \n\
+      \ my_sub a b = a - b \n\
       \ apply f = \n\
       \   f 123 3 \n\
-      \ apply my-sub"
+      \ apply my_sub"
       let result = run code
       result `shouldReturnRight` VMNumber 120
 
     it "returns a simple lambda" $ do
-      let code =  " make-adder x = \n\
+      let code =  " make_adder x = \n\
                   \   .\\ y -> 22 + y \n\
                   \ \n\
-                  \ adder = make-adder :nil \n\
+                  \ adder = make_adder :nil \n\
                   \ adder 55"
       let result = run code
       result `shouldReturnRight` VMNumber 77
@@ -133,7 +133,7 @@ spec =
               -- an uninitialized value.
               let code = "\
               \ outer m res = \n\
-              \   dummy-closure y = \n\
+              \   dummy_closure y = \n\
               \     res + y    \n\
               \   counter acc = \n\
               \     next = acc - m \n\
@@ -149,49 +149,49 @@ spec =
     context "when using closures" $ do
 
             it "returns a closure with a dynamic variable" $ do
-              let code =  " make-sub x = \n\
+              let code =  " make_sub x = \n\
                           \   .\\ y -> x - y \n\
                           \ \n\
-                          \ subtractor = make-sub 55 \n\
+                          \ subtractor = make_sub 55 \n\
                           \ subtractor 4"
               let result = run code
               result `shouldReturnRight` VMNumber 51
 
             it "captures a constant number" $ do
               let code =  " c = 30 \n\
-                          \ make-sub x = \n\
+                          \ make_sub x = \n\
                           \   .\\ y -> c - y \n\
                           \ \n\
-                          \ subtractor = make-sub 10 \n\
+                          \ subtractor = make_sub 10 \n\
                           \ subtractor 4"
               let result = run code
               result `shouldReturnRight` VMNumber 26
 
             it "captures a constant plain symbol" $ do
-              let code =  " ps = :my-symbol \n\
-                          \ make-sym x = \n\
+              let code =  " ps = :my_symbol \n\
+                          \ make_sym x = \n\
                           \   .\\ y -> ps \n\
                           \ \n\
-                          \ symbolicator = make-sym 44 \n\
+                          \ symbolicator = make_sym 44 \n\
                           \ symbolicator 55"
               let result = run code
-              result `shouldReturnRight` VMSymbol "my-symbol" []
+              result `shouldReturnRight` VMSymbol "my_symbol" []
 
             it "captures a constant function" $ do
               let code =  " subsub a b = a - b \n\
-                          \ make-sub x = \n\
+                          \ make_sub x = \n\
                           \   .\\ y -> subsub x y \n\
                           \ \n\
-                          \ subtractor = make-sub 10 \n\
+                          \ subtractor = make_sub 10 \n\
                           \ subtractor 4"
               let result = run code
               result `shouldReturnRight` VMNumber 6
 
             it "captures several dynamic values" $ do
-              let code =  " make-sub x y z w = \n\
+              let code =  " make_sub x y z w = \n\
                           \   .\\ a -> (z - y) - (x - a)\n\
                           \ \n\
-                          \ test = make-sub 33 55 99 160 \n\
+                          \ test = make_sub 33 55 99 160 \n\
                           \ test 24"
               let result = run code
               result `shouldReturnRight` VMNumber ( (99 - 55) - (33 - 24) ) -- result: 35
@@ -199,12 +199,12 @@ spec =
             it "supports nested closures" $ do
               let code = "\
               \ outside = 1623 \n\
-              \ make-adder-maker x = \n\
+              \ make_adder_maker x = \n\
               \   .\\ y -> \n\
               \     .\\ z -> \n\
               \       (x + (z + y)) + outside \n\
               \ \n\
-              \ ((make-adder-maker 9) 80) 150"
+              \ ((make_adder_maker 9) 80) 150"
               let result = run code
               result `shouldReturnRight` VMNumber 1862
 
@@ -214,31 +214,31 @@ spec =
 
             it "applies a known curried function" $ do
               let code = "\
-              \ my-sub a b = a - b \n\
-              \ curry = my-sub 123  \n\
+              \ my_sub a b = a - b \n\
+              \ curry = my_sub 123  \n\
               \ curry 3"
               let result = run code
               result `shouldReturnRight` VMNumber 120
 
             it "applies an unknown curried closure" $ do
               let code = "\
-              \ get-cl x = \n\
+              \ get_cl x = \n\
               \   .\\ a b -> a - b \n\
               \ apply f = \n\
               \   curry = f 123  \n\
               \   curry 3 \n\
-              \ cl = get-cl 0 \n\
+              \ cl = get_cl 0 \n\
               \ apply cl"
               let result = run code
               result `shouldReturnRight` VMNumber 120
 
             it "applies an unknown curried function" $ do
               let code = "\
-              \ my-sub a b = a - b \n\
+              \ my_sub a b = a - b \n\
               \ apply f = \n\
               \   curry = f 123  \n\
               \   curry 3 \n\
-              \ apply my-sub"
+              \ apply my_sub"
               let result = run code
               result `shouldReturnRight` VMNumber 120
 
@@ -601,7 +601,7 @@ spec =
 
 
     it "has if-then-else" $ do
-      let code = " if :sym == :no-sym then  \n\
+      let code = " if :sym == :no_sym then  \n\
                  \   77                  \n\
                  \ else                  \n\
                  \   99"
@@ -703,7 +703,7 @@ spec =
       result `shouldReturnRight` VMNumber 6
 
     it "knows the length of a string" $ do
-      let code = "string-length \"1234567\""
+      let code = "string_length \"1234567\""
       let result = run code
       result `shouldReturnRight` VMNumber 7
 
@@ -716,20 +716,20 @@ spec =
 
     it "creates a sub-strings" $ do
       let code =  " s1 = \"abcdefghijklmn\" \n\
-                  \ sub-string 2 5 s1"
+                  \ sub_string 2 5 s1"
       let result = run code
       result `shouldReturnRight` VMString "cdefg"
 
 
     it "converts a string to a number" $ do
       let code =  " s = \"4815\" \n\
-                  \ to-number s"
+                  \ to_number s"
       let result = run code
       result `shouldReturnRight` VMNumber 4815
 
     it "converts a number to a string" $ do
       let code =  " n = 4815 \n\
-                  \ to-string n"
+                  \ to_string n"
       let result = run code
       result `shouldReturnRight` VMString "4815"
 
@@ -779,12 +779,12 @@ spec =
         result `shouldReturnRight` VMNumber 6
 
       it "converts a string to string" $ do
-        let code = "to-string \"dash\""
+        let code = "to_string \"dash\""
         let result = run code
         result `shouldReturnRight` VMString "dash"
 
       it "converts a dynamic string to string" $ do
-        let code = "to-string (\"da\" ^+ \"sh\")"
+        let code = "to_string (\"da\" ^+ \"sh\")"
         let result = run code
         result `shouldReturnRight` VMString "dash"
 
