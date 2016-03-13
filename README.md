@@ -71,7 +71,7 @@ data. Pattern matching is done with the `match-with-end` expression:
 ```
 employee_job_title e =
   match e with
-    :employee name title age -> title
+    :employee<name, title, age> -> title
     _ -> :error<"This doesn't look like a proper employee">
   end
 ```
