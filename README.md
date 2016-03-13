@@ -21,8 +21,8 @@ to run a file called `hello.ds`. There is no repl yet.
 
 This is how you define a value:
 ```
-my-string = "Hello, Dash!"
-some-number = 1234
+my_string = "Hello, Dash!"
+some_number = 1234
 ```
 (Dash doesn't understand floating point numbers yet, only integers.)
 
@@ -40,7 +40,7 @@ job = :engineer
 
 A symbol can also contain data:
 ```
-employee-of-the-month = :employee "bob" :engineer 46
+employee_of_the_month = :employee "bob" :engineer 46
 ```
 The identifier of this symbol is `employee`. It contains three pieces of data:
 The string `"bob"`, the atomic symbol `:engineer`, and the number `46`
@@ -48,18 +48,18 @@ The string `"bob"`, the atomic symbol `:engineer`, and the number `46`
 
 Dash has built-in syntax for lists and tuples:
 ```
-my-list = ["unicorns", :confetti, 1234]
-a-tuple = ("robots", "lazers", :more-confetti)
+my_list = ["unicorns", :confetti, 1234]
+a_tuple = ("robots", "lazers", :more-confetti)
 ```
 
 A function definition looks similar to a value definition:
 ```
-celsius-to-kelvin c = c + 273
+celsius_to_kelvin c = c + 273
 ```
 
 This is actually just a more compact version of this:
 ```
-celsius-to-kelvin = .\ c -> c + 273
+celsius_to_kelvin = .\ c -> c + 273
 ```
 
 That `.\ <params> -> <expr>` construct is a lambda expression. If you squint
@@ -69,7 +69,7 @@ your eyes, the `.\` looks a bit like the greek letter lambda.
 More complex functions typically need pattern matching to "break down"
 data. Pattern matching is done with the `match-with-end` expression:
 ```
-employee-job-title e =
+employee_job_title e =
   match e with
     :employee name title age -> title
     _ -> :error "This doesn't look like a proper employee"
@@ -78,7 +78,7 @@ employee-job-title e =
 
 You can simply write `_` for values you're not interested in:
 ```
-employee-age e =
+employee_age e =
   match e with
     :employee _ _ age -> age
     _ -> :error "This doesn't look like a proper employee"
@@ -87,13 +87,13 @@ employee-age e =
 
 And this is how you do pattern matching on lists:
 ```
-split-head ls =
+split_head ls =
   match ls with
     [head|tail] -> (head, tail)
     _ -> :error "Unexpected value"
   end
 
-add-first-three ls =
+add_first_three ls =
   match ls with
     [first, second, third | _] -> first + second + third
     _ -> :error "Not the kind of list we were expecting"
@@ -115,12 +115,12 @@ that if you apply fewer arguments to a function than is required (this is called
 application"), you get a new function which takes the remaining parameters. That's useful
 in many cases:
 ```
-is-between a b n =
+is_between a b n =
   n >= a && n <= b
 
 numbers = [4, 7, -12, 90, 0]
 
-clamped-numbers = filter (is-between 0 10) numbers
+clamped_numbers = filter (is_between 0 10) numbers
 ```
 
 `filter` is a built-in function that checks each value in a list against
@@ -135,24 +135,24 @@ the user. In Dash a `do`-expression is used for that:
 ```
 do io with
   io.print "What is your name? "
-  name <- io.read-ln
-  io.print-ln "Hello, \(name)!"
+  name <- io.read_ln
+  io.print_ln "Hello, \(name)!"
 end
 ```
 
 For smaller programs you'll typically have a single i/o action at the end
 of your file. But you can also create auxiliary i/o actions:
 ```
-ask-name =
+ask_name =
   do io with
     io.print "What is your name? "
-    name <- io.read-ln
+    name <- io.read_ln
     return name
   end
 
 do io with
-  name <- ask-name
-  io.print-ln "Hello, \(name)!"
+  name <- ask_name
+  io.print_ln "Hello, \(name)!"
 end
 ```
 (That is the same example as before, just split into several i/o actions)
@@ -175,19 +175,19 @@ returned as the last value in a file in order to have any effect.
 You might also have been wondering what that dot-syntax is, e.g. `io.read-ln`.
 That is Dash's module lookup syntax:
 ```
-celsius-kelvin-diff = 273
+celsius_kelvin_diff = 273
 
 temp = module
 
-  celsius-to-kelvin c =
-    c + celsius-kelvin-diff
+  celsius_to_kelvin c =
+    c + celsius_kelvin_diff
 
-  kelvin-to-celsius k =
-    k - celsius-kelvin-diff
+  kelvin_to_celsius k =
+    k - celsius_kelvin_diff
 
 end
 
-very-very-cold = temp.kelvin-to-celsius 34
+very_very_cold = temp.kelvin_to_celsius 34
 ```
 
 This means that you can use `do`-expressions for lots of other things, not only
@@ -239,10 +239,10 @@ operator.
 
 #### Functions
 
-  - `string-length ls`
-  - `sub-string start len s`
-  - `to-number x`
-  - `to-string x`
+  - `string_length ls`
+  - `sub_string start len s`
+  - `to_number x`
+  - `to_string x`
   - `head ls`
   - `tail ls`
   - `map f ls`
@@ -251,16 +251,16 @@ operator.
   - `filter f ls`
   - `length ls`
   - `sequence m ms`
-  - `m-map m action ls`
+  - `m_map m action ls`
 
 
 #### The `io`-module
 
-  - `bind io-action next`
+  - `bind io_action next`
   - `return a`
-  - `read-ln`
+  - `read_ln`
   - `print a`
-  - `print-ln a`
+  - `print_ln a`
 
 
 ## Examples
