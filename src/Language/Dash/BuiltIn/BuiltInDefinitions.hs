@@ -151,7 +151,7 @@ preamble = "\n\
 \    bind action next =                                    \n\
 \      match action with                                   \n\
 \        :_internal_io<type, param, :nil> -> :_internal_io<type, param, next>  \n\
-\        :_internal_io<type, param, n0> -> :_internal_io<type, param, (.\\ x -> bind (n0 x) next)>  \n\
+\        :_internal_io<type, param, n0> -> :_internal_io<type, param, (x | bind (n0 x) next)>  \n\
 \        _ -> :error<\"io-bind: Expected an io action as first argument\">\n\
 \      end                                                 \n\
 \                                                          \n\
@@ -170,39 +170,39 @@ preamble = "\n\
 \                                                        \n\
 \  head ls =                                             \n\
 \    match ls with                                       \n\
-\      [a | _] -> a                                      \n\
+\      [a :: _] -> a                                     \n\
 \      _ -> :error<\"Empty list!\">                      \n\
 \    end                                                 \n\
 \                                                        \n\
 \  tail ls =                                             \n\
 \    match ls with                                       \n\
-\      [_ | as] -> as                                    \n\
+\      [_ :: as] -> as                                   \n\
 \      _ -> []                                           \n\
 \    end                                                 \n\
 \                                                        \n\
 \  map f ls =                                            \n\
 \    match ls with                                       \n\
 \      [] -> []                                          \n\
-\      [a|rest] -> [f a|map f rest]                      \n\
+\      [a :: rest] -> [f a :: map f rest]                   \n\
 \    end                                                 \n\
 \                                                        \n\
 \  foldr f z ls =                                        \n\
 \    match ls with                                       \n\
 \      [] -> z                                           \n\
-\      [a|rest] -> f a (foldr f z rest)                  \n\
+\      [a :: rest] -> f a (foldr f z rest)               \n\
 \    end                                                 \n\
 \                                                        \n\
 \  " ++ bifListConcatName ++ " a b =                     \n\
 \    match a with                                        \n\
 \      []      -> b                                      \n\
-\      [hd|tl] -> [hd | " ++ bifListConcatName ++ " tl b] \n\
+\      [hd :: tl] -> [hd :: " ++ bifListConcatName ++ " tl b] \n\
 \    end                                                 \n\
 \                                                        \n\
 \  reverse l =                                           \n\
 \    rev_list' l acc =                                   \n\
 \      match l with                                      \n\
 \        []      -> acc                                  \n\
-\        [hd|tl] -> rev_list' tl [hd | acc]              \n\
+\        [hd :: tl] -> rev_list' tl [hd :: acc]              \n\
 \      end                                               \n\
 \    rev_list' l []                                      \n\
 \                                                        \n\
@@ -210,9 +210,9 @@ preamble = "\n\
 \  filter f ls =                                         \n\
 \    match ls with                                       \n\
 \      []     -> []                                      \n\
-\      [x|xs] ->                                         \n\
+\      [x :: xs] ->                                         \n\
 \        if f x                                          \n\
-\          then [x|filter f xs]                          \n\
+\          then [x :: filter f xs]                          \n\
 \          else filter f xs                              \n\
 \    end                                                 \n\
 \                                                        \n\
@@ -220,7 +220,7 @@ preamble = "\n\
 \    len' l acc =                                        \n\
 \      match l with                                      \n\
 \        []     -> acc                                   \n\
-\        [_|as] -> len' as (acc + 1)                     \n\
+\        [_ :: as] -> len' as (acc + 1)                     \n\
 \        x      -> :error<\"Not a list\">                \n\
 \      end                                               \n\
 \    len' list 0                                         \n\
@@ -231,7 +231,7 @@ preamble = "\n\
 \      do m with                                         \n\
 \        l  <- a                                         \n\
 \        ls <- b                                         \n\
-\        return [l|ls]                                   \n\
+\        return [l :: ls]                                   \n\
 \      end                                               \n\
 \    foldr k (m.return []) ms                            \n\
 \                                                        \n\

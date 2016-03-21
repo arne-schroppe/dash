@@ -35,7 +35,6 @@ import Language.Dash.BuiltIn.BuiltInDefinitions
   with      { TWith }
   -- begin     { TBegin }
   end       { TEnd }
-  lam       { TLambda }
   '+'       { TOperator "+" }
   '-'       { TOperator "-" }
   '/'       { TOperator "/" }
@@ -54,6 +53,7 @@ import Language.Dash.BuiltIn.BuiltInDefinitions
   '_'       { TUnderscore }
   ','       { TComma }
   '|'       { TVBar }
+  '::'      { TDoubleColon }
 
 
 %left '||' 
@@ -94,8 +94,7 @@ Expr:
     Ident          { $1 }
   | NonIdentNonSymbolSimpleExpr { $1 }
   | LocalBinding   { $1 }
-  | FunDefOrAp     { $1 }
-  | Lambda         { $1 }
+  | FunDefOrApOrLambda { $1 }
   | MatchExpr      { $1 }
   | DoExpr         { $1 }
   | Module         { $1 }
@@ -127,18 +126,19 @@ TupleNextExpr:
 
 
 
-FunDefOrAp:
-    NonIdentNonSymbolSimpleExpr plus(SimpleExpr)       { FunAp $1 $2 }
+FunDefOrApOrLambda:
+    NonIdentNonSymbolSimpleExpr plus(SimpleExpr) { FunAp $1 $2 }
   | Ident NonIdentSimpleExpr star(SimpleExpr) { FunAp $1 ($2 : $3)  }
-  | Ident Ident FunDefOrCallNext              { let args = $2 : (fst $3) in (snd $3) $1 args }
+  | Ident Ident FunDefOrCallOrLambdaNext      { let args = $2 : (fst $3) in (snd $3) $1 args }
+  | Ident '|' opt(eol) Expr                   { Lambda [varName $1] $4 }
 
 
-FunDefOrCallNext:
-    Ident FunDefOrCallNext                     { ($1 : (fst $2), (snd $2)) } -- could still be a fun def or application
+FunDefOrCallOrLambdaNext:
+    Ident FunDefOrCallOrLambdaNext             { ($1 : (fst $2), (snd $2)) } -- could still be a fun def or application
   | NonIdentSimpleExpr star(SimpleExpr)        { ($1 : $2, \ a args -> FunAp a args)   }  -- application
-  | '=' opt(eol) Expr eol Expr                 { let varName (Var vn) = vn in
-                                                 ([], \ a args ->
+  | '=' opt(eol) Expr eol Expr                 { ([], \ a args ->
                                                         LocalBinding (Binding (varName a) (Lambda (map varName args) $3)) $5) } -- fun def
+  | '|' opt(eol) Expr                          { ([], \ a args -> Lambda (map varName (a : args)) $3) }
   |                                            { ([], \ a args -> FunAp a args) }
 
 
@@ -173,7 +173,7 @@ List:
 ListNext:
     Expr              { LitSymbol listConsSymbolName [$1, LitSymbol listEmptySymbolName []] }
   | Expr ',' ListNext { LitSymbol listConsSymbolName [$1, $3] }
-  | Expr '|' Expr     { LitSymbol listConsSymbolName [$1, $3] }
+  | Expr '::' Expr    { LitSymbol listConsSymbolName [$1, $3] }
   |                   { LitSymbol listEmptySymbolName [] }
 
 
@@ -188,9 +188,6 @@ Binding:
 Ident:
     id    { Var $1 }
   | ns Ident  { Qualified $1 $2 } -- TODO use namespace
-
-Lambda:
-    lam plus(id) '->' opt(eol) Expr  { Lambda $2 $5 }
 
 
 CompoundOrSimpleSymbol:
@@ -268,8 +265,8 @@ PatList:
 PatListNext:
     Pattern                  { PatSymbol listConsSymbolName [$1, PatSymbol listEmptySymbolName []] }
   | Pattern ',' PatListNext  { PatSymbol listConsSymbolName [$1, $3] }
-  | Pattern '|' PatId        { PatSymbol listConsSymbolName [$1, $3] }
-  | Pattern '|' PatList      { PatSymbol listConsSymbolName [$1, $3] }
+  | Pattern '::' PatId        { PatSymbol listConsSymbolName [$1, $3] }
+  | Pattern '::' PatList      { PatSymbol listConsSymbolName [$1, $3] }
   |                          { PatSymbol listEmptySymbolName [] }
 
 
@@ -300,6 +297,8 @@ FunAp:
 
 {
 
+varName :: Expr -> String
+varName (Var vn) = vn
 
 makeMonad :: String -> [(String, Expr)] -> Expr
 makeMonad monad lines =

@@ -51,7 +51,6 @@ tokens :-
   <0> "do"          { mkTok TDo }
   <0> "with"        { mkTok TWith }
   <0> "end"         { mkTok TEnd }
-  <0> ".\"          { mkTok TLambda } -- " -- fixes syntax highlighting
   <0> ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
   <0> "="           { mkTok TDefine }
   <0> "->"          { mkTok TArrow_R }
@@ -59,6 +58,7 @@ tokens :-
   <0> "_"           { mkTok TUnderscore }
   <0> ","           { mkTok TComma }
   <0> "|"           { mkTok TVBar }
+  <0> "::"          { mkTok TDoubleColon }
   <0> \"\"          { mkTok $ TString "" } -- "
   <0> \"            { begin str } -- "
   <str> @stringchars
@@ -181,12 +181,12 @@ data Token  = TEOL
             | TWith
             | TBegin
             | TEnd
-            | TLambda
             | TOperator String
             | TUnderscore
             | TComma
             | TVBar
             | TNamespace String
+            | TDoubleColon
   deriving (Show, Eq)
 
 
