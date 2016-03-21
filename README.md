@@ -59,11 +59,12 @@ celsius_to_kelvin c = c + 273
 
 This is actually just a more compact version of this:
 ```
-celsius_to_kelvin = .\ c -> c + 273
+celsius_to_kelvin = c | c + 273
 ```
 
-That `.\ <params> -> <expr>` construct is a lambda expression. If you squint
-your eyes, the `.\` looks a bit like the greek letter lambda.
+That `<params> | <expr>` construct is a lambda expression (also known as an
+anonymous function). You list the parameters before the vertical bar and an
+expression after it. Very simple!
 
 
 More complex functions typically need pattern matching to "break down"
@@ -89,13 +90,13 @@ And this is how you do pattern matching on lists:
 ```
 split_head ls =
   match ls with
-    [head|tail] -> (head, tail)
+    [head :: tail] -> (head, tail)
     _ -> :error<"Unexpected value">
   end
 
 add_first_three ls =
   match ls with
-    [first, second, third | _] -> first + second + third
+    [first, second, third :: _] -> first + second + third
     _ -> :error<"Not the kind of list we were expecting">
   end
 ```
