@@ -3,9 +3,9 @@
 quick_sort list =
   match list with
     []         -> []
-    [pivot|xs] ->
-      smaller = filter ( .\ a -> a <= pivot ) xs
-      larger = filter ( .\ a -> a > pivot ) xs
+    [pivot :: xs] ->
+      smaller = filter (a | a <= pivot) xs
+      larger = filter (a | a > pivot) xs
       (quick_sort smaller) ++ [pivot] ++ (quick_sort larger)
   end
 
@@ -15,7 +15,7 @@ read_many x =
     in <- io.read_ln
     if in == :eof
       then io.return (reverse acc)
-      else read [in|acc]
+      else read [in :: acc]
   end
   read []
 
