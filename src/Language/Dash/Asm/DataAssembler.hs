@@ -6,7 +6,6 @@ module Language.Dash.Asm.DataAssembler (
 , AtomicConstant(..)
 ) where
 
-import           Control.Applicative           ((<$>))
 import           Control.Arrow                 ((&&&))
 import           Control.Monad.Except          (ExceptT (..), runExceptT,
                                                 throwError)

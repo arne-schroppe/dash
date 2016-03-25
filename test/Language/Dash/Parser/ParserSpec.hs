@@ -45,6 +45,11 @@ spec = do
             LitSymbol listConsSymbolName [LitNumber 2,
             LitSymbol listEmptySymbolName []]]]
 
+    it "parses a record" $ do
+      parse_string "{ a = 1, b = \"two\" }" `shouldBe`
+        LitSymbol recordSymbolName [LitSymbol "a" [], LitNumber 1, LitSymbol "b" [], LitString "two"]
+
+
     -- TODO it should be possible to "call" action2 without a parameter
     it "parses a do-expression" $ do
       let source = " do maybe with   \n\

@@ -690,6 +690,16 @@ spec =
                                 VMSymbol listConsSymbolName [VMNumber 4,
                                 VMSymbol listEmptySymbolName []]]]]
 
+
+    it "matches a record in any order" $ do
+      let code = " rec = { b = :success, a = :test }  \n\
+                 \ match rec with        \n\
+                 \   { a = :test, b = :test } -> :fail \n\
+                 \   { a = :test, b = s } -> s        \n\
+                 \ end"
+      let result = run code
+      result `shouldReturnRight` VMSymbol "success" []
+
     it "has negative numbers" $ do
       let code = " 0 - 7 + 3"
       let result = run code

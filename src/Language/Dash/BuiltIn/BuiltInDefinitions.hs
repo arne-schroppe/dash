@@ -6,6 +6,7 @@ module Language.Dash.BuiltIn.BuiltInDefinitions (
 , bifToStringName
 , bifStringConcatOperator
 , tupleSymbolName
+, recordSymbolName
 , listConsSymbolName
 , listEmptySymbolName
 , trueSymbolName
@@ -19,12 +20,14 @@ import           Language.Dash.IR.Data
 import           Language.Dash.IR.Opcode
 
 
-tupleSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName, numberTypeSymbolName, stringTypeSymbolName, symbolTypeSymbolName, functionTypeSymbolName :: String
+tupleSymbolName, recordSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName, numberTypeSymbolName, stringTypeSymbolName, symbolTypeSymbolName, functionTypeSymbolName :: String
 trueSymbolName = "true"
 falseSymbolName = "false"
-tupleSymbolName = "tuple"
-listConsSymbolName = "list"
-listEmptySymbolName = "empty_list"
+
+tupleSymbolName = "$_tuple"
+recordSymbolName = "$_record"
+listConsSymbolName = "$_list"
+listEmptySymbolName = "$_empty_list"
 
 numberTypeSymbolName = "number"
 stringTypeSymbolName = "string"

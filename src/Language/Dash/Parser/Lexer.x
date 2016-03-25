@@ -43,6 +43,8 @@ tokens :-
   <0> ")"           { mkTok TClose_Par }
   <0> "["           { mkTok TOpen_Bracket }
   <0> "]"           { mkTok TClose_Bracket }
+  <0> "{"           { mkTok TOpen_Brace }
+  <0> "}"           { mkTok TClose_Brace }
   <0> "module"      { mkTok TModule }
   <0> "if"          { mkTok TIf }
   <0> "then"        { mkTok TThen }
@@ -162,6 +164,8 @@ data Token  = TEOL
             | TClose_Par
             | TOpen_Bracket
             | TClose_Bracket
+            | TOpen_Brace
+            | TClose_Brace
             | TIf
             | TThen
             | TElse

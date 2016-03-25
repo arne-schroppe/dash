@@ -5,6 +5,8 @@ import Language.Dash.Parser.Lexer
 import Language.Dash.IR.Ast
 import Language.Dash.BuiltIn.BuiltInDefinitions
 
+import Data.List (sortBy)
+
 }
 
 %name       parse
@@ -17,6 +19,8 @@ import Language.Dash.BuiltIn.BuiltInDefinitions
   ')'       { TClose_Par }
   '['       { TOpen_Bracket }
   ']'       { TClose_Bracket }
+  '{'       { TOpen_Brace }
+  '}'       { TClose_Brace }
   module    { TModule }
   if        { TIf }
   then      { TThen }
@@ -115,6 +119,7 @@ NonIdentNonSymbolSimpleExpr:
     int            { LitNumber $1 }
   | string         { LitString $1 }
   | List           { $1 }
+  | Record         { $1 }
   | '(' Expr star(TupleNextExpr) ')' {
                   case $3 of
                   [] -> $2
@@ -176,6 +181,19 @@ ListNext:
   |                   { LitSymbol listEmptySymbolName [] }
 
 
+Record:
+    '{' RecordBody '}'  { makeRecordSymbol LitSymbol (\ (LitSymbol a _) -> a) $2 }
+
+RecordBody:
+    RecordEntry star(RecordNext) { $1 : $2 }
+
+RecordNext:
+    ',' RecordEntry { $2 }
+
+RecordEntry:
+    id '=' Expr  { (LitSymbol $1 [], $3) }
+
+
 
 LocalBinding:
     Binding Expr  { LocalBinding $1 $2 }
@@ -235,6 +253,7 @@ NonSymbolSimplePattern:
         _  -> PatSymbol tupleSymbolName ($2 : $3)
     }
   | PatList  { $1 }
+  | PatRecord { $1 }
 
 SimplePattern:
     NonSymbolSimplePattern { $1 }
@@ -268,6 +287,18 @@ PatListNext:
   | Pattern '|' PatList      { PatSymbol listConsSymbolName [$1, $3] }
   |                          { PatSymbol listEmptySymbolName [] }
 
+PatRecord:
+    '{' PatRecordBody '}'  { makeRecordSymbol PatSymbol (\ (PatSymbol a _) -> a) $2 }
+
+PatRecordBody:
+    PatRecordEntry star(PatRecordNext) { $1 : $2 }
+
+PatRecordNext:
+    ',' PatRecordEntry { $2 }
+
+PatRecordEntry:
+    id '=' Pattern  { (PatSymbol $1 [], $3) }
+
 
 DoExpr:
     do id DoBody  { makeMonad $2 $3 }
@@ -278,7 +309,7 @@ DoBody:
 DoLine:
     id '<-' DoLineExpr eol  { ($1, $3) }
   | DoLineExpr eol          { ("_", $1) }
-  | Binding DoLine          { let (v, e) = $2 in 
+  | Binding DoLine          { let (v, e) = $2 in
                               (v, LocalBinding $1 e) }
 
 DoLineExpr:
@@ -321,6 +352,15 @@ adjustNameForMonad e mon =
 
 parseError :: [Token] -> a
 parseError ts = error $ "Parse error " ++ (show ts)
+
+
+
+makeRecordSymbol :: (String -> [a] -> a) -> (a -> String) -> [(a, a)] -> a
+makeRecordSymbol symbolCtor keyName kvs = symbolCtor recordSymbolName body
+  where
+    body = concat $ map (\(a, b) -> [a, b]) sortedKvs
+    sortedKvs = sortBy (\(a, _) (b, _) -> compare (keyName a) (keyName b)) kvs
+
 
 }
 
