@@ -24,6 +24,7 @@ tupleSymbolName, recordSymbolName, listConsSymbolName, listEmptySymbolName, true
 trueSymbolName = "true"
 falseSymbolName = "false"
 
+-- Note: If you change these names, also change them in Types.hs
 tupleSymbolName = "$_tuple"
 recordSymbolName = "$_record"
 listConsSymbolName = "$_list"

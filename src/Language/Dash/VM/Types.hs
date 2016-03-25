@@ -24,10 +24,10 @@ instance Show VMValue where
       VMClosure -> "<closure>"
       VMFunction -> "<function>"
       VMOpaqueSymbol -> "<opaque symbol>"  -- TODO special handling for modules
-      VMSymbol "empty_list" [] -> "[]"
+      VMSymbol "$_empty_list" [] -> "[]"
       VMSymbol s [] -> ":" ++ s
-      VMSymbol "list" fields -> showNestedList fields
-      VMSymbol "tuple" fields -> "(" ++ intercalate ", " (map show fields) ++ ")"
+      VMSymbol "$_list" fields -> showNestedList fields
+      VMSymbol "$_tuple" fields -> "(" ++ intercalate ", " (map show fields) ++ ")"
       VMSymbol s fields ->  ":" ++ s ++ "<" ++ intercalate ", " (map showField fields) ++ ">"
 
 
@@ -40,11 +40,11 @@ showField v =
 -- TODO Add better output for invalid lists
 showNestedList :: [VMValue] -> String
 showNestedList vs =
-  "[" ++ intercalate ", " (flatValues (VMSymbol "list" vs)) ++ "]"
+  "[" ++ intercalate ", " (flatValues (VMSymbol "$_list" vs)) ++ "]"
   where
-    flatValues (VMSymbol "list" [a, VMSymbol "empty_list" []]) = [show a]
-    flatValues (VMSymbol "list" [a, as@(VMSymbol "list" _)]) = show a : flatValues as
-    flatValues (VMSymbol "list" [a, xs]) = show a : (["!<"] ++ flatValues xs ++ [">!"])
+    flatValues (VMSymbol "$_list" [a, VMSymbol "$_empty_list" []]) = [show a]
+    flatValues (VMSymbol "$_list" [a, as@(VMSymbol "$_list" _)]) = show a : flatValues as
+    flatValues (VMSymbol "$_list" [a, xs]) = show a : (["!<"] ++ flatValues xs ++ [">!"])
     flatValues x = [show x]
 
 
