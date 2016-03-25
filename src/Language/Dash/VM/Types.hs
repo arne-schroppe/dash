@@ -2,6 +2,7 @@ module Language.Dash.VM.Types where
 
 import Data.Word
 import Data.List (intercalate)
+import Data.List.Split (chunksOf)
 
 type VMWord = Word32
 
@@ -28,6 +29,7 @@ instance Show VMValue where
       VMSymbol s [] -> ":" ++ s
       VMSymbol "$_list" fields -> showNestedList fields
       VMSymbol "$_tuple" fields -> "(" ++ intercalate ", " (map show fields) ++ ")"
+      VMSymbol "$_record" fields -> "{" ++ intercalate ", " (recordFields fields) ++ "}"
       VMSymbol s fields ->  ":" ++ s ++ "<" ++ intercalate ", " (map showField fields) ++ ">"
 
 
@@ -46,5 +48,11 @@ showNestedList vs =
     flatValues (VMSymbol "$_list" [a, as@(VMSymbol "$_list" _)]) = show a : flatValues as
     flatValues (VMSymbol "$_list" [a, xs]) = show a : (["!<"] ++ flatValues xs ++ [">!"])
     flatValues x = [show x]
+
+recordFields :: [VMValue] -> [String]
+recordFields symbolBody =
+  map ( \(VMSymbol k [], v) -> k ++ " = " ++ (show v)) kvPairs
+  where
+    kvPairs = map ( \[a, b] -> (a, b) ) $ chunksOf 2 symbolBody
 
 
