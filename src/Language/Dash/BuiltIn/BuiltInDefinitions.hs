@@ -158,13 +158,13 @@ preamble = "\n\
 \    return a =                                            \n\
 \      :_internal_io<" ++ show returnActionId ++ ", a, :nil>       \n\
 \                                                          \n\
-\    read_ln =                                             \n\
+\    read_line =                                             \n\
 \      :_internal_io<" ++ show readLineActionId ++ ", :nil, :nil>     \n\
 \                                                          \n\
 \    print a =                                             \n\
 \      :_internal_io<" ++ show printLineActionId ++ ", a, :nil>    \n\
 \                                                          \n\
-\    print_ln a =                                       \n\
+\    print_line a =                                       \n\
 \      :_internal_io<" ++ show printLineActionId ++ ", (a " ++ bifStringConcatOperator ++ " \"\\n\"), :nil>    \n\
 \  end                                                   \n\
 \                                                        \n\

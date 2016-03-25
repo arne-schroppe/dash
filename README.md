@@ -136,8 +136,8 @@ the user. In Dash a `do`-expression is used for that:
 ```
 do io with
   io.print "What is your name? "
-  name <- io.read_ln
-  io.print_ln "Hello, \(name)!"
+  name <- io.read_line
+  io.print_line "Hello, \(name)!"
 end
 ```
 
@@ -147,23 +147,23 @@ of your file. But you can also create auxiliary i/o actions:
 ask_name =
   do io with
     io.print "What is your name? "
-    name <- io.read_ln
+    name <- io.read_line
     return name
   end
 
 do io with
   name <- ask_name
-  io.print_ln "Hello, \(name)!"
+  io.print_line "Hello, \(name)!"
 end
 ```
 (That is the same example as before, just split into several i/o actions)
 
 
 One important detail is that i/o code is separate from "normal" code in Dash. That
-means that if you'd use `io.print_ln` or any other i/o action somewhere deep down in
+means that if you'd use `io.print_line` or any other i/o action somewhere deep down in
 a function, it will not start printing things on the screen. Why is that? It's because
 all those `io` things don't do anything directly. Instead they *describe* an action
-to be performed. So `io.print_ln "Hello"` doesn't write the text "Hello" on the screen, but
+to be performed. So `io.print_line "Hello"` doesn't write the text "Hello" on the screen, but
 returns a value that says "this is an action that, when executed, prints the text 'Hello'".
 
 So how are i/o actions executed then? They're executed by returning them to the environment.
@@ -173,7 +173,7 @@ action, the action is executed. So any i/o action needs to be directly or indire
 returned as the last value in a file in order to have any effect.
 
 
-You might also have been wondering what that dot-syntax is, e.g. `io.read_ln`.
+You might also have been wondering what that dot-syntax is, e.g. `io.read_line`.
 That is Dash's module lookup syntax:
 ```
 celsius_kelvin_diff = 273
@@ -259,9 +259,9 @@ operator.
 
   - `bind io_action next`
   - `return a`
-  - `read_ln`
+  - `read_line`
   - `print a`
-  - `print_ln a`
+  - `print_line a`
 
 
 ## Examples
