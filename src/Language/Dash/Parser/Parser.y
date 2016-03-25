@@ -182,16 +182,16 @@ ListNext:
 
 
 Record:
-    '{' RecordBody '}'  { makeRecordSymbol LitSymbol (\ (LitSymbol a _) -> a) $2 }
+    '{' opt(eol) RecordBody '}'  { makeRecordSymbol LitSymbol (\ (LitSymbol a _) -> a) $3 }
 
 RecordBody:
     RecordEntry star(RecordNext) { $1 : $2 }
 
 RecordNext:
-    ',' RecordEntry { $2 }
+    ',' opt(eol) RecordEntry { $3 }
 
 RecordEntry:
-    id '=' Expr  { (LitSymbol $1 [], $3) }
+    id opt(eol) '=' Expr opt(eol)  { (LitSymbol $1 [], $4) }
 
 
 
