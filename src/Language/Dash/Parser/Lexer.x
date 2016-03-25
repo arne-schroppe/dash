@@ -58,7 +58,6 @@ tokens :-
   <0> "_"           { mkTok TUnderscore }
   <0> ","           { mkTok TComma }
   <0> "|"           { mkTok TVBar }
-  <0> "::"          { mkTok TDoubleColon }
   <0> \"\"          { mkTok $ TString "" } -- "
   <0> \"            { begin str } -- "
   <str> @stringchars
@@ -186,7 +185,6 @@ data Token  = TEOL
             | TComma
             | TVBar
             | TNamespace String
-            | TDoubleColon
   deriving (Show, Eq)
 
 

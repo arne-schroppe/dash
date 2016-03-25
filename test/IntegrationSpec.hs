@@ -87,7 +87,7 @@ spec =
 
     it "returns a simple lambda" $ do
       let code =  " make_adder x = \n\
-                  \   y | 22 + y \n\
+                  \   y -> 22 + y \n\
                   \ \n\
                   \ adder = make_adder :nil \n\
                   \ adder 55"
@@ -150,7 +150,7 @@ spec =
 
             it "returns a closure with a dynamic variable" $ do
               let code =  " make_sub x = \n\
-                          \   y | x - y \n\
+                          \   y -> x - y \n\
                           \ \n\
                           \ subtractor = make_sub 55 \n\
                           \ subtractor 4"
@@ -160,7 +160,7 @@ spec =
             it "captures a constant number" $ do
               let code =  " c = 30 \n\
                           \ make_sub x = \n\
-                          \   y | c - y \n\
+                          \   y -> c - y \n\
                           \ \n\
                           \ subtractor = make_sub 10 \n\
                           \ subtractor 4"
@@ -170,7 +170,7 @@ spec =
             it "captures a constant plain symbol" $ do
               let code =  " ps = :my_symbol \n\
                           \ make_sym x = \n\
-                          \   y | ps \n\
+                          \   y -> ps \n\
                           \ \n\
                           \ symbolicator = make_sym 44 \n\
                           \ symbolicator 55"
@@ -180,7 +180,7 @@ spec =
             it "captures a constant function" $ do
               let code =  " subsub a b = a - b \n\
                           \ make_sub x = \n\
-                          \   y | subsub x y \n\
+                          \   y -> subsub x y \n\
                           \ \n\
                           \ subtractor = make_sub 10 \n\
                           \ subtractor 4"
@@ -189,7 +189,7 @@ spec =
 
             it "captures several dynamic values" $ do
               let code =  " make_sub x y z w = \n\
-                          \   a | (z - y) - (x - a)\n\
+                          \   a -> (z - y) - (x - a)\n\
                           \ \n\
                           \ test = make_sub 33 55 99 160 \n\
                           \ test 24"
@@ -200,8 +200,8 @@ spec =
               let code = "\
               \ outside = 1623 \n\
               \ make_adder_maker x = \n\
-              \   y | \n\
-              \     z | \n\
+              \   y -> \n\
+              \     z -> \n\
               \       (x + (z + y)) + outside \n\
               \ \n\
               \ ((make_adder_maker 9) 80) 150"
@@ -223,7 +223,7 @@ spec =
             it "applies an unknown curried closure" $ do
               let code = "\
               \ get_cl x = \n\
-              \   a b | a - b \n\
+              \   a b -> a - b \n\
               \ apply f = \n\
               \   curry = f 123  \n\
               \   curry 3 \n\
@@ -244,7 +244,7 @@ spec =
 
             it "applies an over-saturated call to a known function" $ do
               let code = "\
-              \ f a = b c | (a + b) - c \n\
+              \ f a = b c -> (a + b) - c \n\
               \ f 54 67 13"
               let result = run code
               result `shouldReturnRight` VMNumber 108
@@ -252,7 +252,7 @@ spec =
             it "applies an oversaturated call to an unknown closure" $ do
               let code = "\
               \ fun a =   \n\
-              \   b c | d e | f | ((f + e) - (c + d)) + (a + b) \n\
+              \   b c -> d e -> f -> ((f + e) - (c + d)) + (a + b) \n\
               \ res = fun 1 2 3 4 5 6 \n\
               \ res"
               let result = run code
@@ -261,7 +261,7 @@ spec =
             it "applies an oversaturated tail-call to an unknown closure" $ do
               let code = "\
               \ fun a =   \n\
-              \   b c | d e | f | ((f + e) - (c + d)) + (a + b) \n\
+              \   b c -> d e -> f -> ((f + e) - (c + d)) + (a + b) \n\
               \ fun 1 2 3 4 5 6"
               let result = run code
               result `shouldReturnRight` VMNumber 7
@@ -269,7 +269,7 @@ spec =
             it "applies an oversaturated call to an unknown function" $ do
               let code = "\
               \ fun a =   \n\
-              \   b c | d e | f | :success \n\
+              \   b c -> d e -> f -> :success \n\
               \ res = fun 1 2 3 4 5 6 \n\
               \ res"
               let result = run code
@@ -278,7 +278,7 @@ spec =
             it "applies an oversaturated tail-call to an unknown function" $ do
               let code = "\
               \ fun a =   \n\
-              \   b c | d e | f | :success \n\
+              \   b c -> d e -> f -> :success \n\
               \ fun 1 2 3 4 5 6"
               let result = run code
               result `shouldReturnRight` VMSymbol "success" []
@@ -286,7 +286,7 @@ spec =
             it "applies result of a function application" $ do
               let code = "\
               \ fun a =   \n\
-              \   b c | d e | f | 77 \n\
+              \   b c -> d e -> f -> 77 \n\
               \ (((fun 1) 2 3) 4 5) 6"
               let result = run code
               result `shouldReturnRight` VMNumber 77
@@ -294,7 +294,7 @@ spec =
             it "applies result of a closure application" $ do
               let code = "\
               \ fun a =   \n\
-              \   b c | d e | f | ((f + e) - (c + d)) + (a + b) \n\
+              \   b c -> d e -> f -> ((f + e) - (c + d)) + (a + b) \n\
               \ (((fun 1) 2 3) 4 5) 6"
               let result = run code
               result `shouldReturnRight` VMNumber 7
@@ -302,7 +302,7 @@ spec =
             it "applies a partial application of a closure application" $ do
               let code = "\
               \ fun a =   \n\
-              \   b c | d | e f | ((f + e) - (c + d)) + (a + b) \n\
+              \   b c -> d -> e f -> ((f + e) - (c + d)) + (a + b) \n\
               \ fpart = fun 1 2 3 4 5 \n\
               \ fpart 6"
               let result = run code
@@ -312,7 +312,7 @@ spec =
             it "applies a partial application of a function application" $ do
               let code = "\
               \ fun a =   \n\
-              \   b c | d | e f | :success \n\
+              \   b c -> d -> e f -> :success \n\
               \ fpart = fun 1 2 3 4 5 \n\
               \ fpart 6"
               let result = run code
@@ -649,7 +649,7 @@ spec =
       let code = " ls = [1, 2, 3, 4]      \n\
                  \ match ls with        \n\
                  \   [1, 2] -> :a \n\
-                 \   [1, 2 :: tl] -> tl   \n\
+                 \   [1, 2 | tl] -> tl   \n\
                  \ end"
       let result = run code
       result `shouldReturnRight` VMSymbol listConsSymbolName [VMNumber 3,
@@ -661,7 +661,7 @@ spec =
       let code = " ls = [1, 2, 3, 4, 5]      \n\
                  \ match ls with        \n\
                  \   [1, 2] -> :a \n\
-                 \   [1 :: [2 :: [ 3 :: tl]]] -> tl        \n\
+                 \   [1 | [2 | [ 3 | tl]]] -> tl        \n\
                  \ end"
       let result = run code
       result `shouldReturnRight` VMSymbol listConsSymbolName [VMNumber 4,
@@ -670,7 +670,7 @@ spec =
 
     it "cons a list" $ do
       let code = " tail = [3, 4] \n\
-                 \ [1, 2 :: tail]"
+                 \ [1, 2 | tail]"
       let result = run code
       result `shouldReturnRight` VMSymbol listConsSymbolName [VMNumber 1,
                                 VMSymbol listConsSymbolName [VMNumber 2,

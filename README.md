@@ -59,11 +59,11 @@ celsius_to_kelvin c = c + 273
 
 This is actually just a more compact version of this:
 ```
-celsius_to_kelvin = c | c + 273
+celsius_to_kelvin = c -> c + 273
 ```
 
-That `<params> | <expr>` construct is a lambda expression (also known as an
-anonymous function). You list the parameters before the vertical bar and an
+That `<params> -> <expr>` construct is a lambda expression (also known as an
+anonymous function). You list the parameters before the arrow and an 
 expression after it. Very simple!
 
 
@@ -90,13 +90,13 @@ And this is how you do pattern matching on lists:
 ```
 split_head ls =
   match ls with
-    [head :: tail] -> (head, tail)
+    [head | tail] -> (head, tail)
     _ -> :error<"Unexpected value">
   end
 
 add_first_three ls =
   match ls with
-    [first, second, third :: _] -> first + second + third
+    [first, second, third | _] -> first + second + third
     _ -> :error<"Not the kind of list we were expecting">
   end
 ```
@@ -160,10 +160,10 @@ end
 
 
 One important detail is that i/o code is separate from "normal" code in Dash. That
-means that if you'd use `io.print-ln` or any other i/o action somewhere deep down in
+means that if you'd use `io.print_ln` or any other i/o action somewhere deep down in
 a function, it will not start printing things on the screen. Why is that? It's because
 all those `io` things don't do anything directly. Instead they *describe* an action
-to be performed. So `io.print-ln "Hello"` doesn't write the text "Hello" on the screen, but
+to be performed. So `io.print_ln "Hello"` doesn't write the text "Hello" on the screen, but
 returns a value that says "this is an action that, when executed, prints the text 'Hello'".
 
 So how are i/o actions executed then? They're executed by returning them to the environment.
@@ -173,7 +173,7 @@ action, the action is executed. So any i/o action needs to be directly or indire
 returned as the last value in a file in order to have any effect.
 
 
-You might also have been wondering what that dot-syntax is, e.g. `io.read-ln`.
+You might also have been wondering what that dot-syntax is, e.g. `io.read_ln`.
 That is Dash's module lookup syntax:
 ```
 celsius_kelvin_diff = 273

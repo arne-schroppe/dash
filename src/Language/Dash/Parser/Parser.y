@@ -53,7 +53,6 @@ import Language.Dash.BuiltIn.BuiltInDefinitions
   '_'       { TUnderscore }
   ','       { TComma }
   '|'       { TVBar }
-  '::'      { TDoubleColon }
 
 
 %left '||' 
@@ -130,7 +129,7 @@ FunDefOrApOrLambda:
     NonIdentNonSymbolSimpleExpr plus(SimpleExpr) { FunAp $1 $2 }
   | Ident NonIdentSimpleExpr star(SimpleExpr) { FunAp $1 ($2 : $3)  }
   | Ident Ident FunDefOrCallOrLambdaNext      { let args = $2 : (fst $3) in (snd $3) $1 args }
-  | Ident '|' opt(eol) Expr                   { Lambda [varName $1] $4 }
+  | Ident '->' opt(eol) Expr                  { Lambda [varName $1] $4 }
 
 
 FunDefOrCallOrLambdaNext:
@@ -138,7 +137,7 @@ FunDefOrCallOrLambdaNext:
   | NonIdentSimpleExpr star(SimpleExpr)        { ($1 : $2, \ a args -> FunAp a args)   }  -- application
   | '=' opt(eol) Expr eol Expr                 { ([], \ a args ->
                                                         LocalBinding (Binding (varName a) (Lambda (map varName args) $3)) $5) } -- fun def
-  | '|' opt(eol) Expr                          { ([], \ a args -> Lambda (map varName (a : args)) $3) }
+  | '->' opt(eol) Expr                         { ([], \ a args -> Lambda (map varName (a : args)) $3) }
   |                                            { ([], \ a args -> FunAp a args) }
 
 
@@ -173,7 +172,7 @@ List:
 ListNext:
     Expr              { LitSymbol listConsSymbolName [$1, LitSymbol listEmptySymbolName []] }
   | Expr ',' ListNext { LitSymbol listConsSymbolName [$1, $3] }
-  | Expr '::' Expr    { LitSymbol listConsSymbolName [$1, $3] }
+  | Expr '|' Expr     { LitSymbol listConsSymbolName [$1, $3] }
   |                   { LitSymbol listEmptySymbolName [] }
 
 
@@ -265,8 +264,8 @@ PatList:
 PatListNext:
     Pattern                  { PatSymbol listConsSymbolName [$1, PatSymbol listEmptySymbolName []] }
   | Pattern ',' PatListNext  { PatSymbol listConsSymbolName [$1, $3] }
-  | Pattern '::' PatId        { PatSymbol listConsSymbolName [$1, $3] }
-  | Pattern '::' PatList      { PatSymbol listConsSymbolName [$1, $3] }
+  | Pattern '|' PatId        { PatSymbol listConsSymbolName [$1, $3] }
+  | Pattern '|' PatList      { PatSymbol listConsSymbolName [$1, $3] }
   |                          { PatSymbol listEmptySymbolName [] }
 
 
