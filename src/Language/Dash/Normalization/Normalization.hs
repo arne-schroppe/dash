@@ -127,6 +127,8 @@ atomizeExpr expr name k = case expr of
       normalizeLambda params bodyExpr name k
   MatchBranch matchedVars bodyExpr ->
       normalizeMatchBranch matchedVars bodyExpr k
+  DestructAssignment pattern boundExpr bodyExpr ->
+      normalizeMatch boundExpr [(pattern, bodyExpr)] k
   Module bindings ->
       let bs = map (\ (Binding n e) -> (n, e)) bindings in
       normalizeModule bs k

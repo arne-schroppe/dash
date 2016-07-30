@@ -25,6 +25,7 @@ import Data.List (sortBy)
   if        { TIf }
   then      { TThen }
   else      { TElse }
+  let       { TLet }
   '='       { TDefine }
   symbol    { TSymbol $$ }
   id        { TId $$ }
@@ -102,8 +103,9 @@ Expr:
   | DoExpr         { $1 }
   | Module         { $1 }
   | CompoundOrSimpleSymbol  { $1 }
-  | InfixOperation   { $1 }
+  | InfixOperation { $1 }
   | IfElse         { $1 }
+  | DestructAssignment  { $1 }
 
 
 SimpleExpr:
@@ -232,6 +234,8 @@ IfElse:
       Match $3 [(PatSymbol trueSymbolName [], $7), (PatSymbol falseSymbolName [], $11)]
     }
 
+DestructAssignment:
+    let Pattern '=' opt(eol) Expr eol Expr { DestructAssignment $2 $5 $7 } -- TODO don't allow patnumber
 
 MatchExpr:
     -- TODO also allow indentation syntax

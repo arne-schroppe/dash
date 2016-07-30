@@ -30,6 +30,7 @@ data Expr =
   | LocalBinding Binding Expr  -- binding, body
   | Module [Binding]
   | Match Expr [(Pattern, Expr)]
+  | DestructAssignment Pattern Expr Expr  -- pattern, bound expr, body
   deriving (Show, Eq)
 
 
