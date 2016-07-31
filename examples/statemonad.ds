@@ -1,0 +1,44 @@
+#!/usr/local/bin/dash
+
+
+state = module
+
+  bind m f =
+    :state<h> = m
+    state_func s =
+      (a, newState) = h s
+      :state<g> = f a
+      g newState
+    :state<state_func>
+
+  return a =
+    state_func s = (a, s)
+    :state<state_func>
+
+  get a =
+    state_func s = (s, s)
+    :state<state_func>
+
+  put newState =
+    state_func s = (:nil, newState)
+    :state<state_func>
+
+  run st s0 =
+    :state<state_func> = st
+    state_func s0
+
+end
+
+
+state_test =
+  do state with
+    a <- state.get :nil
+    state.put (3 * a)
+    b <- state.get :nil
+    state.put (b + 5)
+    return "done"
+  end
+
+
+state.run state_test 10
+
