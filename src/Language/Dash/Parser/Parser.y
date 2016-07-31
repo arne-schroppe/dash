@@ -220,7 +220,7 @@ Definition:
   | ModuleFunDef   { $1 }
 
 ModuleFunDef:
-    id plus(id) '=' opt(eol) Expr eol  { Binding $1 (Lambda (map Var $2) $5) }
+    id plus(ExprB) '=' opt(eol) Expr eol  { Binding $1 (Lambda $2 $5) }
 
 
 IfElse:

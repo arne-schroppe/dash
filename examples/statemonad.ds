@@ -3,8 +3,7 @@
 
 state = module
 
-  bind m f =
-    :state<h> = m
+  bind :state<h> f =
     state_func s =
       (a, newState) = h s
       :state<g> = f a
@@ -23,8 +22,7 @@ state = module
     state_func s = (:nil, newState)
     :state<state_func>
 
-  run st s0 =
-    :state<state_func> = st
+  run :state<state_func> s0 =
     state_func s0
 
 end
