@@ -100,8 +100,8 @@ Expr:
         _     -> DestructAssignment $1 $4 $6
   }
   | ExprB plus(ExprB) { FunAp $1 $2 }
-  | ExprB star(ExprB) '->' opt(eol) Expr { Lambda (map varName $ $1:$2) $5 }
-  | ExprB plus(ExprB) '=' opt(eol) Expr eol Expr { LocalBinding (Binding (varName $1) (Lambda (map varName $ $2) $5)) $7 }
+  | ExprB star(ExprB) '->' opt(eol) Expr { Lambda ($1:$2) $5 }
+  | ExprB plus(ExprB) '=' opt(eol) Expr eol Expr { LocalBinding (Binding (varName $1) (Lambda $2 $5)) $7 }
   | InfixOperation { $1 }
   | MatchExpr { $1 }
   | DoExpr    { $1 }
@@ -220,7 +220,7 @@ Definition:
   | ModuleFunDef   { $1 }
 
 ModuleFunDef:
-    id plus(id) '=' opt(eol) Expr eol  { Binding $1 (Lambda $2 $5) }
+    id plus(id) '=' opt(eol) Expr eol  { Binding $1 (Lambda (map Var $2) $5) }
 
 
 IfElse:
@@ -346,7 +346,7 @@ makeMonad monad lines =
     ("_", action) : rest ->
             foldl (\acc (varname, action') ->
                 let qname = (Qualified monad $ Var "bind") in
-                let args = [(adjustNameForMonad action' monad), Lambda [varname] acc] in
+                let args = [(adjustNameForMonad action' monad), Lambda [Var varname] acc] in
                 FunAp qname args) (adjustNameForMonad action monad) rest
     (_, _) : rest -> error "Last line in do-block can't be an assignment"
     [] -> error "Malformed do-block"

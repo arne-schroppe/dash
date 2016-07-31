@@ -67,8 +67,8 @@ spec = do
         norm `shouldBeRight` expected
 
       it "normalizes general function calls" $ do
-        let ast = LocalBinding (Binding "fun1" $ Lambda ["a", "b", "c", "d"] $ LitNumber 0) $
-                  LocalBinding (Binding "fun2" $ Lambda ["a", "b"] $ LitNumber 0) $
+        let ast = LocalBinding (Binding "fun1" $ Lambda [Var "a", Var "b", Var "c", Var "d"] $ LitNumber 0) $
+                  LocalBinding (Binding "fun2" $ Lambda [Var "a", Var "b"] $ LitNumber 0) $
                   FunAp (Var "fun1")
                       [(FunAp (Var "fun2")
                           [LitNumber 1, LitNumber 2]),
@@ -97,7 +97,7 @@ spec = do
 
       it "normalizes a lambda call" $ do
         let ast = FunAp
-                (Lambda ["a", "b"]
+                (Lambda [Var "a", Var "b"]
                     (LitNumber 5))
                 [LitNumber 1, LitNumber 2]
         let norm = pureNorm ast
@@ -119,8 +119,8 @@ spec = do
 
 
       it "normalizes a returned lambda call" $ do
-        let ast = LocalBinding (Binding "make-l" $ Lambda ["x"] $
-                                Lambda ["y"] $ LitNumber 22 ) $
+        let ast = LocalBinding (Binding "make-l" $ Lambda [Var "x"] $
+                                Lambda [Var "y"] $ LitNumber 22 ) $
                   LocalBinding (Binding "l" $ FunAp (Var "make-l") [LitNumber 0]) $
                   FunAp (Var "l") [LitNumber 55]
         let norm = pureNorm ast
@@ -159,7 +159,7 @@ spec = do
 
       it "identifies constant free variables" $ do
         let ast = LocalBinding (Binding "b" (LitNumber 4)) $
-                     Lambda ["a"] $ FunAp (Var "+") [Var "a", Var "b"]
+                     Lambda [Var "a"] $ FunAp (Var "+") [Var "a", Var "b"]
         let norm = pureNorm ast
         let expected = NLet (NVar "b" NLocalVar) (NNumber 4) $
                        NAtom $ NLambda [] ["a"] $
@@ -168,8 +168,8 @@ spec = do
         norm `shouldBeRight` expected
 
       it "identifies dynamic free variables" $ do
-        let ast = Lambda ["b"] $
-                     Lambda ["a"] $ FunAp (Var "+") [Var "a", Var "b"]
+        let ast = Lambda [Var "b"] $
+                     Lambda [Var "a"] $ FunAp (Var "+") [Var "a", Var "b"]
         let norm = pureNorm ast
         let expected = NAtom $ NLambda [] ["b"] $
                        NAtom $ NLambda ["b"] ["a"] $
@@ -177,10 +177,10 @@ spec = do
         norm `shouldBeRight` expected
 
       it "identifies nested closures" $ do
-        let ast = Lambda ["a"] $
-                  Lambda ["b"] $
-                  Lambda ["c"] $
-                  Lambda ["d"] $ FunAp (Var "+") [Var "a", Var "b"]
+        let ast = Lambda [Var "a"] $
+                  Lambda [Var "b"] $
+                  Lambda [Var "c"] $
+                  Lambda [Var "d"] $ FunAp (Var "+") [Var "a", Var "b"]
         let norm = pureNorm ast
         let expected = NAtom $ NLambda [] ["a"] $
                        NAtom $ NLambda ["a"] ["b"] $
@@ -222,7 +222,7 @@ spec = do
         norm `shouldBeRight` expected
 
       it "captures dynamic free variables in match bodies" $ do
-        let ast = Lambda ["a"] $
+        let ast = Lambda [Var "a"] $
                   Match (LitNumber 2) [
                     (LitNumber 1, Var "a"),
                     (LitNumber 2, LitNumber 44)
@@ -274,7 +274,7 @@ spec = do
 
       it "resolves recursive use of an identifier" $ do
         let ast = LocalBinding (Binding "fun" $
-                    Lambda ["a"] $ FunAp (Var "fun") [FunAp (Var "+") [Var "a", LitNumber 1]]) $
+                    Lambda [Var "a"] $ FunAp (Var "fun") [FunAp (Var "+") [Var "a", LitNumber 1]]) $
                   FunAp (Var "fun") [LitNumber 10]
         let norm = pureNorm ast
         let expected = NLet (NVar "fun" NLocalVar) (NLambda [] ["a"] $
@@ -289,9 +289,9 @@ spec = do
 
       -- TODO forget about this for now
       it "resolves recursive use of an identifier in a closure" $ do
-        let ast = LocalBinding (Binding "outer" $ Lambda ["b"] $
+        let ast = LocalBinding (Binding "outer" $ Lambda [Var "b"] $
                     LocalBinding (Binding "fun" $
-                      Lambda ["a"] $ FunAp (Var "fun") [FunAp (Var "+") [Var "a", Var "b"]]) $
+                      Lambda [Var "a"] $ FunAp (Var "fun") [FunAp (Var "+") [Var "a", Var "b"]]) $
                     FunAp (Var "fun") [LitNumber 10]) $
                   FunAp (Var "outer") [LitNumber 2]
         let norm = pureNorm ast
@@ -308,9 +308,9 @@ spec = do
         norm `shouldBeRight` expected
 
       it "pulls up new free variables into outer scopes" $ do
-        let ast = LocalBinding (Binding "outer" $ Lambda ["b"] $
-                    LocalBinding (Binding "fun" $ Lambda ["a"] $
-                      LocalBinding (Binding "inner" $ Lambda ["x"] $
+        let ast = LocalBinding (Binding "outer" $ Lambda [Var "b"] $
+                    LocalBinding (Binding "fun" $ Lambda [Var "a"] $
+                      LocalBinding (Binding "inner" $ Lambda [Var "x"] $
                         FunAp (Var "fun") [FunAp (Var "+") [Var "a", Var "b"]]) $
                       FunAp (Var "inner") [LitNumber 0]) $
                     FunAp (Var "fun") [LitNumber 10]) $
@@ -333,8 +333,8 @@ spec = do
 
 
       it "does not oversaturate a call to a known function" $ do
-        let ast = LocalBinding (Binding "fun" $ Lambda ["a", "b"] $
-                    Lambda ["c"] $ Lambda ["d", "e", "f"] $ LitNumber 42) $
+        let ast = LocalBinding (Binding "fun" $ Lambda [Var "a", Var "b"] $
+                    Lambda [Var "c"] $ Lambda [Var "d", Var "e", Var "f"] $ LitNumber 42) $
                   FunAp (Var "fun") [LitNumber 1, LitNumber 2,
                                        LitNumber 33,
                                        LitNumber 444, LitNumber 555, LitNumber 666]
@@ -388,7 +388,7 @@ spec = do
 -}
 
       it "identifies an under-saturated call to a known function" $ do
-        let ast = LocalBinding (Binding "fun" $ Lambda ["a", "b", "c"] $
+        let ast = LocalBinding (Binding "fun" $ Lambda [Var "a", Var "b", Var "c"] $
                                                 LitNumber 42) $
                   FunAp (Var "fun") [LitNumber 1, LitNumber 2]
         let norm = pureNorm ast
@@ -451,7 +451,7 @@ spec = do
       it "normalizes a recursive module call" $ do
         let numBuiltInSymbols = length builtInSymbols
         let ast = LocalBinding (Binding "my-mod" $
-                    Module [Binding "func" $ Lambda ["a"] $ FunAp (Var "func") [LitNumber 2] ]) $
+                    Module [Binding "func" $ Lambda [Var "a"] $ FunAp (Var "func") [LitNumber 2] ]) $
                   FunAp (Qualified "my-mod" (Var "func")) [LitNumber 10]
         let norm = pureNorm ast
         let numFieldSym = mkSymId minUserSym

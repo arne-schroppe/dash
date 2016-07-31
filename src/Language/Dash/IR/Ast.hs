@@ -28,7 +28,7 @@ data Expr =
 
   | Var String
   | Qualified String Expr  -- TODO merge with var?
-  | Lambda [String] Expr       -- arguments, body
+  | Lambda [Expr] Expr       -- arguments, body
   | MatchBranch [String] Expr  -- arguments, body
   | FunAp Expr [Expr]            -- A function application
   | LocalBinding Binding Expr  -- binding, body

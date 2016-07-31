@@ -241,18 +241,39 @@ normalizeVar name k = do
   k $ NVarExpr var
 
 
-normalizeLambda :: [String] -> Expr -> String -> Cont -> Norm NstExpr
+normalizeLambda :: [Expr] -> Expr -> String -> Cont -> Norm NstExpr
 normalizeLambda params bodyExpr name k = do
-  enterContext params
+  let (paramNames, destrAssgns) = paramNamesAndDestructAssignments params
+  enterContext paramNames
   -- TODO we don't know whether this var is dynamic or not!
   addBinding name (NVar name NRecursiveVar, False)
   -- TODO add arity for recursive var?
-  normalizedBody <- normalizeExpr bodyExpr
+  let newBody = addDestrAssignments destrAssgns bodyExpr
+  normalizedBody <- normalizeExpr newBody
   freeVars <- freeVariables
   leaveContext
   pullUpFreeVars freeVars
   addArity name (length freeVars) (length params)
-  k $ NLambda freeVars params normalizedBody
+  k $ NLambda freeVars paramNames normalizedBody
+
+
+paramNamesAndDestructAssignments :: [Expr] -> ([String], [(Expr, String)])
+paramNamesAndDestructAssignments params =
+  foldr f ([], []) params
+  where
+    f e (names', destrAssgns') =
+      case e of
+        Var s -> (s:names', destrAssgns')
+        _     ->
+                  let paramName = "$_p" ++ (show $ length names') in
+                  let destrA = (e, paramName) in
+                  (paramName:names', destrA:destrAssgns')
+
+addDestrAssignments :: [(Expr, String)] -> Expr -> Expr
+addDestrAssignments assgns body =
+  foldr f body assgns
+  where
+    f (pat, varName) expr = DestructAssignment pat (Var varName) expr
 
 
 normalizeMatchBranch :: [String] -> Expr -> Cont -> Norm NstExpr
