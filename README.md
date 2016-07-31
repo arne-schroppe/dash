@@ -46,10 +46,11 @@ The identifier of this symbol is `employee`. It contains three pieces of data:
 The string `"bob"`, the atomic symbol `:engineer`, and the number `46`
 
 
-Dash has built-in syntax for lists and tuples:
+Dash has built-in syntax for lists, tuples, and records:
 ```
 my_list = ["unicorns", :confetti, 1234]
 a_tuple = ("robots", "lazers", :more_confetti)
+a_record = { name = "cat", special_skill = :sleep }
 ```
 
 A function definition looks similar to a value definition:
