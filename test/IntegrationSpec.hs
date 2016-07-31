@@ -466,28 +466,28 @@ spec =
 
       it "destructures a symbol" $ do
         let code = " a = :test<1, \"yes\", :true>  \n\
-                   \ let :test<_, s, _> = a            \n\
+                   \ :test<_, s, _> = a            \n\
                    \ s"
         let result = run code
         result `shouldReturnRight` VMString "yes"
 
       it "destructures a tuple" $ do
         let code = " a = (1, \"yes\", :true)  \n\
-                   \ let (_, s, _) = a            \n\
+                   \ (_, s, _) = a            \n\
                    \ s"
         let result = run code
         result `shouldReturnRight` VMString "yes"
 
       it "destructures a list" $ do
         let code = " a = [1, \"yes\", :true]  \n\
-                   \ let [_, s| _] = a            \n\
+                   \ [_, s| _] = a            \n\
                    \ s"
         let result = run code
         result `shouldReturnRight` VMString "yes"
 
       it "destructures a record" $ do
         let code = " a = {x = 1, y = \"yes\", z = :true}  \n\
-                   \ let { x = _, y = s, z = _} = a            \n\
+                   \ { x = _, y = s, z = _} = a            \n\
                    \ s"
         let result = run code
         result `shouldReturnRight` VMString "yes"

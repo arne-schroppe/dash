@@ -136,6 +136,8 @@ atomizeExpr expr name k = case expr of
       normalizeModuleLookup ident e k
   LocalBinding (Binding bname boundExpr) restExpr ->
       normalizeInnerLocalBinding bname boundExpr restExpr k
+  Wildcard ->
+      throwError $ CodeError "Unexpected wildcard"
 
 
 -- This case is only for inner local bindings, i.e. let a = let b = 2 in 1 + b
@@ -337,7 +339,7 @@ normalizeFunAp funExpr args k =
             return $ NLet knownFunResult apKnownFun rest
 
 
-normalizeMatch :: Expr -> [(Pattern, Expr)] -> Cont -> Norm NstExpr
+normalizeMatch :: Expr -> [(Expr, Expr)] -> Cont -> Norm NstExpr
 normalizeMatch matchedExpr patternsAndExpressions k = do
   matchedVarsAndEncodedPatterns <- forM (map fst patternsAndExpressions) $
                                         encodeMatchPattern 0
@@ -457,28 +459,30 @@ encodeConstantLiteral v =
     _ ->
         throwError $ CodeError "Expected a literal"
 
-encodeMatchPattern :: Int -> Pattern -> Norm ([String], Constant)
+encodeMatchPattern :: Int -> Expr -> Norm ([String], Constant)
 encodeMatchPattern nextMatchVar pat =
   case pat of
-    PatNumber n ->
+    LitNumber n ->
         return ([], CNumber n)
-    PatSymbol s [] -> do
+    LitSymbol s [] -> do
         sid <- addSymbolName s
         return ([], CPlainSymbol sid)
-    PatSymbol s params -> do
+    LitSymbol s params -> do
         symId <- addSymbolName s
         (vars, pats) <- encodePatternCompoundSymbolArgs nextMatchVar params
         return (vars, CCompoundSymbol symId pats)
-    PatVar n ->
+    Var n ->
         return ([n], CMatchVar nextMatchVar)
-    PatWildcard ->
+    Wildcard ->
         return (["_"], CMatchVar nextMatchVar) -- TODO be a bit more sophisticated here
                                                -- and don't encode this as a var that is
                                                -- passed to the match branch
+    _ ->
+        throwError $ CodeError "Unexpected tokens in pattern"
 
 
 -- TODO use inner state ?
-encodePatternCompoundSymbolArgs :: Int -> [Pattern] -> Norm ([String], [Constant])
+encodePatternCompoundSymbolArgs :: Int -> [Expr] -> Norm ([String], [Constant])
 encodePatternCompoundSymbolArgs nextMatchVar args = do
   (_, vars, entries) <- foldM (\(nextMV, accVars, pats) p -> do
     (vars, encoded) <- encodeMatchPattern nextMV p

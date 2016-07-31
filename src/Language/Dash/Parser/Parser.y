@@ -25,7 +25,6 @@ import Data.List (sortBy)
   if        { TIf }
   then      { TThen }
   else      { TElse }
-  let       { TLet }
   '='       { TDefine }
   symbol    { TSymbol $$ }
   id        { TId $$ }
@@ -93,24 +92,34 @@ Prog:
   | star(eol)               { LitString "" }
 
 
-
 Expr:
-    Ident          { $1 }
-  | NonIdentNonSymbolSimpleExpr { $1 }
-  | LocalBinding   { $1 }
-  | FunDefOrApOrLambda { $1 }
-  | MatchExpr      { $1 }
-  | DoExpr         { $1 }
-  | Module         { $1 }
-  | CompoundOrSimpleSymbol  { $1 }
+    ExprB { $1 }
+  | ExprB '=' opt(eol) Expr eol Expr {
+      case $1 of
+        Var s -> LocalBinding (Binding s $4) $6
+        _     -> DestructAssignment $1 $4 $6
+  }
+  | ExprB plus(ExprB) { FunAp $1 $2 }
+  | ExprB star(ExprB) '->' opt(eol) Expr { Lambda (map varName $ $1:$2) $5 }
+  | ExprB plus(ExprB) '=' opt(eol) Expr eol Expr { LocalBinding (Binding (varName $1) (Lambda (map varName $ $2) $5)) $7 }
   | InfixOperation { $1 }
-  | IfElse         { $1 }
-  | DestructAssignment  { $1 }
+  | MatchExpr { $1 }
+  | DoExpr    { $1 }
+  | Module    { $1 }
+  | IfElse    { $1 }
+
+
+ExprB:
+    Ident  { $1 }
+  | NonIdentNonSymbolSimpleExpr { $1 }
+  | CompoundOrSimpleSymbol { $1 }
+  | '_' { Wildcard }
 
 
 SimpleExpr:
     Ident               { $1 }
   | NonIdentSimpleExpr  { $1 }
+  | '_' { Wildcard }
 
 
 NonIdentSimpleExpr:
@@ -130,22 +139,6 @@ NonIdentNonSymbolSimpleExpr:
 TupleNextExpr:
     ',' Expr   { $2 }
 
-
-
-FunDefOrApOrLambda:
-    NonIdentNonSymbolSimpleExpr plus(SimpleExpr) { FunAp $1 $2 }
-  | Ident NonIdentSimpleExpr star(SimpleExpr) { FunAp $1 ($2 : $3)  }
-  | Ident Ident FunDefOrCallOrLambdaNext      { let args = $2 : (fst $3) in (snd $3) $1 args }
-  | Ident '->' opt(eol) Expr                  { Lambda [varName $1] $4 }
-
-
-FunDefOrCallOrLambdaNext:
-    Ident FunDefOrCallOrLambdaNext             { ($1 : (fst $2), (snd $2)) } -- could still be a fun def or application
-  | NonIdentSimpleExpr star(SimpleExpr)        { ($1 : $2, \ a args -> FunAp a args)   }  -- application
-  | '=' opt(eol) Expr eol Expr                 { ([], \ a args ->
-                                                        LocalBinding (Binding (varName a) (Lambda (map varName args) $3)) $5) } -- fun def
-  | '->' opt(eol) Expr                         { ([], \ a args -> Lambda (map varName (a : args)) $3) }
-  |                                            { ([], \ a args -> FunAp a args) }
 
 
 
@@ -196,12 +189,13 @@ RecordEntry:
     id opt(eol) '=' Expr opt(eol)  { (LitSymbol $1 [], $4) }
 
 
+-- DestructAssignment:
+--    let DestructAssignmentPattern '=' opt(eol) Expr eol Expr { DestructAssignment $2 $5 $7 } -- TODO don't allow patnumber
 
-LocalBinding:
-    Binding Expr  { LocalBinding $1 $2 }
 
 Binding:
     id '=' opt(eol) Expr eol   { Binding $1 $4 }
+
 
 
 Ident:
@@ -231,11 +225,9 @@ ModuleFunDef:
 
 IfElse:
     if opt(eol) Expr opt(eol) then opt(eol) Expr opt(eol) else opt(eol) Expr  {
-      Match $3 [(PatSymbol trueSymbolName [], $7), (PatSymbol falseSymbolName [], $11)]
+      Match $3 [(LitSymbol trueSymbolName [], $7), (LitSymbol falseSymbolName [], $11)]
     }
 
-DestructAssignment:
-    let Pattern '=' opt(eol) Expr eol Expr { DestructAssignment $2 $5 $7 } -- TODO don't allow patnumber
 
 MatchExpr:
     -- TODO also allow indentation syntax
@@ -248,13 +240,20 @@ Pattern:
     NonSymbolSimplePattern { $1 }
   | SymbolPattern { $1 }
 
+DestructAssignmentPattern:
+    DestructAssignmentSimplePattern { $1 }
+  | ComplexSymbolPattern { $1 }
+
 NonSymbolSimplePattern:
-    int { PatNumber $1 }
+    int { LitNumber $1 }
   | PatId { $1 }
-  | '(' Pattern star(TupleNextPattern) ')' { 
+  | DestructAssignmentSimplePattern { $1 }
+
+DestructAssignmentSimplePattern:
+    '(' Pattern star(TupleNextPattern) ')' { 
       case $3 of
         [] -> $2
-        _  -> PatSymbol tupleSymbolName ($2 : $3)
+        _  -> LitSymbol tupleSymbolName ($2 : $3)
     }
   | PatList  { $1 }
   | PatRecord { $1 }
@@ -264,18 +263,21 @@ SimplePattern:
   | PatPlainSymbol { $1 }
 
 PatId:
-    id  { PatVar $1 }
-  | '_' { PatWildcard }
+    id  { Var $1 }
+  | '_' { Wildcard }
 
 PatPlainSymbol:
-    symbol  { PatSymbol $1 [] }
+    symbol  { LitSymbol $1 [] }
 
 TupleNextPattern:
     ',' Pattern   { $2 }
 
 SymbolPattern:
-    symbol                     { PatSymbol $1 [] }
-  | symbol '<' SymbolPatternNext '>' { PatSymbol $1 $3 }
+    symbol               { LitSymbol $1 [] }
+  | ComplexSymbolPattern { $1 }
+
+ComplexSymbolPattern:
+    symbol '<' SymbolPatternNext '>' { LitSymbol $1 $3 }
 
 SymbolPatternNext:
     SimplePattern                        { [$1] }
@@ -285,14 +287,14 @@ PatList:
     '[' PatListNext ']'  { $2 }
 
 PatListNext:
-    Pattern                  { PatSymbol listConsSymbolName [$1, PatSymbol listEmptySymbolName []] }
-  | Pattern ',' PatListNext  { PatSymbol listConsSymbolName [$1, $3] }
-  | Pattern '|' PatId        { PatSymbol listConsSymbolName [$1, $3] }
-  | Pattern '|' PatList      { PatSymbol listConsSymbolName [$1, $3] }
-  |                          { PatSymbol listEmptySymbolName [] }
+    Pattern                  { LitSymbol listConsSymbolName [$1, LitSymbol listEmptySymbolName []] }
+  | Pattern ',' PatListNext  { LitSymbol listConsSymbolName [$1, $3] }
+  | Pattern '|' PatId        { LitSymbol listConsSymbolName [$1, $3] }
+  | Pattern '|' PatList      { LitSymbol listConsSymbolName [$1, $3] }
+  |                          { LitSymbol listEmptySymbolName [] }
 
 PatRecord:
-    '{' PatRecordBody '}'  { makeRecordSymbol PatSymbol (\ (PatSymbol a _) -> a) $2 }
+    '{' PatRecordBody '}'  { makeRecordSymbol LitSymbol (\ (LitSymbol a _) -> a) $2 }
 
 PatRecordBody:
     PatRecordEntry star(PatRecordNext) { $1 : $2 }
@@ -301,7 +303,7 @@ PatRecordNext:
     ',' PatRecordEntry { $2 }
 
 PatRecordEntry:
-    id '=' Pattern  { (PatSymbol $1 [], $3) }
+    id '=' Pattern  { (LitSymbol $1 [], $3) }
 
 
 DoExpr:
@@ -311,6 +313,7 @@ DoBody:
     with opt(eol) plus(DoLine) end { $3 }
 
 DoLine:
+  -- TODO allow destructuring bind here
     id '<-' DoLineExpr eol  { ($1, $3) }
   | DoLineExpr eol          { ("_", $1) }
   | Binding DoLine          { let (v, e) = $2 in
@@ -331,8 +334,10 @@ FunAp:
 
 {
 
+-- TODO the goal is not to use varName
 varName :: Expr -> String
-varName (Var vn) = vn
+varName (Var s) = s
+varName _       = error "expected identifier"
 
 makeMonad :: String -> [(String, Expr)] -> Expr
 makeMonad monad lines =

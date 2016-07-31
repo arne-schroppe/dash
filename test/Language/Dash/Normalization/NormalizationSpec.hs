@@ -43,6 +43,7 @@ spec = do
         let norm = pureNorm ast
         norm `shouldBeRight` (NAtom $ NNumber 3)
 
+
       it "normalizes a simple symbol directly" $ do
         let numBuiltInSymbols = length builtInSymbols
         let ast = LitSymbol "Test" []
@@ -191,8 +192,8 @@ spec = do
 
       it "normalizes match-bodies to match-branches" $ do
         let ast = Match (LitNumber 2) [
-                    (PatNumber 1, LitNumber 33),
-                    (PatNumber 2, LitNumber 44)
+                    (LitNumber 1, LitNumber 33),
+                    (LitNumber 2, LitNumber 44)
                   ]
         let norm = pureNorm ast
         let expected = NLet (NVar (lvn 0) NLocalVar) (NNumber 2) $
@@ -207,8 +208,8 @@ spec = do
       it "captures constant free variables in match bodies" $ do
         let ast = LocalBinding (Binding "a" $ LitNumber 77) $
                   Match (LitNumber 2) [
-                    (PatNumber 1, Var "a"),
-                    (PatNumber 2, LitNumber 44)
+                    (LitNumber 1, Var "a"),
+                    (LitNumber 2, LitNumber 44)
                   ]
         let norm = pureNorm ast
         let expected = NLet (NVar "a" NLocalVar) (NNumber 77) $
@@ -223,8 +224,8 @@ spec = do
       it "captures dynamic free variables in match bodies" $ do
         let ast = Lambda ["a"] $
                   Match (LitNumber 2) [
-                    (PatNumber 1, Var "a"),
-                    (PatNumber 2, LitNumber 44)
+                    (LitNumber 1, Var "a"),
+                    (LitNumber 2, LitNumber 44)
                   ]
         let norm = pureNorm ast
         let expected = NAtom $ NLambda [] ["a"] $
@@ -238,8 +239,8 @@ spec = do
 
       it "handles vars in patterns as lambda parameters" $ do
         let ast = Match (LitNumber 2) [
-                    (PatVar "n", Var "n"),
-                    (PatVar "m", Var "m")
+                    (Var "n", Var "n"),
+                    (Var "m", Var "m")
                   ]
         let norm = pureNorm ast
         let expected = NLet (NVar (lvn 0) NLocalVar) (NNumber 2) $
@@ -253,8 +254,8 @@ spec = do
 
       it "identifies the maximum number of captures" $ do
         let ast = Match (LitNumber 2) [
-                    (PatSymbol "y" [PatVar "n", PatVar "o", PatVar "p"], Var "n"),
-                    (PatSymbol "x" [PatVar "m", PatVar "l"], Var "m")
+                    (LitSymbol "y" [Var "n", Var "o", Var "p"], Var "n"),
+                    (LitSymbol "x" [Var "m", Var "l"], Var "m")
                   ]
         let (norm, ctable, _) = normAll ast
         let expectedCTable = [ CMatchData [
@@ -357,6 +358,8 @@ spec = do
                                                             , NVar (lvn 5) NLocalVar
                                                             , NVar (lvn 6) NLocalVar]
         norm `shouldBeRight` expected
+
+
 
 
 {- TODO fix this

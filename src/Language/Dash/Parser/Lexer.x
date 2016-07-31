@@ -46,7 +46,6 @@ tokens :-
   <0> "{"           { mkTok TOpen_Brace }
   <0> "}"           { mkTok TClose_Brace }
   <0> "module"      { mkTok TModule }
-  <0> "let"         { mkTok TLet }
   <0> "if"          { mkTok TIf }
   <0> "then"        { mkTok TThen }
   <0> "else"        { mkTok TElse }
@@ -168,7 +167,6 @@ data Token  = TEOL
             | TOpen_Brace
             | TClose_Brace
             | TIf
-            | TLet
             | TThen
             | TElse
             | TModule

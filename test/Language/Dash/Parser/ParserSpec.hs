@@ -31,7 +31,7 @@ spec = do
 
     it "parses if-then-else as match" $ do
       parse_string "if a then b else c" `shouldBe`
-        (Match (Var "a") [(PatSymbol trueSymbolName [], Var "b"), (PatSymbol falseSymbolName [], Var "c")])
+        (Match (Var "a") [(LitSymbol trueSymbolName [], Var "b"), (LitSymbol falseSymbolName [], Var "c")])
 
     it "parses an empty list" $ do
       parse_string "[]" `shouldBe`
