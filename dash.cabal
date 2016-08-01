@@ -61,6 +61,17 @@ executable dash
   hs-source-dirs:     interpret-src
   default-language:   Haskell2010
 
+executable dash-repl
+  main-is:            Main.hs
+  build-depends:      dash >=0.1
+                    , base
+                    , array
+                    , containers
+                    , mtl
+                    , haskeline >=0.7
+  hs-source-dirs:     repl-src
+  default-language:   Haskell2010
+
 test-suite test-dash
   type:               exitcode-stdio-1.0
   main-is:            SpecMain.hs
