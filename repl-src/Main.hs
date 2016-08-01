@@ -6,7 +6,7 @@ import           System.Environment
 import           System.IO
 
 main = do
-  putStrLn "Welcome to the Dash repl.\nType \"quit\" or \"exit\" to quit"
+  putStrLn "Welcome to the Dash repl\nType \"quit\" or \"exit\" to quit"
   let prog0 = parseWithPreamble ":true" -- obtain preamble
   runInputT defaultSettings $ loop prog0
   where

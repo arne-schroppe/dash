@@ -61,6 +61,7 @@ io_action_result check_io_action(vm_state *state, vm_value value, vm_instruction
           panic_stop_io_processing();
         }
         printf("%s", param);
+        fflush(stdout);
         next_param = make_tagged_val(symbol_id_true, vm_tag_plain_symbol);
       }
       break;
