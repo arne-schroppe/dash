@@ -495,14 +495,12 @@ spec =
       it "destructures a tuple in a function definition" $ do
         let code = " f (_, x, _) = x \n\
                    \ f (-1, \"yes\", :test)"
-        putStrLn $ show $ normalizeProgram code
         let result = run code
         result `shouldReturnRight` VMString "yes"
 
       it "destructures a tuple in a lambda " $ do
         let code = " f = (_, x, _) -> x  \n\
                    \ f (1, \"yes\", :test)"
-        putStrLn $ show $ normalizeProgram code
         let result = run code
         result `shouldReturnRight` VMString "yes"
 

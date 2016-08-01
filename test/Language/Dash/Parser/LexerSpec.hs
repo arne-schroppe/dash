@@ -11,61 +11,61 @@ spec = do
     context "lexing whitespace and newlines" $ do
 
       it "lexes a single newline" $ do
-        L.lex "\n" `shouldBe` [TEOL]
+        L.lex "\n" `shouldBe` [TEOL, TEOF]
 
       it "always inserts an eol at the end" $ do
-        L.lex "0\n1" `shouldBe` [TInt 0, TEOL, TInt 1, TEOL]
+        L.lex "0\n1" `shouldBe` [TInt 0, TEOL, TInt 1, TEOL, TEOF]
 
       it "doesn't insert an eol at the end if there already is one" $ do
-        L.lex "0\n1\n" `shouldBe` [TInt 0, TEOL, TInt 1, TEOL]
+        L.lex "0\n1\n" `shouldBe` [TInt 0, TEOL, TInt 1, TEOL, TEOF]
 
       it "ignores whitespace before EOL" $ do
-        L.lex "  \n \n  \t \t    \n  \n   " `shouldBe` [TEOL]
+        L.lex "  \n \n  \t \t    \n  \n   " `shouldBe` [TEOL, TEOF]
 
       it "lexes pure whitespace" $ do
-        L.lex "  \t   \t " `shouldBe` [TEOL]
+        L.lex "  \t   \t " `shouldBe` [TEOL, TEOF]
 
       it "combines several newlines into one token" $ do
-        L.lex "\n\r\r\n\n\n\r\n" `shouldBe` [TEOL]
+        L.lex "\n\r\r\n\n\n\r\n" `shouldBe` [TEOL, TEOF]
 
       it "lexes a newline sequence" $ do
-        L.lex "\"dash\\n\"" `shouldBe` [TString "dash\n", TEOL]
+        L.lex "\"dash\\n\"" `shouldBe` [TString "dash\n", TEOL, TEOF]
 
     context "lexing comments" $ do
 
       it "lexes an end-of-line comment" $ do
-        L.lex ":a -- :ignored \n :b " `shouldBe` [TSymbol "a", TEOL, TSymbol "b", TEOL]
+        L.lex ":a -- :ignored \n :b " `shouldBe` [TSymbol "a", TEOL, TSymbol "b", TEOL, TEOF]
 
       it "lexes a delimiet comment" $ do
-        L.lex ":a /-- :ignored --/ :b" `shouldBe` [TSymbol "a", TSymbol "b", TEOL]
+        L.lex ":a /-- :ignored --/ :b" `shouldBe` [TSymbol "a", TSymbol "b", TEOL, TEOF]
 
       it "doesn't insert newlines inside a delimited comments" $ do
-        L.lex ":a /-- \n \n :ignored \n --/ :b" `shouldBe` [TSymbol "a", TSymbol "b", TEOL]
+        L.lex ":a /-- \n \n :ignored \n --/ :b" `shouldBe` [TSymbol "a", TSymbol "b", TEOL, TEOF]
 
       it "doesn't insert additional newlines around delimited comments" $ do
-        L.lex ":a \n /-- \n \n :ignored \n --/ \n\n :b" `shouldBe` [TSymbol "a", TEOL, TSymbol "b", TEOL]
+        L.lex ":a \n /-- \n \n :ignored \n --/ \n\n :b" `shouldBe` [TSymbol "a", TEOL, TSymbol "b", TEOL, TEOF]
 
       it "doesn't insert additional newlines around several delimited comments" $ do
         L.lex ":a \n /-- bla --/ \n /-- \n \n :ignored \n --/ \n\n /-- \n\n\n --/ \n /-- bla --/ \n :b" `shouldBe`
-          [TSymbol "a", TEOL, TSymbol "b", TEOL]
+          [TSymbol "a", TEOL, TSymbol "b", TEOL, TEOF]
 
       it "doesn't insert EOL if a delimited comment spans several lines but isn't surrounded by EOL" $ do
-        L.lex ":a /-- \n --/ :b" `shouldBe` [TSymbol "a", TSymbol "b", TEOL]
+        L.lex ":a /-- \n --/ :b" `shouldBe` [TSymbol "a", TSymbol "b", TEOL, TEOF]
 
       it "doesn't eat content in between delimited comments" $ do
-        L.lex "/--\n--/\n :hello\n /--\n--/\n :goodbye" `shouldBe` [TEOL, TSymbol "hello", TEOL, TSymbol "goodbye", TEOL]
+        L.lex "/--\n--/\n :hello\n /--\n--/\n :goodbye" `shouldBe` [TEOL, TSymbol "hello", TEOL, TSymbol "goodbye", TEOL, TEOF]
 
 
     it "lexes a symbol" $ do
-      L.lex " :dash " `shouldBe` [TSymbol "dash", TEOL]
+      L.lex " :dash " `shouldBe` [TSymbol "dash", TEOL, TEOF]
 
     it "lexes a symbol containing hyphens" $ do
-      L.lex " :finn-and-jake " `shouldBe` [TSymbol "finn-and-jake", TEOL]
+      L.lex " :finn-and-jake " `shouldBe` [TSymbol "finn-and-jake", TEOL, TEOF]
 
     it "lexes an identifier" $ do
-      L.lex " id " `shouldBe` [TId "id", TEOL]
+      L.lex " id " `shouldBe` [TId "id", TEOL, TEOF]
 
     it "lexes an identifier containing hyphens" $ do
-      L.lex "finn-and-jake" `shouldBe` [TId "finn-and-jake", TEOL]
+      L.lex "finn-and-jake" `shouldBe` [TId "finn-and-jake", TEOL, TEOF]
 
 

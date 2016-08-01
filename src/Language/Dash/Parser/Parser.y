@@ -15,6 +15,7 @@ import Data.List (sortBy)
 
 %token
   eol       { TEOL }
+  eof       { TEOF }
   '('       { TOpen_Par }
   ')'       { TClose_Par }
   '['       { TOpen_Bracket }
@@ -88,26 +89,28 @@ plus(p):
 
 
 Prog:
-    star(eol) Expr star(eol) { $2 }
-  | star(eol)               { LitString "" }
+    star(eol) ExprOrEnd star(eol) eof { $2 }
 
 
 Expr:
     ExprB { $1 }
-  | ExprB '=' opt(eol) Expr eol Expr {
+  | ExprB '=' opt(eol) Expr eol ExprOrEnd {
       case $1 of
         Var s -> LocalBinding (Binding s $4) $6
         _     -> DestructAssignment $1 $4 $6
   }
   | ExprB plus(ExprB) { FunAp $1 $2 }
   | ExprB star(ExprB) '->' opt(eol) Expr { Lambda ($1:$2) $5 }
-  | ExprB plus(ExprB) '=' opt(eol) Expr eol Expr { LocalBinding (Binding (varName $1) (Lambda $2 $5)) $7 }
+  | ExprB plus(ExprB) '=' opt(eol) Expr eol ExprOrEnd { LocalBinding (Binding (varName $1) (Lambda $2 $5)) $7 }
   | InfixOperation { $1 }
   | MatchExpr { $1 }
   | DoExpr    { $1 }
   | Module    { $1 }
   | IfElse    { $1 }
 
+ExprOrEnd:
+    Expr { $1 }
+  |      { LitSymbol "true" [] }
 
 ExprB:
     Ident  { $1 }

@@ -213,9 +213,9 @@ checkFinalEol = do
         e <- getHasEmittedEol
         lt <- getLastToken
         if (e || lt == TEOL) then do setHasEmittedEol True
-                                     return []
+                                     return [TEOF]
         else do setHasEmittedEol True
-                return [TEOL]
+                return [TEOL, TEOF]
 
 
 lex :: String -> [Token]
@@ -249,7 +249,7 @@ expandRawStrings tokens =
 
     lexInterpString s =
       let tokens = Language.Dash.Parser.Lexer.lex s in
-      init tokens -- remove final EOL
+      (init . init) tokens -- remove final EOL, EOF
 
     wrapInterpExpr tokens = 
       [TOpen_Par, TId bifToStringName, TOpen_Par] ++ tokens ++ [TClose_Par, TClose_Par]
