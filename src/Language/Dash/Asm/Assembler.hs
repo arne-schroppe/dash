@@ -31,11 +31,11 @@ list. They are turned into real addresses by the assembler.
 
 
 
-assemble :: [[Opcode]]
+assemble :: [EncodedFunction]
          -> ConstTable
          -> Either CompilationError ([VMWord], [VMWord])
 assemble funcs ctable = do
-  let combined = combineFunctions funcs
+  let combined = foldFunctions funcs
   let instructions = fst combined
   let funcAddrs = snd combined
 
@@ -47,7 +47,7 @@ assemble funcs ctable = do
   return (map assembleOpcode instructions, consts)
   where
 
-assembleWithEncodedConstTable :: [[Opcode]]
+assembleWithEncodedConstTable :: [EncodedFunction]
                               -> [VMWord]
                               -> (ConstAddr
                               -> VMWord)
@@ -59,21 +59,21 @@ assembleWithEncodedConstTable funcs encCTable constAddrConverter symnames =
     assembleOpcode = assembleTac funcAddrs constAddrConverter
     instructions = fst combined
     funcAddrs = snd combined
-    combined = combineFunctions funcs
+    combined = foldFunctions funcs
 
 
 -- Converts the nested list of functions into a flat list, and additionally provides
 -- a map from indices in the nested list to the index in the flat list (that map is
 -- just a sequence with the same length as the nested list). The map helps us to find
 -- function references in the Opcode in our generated binary code.
-combineFunctions :: [[Opcode]] -> ([Opcode], Seq.Seq VMWord)
-combineFunctions =
+foldFunctions :: [EncodedFunction] -> ([Opcode], Seq.Seq VMWord)
+foldFunctions =
   foldl calcFuncAddr ([], Seq.empty)
   where
-    calcFuncAddr acc funcInstrs =
+    calcFuncAddr acc compFunc =
       let allInstrs = fst acc in
       let funcAddrs = snd acc in
-      ( allInstrs ++ funcInstrs, funcAddrs Seq.|> fromIntegral (length allInstrs) )
+      ( allInstrs ++ (cfOpcodes compFunc), funcAddrs Seq.|> fromIntegral (length allInstrs) )
 
 
 assembleTac :: Seq.Seq VMWord -> (ConstAddr -> VMWord) -> Opcode -> VMWord

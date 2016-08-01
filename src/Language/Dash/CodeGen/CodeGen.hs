@@ -28,7 +28,7 @@ import           Language.Dash.Limits
 compile :: NstExpr
         -> ConstTable
         -> SymbolNameList
-        -> Either CompilationError ([[Opcode]], ConstTable, SymbolNameList)
+        -> Either CompilationError ([EncodedFunction], ConstTable, SymbolNameList)
 compile expr cTable symlist =
   let resultOrError = runIdentity $ runExceptT $ execStateT (compileCompilationUnit expr)
                                                             (makeCompState cTable symlist)
@@ -36,7 +36,7 @@ compile expr cTable symlist =
   extractResults <$> resultOrError
   where
     extractResults result =
-        (toList (instructions result), constTable result, symbolNames result)
+        (map EncodedFunction $ toList (instructions result), constTable result, symbolNames result)
 
 
 compileCompilationUnit :: NstExpr -> CodeGen ()
@@ -341,7 +341,7 @@ compileMatch resultReg subject _{- maxCaptures -} patternAddr branches isResultV
 
   -- The next three bindings give us two lists: a list of the count of instructions that
   -- comes before the match-branch call code for branch n and a list of the instruction
-  -- count for remaining branches. So if the branch-call blocks for a match with three
+  -- count for remaining branches. So if the branch-call-blocks for a match with three
   -- branches have the lengths 4, 7, and 3, we'd get:
   -- numRemainingBranchInstrs = [10, 3, 0]
   -- numHandledBranchInstrs = [0, 4, 11]

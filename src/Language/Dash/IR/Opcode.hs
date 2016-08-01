@@ -1,9 +1,14 @@
 module Language.Dash.IR.Opcode (
   Opcode (..)
+, EncodedFunction(..)
 ) where
 
 import Language.Dash.IR.Data
 
+
+data EncodedFunction = EncodedFunction {
+  cfOpcodes :: [Opcode]
+}
 
 -- TODO should we express known and unknown functions through separate types 
 -- or data constructors?
