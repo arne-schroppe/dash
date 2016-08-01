@@ -5,8 +5,9 @@ import           System.Console.Haskeline
 import           System.Environment
 import           System.IO
 
-main =
-  let prog0 = parseWithPreamble ":true" in -- obtain preamble
+main = do
+  putStrLn "Welcome to the Dash repl.\nType \"quit\" or \"exit\" to quit"
+  let prog0 = parseWithPreamble ":true" -- obtain preamble
   runInputT defaultSettings $ loop prog0
   where
     loop :: Expr -> InputT IO ()
@@ -14,8 +15,8 @@ main =
       minput <- getInputLine "> "
       case minput of
         Nothing -> return ()
-        Just ":quit" -> return ()
-        Just ":exit" -> return ()
+        Just "quit" -> return ()
+        Just "exit" -> return ()
         Just input -> do prog' <- eval input prog
                          loop prog'
 
@@ -34,6 +35,7 @@ appendExpr :: Expr -> Expr -> Expr
 appendExpr newExpr existingExpr =
   case existingExpr of
     LocalBinding b e -> LocalBinding b $ appendExpr newExpr e
+    DestructAssignment pat boundExpr e -> DestructAssignment pat boundExpr $ appendExpr newExpr e
     _ -> newExpr
 
 
