@@ -1,8 +1,11 @@
 module Language.Dash.API
 ( run
+, runExpr
 , runWithPreamble
 , normalizeProgram
 , parseProgram
+, compileProgram
+, parseWithPreamble
 ) where
 
 import           Language.Dash.Asm.Assembler
@@ -31,7 +34,12 @@ runWithPreamble prog =
 
 run :: String -> IO (Either CompilationError VMValue)
 run prog = do
-  let compiledOrError = compileProgram prog
+  let expr = parseProgram prog
+  runExpr expr
+
+runExpr :: Expr -> IO (Either CompilationError VMValue)
+runExpr expr = do
+  let compiledOrError = compileExpr expr
   case compiledOrError of
     Left err -> return (Left err)
     Right (encodedProgram, encodedConstTable, symNames) -> do
@@ -42,8 +50,11 @@ run prog = do
 
 compileProgram :: String -> Either CompilationError ([VMWord], [VMWord], SymbolNameList)
 compileProgram prog = do
-  let lexed = lex prog
-  let ast = parse lexed
+  let ast = parseProgram prog
+  compileExpr ast
+
+compileExpr :: Expr -> Either CompilationError ([VMWord], [VMWord], SymbolNameList)
+compileExpr ast = do
   (normExpr, constTable, symNames) <- normalize ast
   (opcodes, constTable', symNames') <- compile normExpr constTable symNames
   (encodedProgram, encodedConstTable) <- assemble opcodes constTable'
@@ -56,6 +67,11 @@ normalizeProgram prog = do
   let ast = parse lexed
   normalize ast
 
+
+parseWithPreamble :: String -> Expr
+parseWithPreamble prog =
+  let prog' = preamble ++ prog in
+  parseProgram prog'
 
 parseProgram :: String -> Expr
 parseProgram prog =
