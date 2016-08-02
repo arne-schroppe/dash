@@ -110,7 +110,7 @@ Expr:
 
 ExprOrEnd:
     Expr { $1 }
-  |      { LitSymbol "true" [] }
+  |      { LitSymbol "ok" [] }
 
 ExprB:
     Ident  { $1 }
@@ -192,13 +192,9 @@ RecordEntry:
     id opt(eol) '=' Expr opt(eol)  { (LitSymbol $1 [], $4) }
 
 
--- DestructAssignment:
---    let DestructAssignmentPattern '=' opt(eol) Expr eol Expr { DestructAssignment $2 $5 $7 } -- TODO don't allow patnumber
-
 
 Binding:
     id '=' opt(eol) Expr eol   { Binding $1 $4 }
-
 
 
 Ident:
@@ -243,9 +239,6 @@ Pattern:
     NonSymbolSimplePattern { $1 }
   | SymbolPattern { $1 }
 
-DestructAssignmentPattern:
-    DestructAssignmentSimplePattern { $1 }
-  | ComplexSymbolPattern { $1 }
 
 NonSymbolSimplePattern:
     int { LitNumber $1 }

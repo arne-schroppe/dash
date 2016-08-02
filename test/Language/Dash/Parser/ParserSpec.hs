@@ -21,15 +21,15 @@ spec = do
       parse_string ":dash" `shouldBe` LitSymbol "dash" []
 
     it "parses nothing" $ do
-      parse_string "" `shouldBe` LitSymbol "true" []
+      parse_string "" `shouldBe` LitSymbol "ok" []
 
     it "parses a single binding" $ do
       parse_string "a = 1" `shouldBe` 
-        (LocalBinding (Binding "a" $ LitNumber 1) (LitSymbol "true" []))
+        (LocalBinding (Binding "a" $ LitNumber 1) (LitSymbol "ok" []))
 
     it "parses a single function" $ do
       parse_string "f a = a" `shouldBe` 
-        (LocalBinding (Binding "f" $ Lambda [Var "a"] (Var "a")) (LitSymbol "true" []))
+        (LocalBinding (Binding "f" $ Lambda [Var "a"] (Var "a")) (LitSymbol "ok" []))
 
     it "parses an anonymous function" $ do
       parse_string "a b -> add a b" `shouldBe`
