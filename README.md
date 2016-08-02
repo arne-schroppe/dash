@@ -13,7 +13,7 @@ You can use dash in two ways. If you want to get a first impression, you can sta
 dash-repl
 ```
 
-If you want to run a dash-script that is stored in a file, use
+If you want to run a complete dash script, use
 ```
 dash hello.ds
 ```
