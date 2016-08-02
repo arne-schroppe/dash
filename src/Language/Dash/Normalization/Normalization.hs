@@ -127,7 +127,10 @@ atomizeExpr expr name k = case expr of
       normalizeLambda params bodyExpr name k
   MatchBranch matchedVars bodyExpr ->
       normalizeMatchBranch matchedVars bodyExpr k
-  DestructAssignment pattern boundExpr bodyExpr ->
+  -- TODO a destruct-assignment must contain at least one variable!
+  -- also needs to be a fresh variable! (right now it allows redefinitions).
+  -- We should also leave the match branch again afterwards to avoid stack overflows
+  DestructAssignment pattern boundExpr bodyExpr ->  
       normalizeMatch boundExpr [(pattern, bodyExpr)] k
   Module bindings ->
       let bs = map (\ (Binding n e) -> (n, e)) bindings in

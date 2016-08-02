@@ -161,7 +161,7 @@ InfixOperation:
   | Operand '>=' Operand        { FunAp (Var ">=") [$1, $3] }
   | '!' Operand                 { FunAp (Var "!") [$2] }
   | '-' Operand %prec NEG       { FunAp (Var "-") [LitNumber 0, $2] }
-  -- | Operand operator Operand    { FunAp (Var $2) [$1, $3] }
+  -- | Operand operator Operand    { FunAp (Var $2) [$1, $3] } -- TODO exclude existing operators from `operator` token ?
 
 Operand:
     SimpleExpr     { $1 }
