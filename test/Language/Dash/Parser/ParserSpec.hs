@@ -17,7 +17,7 @@ shouldBeRight a b = a `shouldBe` Right b
 parseString :: String -> Either CompilationError Expr
 parseString str = do
   lexed <- L.lex str
-  return $ parse lexed
+  parse lexed
 
 spec :: Spec
 spec = do

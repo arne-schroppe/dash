@@ -4,11 +4,13 @@ module Language.Dash.Parser.Parser where
 import Language.Dash.Parser.Lexer
 import Language.Dash.IR.Ast
 import Language.Dash.BuiltIn.BuiltInDefinitions
+import Language.Dash.Error.Error
 
 import Data.List (sortBy)
 
 }
 
+%monad      { E } { thenE } { returnE }
 %name       parse
 %tokentype  { Token }
 %error      { parseError }
@@ -101,7 +103,8 @@ Expr:
   }
   | ExprB plus(ExprB) { FunAp $1 $2 }
   | ExprB star(ExprB) '->' opt(eol) Expr { Lambda ($1:$2) $5 }
-  | ExprB plus(ExprB) '=' opt(eol) Expr eol ExprOrEnd { LocalBinding (Binding (varName $1) (Lambda $2 $5)) $7 }
+  | ExprB plus(ExprB) '=' opt(eol) Expr eol ExprOrEnd {% do vn <- varName $1;
+                                                         returnE $ LocalBinding (Binding vn (Lambda $2 $5)) $7 }
   | InfixOperation { $1 }
   | MatchExpr { $1 }
   | DoExpr    { $1 }
@@ -303,7 +306,7 @@ PatRecordEntry:
 
 
 DoExpr:
-    do id DoBody  { makeMonad $2 $3 }
+    do id DoBody  {% makeMonad $2 $3 }
 
 DoBody:
     with opt(eol) plus(DoLine) end { $3 }
@@ -330,22 +333,38 @@ FunAp:
 
 {
 
--- TODO the goal is not to use varName
-varName :: Expr -> String
-varName (Var s) = s
-varName _       = error "expected identifier"
+type E a = Either CompilationError a
 
-makeMonad :: String -> [(String, Expr)] -> Expr
+thenE :: E a -> (a -> E b) -> E b
+m `thenE` k =
+  case m of
+    Right a -> k a
+    Left e -> Left e
+
+returnE :: a -> E a
+returnE = return
+
+failE :: String -> E a
+failE err = Left $ ParsingError err
+
+parseError :: [Token] -> E a
+parseError ts = failE $ (show ts)
+
+varName :: Expr -> E String
+varName (Var s) = Right s
+varName _       = failE "expected identifier"
+
+makeMonad :: String -> [(String, Expr)] -> E Expr
 makeMonad monad lines =
   case (reverse lines) of
-    (_, call) : []     -> adjustNameForMonad call monad
+    (_, call) : []     -> return $ adjustNameForMonad call monad
     ("_", action) : rest ->
-            foldl (\acc (varname, action') ->
+            return $ foldl (\acc (varname, action') ->
                 let qname = (Qualified monad $ Var "bind") in
                 let args = [(adjustNameForMonad action' monad), Lambda [Var varname] acc] in
                 FunAp qname args) (adjustNameForMonad action monad) rest
-    (_, _) : rest -> error "Last line in do-block can't be an assignment"
-    [] -> error "Malformed do-block"
+    (_, _) : rest -> failE "Last line in do-block can't be an assignment"
+    [] -> failE "Malformed do-block"
 
 
 adjustNameForMonad :: Expr -> String -> Expr
@@ -355,8 +374,6 @@ adjustNameForMonad e mon =
     LocalBinding b e -> LocalBinding b (adjustNameForMonad e mon)
     _ -> e
 
-parseError :: [Token] -> a
-parseError ts = error $ "Parse error " ++ (show ts)
 
 
 

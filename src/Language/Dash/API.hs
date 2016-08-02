@@ -67,7 +67,7 @@ compileExpr ast = do
 normalizeProgram :: String -> Either CompilationError (NstExpr, ConstTable, SymbolNameList)
 normalizeProgram prog = do
   lexed <- lex prog
-  let ast = parse lexed
+  ast <- parse lexed
   normalize ast
 
 
@@ -79,7 +79,7 @@ parseWithPreamble prog =
 parseProgram :: String -> Either CompilationError Expr
 parseProgram prog = do
   lexed <- lex prog
-  return $ parse lexed
+  parse lexed
 
 -- for testing
 showNormalizedProgram :: String -> String
