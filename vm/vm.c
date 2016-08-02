@@ -1331,9 +1331,8 @@ restart:
         vm_value obj_ref = get_reg(obj_reg);
         vm_value requested_name = get_reg(sym_reg);
 
-        // TODO actually the request is malformed in this case, not the module
         if(get_tag(requested_name) != vm_tag_plain_symbol) {
-          panic_stop_vm_m("Malformed module!");
+          panic_stop_vm_m("Malformed lookup!");
         }
 
         vm_value obj_header = 0;
@@ -1354,9 +1353,8 @@ restart:
 
 
         }
-        // TODO this branch is untested, as records are apparently always dynamic (?!)
+        // TODO this branch is untested, as records are apparently always dynamic in this case (?!)
         else if(get_tag(obj_ref) == vm_tag_compound_symbol) {
-
 
           int obj_addr = get_val(obj_ref);
           vm_value *obj_pointer = state->const_table + obj_addr;
@@ -1367,7 +1365,6 @@ restart:
           }
 
           obj_fields = obj_pointer + 1;
-
 
         }
         else if(get_tag(obj_ref) == vm_tag_dynamic_compound_symbol) {

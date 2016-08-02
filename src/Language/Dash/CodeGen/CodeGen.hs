@@ -141,10 +141,10 @@ compileAtom reg atom name isResultValue = case atom of
       return $ argInstrs ++ partApInst
   NModule fields ->
       compileModule reg fields
-  NFieldLookup modVar symVar -> do
-      modReg <- getReg modVar
+  NFieldLookup objVar symVar -> do
+      objReg <- getReg objVar
       symReg <- getReg symVar
-      return [OpcGetField reg modReg symReg]
+      return [OpcGetField reg objReg symReg]
   where
     moveVarToReg :: NstVar -> Reg -> CodeGen [Opcode]
     moveVarToReg var dest = do
