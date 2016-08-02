@@ -1,19 +1,22 @@
 
-# Dash
+# dash
 
-Dash is a purely functional, strictly evaluated, and dynamically typed programming language.
+dash is a purely functional, strictly evaluated, and dynamically typed programming language.
 
 It is in the earliest of early alpha stages.
 
 
 ## Usage
 
-Dash currently only consists of the Dash interpreter. Use
+You can use dash in two ways. If you want to get a first impression, you can start the REPL (read-eval-print loop) with
+```
+dash-repl
+```
+
+If you want to run a dash-script that is stored in a file, use
 ```
 dash hello.ds
 ```
-to run a file called `hello.ds`. There is no repl yet.
-
 
 
 ## Syntax
@@ -21,10 +24,10 @@ to run a file called `hello.ds`. There is no repl yet.
 
 This is how you define a value:
 ```
-my_string = "Hello, Dash!"
+my_string = "Hello, dash!"
 some_number = 1234
 ```
-(Dash doesn't understand floating point numbers yet, only integers.)
+(dash doesn't understand floating point numbers yet, only integers.)
 
 You can include expressions inside strings with string interpolation:
 ```
@@ -32,7 +35,7 @@ winner = 5432
 message = "The winning number is: \(winner)!"
 ```
 
-A fairly useful kind of value in Dash is the symbol. A symbol is simply a `:` followed by
+A fairly useful kind of value in dash is the symbol. A symbol is simply a `:` followed by
 an identifier:
 ```
 job = :engineer
@@ -46,7 +49,7 @@ The identifier of this symbol is `employee`. It contains three pieces of data:
 The string `"bob"`, the atomic symbol `:engineer`, and the number `46`
 
 
-Dash has built-in syntax for lists, tuples, and records:
+dash has built-in syntax for lists, tuples, and records:
 ```
 my_list = ["unicorns", :confetti, 1234]
 a_tuple = ("robots", "lazers", :more_confetti)
@@ -112,7 +115,7 @@ abs n =
 
 
 
-But let's talk about functions again. Dash has native support for currying. That means
+But let's talk about functions again. dash has native support for currying. That means
 that if you apply fewer arguments to a function than is required (this is called "partial
 application"), you get a new function which takes the remaining parameters. That's useful
 in many cases:
@@ -133,7 +136,7 @@ a lot of cases.
 
 
 A programming language wouldn't be of much use if it couldn't communicate with
-the user. In Dash a `do`-expression is used for that:
+the user. In dash a `do`-expression is used for that:
 ```
 do io with
   io.print "What is your name? "
@@ -160,7 +163,7 @@ end
 (That is the same example as before, just split into several i/o actions)
 
 
-One important detail is that i/o code is separate from "normal" code in Dash. That
+One important detail is that i/o code is separate from "normal" code in dash. That
 means that if you'd use `io.print_line` or any other i/o action somewhere deep down in
 a function, it will not start printing things on the screen. Why is that? It's because
 all those `io` things don't do anything directly. Instead they *describe* an action
@@ -175,7 +178,7 @@ returned as the last value in a file in order to have any effect.
 
 
 You might also have been wondering what that dot-syntax is, e.g. `io.read_line`.
-That is Dash's module lookup syntax:
+That is dash's module lookup syntax:
 ```
 celsius_kelvin_diff = 273
 
@@ -224,7 +227,7 @@ comment --/
 ## Built-in functions
 
 There is currently no standard library. Actually you can't even import or include other
-Dash-files, so your entire code needs to be in one file. There are, however, a couple
+dash-files, so your entire code needs to be in one file. There are, however, a couple
 of built-in functions:
 
 #### Operators (ordered by precedence)
@@ -267,7 +270,7 @@ operator.
 
 ## Examples
 
-See the "examples" folder for examples of how to use Dash
+See the "examples" folder for examples of how to use dash
 
 
 
