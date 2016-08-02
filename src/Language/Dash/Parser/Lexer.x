@@ -1,8 +1,12 @@
 {
-module Language.Dash.Parser.Lexer where
+module Language.Dash.Parser.Lexer (
+  lex
+, Token(..)
+) where
 
-import Control.Monad
+import Prelude                                   hiding (lex)
 import Language.Dash.BuiltIn.BuiltInDefinitions (bifStringConcatOperator, bifToStringName)
+import Language.Dash.Error.Error (CompilationError(..))
 
 }
 
@@ -53,7 +57,7 @@ tokens :-
   <0> "do"          { mkTok TDo }
   <0> "with"        { mkTok TWith }
   <0> "end"         { mkTok TEnd }
-  <0> ":" @ident    { mkTokS (\s -> TSymbol (tail s)) }
+  <0> ":" @ident    { mkTokS (\s -> return $ TSymbol (tail s)) }
   <0> "="           { mkTok TDefine }
   <0> "->"          { mkTok TArrow_R }
   <0> "<-"          { mkTok TArrow_L }
@@ -65,40 +69,51 @@ tokens :-
   <str> @stringchars
                     { mkTokS (\s -> convertEscapeSequences s) }
   <str> \"          { begin 0 } -- "
-  <0> @integer      { mkTokS (\s -> TInt (read s)) }
-  <0> @namespace    { mkTokS (\s -> TNamespace (init s)) }
-  <0> @ident        { mkTokS (\s -> TId s) }
-  <0> @operator     { mkTokS (\s -> TOperator s) }
+  <0> @integer      { mkTokS (\s -> return $ TInt (read s)) }
+  <0> @namespace    { mkTokS (\s -> return $ TNamespace (init s)) }
+  <0> @ident        { mkTokS (\s -> return $ TId s) }
+  <0> @operator     { mkTokS (\s -> return $ TOperator s) }
   <0> @hashBang     { skip }
 
 
 {
 
 
+lex :: String -> Either CompilationError [Token]
+lex input = case (runAlex input loop) of
+              Right a -> expandRawStrings a
+              Left s -> Left $ ParsingError s
+
+
 mkTok :: Token -> AlexInput -> Int -> Alex Token
 mkTok t _ _ = return t
 
-mkTokS :: (String -> Token) -> AlexInput -> Int -> Alex Token
-mkTokS f (_, _, _, str) len = return $ f (take len str)
+mkTokS :: (String -> Either CompilationError Token) -> AlexInput -> Int -> Alex Token
+mkTokS f (_, _, _, str) len =
+  case f (take len str) of
+    Left err -> alexError $ show err
+    Right token -> return token
 
 alexEOF :: Alex Token
 alexEOF = return TEOF
 
 
-convertEscapeSequences :: String -> Token
-convertEscapeSequences s =
-  let parts = conv' s "" [] in
+convertEscapeSequences :: String -> Either CompilationError Token
+convertEscapeSequences s = do
+  parts <- conv' s "" []
   case parts of
-    [InterpString s] -> TString s
-    _                -> TRawString parts
+    [InterpString s] -> return $ TString s
+    _                -> return $ TRawString parts
   where
+
+    conv' :: String -> String -> [InterpStringPart] -> Either CompilationError [InterpStringPart]
     conv' (c:rest@(c1:cs)) acc parts =
       case c of
         '\\' -> parseEscapeChar c1 cs acc parts
         _ -> conv' rest (acc ++ [c]) parts
     conv' (c:[]) acc parts = let lastStringPart = acc ++ [c] in
-                             parts ++ [InterpString lastStringPart]
-    conv' [] acc parts = parts ++ [InterpString acc]
+                             return $ parts ++ [InterpString lastStringPart]
+    conv' [] acc parts = return $ parts ++ [InterpString acc]
 
     parseEscapeChar ec cs acc parts =
       case ec of
@@ -106,22 +121,23 @@ convertEscapeSequences s =
         'n' -> conv' cs (acc ++ "\n") parts
         '"' -> conv' cs (acc ++ "\"") parts
         't' -> conv' cs (acc ++ "\t") parts
-        '(' ->
-                let (interpExpr, rest) = consumeInterpolatedExpression cs in
-                if null rest
-                  then parts ++ [InterpString acc, InterpExpr interpExpr]
-                  else conv' rest "" $ parts ++ [InterpString acc, InterpExpr interpExpr]
+        '(' -> do
+                  (interpExpr, rest) <- consumeInterpolatedExpression cs
+                  if null rest
+                    then return $ parts ++ [InterpString acc, InterpExpr interpExpr]
+                    else conv' rest "" $ parts ++ [InterpString acc, InterpExpr interpExpr]
         other -> conv' cs (acc ++ [other]) parts
 
+    consumeInterpolatedExpression :: String -> Either CompilationError (String, String)
     consumeInterpolatedExpression str =
       let consume acc rest nparen =
             case rest of
-              "" -> error ("Malformed string interpolation: " ++ str)  -- TODO add better error handling
+              "" -> Left $ ParsingError ("Malformed string interpolation: " ++ str)  -- TODO add better error handling
               ch:rest ->
                     case ch of
                       '(' -> consume (acc ++ "(") rest (nparen + 1)
                       ')' -> if nparen == 1
-                               then (acc, rest)
+                               then Right $ (acc, rest)
                                else consume (acc ++ ")") rest (nparen - 1)
                       _   -> consume (acc ++ [ch]) rest nparen
       in
@@ -218,40 +234,46 @@ checkFinalEol = do
                 return [TEOL, TEOF]
 
 
-lex :: String -> [Token]
-lex input = case (runAlex input loop) of
-              Right a -> expandRawStrings a
-              Left s -> error s
 
 
-expandRawStrings :: [Token] -> [Token]
+expandRawStrings :: [Token] -> Either CompilationError [Token]
 expandRawStrings tokens =
   case tokens of
-    [] -> []
-    (TRawString parts):ts ->
-        let expanded = [TOpen_Par] ++ (expandRaw parts) ++ [TClose_Par] in
-        expanded ++ (expandRawStrings ts)
-    t:ts -> t : (expandRawStrings ts)
+    [] -> return []
+    (TRawString parts):ts -> do expandedParts <- expandRaw parts
+                                let expanded = [TOpen_Par] ++ expandedParts ++ [TClose_Par]
+                                expandedRest <- expandRawStrings ts
+                                return $ expanded ++ expandedRest
+    t:ts -> do expandedRest <- expandRawStrings ts
+               return $ t : expandedRest
 
   where
+    expandRaw :: [InterpStringPart] -> Either CompilationError [Token]
     expandRaw parts =
       case parts of
-        [] -> []
+        [] -> 
+            return []
         (InterpString s):[] ->
-            [TString s]
+            return [TString s]
         (InterpString s):rest ->
-            [TString s, TOperator bifStringConcatOperator] ++ expandRaw rest
+            do expandedRest <- expandRaw rest
+               return $ [TString s, TOperator bifStringConcatOperator] ++ expandedRest
         (InterpExpr s):[] ->
-            wrapInterpExpr $ lexInterpString s
+            do lexed <- lexInterpString s
+               return $ wrapInterpExpr lexed
         (InterpExpr s):rest ->
-            let tokens = lexInterpString s in
-            wrapInterpExpr tokens ++ [TOperator bifStringConcatOperator] ++ expandRaw rest
+            do tokens <- lexInterpString s
+               let wrapped = wrapInterpExpr tokens
+               expandedRest <- expandRaw rest
+               return $ wrapped ++ [TOperator bifStringConcatOperator] ++ expandedRest
 
+    lexInterpString :: String -> Either CompilationError [Token]
     lexInterpString s =
-      let tokens = Language.Dash.Parser.Lexer.lex s in
-      (init . init) tokens -- remove final EOL, EOF
+      do tokens <- Language.Dash.Parser.Lexer.lex s
+         return $ (init . init) tokens -- remove final EOL, EOF
 
-    wrapInterpExpr tokens = 
+    wrapInterpExpr :: [Token] -> [Token]
+    wrapInterpExpr tokens =
       [TOpen_Par, TId bifToStringName, TOpen_Par] ++ tokens ++ [TClose_Par, TClose_Par]
 }
 

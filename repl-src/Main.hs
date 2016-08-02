@@ -1,19 +1,20 @@
-import           Control.Monad.Trans (liftIO)
+import           Control.Monad.Trans       (liftIO)
 import           Language.Dash.API
-import           Language.Dash.IR.Ast (Expr(..))
+import           Language.Dash.Error.Error
+import           Language.Dash.IR.Ast      (Expr (..))
 import           System.Console.Haskeline
 import           System.Environment
 import           System.IO
 
 data ReplState = ReplState {
-  rsProg :: Expr,
-  rsMultilineMode :: Bool,
+  rsProg           :: Expr,
+  rsMultilineMode  :: Bool,
   rsMultilineInput :: String
 }
 
 main = do
   putStrLn "Welcome to the Dash repl\nType \".quit\" to quit.\nUse \"...\" for multi-line input (use a blank line to return to single line input)"
-  let prog0 = parseWithPreamble ":true" -- obtain preamble
+  let prog0 = either (error . show) id $ parseWithPreamble ":true" -- obtain preamble
   runInputT (setComplete noCompletion defaultSettings) $ loop $ ReplState prog0 False ""
 
 
@@ -36,13 +37,16 @@ loop state = do
 
 eval :: String -> Expr -> InputT IO Expr
 eval input existingProg = do
-  let newProg = parseProgram input
-  let combinedProg = appendExpr newProg existingProg
-  result <- liftIO (runExpr combinedProg)
-  case result of
-    Left err -> do outputStrLn $ show err
-                   return existingProg
-    Right value -> do outputStrLn $ show value; return combinedProg
+  let parseResult = parseProgram input
+  case parseResult of
+    Left err -> outputStrLn (show err) >> return existingProg
+    Right newProg -> do
+      let combinedProg = appendExpr newProg existingProg
+      result <- liftIO (runExpr combinedProg)
+      case result of
+        Left err -> do outputStrLn $ show err
+                       return existingProg
+        Right value -> do outputStrLn $ show value; return combinedProg
 
 
 appendExpr :: Expr -> Expr -> Expr

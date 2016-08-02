@@ -1,64 +1,70 @@
 module Language.Dash.Parser.ParserSpec where
 
 import           Language.Dash.BuiltIn.BuiltInDefinitions
+import           Language.Dash.Error.Error                (CompilationError (..))
 import           Language.Dash.IR.Ast
 import           Language.Dash.Parser.Lexer               as L
 import           Language.Dash.Parser.Parser
 import           Test.Hspec
 
-import           Debug.Trace
+
+shouldBeRight :: (Show a, Eq a) => Either CompilationError a -> a -> Expectation
+shouldBeRight a b = a `shouldBe` Right b
+
 
 -- TODO `Var "_"` should probably be `Wildcard`
 
-parse_string :: String -> Expr
-parse_string = parse . L.lex
+parseString :: String -> Either CompilationError Expr
+parseString str = do
+  lexed <- L.lex str
+  return $ parse lexed
 
 spec :: Spec
 spec = do
   describe "Parser" $ do
 
     it "parses a symbol" $ do
-      parse_string ":dash" `shouldBe` LitSymbol "dash" []
+      parseString ":dash" `shouldBeRight` LitSymbol "dash" []
 
     it "parses nothing" $ do
-      parse_string "" `shouldBe` LitSymbol "ok" []
+      parseString "" `shouldBeRight` LitSymbol "ok" []
 
     it "parses a single binding" $ do
-      parse_string "a = 1" `shouldBe` 
+      parseString "a = 1" `shouldBeRight`
         (LocalBinding (Binding "a" $ LitNumber 1) (LitSymbol "ok" []))
 
     it "parses a single function" $ do
-      parse_string "f a = a" `shouldBe` 
+      parseString "f a = a" `shouldBeRight`
         (LocalBinding (Binding "f" $ Lambda [Var "a"] (Var "a")) (LitSymbol "ok" []))
 
     it "parses an anonymous function" $ do
-      parse_string "a b -> add a b" `shouldBe`
+      parseString "a b -> add a b" `shouldBeRight`
         (Lambda [Var "a", Var "b"] $
           FunAp (Var "add") [Var "a", Var "b"])
 
     it "parses an anonymous function with one argument" $ do
-      parse_string "a -> add a 1" `shouldBe`
+      parseString "a -> add a 1" `shouldBeRight`
         (Lambda [Var "a"] $
           FunAp (Var "add") [Var "a", LitNumber 1])
 
     it "parses if-then-else as match" $ do
-      parse_string "if a then b else c" `shouldBe`
+      parseString "if a then b else c" `shouldBeRight`
         (Match (Var "a") [(LitSymbol trueSymbolName [], Var "b"), (LitSymbol falseSymbolName [], Var "c")])
 
     it "parses an empty list" $ do
-      parse_string "[]" `shouldBe`
+      parseString "[]" `shouldBeRight`
         LitSymbol listEmptySymbolName []
 
 
     it "parses a list" $ do
-      parse_string "[1, a, 2]" `shouldBe`
+      parseString "[1, a, 2]" `shouldBeRight`
         LitSymbol listConsSymbolName [LitNumber 1,
             LitSymbol listConsSymbolName [Var "a",
             LitSymbol listConsSymbolName [LitNumber 2,
             LitSymbol listEmptySymbolName []]]]
 
     it "parses a record" $ do
-      parse_string "{ a = 1, b = \"two\" }" `shouldBe`
+      parseString "{ a = 1, b = \"two\" }" `shouldBeRight`
         LitSymbol recordSymbolName [LitSymbol "a" [], LitNumber 1, LitSymbol "b" [], LitString "two"]
 
 
@@ -70,8 +76,8 @@ spec = do
                    \   action3 a      \n\
                    \   return b       \n\
                    \ end"
-      let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Qualified "maybe" $ Var "bind") [
+      let parsed = parseString source
+      parsed `shouldBeRight` (FunAp (Qualified "maybe" $ Var "bind") [
                             FunAp (Var "action1") [LitNumber 1, LitNumber 2],
                             (Lambda [Var "_"] $
                                 FunAp (Qualified "maybe" $ Var "bind") [
@@ -90,8 +96,8 @@ spec = do
                    \   action3 a      \n\
                    \   return b       \n\
                    \ end"
-      let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Qualified "maybe" $ Var "bind") [
+      let parsed = parseString source
+      parsed `shouldBeRight` (FunAp (Qualified "maybe" $ Var "bind") [
                             FunAp (Var "action1") [LitNumber 1, LitNumber 2],
                             (Lambda [Var "_"] $
                                 FunAp (Qualified "maybe" $ Var "bind") [
@@ -109,8 +115,8 @@ spec = do
                    \   action3 a      \n\
                    \   return b       \n\
                    \ end"
-      let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Qualified "maybe" $ Var "bind") [
+      let parsed = parseString source
+      parsed `shouldBeRight` (FunAp (Qualified "maybe" $ Var "bind") [
                             Var "action2",
                             (Lambda [Var "a"] $
                                 FunAp (Qualified "maybe" $ Var "bind") [
@@ -128,8 +134,8 @@ spec = do
                    \   action3 a      \n\
                    \   return b       \n\
                    \ end"
-      let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Qualified "maybe" $ Var "bind") [
+      let parsed = parseString source
+      parsed `shouldBeRight` (FunAp (Qualified "maybe" $ Var "bind") [
                             FunAp (Var "action1") [LitNumber 1, LitNumber 2],
                             (Lambda [Var "_"] $
                                 FunAp (Qualified "maybe" $ Var "bind") [
@@ -147,8 +153,8 @@ spec = do
                    \   x = 3          \n\
                    \   return b       \n\
                    \ end"
-      let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Qualified "maybe" $ Var "bind") [
+      let parsed = parseString source
+      parsed `shouldBeRight` (FunAp (Qualified "maybe" $ Var "bind") [
                             FunAp (Var "action1") [LitNumber 1, LitNumber 2],
                             (Lambda [Var "_"] $
                                 LocalBinding (Binding "x" $ LitNumber 3) $
@@ -157,8 +163,8 @@ spec = do
 
     it "inserts parentheses around interpolated strings" $ do
       let source = " print_line \"a \\(b) c\"\n"
-      let parsed = parse_string source
-      parsed `shouldBe` (FunAp (Var "print_line") [
+      let parsed = parseString source
+      parsed `shouldBeRight` (FunAp (Var "print_line") [
                             FunAp (Var bifStringConcatName) [
                               FunAp (Var bifStringConcatName) [
                                 LitString "a ",

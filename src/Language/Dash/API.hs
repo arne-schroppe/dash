@@ -13,7 +13,9 @@ import           Language.Dash.Asm.Assembler
 import           Language.Dash.BuiltIn.BuiltInDefinitions  (preamble)
 import           Language.Dash.CodeGen.CodeGen
 import           Language.Dash.Error.Error                 (CompilationError (..))
+import           Language.Dash.IR.Ast                      (Expr)
 import           Language.Dash.IR.Data
+import           Language.Dash.IR.Nst                      (NstExpr)
 import           Language.Dash.Normalization.Normalization
 import           Language.Dash.Parser.Lexer
 import           Language.Dash.Parser.Parser
@@ -21,8 +23,6 @@ import           Language.Dash.VM.DataEncoding
 import           Language.Dash.VM.Types
 import           Language.Dash.VM.VM
 import           Prelude                                   hiding (lex)
-import Language.Dash.IR.Nst (NstExpr)
-import Language.Dash.IR.Ast (Expr)
 
 
 -- TODO Add license header everywhere!
@@ -35,8 +35,10 @@ runWithPreamble prog =
 
 run :: String -> IO (Either CompilationError VMValue)
 run prog = do
-  let expr = parseProgram prog
-  runExpr expr
+  let result = parseProgram prog
+  case result of
+    Left err -> return $ Left err
+    Right expr -> runExpr expr
 
 runExpr :: Expr -> IO (Either CompilationError VMValue)
 runExpr expr = do
@@ -51,7 +53,7 @@ runExpr expr = do
 
 compileProgram :: String -> Either CompilationError ([VMWord], [VMWord], SymbolNameList)
 compileProgram prog = do
-  let ast = parseProgram prog
+  ast <- parseProgram prog
   compileExpr ast
 
 compileExpr :: Expr -> Either CompilationError ([VMWord], [VMWord], SymbolNameList)
@@ -64,20 +66,20 @@ compileExpr ast = do
 
 normalizeProgram :: String -> Either CompilationError (NstExpr, ConstTable, SymbolNameList)
 normalizeProgram prog = do
-  let lexed = lex prog
+  lexed <- lex prog
   let ast = parse lexed
   normalize ast
 
 
-parseWithPreamble :: String -> Expr
+parseWithPreamble :: String -> Either CompilationError Expr
 parseWithPreamble prog =
   let prog' = preamble ++ prog in
   parseProgram prog'
 
-parseProgram :: String -> Expr
-parseProgram prog =
-  let lexed = lex prog in
-  parse lexed
+parseProgram :: String -> Either CompilationError Expr
+parseProgram prog = do
+  lexed <- lex prog
+  return $ parse lexed
 
 -- for testing
 showNormalizedProgram :: String -> String
