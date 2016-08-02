@@ -1320,44 +1320,88 @@ restart:
       break;
 
 
-      case OP_GET_MOD_FIELD: {
+      case OP_GET_FIELD: {
         int result_reg = get_arg_r0(instr);
-        int mod_reg = get_arg_r1(instr);
+        int obj_reg = get_arg_r1(instr);
         int sym_reg = get_arg_r2(instr);
         check_reg(result_reg);
-        check_reg(mod_reg);
+        check_reg(obj_reg);
         check_reg(sym_reg);
 
-        vm_value mod_ref = get_reg(mod_reg);
+        vm_value obj_ref = get_reg(obj_reg);
         vm_value requested_name = get_reg(sym_reg);
 
-        if(get_tag(mod_ref) != vm_tag_opaque_symbol) {
-          fail("Expected a module, got %s", value_to_type_string(mod_ref));
-        }
-
+        // TODO actually the request is malformed in this case, not the module
         if(get_tag(requested_name) != vm_tag_plain_symbol) {
           panic_stop_vm_m("Malformed module!");
         }
 
-        int mod_addr = get_val(mod_ref);
-        vm_value *mod_pointer = state->const_table + mod_addr;
+        vm_value obj_header = 0;
+        vm_value *obj_fields = 0;
 
-        vm_value mod_header = mod_pointer[0];
-        vm_value mod_owner = mod_pointer[1];
+        if(get_tag(obj_ref) == vm_tag_opaque_symbol) {
 
-        if(mod_owner != make_tagged_val(0, vm_tag_plain_symbol)) {
-          panic_stop_vm_m("Malformed module!");
+          int obj_addr = get_val(obj_ref);
+          vm_value *obj_pointer = state->const_table + obj_addr;
+
+          vm_value obj_owner = obj_pointer[1];
+          if(obj_owner != make_tagged_val(0, vm_tag_plain_symbol)) {
+            panic_stop_vm_m("Malformed module!");
+          }
+
+          obj_header = obj_pointer[0];
+          obj_fields = obj_pointer + 2;
+
+
+        }
+        // TODO this branch is untested, as records are apparently always dynamic (?!)
+        else if(get_tag(obj_ref) == vm_tag_compound_symbol) {
+
+
+          int obj_addr = get_val(obj_ref);
+          vm_value *obj_pointer = state->const_table + obj_addr;
+
+          obj_header = obj_pointer[0];
+          if(compound_symbol_id(obj_header) != symbol_id_record) {
+            fail("Expected a module or record, got %s", value_to_type_string(obj_ref));
+          }
+
+          obj_fields = obj_pointer + 1;
+
+
+        }
+        else if(get_tag(obj_ref) == vm_tag_dynamic_compound_symbol) {
+
+
+          int obj_addr = get_val(obj_ref);
+          vm_value *obj_pointer = heap_get_pointer(obj_addr);
+
+          //vm_value *obj_pointer = state->const_table + obj_addr;
+
+          obj_header = obj_pointer[0];
+          obj_fields = obj_pointer + 1;
+
+          if(compound_symbol_id(obj_header) != symbol_id_record) {
+            fail("Expected a module or record, got %s", value_to_type_string(obj_ref));
+          }
+
+
         }
 
-        int num_symbol_fields = compound_symbol_count(mod_header);
+        else {
+          // exits subroutine here
+          fail("Expected a module or record, got %s", value_to_type_string(obj_ref));
+        }
 
-        vm_value *mod_fields = mod_pointer + 2;
+
+        int num_symbol_fields = compound_symbol_count(obj_header);
+
         bool found = false;
         for(int i=0; i < num_symbol_fields; i += 2) {
-          vm_value name = mod_fields[i];
+          vm_value name = obj_fields[i];
 
           if(name == requested_name) {
-            get_reg(result_reg) = mod_fields[i+1];
+            get_reg(result_reg) = obj_fields[i+1];
             found = true;
             break;
           }
@@ -1365,7 +1409,7 @@ restart:
 
         if(found == false) {
           //TODO change this to built-in nil type
-          get_reg(result_reg) = make_tagged_val(symbol_id_false, vm_tag_plain_symbol);
+          get_reg(result_reg) = make_tagged_val(symbol_id_nil, vm_tag_plain_symbol);
         }
 
       }

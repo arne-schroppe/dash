@@ -504,6 +504,8 @@ spec =
         let result = run code
         result `shouldReturnRight` VMString "yes"
 
+
+
     context "when using modules" $ do
 
       it "calls a function in a module" $ do
@@ -741,6 +743,13 @@ spec =
                  \ end"
       let result = run code
       result `shouldReturnRight` VMSymbol "success" []
+
+    it "gets a field in a record" $ do
+      let code = " a = {x = 1, y = \"yes\", z = :true}  \n\
+                 \ a.y"
+      putStrLn $ showNormalizedProgram code
+      let result = run code
+      result `shouldReturnRight` VMString "yes"
 
     it "has negative numbers" $ do
       let code = " 0 - 7 + 3"

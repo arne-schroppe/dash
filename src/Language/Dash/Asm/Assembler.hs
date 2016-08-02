@@ -119,7 +119,7 @@ assembleTac funcAddrs addrConv opc =
     OpcOr r0 r1 r2         -> instructionRRR 31 (r r0) (r r1) (r r2)
     OpcAnd r0 r1 r2        -> instructionRRR 32 (r r0) (r r1) (r r2)
     OpcNot r0 r1           -> instructionRRR 33 (r r0) (r r1) (r 0)
-    OpcGetModField r0 m s  -> instructionRRR 34 (r r0) (r m) (r s)
+    OpcGetField r0 m s     -> instructionRRR 34 (r r0) (r m) (r s)
     OpcConvert r0 r1 rt    -> instructionRRR 35 (r r0) (r r1) (r rt)
     OpcFunHeader arity     -> instructionRI  63 (r 0) (i arity)
 

@@ -43,7 +43,7 @@ typedef enum {
   OP_OR = 31,
   OP_AND = 32,
   OP_NOT = 33,
-  OP_GET_MOD_FIELD = 34,
+  OP_GET_FIELD = 34,
   OP_CONVERT = 35,
 
   FUN_HEADER = 63

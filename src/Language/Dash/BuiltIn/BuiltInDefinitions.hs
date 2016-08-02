@@ -20,9 +20,10 @@ import           Language.Dash.IR.Data
 import           Language.Dash.IR.Opcode
 
 
-tupleSymbolName, recordSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName, numberTypeSymbolName, stringTypeSymbolName, symbolTypeSymbolName, functionTypeSymbolName :: String
+nilSymbolName, tupleSymbolName, recordSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName, numberTypeSymbolName, stringTypeSymbolName, symbolTypeSymbolName, functionTypeSymbolName :: String
 trueSymbolName = "true"
 falseSymbolName = "false"
+nilSymbolName = "nil"
 
 -- Note: If you change these names, also change them in Types.hs
 tupleSymbolName = "$_tuple"
@@ -40,16 +41,18 @@ builtInSymbols = map f d
   where
     f (s, i) = (s, mkSymId i)
     d = zip syms [0..length syms]
-    syms = [ falseSymbolName
-           , trueSymbolName
-           , "_internal_io" -- TODO prevent user from accessing these directly
-           , "eof"
-           , "error"
+    syms = [ falseSymbolName -- 0
+           , trueSymbolName -- 1
+           , "_internal_io" -- 2 -- TODO prevent user from accessing these directly
+           , "eof"          -- 3
+           , "error"        -- 4
 
-           , numberTypeSymbolName
-           , stringTypeSymbolName
-           , symbolTypeSymbolName
-           , functionTypeSymbolName
+           , numberTypeSymbolName -- 5
+           , stringTypeSymbolName -- 6
+           , symbolTypeSymbolName -- 7
+           , functionTypeSymbolName -- 8
+           , recordSymbolName -- 9
+           , nilSymbolName -- 10 -- TODO should probably be 0
            ]
 
 moduleOwner :: SymId

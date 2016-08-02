@@ -6,6 +6,7 @@ module Language.Dash.API
 , parseProgram
 , compileProgram
 , parseWithPreamble
+, showNormalizedProgram
 ) where
 
 import           Language.Dash.Asm.Assembler
@@ -78,3 +79,10 @@ parseProgram prog =
   let lexed = lex prog in
   parse lexed
 
+-- for testing
+showNormalizedProgram :: String -> String
+showNormalizedProgram prog =
+  let result = normalizeProgram prog in
+  case result of
+    Left err -> show err
+    Right (nExpr, _, _) -> show nExpr

@@ -133,7 +133,7 @@ atomizeExpr expr name k = case expr of
       let bs = map (\ (Binding n e) -> (n, e)) bindings in
       normalizeModule bs k
   Qualified ident e ->
-      normalizeModuleLookup ident e k
+      normalizeFieldLookup ident e k
   LocalBinding (Binding bname boundExpr) restExpr ->
       normalizeInnerLocalBinding bname boundExpr restExpr k
   Wildcard ->
@@ -159,12 +159,12 @@ normalizeModule bindings k = do
   let nmodule = NModule fields
   k nmodule
 
-normalizeModuleLookup :: Name -> Expr -> Cont -> Norm NstExpr
-normalizeModuleLookup modName (Var v) k = do
-  modVar <- lookupName modName
+normalizeFieldLookup :: Name -> Expr -> Cont -> Norm NstExpr
+normalizeFieldLookup objName (Var v) k = do
+  objVar <- lookupName objName
   nameExpr (LitSymbol v []) "" $ \ symVar ->
-    k $ NModuleLookup modVar symVar
-normalizeModuleLookup _ qExpr _ = throwError $ InternalCompilerError $ "Unable to do name lookup with " ++ show qExpr
+    k $ NFieldLookup objVar symVar
+normalizeFieldLookup _ qExpr _ = throwError $ InternalCompilerError $ "Unable to do name lookup with " ++ show qExpr
 
 
 atomizeList :: [(Name, Expr)] -> Norm [NstAtomicExpr]

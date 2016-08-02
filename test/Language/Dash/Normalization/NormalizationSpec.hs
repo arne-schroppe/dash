@@ -438,7 +438,7 @@ spec = do
         let numFieldSym = mkSymId minUserSym
         let expected = NLet (NVar "my-mod" NLocalVar) (NModule [(numFieldSym, "num", NNumber 3)]) $
                        NLet (NVar (lvn 0) NLocalVar) (NPlainSymbol numFieldSym) $
-                       NLet (NVar (lvn 1) NLocalVar) (NModuleLookup (NVar "my-mod" NLocalVar) (NVar (lvn 0) NLocalVar)) $
+                       NLet (NVar (lvn 1) NLocalVar) (NFieldLookup (NVar "my-mod" NLocalVar) (NVar (lvn 0) NLocalVar)) $
                        NLet (NVar (lvn 2) NLocalVar) (NNumber 10) $
                        NLet (NVar (lvn 3) NLocalVar) (NNumber 11) $
                        NAtom $ NFunAp (NVar (lvn 1) NLocalVar) [NVar (lvn 2) NLocalVar, NVar (lvn 3) NLocalVar]
@@ -461,7 +461,7 @@ spec = do
                                 NLet (NVar (lvn 1) NLocalVar) (NNumber 2) $
                                 NAtom $ NFunAp (NVar (lvn 0) NLocalVar) [NVar (lvn 1) NLocalVar])]) $
                        NLet (NVar (lvn 2) NLocalVar) (NPlainSymbol numFieldSym) $
-                       NLet (NVar (lvn 3) NLocalVar) (NModuleLookup (NVar "my-mod" NLocalVar) (NVar (lvn 2) NLocalVar)) $
+                       NLet (NVar (lvn 3) NLocalVar) (NFieldLookup (NVar "my-mod" NLocalVar) (NVar (lvn 2) NLocalVar)) $
                        NLet (NVar (lvn 4) NLocalVar) (NNumber 10) $
                        NAtom $ NFunAp (NVar (lvn 3) NLocalVar) [NVar (lvn 4) NLocalVar]
         let (norm, _, syms) = normAll ast

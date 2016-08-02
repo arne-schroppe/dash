@@ -30,7 +30,7 @@ data NstAtomicExpr =
   | NPartAp NstVar [NstVar] -- partial application. Func var, arguments
   | NFunAp NstVar [NstVar]
   | NModule [(SymId, Name, NstAtomicExpr)]
-  | NModuleLookup NstVar NstVar  -- module, symbol
+  | NFieldLookup NstVar NstVar  -- module or record, symbol
   | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures Subject
                                                            -- PatternAddr
                                                            -- [ MatchBranchFreeVars
@@ -108,5 +108,5 @@ instance Show NstAtomicExpr where
 
     NModule fields       -> "module {\n" ++ concatMap (\(sym, name, field) -> name ++
                               "(" ++ show (symIdToInt sym) ++  "): " ++ show field) fields ++ "}"
-    NModuleLookup m f    -> show m ++ "." ++ show f
+    NFieldLookup m f    -> show m ++ "." ++ show f
 

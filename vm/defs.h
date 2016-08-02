@@ -30,6 +30,8 @@
 #define symbol_id_string 6
 #define symbol_id_symbol 7
 #define symbol_id_function 8
+#define symbol_id_record 9
+#define symbol_id_nil 10
 
 
 extern const int action_id_return;

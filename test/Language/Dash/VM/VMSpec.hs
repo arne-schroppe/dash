@@ -392,7 +392,7 @@ spec = do
                    ]
       let prog = [[ OpcLoadOS 1 (mkConstAddr 0)
                   , OpcLoadPS 2 (mkSymId 5)
-                  , OpcGetModField 0 1 2
+                  , OpcGetField 0 1 2
                   , OpcRet 0 ]]
       result <- runProgTbl ctable prog
       decodedResult <- decode result ctable []
