@@ -570,6 +570,39 @@ it( binds_a_value_in_a_nested_dynamic_symbol ) {
   is_equal(result, make_tagged_val(bias(11), vm_tag_number));
 }
 
+it( throws_an_error_if_matching_fails ) {
+  vm_value const_table[] = {
+    match_header(2),
+    make_tagged_val(bias(11), vm_tag_number),
+    make_tagged_val(bias(22), vm_tag_number),
+  };
+
+  vm_instruction program[] = {
+    op_load_i(0, 600),
+    op_load_i(1, bias(33)), /* value to match */
+    op_load_i(2, 0), /* address of match pattern */
+    op_match(1, 2, 0),
+    op_jmp(bias(1)),
+    op_jmp(bias(2)),
+    op_load_i(0, bias(4)),
+    op_ret(0),
+    op_load_i(0, bias(300)),
+    op_ret(0)
+  };
+  vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
+
+  is_equal(get_tag(result), vm_tag_dynamic_compound_symbol);
+
+  if(get_tag(result) == vm_tag_dynamic_compound_symbol) {
+    vm_value *heap_p = heap_get_pointer(get_val(result));
+    vm_value sym_header = *heap_p;
+    is_equal(compound_symbol_count(sym_header), 2);
+    is_equal(compound_symbol_id(sym_header), symbol_id_error);
+    int header_size = 1;
+    is_equal(heap_p[header_size + 0], make_tagged_val(symbol_id_runtime_error, vm_tag_plain_symbol));
+  }
+}
+
 
 it( creates_an_explicit_partial_application ) {
   const int fun_address = 8;
@@ -761,7 +794,7 @@ it( looks_up_a_value_in_a_module ) {
   vm_instruction program[] = {
     op_load_os(1, 0),
     op_load_ps(2, 5),
-    op_get_mod_field(0, 1, 2),
+    op_get_field(0, 1, 2),
     op_ret(0)
   };
   vm_value result = vm_execute(program, array_length(program), const_table, array_length(const_table));
@@ -795,6 +828,7 @@ start_spec(vm_spec)
   example(matches_a_dynamic_compound_symbol)
   example(binds_a_value_in_a_dynamic_symbol_match)
   example(binds_a_value_in_a_nested_dynamic_symbol)
+  example(throws_an_error_if_matching_fails)
   example(creates_an_explicit_partial_application)
   example(creates_a_partial_application_with_a_generic_application)
   example(does_a_generic_application_of_a_function)

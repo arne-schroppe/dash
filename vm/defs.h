@@ -32,6 +32,7 @@
 #define symbol_id_function 8
 #define symbol_id_record 9
 #define symbol_id_nil 10
+#define symbol_id_runtime_error 11
 
 
 extern const int action_id_return;

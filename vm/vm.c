@@ -34,7 +34,11 @@ const vm_value vm_failure_result = make_tagged_val(symbol_id_false, vm_tag_plain
 vm_value make_str_error(const char *format, ...);
 #define panic_stop_vm() { return vm_failure_result; }
 #define panic_stop_vm_m(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); return e; }
+
+// TODO we don't know if get_reg(get_arg_r0(instr)) is actually the return address!!!
 #define fail(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); fprintf(stderr, format "\n", ## __VA_ARGS__); get_reg(get_arg_r0(instr)) = e; break; }
+
+#define throw(format, ...) { vm_value e = make_str_error(format, ## __VA_ARGS__); get_reg(get_arg_r0(instr)) = e; goto op_ret; }
 
 
 char *value_to_type_string(vm_value value) {
@@ -137,11 +141,12 @@ vm_value make_str_error(const char *format, ...) {
 
   vm_value heap_str = new_heap_string(message);
 
-  size_t total_size = compound_symbol_header_size + 1;
+  size_t total_size = compound_symbol_header_size + 2;
   heap_address dyn_sym_address = heap_alloc(total_size);
   vm_value *sym_pointer = heap_get_pointer(dyn_sym_address);
-  sym_pointer[0] = compound_symbol_header(symbol_id_error, 1);
-  sym_pointer[1] = heap_str;
+  sym_pointer[0] = compound_symbol_header(symbol_id_error, 2);
+  sym_pointer[1] = make_tagged_val(symbol_id_runtime_error, vm_tag_plain_symbol);
+  sym_pointer[2] = heap_str;
 
   return make_tagged_val(dyn_sym_address, vm_tag_dynamic_compound_symbol);
 }
@@ -872,6 +877,7 @@ restart:
       break;
 
 
+op_ret:
       case OP_RET: {
         int return_val_reg = get_arg_r0(instr);
         if (state->stack_pointer == 0) {
@@ -939,7 +945,7 @@ restart:
         }
 
         if(i == number_of_patterns) {
-          fail("Pattern match failed!");
+          throw("Pattern match failed!");
         }
 
         state->program_pointer += i;

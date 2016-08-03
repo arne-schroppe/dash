@@ -16,7 +16,7 @@ data Pattern =
 
 
 data Binding =
-  Binding String Expr -- name, body
+    Binding String Expr -- name, body
   deriving (Show, Eq)
 
 

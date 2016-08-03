@@ -20,7 +20,7 @@ import           Language.Dash.IR.Data
 import           Language.Dash.IR.Opcode
 
 
-nilSymbolName, tupleSymbolName, recordSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName, numberTypeSymbolName, stringTypeSymbolName, symbolTypeSymbolName, functionTypeSymbolName :: String
+runtimeErrorSymbolName, nilSymbolName, tupleSymbolName, recordSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName, numberTypeSymbolName, stringTypeSymbolName, symbolTypeSymbolName, functionTypeSymbolName :: String
 trueSymbolName = "true"
 falseSymbolName = "false"
 nilSymbolName = "nil"
@@ -35,6 +35,8 @@ numberTypeSymbolName = "number"
 stringTypeSymbolName = "string"
 symbolTypeSymbolName = "symbol"
 functionTypeSymbolName = "function"
+
+runtimeErrorSymbolName = "runtime_error" 
 
 builtInSymbols :: [(String, SymId)]
 builtInSymbols = map f d
@@ -53,6 +55,7 @@ builtInSymbols = map f d
            , functionTypeSymbolName -- 8
            , recordSymbolName -- 9
            , nilSymbolName -- 10 -- TODO should probably be 0
+           , runtimeErrorSymbolName -- 11
            ]
 
 moduleOwner :: SymId
@@ -159,7 +162,7 @@ preamble = "\n\
 \      match action with                                   \n\
 \        :_internal_io<type, param, :nil> -> :_internal_io<type, param, next>  \n\
 \        :_internal_io<type, param, n0> -> :_internal_io<type, param, (x -> bind (n0 x) next)>  \n\
-\        _ -> :error<\"io-bind: Expected an io action as first argument\">\n\
+\        _ -> :error<:" ++ runtimeErrorSymbolName ++ ", \"io-bind: Expected an io action as first argument\">\n\
 \      end                                                 \n\
 \                                                          \n\
 \    return a =                                            \n\
@@ -178,7 +181,7 @@ preamble = "\n\
 \  head ls =                                             \n\
 \    match ls with                                       \n\
 \      [a | _] -> a                                     \n\
-\      _ -> :error<\"Empty list!\">                      \n\
+\      _ -> :error<:" ++ runtimeErrorSymbolName ++ ",\"Empty list!\">                      \n\
 \    end                                                 \n\
 \                                                        \n\
 \  tail ls =                                             \n\
@@ -228,7 +231,7 @@ preamble = "\n\
 \      match l with                                      \n\
 \        []     -> acc                                   \n\
 \        [_ | as] -> len' as (acc + 1)                     \n\
-\        x      -> :error<\"Not a list\">                \n\
+\        x      -> :error<:" ++ runtimeErrorSymbolName ++ ", \"Not a list\">                \n\
 \      end                                               \n\
 \    len' list 0                                         \n\
 \                                                        \n\

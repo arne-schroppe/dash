@@ -13,6 +13,15 @@ import           Test.Hspec
 shouldReturnRight :: (Show a, Eq a) => IO (Either CompilationError a) -> a -> Expectation
 shouldReturnRight action val = action `shouldReturn` Right val
 
+isErrorSymbol :: Either CompilationError VMValue -> Bool
+isErrorSymbol result =
+  case result of
+    Left _ -> False
+    Right val ->
+      case val of
+        VMSymbol "error" _ -> True
+        _ -> False
+
 spec :: Spec
 spec =
 
@@ -504,6 +513,12 @@ spec =
         let result = run code
         result `shouldReturnRight` VMString "yes"
 
+      it "returns error if the destructuring assignment fails" $ do
+        let code = " x = 0  \n\
+                   \ :fail<a> = x \n\
+                   \ a"
+        result <- run code
+        result `shouldSatisfy` isErrorSymbol
 
 
     context "when using modules" $ do
