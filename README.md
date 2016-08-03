@@ -3,7 +3,7 @@
 
 dash is a purely functional, strictly evaluated, and dynamically typed programming language.
 
-It is in the earliest of early alpha stages.
+It is in an early alpha stage.
 
 
 ## Usage
