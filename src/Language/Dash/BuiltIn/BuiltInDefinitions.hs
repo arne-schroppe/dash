@@ -13,6 +13,8 @@ module Language.Dash.BuiltIn.BuiltInDefinitions (
 , falseSymbolName
 , preamble
 , moduleOwner
+, errorSymbolName
+, runtimeErrorSymbolName
 ) where
 
 import           Data.Maybe              (fromJust)
@@ -20,7 +22,7 @@ import           Language.Dash.IR.Data
 import           Language.Dash.IR.Opcode
 
 
-runtimeErrorSymbolName, nilSymbolName, tupleSymbolName, recordSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName, numberTypeSymbolName, stringTypeSymbolName, symbolTypeSymbolName, functionTypeSymbolName :: String
+runtimeErrorSymbolName, errorSymbolName, nilSymbolName, tupleSymbolName, recordSymbolName, listConsSymbolName, listEmptySymbolName, trueSymbolName, falseSymbolName, numberTypeSymbolName, stringTypeSymbolName, symbolTypeSymbolName, functionTypeSymbolName :: String
 trueSymbolName = "true"
 falseSymbolName = "false"
 nilSymbolName = "nil"
@@ -36,6 +38,7 @@ stringTypeSymbolName = "string"
 symbolTypeSymbolName = "symbol"
 functionTypeSymbolName = "function"
 
+errorSymbolName = "error" 
 runtimeErrorSymbolName = "runtime_error" 
 
 builtInSymbols :: [(String, SymId)]
@@ -47,7 +50,7 @@ builtInSymbols = map f d
            , trueSymbolName -- 1
            , "_internal_io" -- 2 -- TODO prevent user from accessing these directly
            , "eof"          -- 3
-           , "error"        -- 4
+           , errorSymbolName        -- 4
 
            , numberTypeSymbolName -- 5
            , stringTypeSymbolName -- 6

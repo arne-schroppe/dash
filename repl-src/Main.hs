@@ -1,7 +1,9 @@
-import           Control.Monad.Trans       (liftIO)
+import           Control.Monad.Trans                      (liftIO)
 import           Language.Dash.API
+import           Language.Dash.BuiltIn.BuiltInDefinitions (errorSymbolName, runtimeErrorSymbolName)
 import           Language.Dash.Error.Error
-import           Language.Dash.IR.Ast      (Expr (..))
+import           Language.Dash.IR.Ast                     (Expr (..))
+import           Language.Dash.VM.Types
 import           System.Console.Haskeline
 import           System.Environment
 import           System.IO
@@ -48,6 +50,8 @@ eval input existingProg = do
       case result of
         Left err -> do outputStrLn $ show err
                        return existingProg
+        Right value@(VMSymbol errorSymbolName [VMSymbol runtimeErrorSymbolName [], _]) ->
+                    do outputStrLn $ show value; return existingProg
         Right value -> do outputStrLn $ show value; return combinedProg
 
 
