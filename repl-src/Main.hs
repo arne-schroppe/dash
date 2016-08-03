@@ -13,7 +13,7 @@ data ReplState = ReplState {
 }
 
 main = do
-  putStrLn "Welcome to the Dash repl\nType \".quit\" to quit.\nUse \"...\" for multi-line input (use a blank line to return to single line input)"
+  putStrLn "Welcome to the dash repl\nType \".quit\" to quit\nUse \"...\" for multi line input (use a blank line to return to single line input)"
   let prog0 = either (error . show) id $ parseWithPreamble ":true" -- obtain preamble
   runInputT (setComplete noCompletion defaultSettings) $ loop $ ReplState prog0 False ""
 
@@ -27,8 +27,10 @@ loop state = do
     Just ".quit" -> return ()
     Just ".exit" -> return ()
     Just "..."   -> loop $ state { rsMultilineMode = True }
-    Just ""      -> do prog' <- eval (rsMultilineInput state) (rsProg state)
-                       loop $ state { rsMultilineMode = False, rsMultilineInput = "", rsProg = prog' }
+    Just ""      -> if rsMultilineMode state
+                      then do prog' <- eval (rsMultilineInput state) (rsProg state)
+                              loop $ state { rsMultilineMode = False, rsMultilineInput = "", rsProg = prog' }
+                      else loop state
     Just input -> do state' <- if rsMultilineMode state
                                then return $ state { rsMultilineInput = (rsMultilineInput state) ++ "\n" ++ input }
                                else do prog' <- eval input (rsProg state)

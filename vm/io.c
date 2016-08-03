@@ -95,7 +95,7 @@ io_action_result check_io_action(vm_state *state, vm_value value, vm_instruction
 
   if(get_tag(next_action) == vm_tag_function || get_tag(next_action) == vm_tag_pap) {
     // The io action includes a bound lambda. Set up the vm so that it is called
-    // with the result form our io action.
+    // with the result from our io action.
 
     *next_closure = next_action;
     *result = next_param;
