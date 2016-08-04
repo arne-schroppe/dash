@@ -9,6 +9,7 @@ import Language.Dash.IR.Data
 data EncodedFunction = EncodedFunction {
   cfOpcodes :: [Opcode]
 }
+  deriving Show
 
 -- TODO should we express known and unknown functions through separate types 
 -- or data constructors?

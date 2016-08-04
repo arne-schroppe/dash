@@ -4,7 +4,8 @@ module Language.Dash.API
 , runWithPreamble
 , normalizeProgram
 , parseProgram
-, compileProgram
+, assembleProgram
+, compileExpr
 , parseWithPreamble
 , showNormalizedProgram
 ) where
@@ -15,6 +16,7 @@ import           Language.Dash.CodeGen.CodeGen
 import           Language.Dash.Error.Error                 (CompilationError (..))
 import           Language.Dash.IR.Ast                      (Expr)
 import           Language.Dash.IR.Data
+import           Language.Dash.IR.Opcode
 import           Language.Dash.IR.Nst                      (NstExpr)
 import           Language.Dash.Normalization.Normalization
 import           Language.Dash.Parser.Lexer
@@ -42,7 +44,7 @@ run prog = do
 
 runExpr :: Expr -> IO (Either CompilationError VMValue)
 runExpr expr = do
-  let compiledOrError = compileExpr expr
+  let compiledOrError = assembleExpr expr
   case compiledOrError of
     Left err -> return (Left err)
     Right (encodedProgram, encodedConstTable, symNames) -> do
@@ -51,18 +53,21 @@ runExpr expr = do
             return $ Right decoded
 
 
-compileProgram :: String -> Either CompilationError ([VMWord], [VMWord], SymbolNameList)
-compileProgram prog = do
+assembleProgram :: String -> Either CompilationError ([VMWord], [VMWord], SymbolNameList)
+assembleProgram prog = do
   ast <- parseProgram prog
-  compileExpr ast
+  assembleExpr ast
 
-compileExpr :: Expr -> Either CompilationError ([VMWord], [VMWord], SymbolNameList)
-compileExpr ast = do
-  (normExpr, constTable, symNames) <- normalize ast
-  (opcodes, constTable', symNames') <- compile normExpr constTable symNames
+assembleExpr :: Expr -> Either CompilationError ([VMWord], [VMWord], SymbolNameList)
+assembleExpr ast = do
+  (opcodes, constTable', symNames') <- compileExpr ast
   (encodedProgram, encodedConstTable) <- assemble opcodes constTable'
   return (encodedProgram, encodedConstTable, symNames')
 
+compileExpr :: Expr -> Either CompilationError ([EncodedFunction], ConstTable, SymbolNameList)
+compileExpr ast = do
+  (normExpr, constTable, symNames) <- normalize ast
+  compile normExpr constTable symNames
 
 normalizeProgram :: String -> Either CompilationError (NstExpr, ConstTable, SymbolNameList)
 normalizeProgram prog = do

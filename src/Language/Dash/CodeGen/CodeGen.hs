@@ -217,7 +217,6 @@ compileConstantFreeVar :: Reg -> Name -> CodeGen [Opcode]
 compileConstantFreeVar reg name = do
   compConst <- getCompileTimeConstInSurroundingScopes name
   case compConst of
-    -- TODO what about strings, symbols and modules?
     -- TODO how about storing the constant in const table and simply load_c it here?
     CTConstNumber n          -> return [OpcLoadI reg $ fromIntegral n]
     CTConstPlainSymbol symId -> return [OpcLoadPS reg symId]
