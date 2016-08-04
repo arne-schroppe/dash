@@ -109,7 +109,7 @@ it( directly_calls_a_function ) {
     op_add(4, 1, 2),
     op_load_f(3, fun_address),
     op_set_arg(0, 4, 0),
-    op_call(0, 3, 1), /* result reg, reg with function address, num parameters */
+    op_ap(0, 3, 1), /* result reg, reg with function address, num parameters */
     op_ret(0),
 
     fun_header(2),
@@ -132,7 +132,7 @@ it( calls_a_closure_downwards ) {
     op_part_ap(2, 2, 1), // we create a closure using a pap
     op_load_f(1, fun_address1),
     op_set_arg(0, 2, 0),
-    op_call(0, 1, 1), //call fun1 with a closure to fun2
+    op_ap(0, 1, 1), //call fun1 with a closure to fun2
     op_ret(0),
 
     // fun1
@@ -160,7 +160,7 @@ it( calls_a_closure_upwards ) {
   vm_instruction program[] = {
     op_load_f(1, fun_address1),
     op_set_arg(0, 2, 0),
-    op_call(1, 1, 1),
+    op_ap(1, 1, 1),
     op_load_i(2, bias(80)),
     op_set_arg(0, 2, 0),
     op_gen_ap(0, 1, 1),
@@ -189,7 +189,7 @@ it( modifies_a_closure ) {
   const int fun_address2 = 15;
   vm_instruction program[] = {
     op_load_f(1, fun_address1),
-    op_call(1, 1, 0),
+    op_ap(1, 1, 0),
     op_load_i(2, bias(80)),
     op_set_arg(0, 2, 0),
     op_gen_ap(0, 1, 1),

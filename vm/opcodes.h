@@ -20,9 +20,9 @@ typedef enum {
   OP_MUL = 8,
   OP_DIV = 9,
   OP_MOVE = 10, //Maybe we don't need this, could be add with a zero (see MIPS instruction set)
-  OP_CALL = 11,
+  OP_AP = 11,
   OP_GEN_AP = 12, // General function application
-  OP_TAIL_CALL = 13,
+  OP_TAIL_AP = 13,
   OP_TAIL_GEN_AP = 14,
   OP_PART_AP = 15,      // Do partial application of known function
   OP_JMP = 16,
@@ -83,7 +83,7 @@ typedef enum {
 #define op_mul(r0, r1, r2) (instr_rrr(OP_MUL, r0, r1, r2))
 #define op_div(r0, r1, r2) (instr_rrr(OP_DIV, r0, r1, r2))
 #define op_move(r0, r1) (instr_rrr(OP_MOVE, r0, r1, 0))
-#define op_call(r0, fr, n) (instr_rrr(OP_CALL, r0, fr, n)) // result reg, reg with function addr (code), num arguments
+#define op_ap(r0, fr, n) (instr_rrr(OP_AP, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 #define op_gen_ap(r0, clr, n) (instr_rrr(OP_GEN_AP, r0, clr, n)) // result reg, reg with closure addr (heap), num arguments
 #define op_part_ap(r0, fr, n) (instr_rrr(OP_PART_AP, r0, fr, n)) // result reg, reg with function addr (code), num arguments
 #define op_ret(r0) (instr_ri(OP_RET, r0, 0))

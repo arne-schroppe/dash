@@ -823,7 +823,7 @@ restart:
       break;
 
 
-      case OP_CALL: {
+      case OP_AP: {
         if (state->stack_pointer + 1 == stack_size) {
           fail("(call)!");
         }
@@ -842,7 +842,7 @@ restart:
       break;
 
 
-      case OP_TAIL_CALL: {
+      case OP_TAIL_AP: {
         do_call((&current_frame), get_arg_r1(instr), instr);
         if (call_failed) {
           fail("call failed"); //TODO give a better error description

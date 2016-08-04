@@ -25,11 +25,18 @@ data Opcode =
   | OpcMul Reg Reg Reg
   | OpcDiv Reg Reg Reg
   | OpcMove Reg Reg
-  | OpcCall Reg Reg Int
+
+-- Function application of a known function
+  | OpcAp Reg Reg Int
+
+-- Generic application, i.e. unknown function
   | OpcGenAp Reg Reg Int
-  | OpcTailCall Reg Int
+
+  | OpcTailAp Reg Int
   | OpcTailGenAp Reg Reg Int -- result reg (since this might do partial application)
                              -- , closure reg (heap), num args
+
+-- Partial application of a known function (GenAp also does partial application if needed)
   | OpcPartAp Reg Reg Int    -- result, reg with function address (code), num args
   | OpcJmp Int
   | OpcMatch Reg Reg Reg     -- subj reg, pattern addr reg, start reg for captures

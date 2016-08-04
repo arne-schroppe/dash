@@ -168,8 +168,8 @@ compileCallInstr reg funVar numArgs isResultValue = do
   -- TODO maybe the normalizer should already resolve what is a call to a known
   -- function and what isn't?
   let instr = case (direct, isResultValue) of
-          (True, False)  -> [OpcCall reg rFun numArgs]
-          (True, True)   -> [OpcTailCall rFun numArgs]
+          (True, False)  -> [OpcAp reg rFun numArgs]
+          (True, True)   -> [OpcTailAp rFun numArgs]
           (False, False) -> [OpcGenAp reg rFun numArgs]
           (False, True)  -> [OpcTailGenAp reg rFun numArgs]
   return instr
@@ -217,6 +217,7 @@ compileConstantFreeVar :: Reg -> Name -> CodeGen [Opcode]
 compileConstantFreeVar reg name = do
   compConst <- getCompileTimeConstInSurroundingScopes name
   case compConst of
+    -- TODO what about strings, symbols and modules?
     -- TODO how about storing the constant in const table and simply load_c it here?
     CTConstNumber n          -> return [OpcLoadI reg $ fromIntegral n]
     CTConstPlainSymbol symId -> return [OpcLoadPS reg symId]
@@ -254,10 +255,9 @@ compileDestructuringBind boundVars patternAddr subjectVar body = do
   subjReg <- getReg subjectVar
   let addrTempReg = captureStartReg -- we can use the first reg of the captured vars temporarily to store the pattern address
 
-  -- we don't need a jump table with this OpcMatch, because there's only one branch and 
-  -- the first branch continues right after the OpcMatch instruction. If the match fails, it
-  -- throws an error anyway
-
+  -- we don't need a jump table with this OpcMatch, because there's only one branch and
+  -- the first branch continues right after the OpcMatch instruction. If the match fails,
+  -- it throws an error anyway
   compBody <- compileExpr body
   return $ [OpcLoadAddr addrTempReg patternAddr,
             OpcMatch subjReg addrTempReg captureStartReg] ++

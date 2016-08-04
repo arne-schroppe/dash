@@ -61,7 +61,7 @@ spec = do
                     OpcAdd  4 1 2,
                     OpcLoadF 3 (mkFuncAddr 1),
                     OpcSetArg 0 4 0,
-                    OpcCall 0 3 1,
+                    OpcAp 0 3 1,
                     OpcRet 0 ], [
                     OpcFunHeader 1,
                     OpcLoadI  1 100,
@@ -78,7 +78,7 @@ spec = do
                     OpcPartAp 2 2 1,
                     OpcLoadF 1 (mkFuncAddr 1),
                     OpcSetArg 0 2 0,
-                    OpcCall 0 1 1,
+                    OpcAp 0 1 1,
                     OpcRet 0 ], [
                     -- fun1
                     OpcFunHeader 2,
@@ -99,7 +99,7 @@ spec = do
 
     it "calls a closure upwards" $ do
       let prog = [[ OpcLoadF 1 (mkFuncAddr 1),
-                    OpcCall 1 1 0,
+                    OpcAp 1 1 0,
                     OpcLoadI 2 80,
                     OpcSetArg 0 2 0,
                     OpcGenAp 0 1 1,
@@ -121,7 +121,7 @@ spec = do
 
     it "modifies a closure" $ do
       let prog = [[ OpcLoadF 1 (mkFuncAddr 1),
-                    OpcCall 1 1 0,
+                    OpcAp 1 1 0,
                     OpcLoadI 2 80,
                     OpcSetArg 0 2 0,
                     OpcGenAp 0 1 1,
