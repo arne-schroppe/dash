@@ -32,7 +32,7 @@ data Expr =
   | MatchBranch [String] Expr  -- arguments, body
   | FunAp Expr [Expr]            -- A function application
   | LocalBinding Binding Expr  -- binding, body
-  | DestructAssignment Expr Expr Expr  -- pattern, bound expr, body
+  | DestructuringBind Expr Expr Expr  -- pattern, bound expr, body
   | Module [Binding]
   | Match Expr [(Expr, Expr)]
   deriving (Show, Eq)

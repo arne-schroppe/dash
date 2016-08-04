@@ -762,7 +762,6 @@ spec =
     it "gets a field in a record" $ do
       let code = " a = {x = 1, y = \"yes\", z = :true}  \n\
                  \ a.y"
-      putStrLn $ showNormalizedProgram code
       let result = run code
       result `shouldReturnRight` VMString "yes"
 

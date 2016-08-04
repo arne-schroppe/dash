@@ -15,6 +15,7 @@ import           Language.Dash.IR.Data (ConstAddr, Name, SymId, symIdToInt)
 data NstExpr =
     NAtom NstAtomicExpr
   | NLet NstVar NstAtomicExpr NstExpr
+  | NDestructuringBind [NstVar] ConstAddr NstVar NstExpr -- matchedVars pattern subject body
   deriving (Eq, Ord)
 
 
@@ -31,7 +32,8 @@ data NstAtomicExpr =
   | NFunAp NstVar [NstVar]
   | NModule [(SymId, Name, NstAtomicExpr)]
   | NFieldLookup NstVar NstVar  -- module or record, symbol
-  | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures Subject
+  | NMatch Int NstVar ConstAddr [([Name], [Name], NstVar)] -- MaxCaptures 
+                                                           -- Subject
                                                            -- PatternAddr
                                                            -- [ MatchBranchFreeVars
                                                            -- , MatchedVars
@@ -71,7 +73,7 @@ instance Show NstExpr where
   show expr = case expr of
     NAtom atom -> "return " ++ show atom ++ "\n"
     NLet var atom rest -> show var ++ " <- " ++ show atom ++ "\n" ++ show rest
-
+    -- NDestructuringBind subj pat body -> "???" -- TODO
 
 instance Show NstVarType where
   show v = case v of

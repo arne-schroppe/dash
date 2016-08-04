@@ -99,7 +99,7 @@ Expr:
   | ExprB '=' opt(eol) Expr eol ExprOrEnd {
       case $1 of
         Var s -> LocalBinding (Binding s $4) $6
-        _     -> DestructAssignment $1 $4 $6
+        _     -> DestructuringBind $1 $4 $6
   }
   | ExprB plus(ExprB) { FunAp $1 $2 }
   | ExprB star(ExprB) '->' opt(eol) Expr { Lambda ($1:$2) $5 }

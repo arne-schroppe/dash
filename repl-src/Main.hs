@@ -59,7 +59,7 @@ appendExpr :: Expr -> Expr -> Expr
 appendExpr newExpr existingExpr =
   case existingExpr of
     LocalBinding b e -> LocalBinding b $ appendExpr newExpr e
-    DestructAssignment pat boundExpr e -> DestructAssignment pat boundExpr $ appendExpr newExpr e
+    DestructuringBind pat boundExpr e -> DestructuringBind pat boundExpr $ appendExpr newExpr e
     _ -> newExpr
 
 

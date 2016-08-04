@@ -88,6 +88,8 @@ compileExpr expr =
   case expr of
     NLet var atom body ->
       compileLet var atom body
+    NDestructuringBind matchedVars patternAddr subjVar body ->
+      compileDestructuringBind matchedVars patternAddr subjVar body
     NAtom a -> do
       code <- compileAtom 0 a "" True
       return $ code ++ [OpcRet 0]
@@ -244,6 +246,31 @@ compileLet tmpVar atom body =
       comp2 <- compileExpr body
       return $ comp1 ++ comp2
 
+compileDestructuringBind :: [NstVar] -> ConstAddr -> NstVar -> NstExpr -> CodeGen [Opcode]
+compileDestructuringBind boundVars patternAddr subjectVar body = do
+  when (length boundVars == 0) $ throwError (ParsingError "Destructuring bind does not contain any variables")
+  captureRegs <- forM boundVars bindMatchVar
+  let captureStartReg = head captureRegs
+  subjReg <- getReg subjectVar
+  let addrTempReg = captureStartReg -- we can use the first reg of the captured vars temporarily to store the pattern address
+
+  -- we don't need a jump table with this OpcMatch, because there's only one branch and 
+  -- the first branch continues right after the OpcMatch instruction. If the match fails, it
+  -- throws an error anyway
+
+  compBody <- compileExpr body
+  return $ [OpcLoadAddr addrTempReg patternAddr,
+            OpcMatch subjReg addrTempReg captureStartReg] ++
+           compBody
+
+  where
+    bindMatchVar :: NstVar -> CodeGen Reg
+    bindMatchVar (NVar n NLocalVar) = do
+      r <- newReg
+      bindVar n r
+      return r
+    bindMatchVar _ = throwError $ InternalCompilerError $ "Bound var in destructuring bind was not a local var"
+
 
 -- This determines whether we'll use call or gen_ap later
 canBeCalledDirectly :: NstAtomicExpr -> Bool
@@ -310,6 +337,8 @@ createSelfRefInstrsIfNeeded clReg = do
   case selfRef of
     Nothing -> return []
     Just index -> return [OpcSetClVal clReg clReg index]
+
+
 
 
 -- Every branch in the match-expression has been converted to a lambda by the normalizer.

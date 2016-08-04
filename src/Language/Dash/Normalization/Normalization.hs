@@ -105,9 +105,22 @@ normalizeExpr expr = case expr of
       normalizeExpr restExpr
   LocalBinding (Binding name boundExpr) restExpr ->
     nameExpr boundExpr name $ \ _ -> normalizeExpr restExpr
+  DestructuringBind pattern subjectExpr bodyExpr ->
+    normalizeDestructBind subjectExpr pattern bodyExpr
   _ ->
     atomizeExpr expr "" $ return . NAtom
 
+
+normalizeDestructBind :: Expr -> Expr -> Expr -> Norm NstExpr
+normalizeDestructBind subjectExpr pattern bodyExpr = do
+  (matchedVarNames, encodedPattern) <- encodeMatchPattern 0 pattern
+  patternAddr <- addConstant $ CMatchData [encodedPattern]
+  nameExpr subjectExpr "" $ \ subjVar -> do
+    matchedVars <- forM matchedVarNames $ \ n -> do let var = NVar n NLocalVar
+                                                    addBinding n (var, False) -- TODO can this var be dynamic?
+                                                    return var
+    nExpr <- normalizeExpr bodyExpr
+    return $ NDestructuringBind matchedVars patternAddr subjVar nExpr
 
 atomizeExpr :: Expr -> String -> Cont -> Norm NstExpr
 atomizeExpr expr name k = case expr of
@@ -130,8 +143,6 @@ atomizeExpr expr name k = case expr of
   -- TODO a destruct-assignment must contain at least one variable!
   -- also needs to be a fresh variable! (right now it allows redefinitions).
   -- We should also leave the match branch again afterwards to avoid stack overflows
-  DestructAssignment pattern boundExpr bodyExpr ->  
-      normalizeMatch boundExpr [(pattern, bodyExpr)] k
   Module bindings ->
       let bs = map (\ (Binding n e) -> (n, e)) bindings in
       normalizeModule bs k
@@ -139,6 +150,7 @@ atomizeExpr expr name k = case expr of
       normalizeFieldLookup ident e k
   LocalBinding (Binding bname boundExpr) restExpr ->
       normalizeInnerLocalBinding bname boundExpr restExpr k
+  DestructuringBind _ _ _ -> throwError $ InternalCompilerError "Can't compile inner destructuring bind yet"
   Wildcard ->
       throwError $ CodeError "Unexpected wildcard"
 
@@ -246,12 +258,12 @@ normalizeVar name k = do
 
 normalizeLambda :: [Expr] -> Expr -> String -> Cont -> Norm NstExpr
 normalizeLambda params bodyExpr name k = do
-  let (paramNames, destrAssgns) = paramNamesAndDestructAssignments params
+  let (paramNames, destrAssgns) = paramNamesAndDestructBinds params
   enterContext paramNames
   -- TODO we don't know whether this var is dynamic or not!
   addBinding name (NVar name NRecursiveVar, False)
   -- TODO add arity for recursive var?
-  let newBody = addDestrAssignments destrAssgns bodyExpr
+  let newBody = addDestrBind destrAssgns bodyExpr
   normalizedBody <- normalizeExpr newBody
   freeVars <- freeVariables
   leaveContext
@@ -260,8 +272,8 @@ normalizeLambda params bodyExpr name k = do
   k $ NLambda freeVars paramNames normalizedBody
 
 
-paramNamesAndDestructAssignments :: [Expr] -> ([String], [(Expr, String)])
-paramNamesAndDestructAssignments params =
+paramNamesAndDestructBinds :: [Expr] -> ([String], [(Expr, String)])
+paramNamesAndDestructBinds params =
   foldr f ([], []) params
   where
     f e (names', destrAssgns') =
@@ -272,11 +284,11 @@ paramNamesAndDestructAssignments params =
                   let destrA = (e, paramName) in
                   (paramName:names', destrA:destrAssgns')
 
-addDestrAssignments :: [(Expr, String)] -> Expr -> Expr
-addDestrAssignments assgns body =
+addDestrBind :: [(Expr, String)] -> Expr -> Expr
+addDestrBind assgns body =
   foldr f body assgns
   where
-    f (pat, varName) expr = DestructAssignment pat (Var varName) expr
+    f (pat, varName) expr = DestructuringBind pat (Var varName) expr
 
 
 normalizeMatchBranch :: [String] -> Expr -> Cont -> Norm NstExpr
@@ -384,6 +396,7 @@ normalizeMatch matchedExpr patternsAndExpressions k = do
       let freeVars = replicate (length branchVars) []
       let branches = zip3 freeVars matchedVars branchVars
       k $ NMatch maxMatchVars subjVar patternAddr branches
+
 
 
 ----- Normalization helper functions
