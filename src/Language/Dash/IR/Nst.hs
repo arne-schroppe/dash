@@ -73,7 +73,7 @@ instance Show NstExpr where
   show expr = case expr of
     NAtom atom -> "return " ++ show atom ++ "\n"
     NLet var atom rest -> show var ++ " <- " ++ show atom ++ "\n" ++ show rest
-    -- NDestructuringBind subj pat body -> "???" -- TODO
+    NDestructuringBind vars _ subj rest -> show vars ++ " <- " ++ show subj ++ "\n" ++ show rest
 
 instance Show NstVarType where
   show v = case v of

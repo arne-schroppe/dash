@@ -117,7 +117,7 @@ normalizeDestructBind subjectExpr pattern bodyExpr = do
   patternAddr <- addConstant $ CMatchData [encodedPattern]
   nameExpr subjectExpr "" $ \ subjVar -> do
     matchedVars <- forM matchedVarNames $ \ n -> do let var = NVar n NLocalVar
-                                                    addBinding n (var, False) -- TODO can this var be dynamic?
+                                                    addBinding n (var, True) -- destructured vars are always dynamic
                                                     return var
     nExpr <- normalizeExpr bodyExpr
     return $ NDestructuringBind matchedVars patternAddr subjVar nExpr

@@ -33,7 +33,7 @@ resolveRecExprInContext expr = do
 resolveRecExpr :: NstExpr -> Recursion NstExpr
 resolveRecExpr normExpr = case normExpr of
   NLet var atom expr -> resolveRecLet var atom expr
-  NDestructuringBind vars pat subjVar expr -> do --resolveRecDestrBind vars pat subjVar expr
+  NDestructuringBind vars pat subjVar expr -> do -- resolveRecDestrBind vars pat subjVar expr
     -- TODO do we have to save the bound vars in a context?
     resExpr <- resolveRecExpr expr
     return $ NDestructuringBind vars pat subjVar resExpr

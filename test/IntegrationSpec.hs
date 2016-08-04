@@ -471,7 +471,7 @@ spec =
               let result = run code
               result `shouldReturnRight` VMNumber 23
 
-    context "when doing destructuring assignment" $ do
+    context "when doing destructuring bindings" $ do
 
       it "destructures a symbol" $ do
         let code = " a = :test<1, \"yes\", :true>  \n\
@@ -519,6 +519,14 @@ spec =
                    \ a"
         result <- run code
         result `shouldSatisfy` isErrorSymbol
+
+
+      it "correctly captures references to destructured vars" $ do
+        let code = " f :test<x> =  \n\
+                   \  n -> n + x   \n\
+                   \ f :test<4> 7"
+        let result = run code
+        result `shouldReturnRight` VMNumber 11
 
 
     context "when using modules" $ do
