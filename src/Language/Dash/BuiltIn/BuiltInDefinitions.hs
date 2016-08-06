@@ -76,7 +76,9 @@ bifStringConcatOperator = "^+"
 -- TODO instead of "special" handling for primops, we could
 -- also add a bif for every primop and then inline some functions
 -- (e.g. those with less than n opcodes, etc)
-builtInFunctions :: [(Name, Int, [Opcode])]
+--
+type Arity = Int
+builtInFunctions :: [(Name, Arity, [Opcode])]
 builtInFunctions = [  (bifStringConcatName, 2, [
                         OpcStrLen 2 0,
                         OpcStrLen 3 1,

@@ -258,7 +258,7 @@ newModuleIdentifier = do
     newName = do
       index <- gets moduleIdCounter
       modify $ \ env -> env { moduleIdCounter = index + 1 }
-      return $ "$mod_" ++ show index
+      return $ "$_mod_" ++ show index
 
 
 -- TODO also copied from normalization

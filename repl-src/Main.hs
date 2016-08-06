@@ -24,6 +24,9 @@ main = do
 
 
 
+-- TODO add commands ".rewrite" (to change function implementations, etc), ".save" to save to a file
+-- Also store session on end and make it possible to resume it on next start
+-- Add ".import" command once we have that functionality
 loop :: ReplState -> InputT IO ()
 loop state = do
   minput <- getInputLine $ if rsMultilineMode state then "… " else "> "
@@ -67,7 +70,7 @@ dumpOpcodes prog = do
                                                  outputStrLn $ showOpcodes compiled
 
                                                  outputStrLn "\n--- const table ---"
-                                                 outputStrLn $ show constTable
+                                                 outputStrLn $ showNewlineSeparated constTable
 
                                                  outputStrLn "\n--- symbol names ---"
                                                  outputStrLn $ showSymbolNames symNames
@@ -82,6 +85,12 @@ showEncodedFunction fun =
   let opcodes = cfOpcodes fun in
   let stringified = map show opcodes in
   foldl (\a b -> a ++ "\n" ++ b) "" stringified
+
+showNewlineSeparated :: Show a => [a] -> String
+showNewlineSeparated s =
+  let stringified = map show s in
+  foldl (\a b -> a ++ "\n" ++ b) "" stringified
+
 
 showSymbolNames :: SymbolNameList -> String
 showSymbolNames symNames =
