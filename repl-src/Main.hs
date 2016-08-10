@@ -17,7 +17,7 @@ data ReplState = ReplState {
 }
 
 main = do
-  putStrLn "Welcome to the dash repl\nType \".quit\" to quit\nUse \"...\" for multi line input (use a blank line to return to single line input)"
+  putStrLn "Welcome to the dash repl\nType \".quit\" to quit\nUse \"...\" to toggle multi line input"
   let prog0 = either (error . show) id $ parseWithPreamble ":true" -- obtain preamble
   -- let prog0 = either (error . show) id $ parseProgram ":true"
   runInputT (setComplete noCompletion defaultSettings) $ loop $ ReplState prog0 False ""
@@ -31,20 +31,23 @@ loop :: ReplState -> InputT IO ()
 loop state = do
   minput <- getInputLine $ if rsMultilineMode state then "… " else "> "
   case minput of
-    Nothing -> return ()
-    Just ".quit" -> return ()
-    Just ".exit" -> return ()
-    Just "..."   -> loop $ state { rsMultilineMode = True }
-    Just ".show_compiled" -> do dumpOpcodes (rsProg state); loop state
-    Just ""      -> if rsMultilineMode state
+    Nothing -> exit
+    Just ".quit" -> exit
+    Just ".exit" -> exit
+    Just "..."   -> if rsMultilineMode state
                       then do prog' <- eval (rsMultilineInput state) (rsProg state)
                               loop $ state { rsMultilineMode = False, rsMultilineInput = "", rsProg = prog' }
-                      else loop state
+                      else loop $ state { rsMultilineMode = True }
+    Just ".show_compiled" -> do dumpOpcodes (rsProg state); loop state
+    Just ""      -> loop state
     Just input -> do state' <- if rsMultilineMode state
                                then return $ state { rsMultilineInput = (rsMultilineInput state) ++ "\n" ++ input }
                                else do prog' <- eval input (rsProg state)
                                        return $ state { rsProg = prog' }
                      loop state'
+
+    where
+      exit = outputStrLn "bye."
 
 eval :: String -> Expr -> InputT IO Expr
 eval input existingProg = do
