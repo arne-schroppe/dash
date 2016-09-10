@@ -2,10 +2,14 @@
 
 
 fibonacci n =
+  fib' count a b =
+    if count == 0
+      then a
+      else fib' (count - 1) (a + b) a
   match n with
     0 -> 0
     1 -> 1
-    _ -> (fibonacci (n - 1)) + (fibonacci (n - 2))
+    _ -> fib' (n - 2) 1 1
   end
 
 
