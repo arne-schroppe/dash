@@ -71,18 +71,20 @@ foldFunctions =
   foldl calcFuncAddr ([], Seq.empty)
   where
     calcFuncAddr acc compFunc =
-      let allInstrs = fst acc in
-      let funcAddrs = snd acc in
+      let allInstrs = fst acc
+          funcAddrs = snd acc
+      in
       ( allInstrs ++ (cfOpcodes compFunc), funcAddrs Seq.|> fromIntegral (length allInstrs) )
 
 
 assembleTac :: Seq.Seq VMWord -> (ConstAddr -> VMWord) -> Opcode -> VMWord
 assembleTac funcAddrs addrConv opc =
-  let r = regToInt in
-  let i = fromIntegral in
-  let sym = fromIntegral . symIdToInt in
-  let caddr a = fromIntegral (addrConv a) in
-  let faddr a = fromIntegral $ funcAddrs `Seq.index` funcAddrToInt a in
+  let r = regToInt
+      i = fromIntegral
+      sym = fromIntegral . symIdToInt
+      caddr a = fromIntegral (addrConv a)
+      faddr a = fromIntegral $ funcAddrs `Seq.index` funcAddrToInt a
+  in
   case opc of
     OpcRet r0              -> instructionRI   0 (r r0) 0
     OpcLoadI r0 n          -> instructionRI   1 (r r0) (bias n)

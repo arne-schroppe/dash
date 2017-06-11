@@ -374,17 +374,18 @@ compileMatch resultReg subject _{- maxCaptures -} patternAddr branches isResultV
   -- numRemainingBranchInstrs = [10, 3, 0]
   -- numHandledBranchInstrs = [0, 4, 11]
   let branchInstrCount = map (
-          \ index -> let (pre, rest) = splitAt index compiledBranches in
-                     let numRemaining = length matchBranchVars - 1 - index in
-                     let numHandled = index in
+          \ index -> let (pre, rest) = splitAt index compiledBranches
+                         numRemaining = length matchBranchVars - 1 - index
+                         numHandled = index
                      -- we'll add the jump out instruction later
-                     let numMissingInstructionsPerBranch = 1 in
-                     let numRemainingInstrs = length (Prelude.concat rest)
+                         numMissingInstructionsPerBranch = 1
+                         numRemainingInstrs = length (Prelude.concat rest)
                                               + numMissingInstructionsPerBranch
-                                              * numRemaining in
-                     let numHandledInstrs = length (Prelude.concat pre)
+                                              * numRemaining
+                         numHandledInstrs = length (Prelude.concat pre)
                                             + numMissingInstructionsPerBranch
-                                            * numHandled in
+                                            * numHandled 
+                     in
                      (numHandledInstrs, numRemainingInstrs))
           [0 .. (length matchBranchVars)]
   let numRemainingBranchInstrs = tail $ map snd branchInstrCount

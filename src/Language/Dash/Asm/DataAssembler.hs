@@ -145,9 +145,10 @@ bytesPerVMWord = 4
 
 numStringChunksForString :: String -> Int
 numStringChunksForString str =
-  let len = length str + 1 in -- add 1 for terminating \0
-  let (numChunks, remainder) = len `divMod` bytesPerVMWord in
-  let adjust = if remainder /= 0 then 1 else 0 in
+  let len = length str + 1 -- add 1 for terminating \0
+      (numChunks, remainder) = len `divMod` bytesPerVMWord
+      adjust = if remainder /= 0 then 1 else 0 
+  in
   numChunks + adjust
 
 
