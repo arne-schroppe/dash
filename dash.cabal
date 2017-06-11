@@ -58,6 +58,7 @@ executable dash
                     , array
                     , containers
                     , mtl
+                    , transformers
   hs-source-dirs:     interpret-src
   default-language:   Haskell2010
 

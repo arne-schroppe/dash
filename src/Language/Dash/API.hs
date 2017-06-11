@@ -8,6 +8,7 @@ module Language.Dash.API
 , compileExpr
 , parseWithPreamble
 , showNormalizedProgram
+, showCompiledProgram
 ) where
 
 import           Language.Dash.Asm.Assembler
@@ -37,10 +38,11 @@ runWithPreamble prog =
 
 run :: String -> IO (Either CompilationError VMValue)
 run prog = do
-  let result = parseProgram prog
-  case result of
+  let parsed = parseProgram prog
+  case parsed of
     Left err -> return $ Left err
-    Right expr -> runExpr expr
+    Right expr ->
+      runExpr expr
 
 runExpr :: Expr -> IO (Either CompilationError VMValue)
 runExpr expr = do
@@ -93,3 +95,14 @@ showNormalizedProgram prog =
   case result of
     Left err -> show err
     Right (nExpr, _, _) -> show nExpr
+
+showCompiledProgram :: String -> String
+showCompiledProgram prog =
+  let parsed = parseProgram prog in
+  case parsed of
+    Left err -> show err
+    Right p' ->
+      let result = compileExpr p' in
+      case result of
+        Left err -> show err
+        Right (compiled, _, _) -> show compiled
