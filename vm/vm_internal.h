@@ -11,8 +11,7 @@ typedef struct {
   int return_address;
   int result_register;
 
-  //TODO type for this should be heap_address
-  int spilled_arguments; // Used for over-saturated calls.
+  heap_address spilled_arguments; // Used for over-saturated calls.
 } stack_frame ;
 
 
