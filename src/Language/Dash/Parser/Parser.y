@@ -175,12 +175,12 @@ Operand:
 
 
 List:
-    '[' ListNext ']'       { $2 }
+    '[' opt(eol) ListNext ']'       { $3 }
 
 ListNext:
-    Expr              { LitSymbol listConsSymbolName [$1, LitSymbol listEmptySymbolName []] }
-  | Expr ',' ListNext { LitSymbol listConsSymbolName [$1, $3] }
-  | Expr '|' Expr     { LitSymbol listConsSymbolName [$1, $3] }
+    Expr opt(eol)              { LitSymbol listConsSymbolName [$1, LitSymbol listEmptySymbolName []] }
+  | Expr opt(eol) ',' opt(eol) ListNext { LitSymbol listConsSymbolName [$1, $5] }
+  | Expr opt(eol) '|' opt(eol) Expr     { LitSymbol listConsSymbolName [$1, $5] }
   |                   { LitSymbol listEmptySymbolName [] }
 
 
