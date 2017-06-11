@@ -206,9 +206,10 @@ normalizeSymbol sname [] k = do
   k (NPlainSymbol symId)
 normalizeSymbol sname args k =
   if isDynamicLiteral $ LitSymbol sname args then
-    let indicesAndDynamicValues = indexedDynamicSymbolFields args in
-    let indices = map fst indicesAndDynamicValues in
-    let dynamicVars = map snd indicesAndDynamicValues in
+    let indicesAndDynamicValues = indexedDynamicSymbolFields args
+        indices = map fst indicesAndDynamicValues
+        dynamicVars = map snd indicesAndDynamicValues
+    in
     nameExprList dynamicVars $ \ freeVars -> do
       -- Get a list of all dynamic values and their positions. Then
       -- let-bind the dynamic values. At the dynamic positions inside the
