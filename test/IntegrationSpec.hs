@@ -619,6 +619,14 @@ spec =
       let result = run code
       result `shouldReturnRight` VMSymbol "false" []
 
+    it "has an inequality operator" $ do
+      let code = " eq = :sym != :sym     \n\
+                 \ match eq with        \n\
+                 \   :false -> 33        \n\
+                 \   :true  -> 55        \n\
+                 \ end"
+      let result = run code
+      result `shouldReturnRight` VMNumber 33
 
     it "boolean 'or' with true result" $ do
       let code = ":false || :true"

@@ -142,6 +142,11 @@ builtInFunctions = [  (bifStringConcatName, 2, [
                         OpcMove 0 2,
                         OpcRet 0
                       ]),
+                      ("!=", 2, [
+                        OpcEq 2 0 1,
+                        OpcNot 0 2,
+                        OpcRet 0
+                      ]),
                       ("to_number", 1, [
                         OpcLoadPS 1 (fromJust $ lookup numberTypeSymbolName builtInSymbols),
                         OpcConvert 0 0 1,

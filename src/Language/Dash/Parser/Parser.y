@@ -47,6 +47,7 @@ import Data.List (sortBy)
   '/'       { TOperator "/" }
   '*'       { TOperator "*" }
   '=='      { TOperator "==" }
+  '!='      { TOperator "!=" }
   '<'       { TOperator "<" }
   '>'       { TOperator ">" }
   '<='      { TOperator "<=" }
@@ -64,7 +65,7 @@ import Data.List (sortBy)
 
 %left '||' 
 %left '&&'
-%left '==' '<' '>' '<=' '>='
+%left '==' '!=' '<' '>' '<=' '>='
 %left '+' '-' '^+' '++'
 %left '*' '/'
 %left NEG '!'
@@ -154,6 +155,7 @@ InfixOperation:
   | Operand '/' Operand         { FunAp (Var "/") [$1, $3] }
   | Operand '*' Operand         { FunAp (Var "*") [$1, $3] }
   | Operand '==' Operand        { FunAp (Var "==") [$1, $3] }
+  | Operand '!=' Operand        { FunAp (Var "!=") [$1, $3] }
   | Operand '<' Operand         { FunAp (Var "<") [$1, $3] }
   | Operand '>' Operand         { FunAp (Var ">") [$1, $3] }
   | Operand '^+' Operand        { FunAp (Var bifStringConcatName) [$1, $3] }
