@@ -17,7 +17,7 @@
 #define vm_tag_match_data 0xF
 
 // match data will never appear on the heap, so we can reuse the tag.
-// (Used by the garbace collector to mark the moved position of data.)
+// (Used by the garbage collector to mark the moved position of data.)
 #define vm_tag_forward_pointer vm_tag_match_data;
 
 #define symbol_id_false 0
