@@ -2,7 +2,7 @@
 #define _INCLUDE_DEFS_H
 
 
-//Note: most of these a #defines so that they can be used as initializers
+//Note: most of these are #defines so that they can be used as initializers
 
 #define vm_tag_number 0x0
 #define vm_tag_plain_symbol 0x4
