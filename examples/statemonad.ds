@@ -5,9 +5,9 @@ state = module
 
   bind :state<h> f =
     state_func s =
-      (a, newState) = h s
+      (a, new_state) = h s
       :state<g> = f a
-      g newState
+      g new_state
     :state<state_func>
 
   return a =
@@ -18,8 +18,8 @@ state = module
     state_func s = (s, s)
     :state<state_func>
 
-  put newState =
-    state_func s = (:nil, newState)
+  put new_state =
+    state_func s = (:nil, new_state)
     :state<state_func>
 
   run :state<state_func> s0 =
