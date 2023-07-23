@@ -187,7 +187,10 @@ atomizeList [] =
   return []
 atomizeList exprs = do
   let (name, expr) = head exprs
-  (NAtom nAtomExpr) <- atomizeExpr expr name $ return . NAtom
+  atomized <- atomizeExpr expr name $ return . NAtom
+  let nAtomExpr = case atomized of
+        (NAtom e) -> e
+        _ -> error "Unexpected pattern"
   rest <- atomizeList (tail exprs)
   return $ nAtomExpr : rest
 

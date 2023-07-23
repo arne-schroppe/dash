@@ -11,6 +11,6 @@
 - Better debugging support. Stack traces (or breadcrumbs?)
 - Opaque symbols
 - Concurrency
-- A REPL
+k A REPL
 - Faster, optimized match patterns (reduce number of comparisons)
 
